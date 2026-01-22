@@ -1,0 +1,24 @@
+{
+  "name": "assetflow-yawi",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.91.0",
+    "html5-qrcode": "^2.3.8",
+    "jspdf": "^4.0.0",
+    "jspdf-autotable": "^5.0.7",
+    "jsqr": "^1.4.0",
+    "lucide-react": "latest",
+    "next": "latest",
+    "qrcode": "^1.5.4",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-qr-scanner": "^1.0.0-alpha.11"
+  }
+}

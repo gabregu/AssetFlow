@@ -1,0 +1,206 @@
+"use client";
+import React, { useState } from 'react';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
+import { useStore } from '../../../lib/store';
+import { UserPlus, Trash2, Shield, Moon, Sun } from 'lucide-react';
+import { useTheme } from '../../components/theme-provider';
+
+export default function SettingsPage() {
+    const { users, currentUser, addUser, deleteUser, updateUser } = useStore();
+    const { theme } = useTheme();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newUser, setNewUser] = useState({ username: '', password: '', role: 'Conductor', name: '' });
+
+    const isAdmin = currentUser?.role === 'admin';
+
+    const handleAddUser = (e) => {
+        e.preventDefault();
+        addUser(newUser);
+        setNewUser({ username: '', password: '', role: 'Conductor', name: '' });
+        setIsModalOpen(false);
+    };
+
+    const roles = ['Gerencial', 'Administrativo', 'Conductor', 'user', 'admin'];
+
+    return (
+        <div>
+            <div style={{ marginBottom: '2rem' }}>
+                <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Configuración</h1>
+                <p style={{ color: 'var(--text-secondary)' }}>Personaliza tu experiencia y gestiona el acceso al sistema.</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
+                {/* Visual Settings */}
+                <Card title="Apariencia" action={theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                        Cambia entre el modo día y noche para mayor comodidad visual.
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'var(--background)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                        <div>
+                            <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Modo de Interfaz</span>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>Actual: {theme === 'dark' ? 'Noche' : 'Día'}</p>
+                        </div>
+                        <ThemeToggle />
+                    </div>
+                </Card>
+
+                {/* User Management (Admin Only) */}
+                <Card
+                    title="Gestión de Usuarios"
+                    action={<Shield size={20} style={{ color: isAdmin ? 'var(--primary-color)' : 'var(--text-secondary)' }} />}
+                >
+                    {!isAdmin ? (
+                        <div style={{ textAlign: 'center', padding: '2rem' }}>
+                            <Shield size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                Solo los Administradores pueden gestionar usuarios y permisos.
+                            </p>
+                        </div>
+                    ) : (
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                    {users.length} usuarios registrados
+                                </p>
+                                <Button size="sm" icon={UserPlus} onClick={() => setIsModalOpen(true)}>Nuevo Usuario</Button>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                {users.map(u => (
+                                    <div key={u.id} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '0.75rem',
+                                        background: 'var(--background)',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: '1px solid var(--border)'
+                                    }}>
+                                        <div>
+                                            <p style={{ fontWeight: 600, margin: 0, fontSize: '0.9rem' }}>{u.name}</p>
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>@{u.username}</span>
+                                                {u.username === 'admin' ? (
+                                                    <span style={{
+                                                        fontSize: '0.7rem',
+                                                        padding: '2px 6px',
+                                                        borderRadius: '4px',
+                                                        backgroundColor: 'var(--primary-color)',
+                                                        color: 'white',
+                                                        textTransform: 'uppercase',
+                                                        fontWeight: 700
+                                                    }}>{u.role}</span>
+                                                ) : (
+                                                    <select
+                                                        value={u.role}
+                                                        onChange={(e) => updateUser(u.id, { role: e.target.value })}
+                                                        style={{
+                                                            fontSize: '0.7rem',
+                                                            padding: '2px 6px',
+                                                            borderRadius: '4px',
+                                                            backgroundColor: 'var(--primary-hover)',
+                                                            color: 'white',
+                                                            textTransform: 'uppercase',
+                                                            fontWeight: 700,
+                                                            border: 'none',
+                                                            outline: 'none',
+                                                            cursor: 'pointer',
+                                                            appearance: 'none',
+                                                            textAlign: 'center'
+                                                        }}
+                                                    >
+                                                        {roles.map(r => (
+                                                            <option key={r} value={r} style={{ color: 'black' }}>{r.toUpperCase()}</option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {u.username !== 'admin' && (
+                                            <button
+                                                onClick={() => {
+                                                    if (confirm(`¿Eliminar a ${u.name}?`)) deleteUser(u.id);
+                                                }}
+                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.5rem' }}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </Card>
+            </div>
+
+            {/* Modal para Nuevo Usuario */}
+            {isModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }}>
+                    <Card title="Agregar Nuevo Usuario" style={{ width: '400px', margin: '2rem' }}>
+                        <form onSubmit={handleAddUser}>
+                            <div className="form-group">
+                                <label className="form-label">Nombre Completo</label>
+                                <input
+                                    className="form-input"
+                                    required
+                                    value={newUser.name}
+                                    onChange={e => setNewUser({ ...newUser, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Usuario</label>
+                                <input
+                                    className="form-input"
+                                    required
+                                    value={newUser.username}
+                                    onChange={e => setNewUser({ ...newUser, username: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Contraseña</label>
+                                <input
+                                    type="password"
+                                    className="form-input"
+                                    required
+                                    value={newUser.password}
+                                    onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Rol del Usuario</label>
+                                <select
+                                    className="form-select"
+                                    value={newUser.role}
+                                    onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+                                >
+                                    {roles.map(r => (
+                                        <option key={r} value={r}>{r === 'admin' ? 'Administrador (Full)' : r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
+                                <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
+                                <Button type="submit">Crear Usuario</Button>
+                            </div>
+                        </form>
+                    </Card>
+                </div>
+            )}
+        </div>
+    );
+}
