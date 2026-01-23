@@ -14,15 +14,6 @@ export default function Home() {
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [error, setError] = useState('');
 
-    // AUTO-LOGIN FOR TESTING (BYPASS AUTH)
-    React.useEffect(() => {
-        // Try to login with default admin credentials automatically
-        const success = login('admin', '123456*');
-        if (success) {
-            router.push('/dashboard');
-        }
-    }, [login, router]);
-
     const handleLogin = (e) => {
         e.preventDefault();
         const success = login(formData.username, formData.password);
@@ -54,11 +45,7 @@ export default function Home() {
                     Plataforma integral de gestión de activos y casos de TI.
                 </p>
 
-                <p style={{ color: 'var(--primary)', fontWeight: 'bold' }}>
-                    Autenticando automáticamente...
-                </p>
-
-                <div style={{ display: 'none' }}>
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                     <button
                         onClick={() => setIsLoginOpen(true)}
                         className="btn btn-primary"
