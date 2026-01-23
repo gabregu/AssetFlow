@@ -214,7 +214,11 @@ export default function SFDCCasesPage() {
             if (data.length < 2) return;
 
             // Headers are first row
-            const headers = data[0].map(h => h.trim());
+            // Limpieza agresiva: trim y quitar comillas envolventes de los headers si existen
+            const headers = data[0].map(h => h.trim().replace(/^"|"$/g, ''));
+
+            console.log('CSV Headers detectados:', headers); // DEBUG
+
             const rows = data.slice(1);
 
             const newCases = [];
@@ -222,7 +226,12 @@ export default function SFDCCasesPage() {
             // Helper to get value by header name
             const getVal = (rowValues, colName) => {
                 const index = headers.indexOf(colName);
-                return index !== -1 ? (rowValues[index] || '').trim() : '';
+                // Intento alternativo (case insensitive)
+                if (index === -1) {
+                    const indexAlt = headers.findIndex(h => h.toLowerCase() === colName.toLowerCase());
+                    return indexAlt !== -1 ? (rowValues[indexAlt] || '').trim() : '';
+                }
+                return (rowValues[index] || '').trim();
             };
 
             for (let i = 0; i < rows.length; i++) {
@@ -231,7 +240,11 @@ export default function SFDCCasesPage() {
 
                 // Validate valid row (must have Case Number)
                 const caseNum = getVal(rowValues, 'Case Number');
-                if (!caseNum) continue;
+                if (!caseNum) {
+                    // Si falla en la primera fila, logueamos para entender por qué
+                    if (i === 0) console.warn('Fila 1 ignorada. Headers disponibles:', headers, 'Valor buscado: Case Number');
+                    continue;
+                }
 
                 // Cálculo de Age basado en fecha de apertura
                 const openedRaw = getVal(rowValues, 'Date/Time Opened');
