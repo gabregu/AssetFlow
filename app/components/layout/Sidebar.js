@@ -13,7 +13,7 @@ export function Sidebar({ isOpen, onClose }) {
 
     const menuItems = [
         { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'Administrativo', 'Gerencial'] },
-        { name: 'Casos SFDC', icon: FileText, path: '/dashboard/salesforce-cases', roles: ['admin', 'Administrativo'] },
+        { name: 'Casos SFDC', icon: FileText, path: '/dashboard/salesforce-cases', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Servicios', icon: Ticket, path: '/dashboard/tickets', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Inventario', icon: Package, path: '/dashboard/inventory', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Envíos', icon: Truck, path: '/dashboard/deliveries', roles: ['admin', 'Administrativo', 'Gerencial'] },
