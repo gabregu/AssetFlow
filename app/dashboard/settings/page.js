@@ -4,14 +4,16 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { useStore } from '../../../lib/store';
-import { UserPlus, Trash2, Shield, Moon, Sun } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Moon, Sun, Pencil } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 
 export default function SettingsPage() {
     const { users, currentUser, addUser, deleteUser, updateUser } = useStore();
     const { theme } = useTheme();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [newUser, setNewUser] = useState({ username: '', password: '', role: 'Conductor', name: '' });
+    const [userToEdit, setUserToEdit] = useState(null);
 
     const isAdmin = currentUser?.role === 'admin';
 
@@ -20,6 +22,28 @@ export default function SettingsPage() {
         addUser(newUser);
         setNewUser({ username: '', password: '', role: 'Conductor', name: '' });
         setIsModalOpen(false);
+    };
+
+    const handleEditClick = (user) => {
+        setUserToEdit({ ...user, password: '' }); // Clear password for security/don't show old one
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdateUser = (e) => {
+        e.preventDefault();
+        if (!userToEdit) return;
+
+        const updates = {
+            name: userToEdit.name,
+            username: userToEdit.username
+        };
+        if (userToEdit.password) {
+            updates.password = userToEdit.password;
+        }
+
+        updateUser(userToEdit.id, updates);
+        setIsEditModalOpen(false);
+        setUserToEdit(null);
     };
 
     const roles = ['Gerencial', 'Administrativo', 'Conductor', 'user', 'admin'];
@@ -119,14 +143,15 @@ export default function SettingsPage() {
                                             </div>
                                         </div>
                                         {u.username !== 'admin' && (
-                                            <button
-                                                onClick={() => {
-                                                    if (confirm(`¿Eliminar a ${u.name}?`)) deleteUser(u.id);
-                                                }}
-                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.5rem' }}
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                <button
+                                                    onClick={() => handleEditClick(u)}
+                                                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem' }}
+                                                    title="Editar usuario"
+                                                >
+                                                    <Pencil size={16} />
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 ))}
@@ -196,6 +221,76 @@ export default function SettingsPage() {
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
                                 <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
                                 <Button type="submit">Crear Usuario</Button>
+                            </div>
+                        </form>
+                    </Card>
+                </div>
+            )}
+
+            {/* Modal para Editar Usuario */}
+            {isEditModalOpen && userToEdit && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    backdropFilter: 'blur(4px)'
+                }}>
+                    <Card title="Editar Usuario" style={{ width: '400px', margin: '2rem' }}>
+                        <form onSubmit={handleUpdateUser}>
+                            <div className="form-group">
+                                <label className="form-label">Nombre Completo</label>
+                                <input
+                                    className="form-input"
+                                    required
+                                    value={userToEdit.name}
+                                    onChange={e => setUserToEdit({ ...userToEdit, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Usuario</label>
+                                <input
+                                    className="form-input"
+                                    required
+                                    value={userToEdit.username}
+                                    onChange={e => setUserToEdit({ ...userToEdit, username: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Nueva Contraseña (Opcional)</label>
+                                <input
+                                    type="password"
+                                    className="form-input"
+                                    placeholder="Dejar en blanco para no cambiar"
+                                    value={userToEdit.password || ''}
+                                    onChange={e => setUserToEdit({ ...userToEdit, password: e.target.value })}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginTop: '2rem' }}>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={async () => {
+                                        if (confirm(`¿Estás seguro de que deseas eliminar permanentemente a ${userToEdit.name}?`)) {
+                                            await deleteUser(userToEdit.id);
+                                            setIsEditModalOpen(false);
+                                            setUserToEdit(null);
+                                        }
+                                    }}
+                                    style={{ color: '#ef4444' }}
+                                >
+                                    Eliminar Usuario
+                                </Button>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <Button type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)}>Cancelar</Button>
+                                    <Button type="submit">Guardar Cambios</Button>
+                                </div>
                             </div>
                         </form>
                     </Card>

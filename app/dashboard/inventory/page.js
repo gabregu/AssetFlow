@@ -53,6 +53,9 @@ export default function InventoryPage() {
     const [sortConfig, setSortConfig] = useState({ key: 'dateLastUpdate', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', type: 'All', assignee: '' });
 
+    // Quick Detail Modal State
+    const [stockDetailModal, setStockDetailModal] = useState({ isOpen: false, model: '', status: '', items: [] });
+
     const handleSort = (key) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -61,13 +64,45 @@ export default function InventoryPage() {
         setSortConfig({ key, direction });
     };
 
+    const handleStockClick = (model, status) => {
+        // Filter assets for this specific bucket
+        const items = assets.filter(a => {
+            const matchModel = a.name === model;
+            let matchStatus = false;
+            if (status === 'Nuevo') matchStatus = a.status === 'Nuevo' || a.status === 'Disponible';
+            else if (status === 'Dañado') matchStatus = ['Dañado', 'Rota', 'De Baja'].includes(a.status);
+            else matchStatus = a.status === status;
+
+            return matchModel && matchStatus;
+        });
+
+        setStockDetailModal({
+            isOpen: true,
+            model: model,
+            status: status,
+            items: items
+        });
+    };
+
     const filteredAssets = React.useMemo(() => {
         let result = assets.filter(a => {
             const matchesSearch = a.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
                 a.serial.toLowerCase().includes(searchFilter.toLowerCase()) ||
                 a.assignee.toLowerCase().includes(searchFilter.toLowerCase());
 
-            const matchesStatus = columnFilters.status === 'All' || a.status === columnFilters.status;
+            let matchesStatus = false;
+            if (columnFilters.status === 'All') {
+                matchesStatus = true;
+            } else if (columnFilters.status === 'Nuevo') {
+                // 'Nuevo' filter includes both 'Nuevo' and 'Disponible'
+                matchesStatus = a.status === 'Nuevo' || a.status === 'Disponible';
+            } else if (columnFilters.status === 'Dañado') {
+                // 'Dañado' filter includes 'Rota', 'De Baja', 'Dañado'
+                matchesStatus = ['Dañado', 'Rota', 'De Baja'].includes(a.status);
+            } else {
+                matchesStatus = a.status === columnFilters.status;
+            }
+
             const matchesType = columnFilters.type === 'All' || a.type === columnFilters.type;
             const matchesAssignee = !columnFilters.assignee || a.assignee.toLowerCase().includes(columnFilters.assignee.toLowerCase());
 
@@ -259,39 +294,217 @@ export default function InventoryPage() {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
-            const text = event.target.result;
-            const rows = text.split('\n').filter(row => row.trim() !== '');
-            const headers = rows[0].split(',').map(h => h.trim());
-
-            const newAssets = rows.slice(1).map(row => {
-                const values = row.split(',').map(v => v.trim());
-                const asset = {};
-                headers.forEach((header, index) => {
-                    asset[header] = values[index];
-                });
-                return asset;
-            });
-
-            if (newAssets.length > 0) {
-                const existingSerials = new Set(assets.map(a => a.serial.toLowerCase()));
-                const toAdd = [];
-                let skippedCount = 0;
-
-                newAssets.forEach(asset => {
-                    if (asset.serial && existingSerials.has(asset.serial.toLowerCase())) {
-                        skippedCount++;
-                    } else {
-                        toAdd.push(asset);
-                    }
-                });
-
-                if (toAdd.length > 0) {
-                    addAssets(toAdd);
-                    alert(`${toAdd.length} activos cargados con éxito.${skippedCount > 0 ? ` Se omitieron ${skippedCount} por estar duplicados.` : ''}`);
-                } else if (skippedCount > 0) {
-                    alert(`No se cargaron nuevos activos. Los ${skippedCount} items del CSV ya existen en el sistema.`);
+        reader.onload = async (event) => {
+            try {
+                const text = event.target.result;
+                const rows = text.split('\n').filter(row => row.trim() !== '');
+                if (rows.length < 2) {
+                    alert('El archivo CSV parece estar vacío o solo tiene cabeceras.');
+                    return;
                 }
+
+                // Normalización de Cabeceras (Mapping)
+                const rawHeaders = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase()); // Remove quotes and lower
+
+                const headerMap = {
+                    // Critical Fields
+                    'serial': 'serial', 'nro serie': 'serial', 'numero de serie': 'serial', 'sn': 'serial', 's/n': 'serial', 'service tag': 'serial',
+                    'name': 'name', 'nombre': 'name', 'equipo': 'name', 'device': 'name', 'producto': 'name',
+                    'type': 'type', 'tipo': 'type', 'categoria': 'type',
+                    'status': 'status', 'estado': 'status',
+                    'assignee': 'assignee', 'asignee': 'assignee', 'usuario': 'assignee', 'asignado a': 'assignee', 'user': 'assignee',
+
+                    // Extended Fields (Mapped to internal camelCase)
+                    'date': 'date', 'fecha': 'date',
+                    'vendor': 'vendor', 'proveedor': 'vendor',
+                    'purchase order': 'purchaseOrder', 'po': 'purchaseOrder', 'orden de compra': 'purchaseOrder',
+                    'sfdc_case': 'sfdcCase', 'sfdc case': 'sfdcCase', 'caso sfdc': 'sfdcCase', 'sfdc': 'sfdcCase',
+                    'oem': 'oem', 'marca': 'oem',
+                    'model': 'modelNumber', 'modelo': 'modelNumber',
+                    'hardware spec': 'hardwareSpec', 'spec': 'hardwareSpec', 'especificaciones': 'hardwareSpec', 'hardwarespec': 'hardwareSpec',
+                    'partnumber': 'partNumber', 'part number': 'partNumber', 'pn': 'partNumber', 'numero de parte': 'partNumber',
+                    'imei': 'imei', 'imei 2': 'imei2', 'imei2': 'imei2',
+                    'eol': 'eolDate', 'eol date': 'eolDate', 'fin de vida': 'eolDate',
+                    'notes': 'notes', 'notas': 'notes', 'comentarios': 'notes', 'comments': 'notes',
+                    'country': 'country', 'pais': 'country'
+                };
+
+                const mappedHeaders = rawHeaders.map(h => headerMap[h] || h); // Use map or keep original if no match
+
+                // Validate critical headers
+                if (!mappedHeaders.includes('serial')) {
+                    alert('Error: No se encontró la columna "Serial" o "Numero de Serie" en el CSV. Es obligatoria.');
+                    return;
+                }
+
+                const newAssets = rows.slice(1).map(row => {
+                    // Robust CSV Parser: Handles commas in quotes AND empty fields correctly
+                    const values = [];
+                    let currentVal = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < row.length; i++) {
+                        const char = row[i];
+                        if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            values.push(currentVal.trim().replace(/^"|"$/g, ''));
+                            currentVal = '';
+                        } else {
+                            currentVal += char;
+                        }
+                    }
+                    // Push the last value
+                    values.push(currentVal.trim().replace(/^"|"$/g, ''));
+
+                    const asset = {};
+                    mappedHeaders.forEach((header, index) => {
+                        if (values[index] !== undefined && values[index] !== '') {
+                            asset[header] = values[index];
+                        }
+                    });
+
+                    // Defaults/Cleanups
+                    if (!asset.type) asset.type = 'Laptop';
+                    if (!asset.status) asset.status = 'Disponible';
+                    if (!asset.assignee) asset.assignee = 'Almacén'; // Default to Warehouse if empty
+
+                    // --- NORMALIZATION START ---
+                    // Normalize Status to match App Enums (Nuevo, Asignado, Recuperado, etc.)
+                    const statusMap = {
+                        'new': 'Nuevo', 'nuevo': 'Nuevo',
+                        'available': 'Disponible', 'disponible': 'Disponible', 'stock': 'Disponible',
+                        'assigned': 'Asignado', 'asignado': 'Asignado', 'in use': 'Asignado', 'en uso': 'Asignado',
+                        'recovered': 'Recuperado', 'recuperado': 'Recuperado',
+                        'repair': 'En Reparación', 'en reparación': 'En Reparación', 'broken': 'Dañado', 'dañado': 'Dañado',
+                        'eol': 'EOL', 'end of life': 'EOL', 'baja': 'EOL'
+                    };
+                    const lowerStatus = (asset.status || '').toLowerCase().trim();
+                    if (statusMap[lowerStatus]) {
+                        asset.status = statusMap[lowerStatus];
+                    } else {
+                        // Capitalize first letter as fallback if not in map
+                        asset.status = asset.status.charAt(0).toUpperCase() + asset.status.slice(1).toLowerCase();
+                    }
+
+                    // Normalize Type
+                    const typeMap = {
+                        'notebook': 'Laptop', 'laptop': 'Laptop', 'portatil': 'Laptop', 'latop': 'Laptop',
+                        'smartphone': 'Smartphone', 'phone': 'Smartphone', 'celular': 'Smartphone', 'movil': 'Smartphone',
+                        'tablet': 'Tablet', 'ipad': 'Tablet',
+                        'monitor': 'Monitor', 'display': 'Monitor',
+                        'key': 'Security keys', 'security key': 'Security keys', 'yubikey': 'Security keys'
+                    };
+                    const lowerType = (asset.type || '').toLowerCase().trim();
+                    if (typeMap[lowerType]) {
+                        asset.type = typeMap[lowerType];
+                    }
+
+                    // Normalize Assignee (Warehouse normalization)
+                    const assigneeMap = {
+                        'whse': 'Almacén', 'warehouse': 'Almacén', 'almacen': 'Almacén',
+                        'stock': 'Almacén', 'office': 'Almacén', 'deposito': 'Almacén'
+                    };
+                    const lowerAssignee = (asset.assignee || '').toLowerCase().trim();
+                    if (assigneeMap[lowerAssignee]) {
+                        asset.assignee = assigneeMap[lowerAssignee];
+                    }
+                    // --- NORMALIZATION END ---
+
+                    return asset;
+                }).filter(a => a.serial && a.serial.length > 2); // Filter empty rows
+
+                if (newAssets.length > 0) {
+                    const existingSerials = new Set(assets.map(a => (a.serial || '').toString().toLowerCase().trim()));
+                    const seenInCsv = new Set();
+                    const toAdd = [];
+                    let skippedCount = 0;
+
+                    newAssets.forEach(asset => {
+                        const normalizedSerial = (asset.serial || '').toString().toLowerCase().trim();
+
+                        // Check against DB assets AND duplicates within the file itself
+                        if (existingSerials.has(normalizedSerial) || seenInCsv.has(normalizedSerial)) {
+                            skippedCount++;
+                        } else {
+                            seenInCsv.add(normalizedSerial);
+                            // Ensure strict string format for Serial to match consistency
+                            asset.serial = (asset.serial || '').toString().trim();
+                            toAdd.push(asset);
+                        }
+                    });
+
+                    if (toAdd.length > 0) {
+                        try {
+                            // Intento 1: Guardar con TODOS los campos mapeados
+                            await addAssets(toAdd);
+                            alert(`✅ Éxito: ${toAdd.length} activos cargados correctamente.\n(Se omitieron ${skippedCount} duplicados).`);
+                        } catch (err) {
+                            console.warn("Intento de carga completa falló, probando importación segura...", err);
+
+                            // Intento 2: Importación Segura (Fallback)
+                            // Si falla por columnas faltantes, movemos los datos extra a 'notes'
+                            if (err.message && (err.message.includes('Could not find') || err.message.includes('column'))) {
+                                const confirmation = window.confirm(
+                                    `⚠️ Tu base de datos no tiene algunas columnas nuevas (como IMEI, Country, etc.)\n\n` +
+                                    `¿Quieres que guarde estos datos dentro del campo "Notas" para no perderlos y completar la importación?`
+                                );
+
+                                if (confirmation) {
+                                    const safeAssets = toAdd.map(asset => {
+                                        const safe = {
+                                            name: asset.name,
+                                            type: asset.type,
+                                            serial: asset.serial,
+                                            status: asset.status,
+                                            assignee: asset.assignee,
+                                            date: asset.date,
+                                            hardwareSpec: asset.hardwareSpec,
+                                            notes: asset.notes || ''
+                                        };
+
+                                        // Campos potencialmente "nuevos" o conflictivos
+                                        const riskyFields = [
+                                            'imei', 'imei2', 'country', 'purchaseOrder', 'sfdcCase',
+                                            'oem', 'modelNumber', 'partNumber', 'eolDate', 'vendor'
+                                        ];
+
+                                        let extraInfo = [];
+                                        riskyFields.forEach(field => {
+                                            if (asset[field]) {
+                                                extraInfo.push(`${field.toUpperCase()}: ${asset[field]}`);
+                                            }
+                                        });
+
+                                        if (extraInfo.length > 0) {
+                                            safe.notes = (safe.notes ? safe.notes + '\n\n' : '') +
+                                                '--- DATOS IMPORTADOS ---\n' +
+                                                extraInfo.join('\n');
+                                        }
+
+                                        return safe;
+                                    });
+
+                                    try {
+                                        await addAssets(safeAssets);
+                                        alert(`✅ Importación Segura completada: ${safeAssets.length} activos guardados.\n(Los datos de IMEI, Pais, etc. se guardaron en "Notas").`);
+                                    } catch (retryErr) {
+                                        console.error("Fallo final importación segura:", retryErr);
+                                        alert(`❌ Error Crítico: No se pudo importar ni siquiera en modo seguro.\n${retryErr.message}`);
+                                    }
+                                }
+                            } else {
+                                alert(`❌ Error DB: ${err.message || 'Error desconocido'}\n\nDetalles: ${err.details || 'Revisa la consola'}`);
+                            }
+                        }
+                    } else {
+                        alert(`ℹ️ No hay activos nuevos. Todos los ${skippedCount} registros del CSV ya existen.`);
+                    }
+                } else {
+                    alert('⚠️ No se encontraron filas válidas en el CSV.');
+                }
+            } catch (error) {
+                console.error("CSV Parse Error:", error);
+                alert('❌ Error procesando el archivo CSV. Revisa el formato.');
             }
             e.target.value = null; // Reset input
         };
@@ -667,15 +880,19 @@ export default function InventoryPage() {
                                                         </td>
                                                         {statuses.map(s => (
                                                             <td key={s} style={{ padding: '0.5rem', textAlign: 'center' }}>
-                                                                <span style={{
-                                                                    padding: '0.2rem 0.5rem',
-                                                                    borderRadius: '4px',
-                                                                    background: data[s] > 0 ? `${getStatusVariant(s) === 'success' ? 'rgba(22, 163, 74, 0.1)' : getStatusVariant(s) === 'info' ? 'rgba(37, 99, 235, 0.1)' : getStatusVariant(s) === 'warning' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)'}` : 'transparent',
-                                                                    color: data[s] > 0 ? (getStatusVariant(s) === 'success' ? '#16a34a' : getStatusVariant(s) === 'info' ? '#2563eb' : getStatusVariant(s) === 'warning' ? '#f59e0b' : '#ef4444') : 'var(--text-secondary)',
-                                                                    fontWeight: data[s] > 0 ? 700 : 400,
-                                                                    opacity: data[s] > 0 ? 1 : 0.2,
-                                                                    fontSize: '0.8rem'
-                                                                }}>
+                                                                <span
+                                                                    onClick={() => data[s] > 0 && handleStockClick(model, s)}
+                                                                    style={{
+                                                                        padding: '0.2rem 0.5rem',
+                                                                        borderRadius: '4px',
+                                                                        background: data[s] > 0 ? `${getStatusVariant(s) === 'success' ? 'rgba(22, 163, 74, 0.1)' : getStatusVariant(s) === 'info' ? 'rgba(37, 99, 235, 0.1)' : getStatusVariant(s) === 'warning' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)'}` : 'transparent',
+                                                                        color: data[s] > 0 ? (getStatusVariant(s) === 'success' ? '#16a34a' : getStatusVariant(s) === 'info' ? '#2563eb' : getStatusVariant(s) === 'warning' ? '#f59e0b' : '#ef4444') : 'var(--text-secondary)',
+                                                                        fontWeight: data[s] > 0 ? 700 : 400,
+                                                                        opacity: data[s] > 0 ? 1 : 0.2,
+                                                                        fontSize: '0.8rem',
+                                                                        cursor: data[s] > 0 ? 'pointer' : 'default',
+                                                                        textDecoration: data[s] > 0 ? 'underline' : 'none'
+                                                                    }}>
                                                                     {data[s]}
                                                                 </span>
                                                             </td>
@@ -692,7 +909,7 @@ export default function InventoryPage() {
                 </div>
             )}
             {isHardwareTab ? (
-                <Card>
+                <Card id="inventory-list">
                     <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
                         <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
@@ -1189,7 +1406,7 @@ export default function InventoryPage() {
                             <input
                                 className="form-input"
                                 placeholder="358900..."
-                                value={newAsset.imei}
+                                value={newAsset.imei || ''}
                                 onChange={e => setNewAsset({ ...newAsset, imei: e.target.value })}
                             />
                         </div>
@@ -1387,6 +1604,55 @@ export default function InventoryPage() {
                         <Button type="submit" icon={Truck}>Confirmar y Crear Ticket</Button>
                     </div>
                 </form>
+            </Modal>
+            {/* Quick Detail Modal for Stock Numbers */}
+            <Modal
+                isOpen={stockDetailModal.isOpen}
+                onClose={() => setStockDetailModal({ ...stockDetailModal, isOpen: false })}
+                title={`${stockDetailModal.model} - ${stockDetailModal.status}`}
+            >
+                <div>
+                    <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                        Se encontraron <strong>{stockDetailModal.items.length}</strong> equipos en este estado.
+                    </p>
+                    <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                            <thead style={{ position: 'sticky', top: 0, background: 'var(--surface)' }}>
+                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Serial</th>
+                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Estado Real</th>
+                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Ubicación/Usuario</th>
+                                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stockDetailModal.items.map(item => (
+                                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <td style={{ padding: '0.75rem', fontWeight: 600 }}>{item.serial}</td>
+                                        <td style={{ padding: '0.75rem' }}>
+                                            <Badge variant={getStatusVariant(item.status)}>{item.status}</Badge>
+                                        </td>
+                                        <td style={{ padding: '0.75rem' }}>{item.assignee}</td>
+                                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setEditingAsset(item);
+                                                    setNewAsset({ ...item, date: item.date || new Date().toISOString().split('T')[0] });
+                                                    setIsModalOpen(true);
+                                                    setStockDetailModal({ ...stockDetailModal, isOpen: false });
+                                                }}
+                                            >
+                                                Editar
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

@@ -68,56 +68,88 @@ export default function TicketDetailPage() {
     const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
     const [smartFilters, setSmartFilters] = useState({ eng: false, size: 'All' });
 
-    // Provisioning Recommendation Logic
+    // Provisioning Recommendation Logic - Updated with User Rules
     const provisioningSuggestions = React.useMemo(() => {
         if (!ticket || !ticket.subject) return [];
 
         const subject = (ticket.subject || "").toLowerCase();
-        const isStandard = subject.includes('standard laptop');
-        const isDeveloper = subject.includes('developer laptop');
 
-        if (!isStandard && !isDeveloper) return [];
+        // 1. Identify Intent (Status Rule)
+        // If "Provisioning" (New employee) -> Suggest NEW
+        // If "Replacement" or "Break/Fix" -> Suggest USED (Disponible/Recuperado)
+        let targetStatuses = ['Nuevo', 'Disponible', 'Recuperado']; // Default fallback
+        if (subject.includes('provisioning') || subject.includes('nuevo ingreso') || subject.includes('new hire')) {
+            // Expanded to include 'Disponible' in case 'Nuevo' stock is empty or mislabeled
+            targetStatuses = ['Nuevo', 'Disponible'];
+        } else if (subject.includes('replacement') || subject.includes('reemplazo') || subject.includes('break') || subject.includes('fix') || subject.includes('rotura')) {
+            targetStatuses = ['Disponible', 'Recuperado'];
+        }
 
-        // Extract size (13, 14, 15, 16)
-        const sizeMatch = subject.match(/(\d+)\s*["']/);
-        const requestedSize = sizeMatch ? sizeMatch[1] : null;
+        // 2. Identify OS/Brand
+        const isWindows = subject.includes('windows') || subject.includes('dell') || subject.includes('hp');
+        const isMac = subject.includes('mac') || subject.includes('apple') || subject.includes('macbook');
 
-        // Extract Keyboard requirement
-        const requiresEng = subject.includes('eng') || subject.includes('english');
+        // 3. Identify Profile (Ram/Power)
+        // Standard: < 64GB
+        // Development/Max: >= 64GB or "Max" model
+        const isStandard = subject.includes('standard');
+        const isDeveloper = subject.includes('development') || subject.includes('developer') || subject.includes('max') || subject.includes('pro max');
 
         return assets.filter(asset => {
-            // Basic stock filter
-            if (asset.assignee !== 'Almacén' || !['Nuevo', 'Disponible', 'Recuperado'].includes(asset.status)) {
-                return false;
+            // Basic Availability Check
+            if (asset.assignee !== 'Almacén') return false;
+            if (!targetStatuses.includes(asset.status)) return false;
+
+            // Brand/OS Match
+            if (isWindows) {
+                // Priority 1: Dell, Priority 2: HP
+                // We filter for both here, sorting will handle priority
+                const isDell = (asset.limitations || asset.name || "").toLowerCase().includes('dell');
+                const isHP = (asset.limitations || asset.name || "").toLowerCase().includes('hp');
+                if (!isDell && !isHP) return false;
+            } else {
+                // Default to Mac/Apple if not explicitly Windows, or if Mac is specified
+                if (asset.type !== 'Laptop') return false;
+                // Exclude Dell/HP if looking for Mac
+                if ((asset.name || "").toLowerCase().includes('dell') || (asset.name || "").toLowerCase().includes('hp')) return false;
             }
-            if (asset.type !== 'Laptop') return false;
 
-            // Size filter
-            if (requestedSize) {
-                const hasSize = asset.name.includes(requestedSize) || (asset.hardwareSpec && asset.hardwareSpec.includes(requestedSize));
-                if (!hasSize) return false;
-            }
+            // Profile Match (Mainly for Mac)
+            if (!isWindows) { // Apply specific RAM rules mainly for Macs as per request
+                const ramMatch = (asset.hardwareSpec || asset.name || "").match(/(\d+)\s*gb/i);
+                const ramValue = ramMatch ? parseInt(ramMatch[1]) : 0;
 
-            // Keyboard filter
-            if (requiresEng) {
-                const hasEng = asset.name.toLowerCase().includes('eng') || (asset.hardwareSpec && asset.hardwareSpec.toLowerCase().includes('eng'));
-                if (!hasEng) return false;
-            }
-
-            // RAM filter
-            const ramMatch = (asset.hardwareSpec || asset.name || "").match(/(\d+)\s*gb/i);
-            const ramValue = ramMatch ? parseInt(ramMatch[1]) : 0;
-
-            if (isStandard) {
-                // Si es standard, buscamos menos de 64GB
-                if (ramValue >= 64) return false;
-            } else if (isDeveloper) {
-                // Si es developer, buscamos 64GB o más
-                if (ramValue < 64) return false;
+                if (isStandard) {
+                    // Rule: < 64GB
+                    if (ramValue >= 64) return false;
+                } else if (isDeveloper) {
+                    // Rule: >= 64GB
+                    if (ramValue < 64) return false;
+                }
             }
 
             return true;
-        }).slice(0, 3);
+        })
+            .sort((a, b) => {
+                // Sorting Logic
+
+                // 0. Status Priority: Nuevo > Disponible > Recuperado
+                const statusOrder = { 'Nuevo': 1, 'Disponible': 2, 'Recuperado': 3 };
+                const scoreA = statusOrder[a.status] || 99;
+                const scoreB = statusOrder[b.status] || 99;
+                if (scoreA !== scoreB) return scoreA - scoreB;
+
+                // 1. Windows Priority: Dell > HP
+                if (isWindows) {
+                    const aIsDell = (a.name || "").toLowerCase().includes('dell');
+                    const bIsDell = (b.name || "").toLowerCase().includes('dell');
+                    if (aIsDell && !bIsDell) return -1;
+                    if (!aIsDell && bIsDell) return 1;
+                }
+
+                return 0;
+            })
+            .slice(0, 4); // Top 4 recommendations
     }, [ticket, assets]);
 
     useEffect(() => {
@@ -225,7 +257,11 @@ export default function TicketDetailPage() {
 
             const filteredAvailable = available.filter(a => {
                 if (filters.eng) {
-                    const hasEng = a.name.toLowerCase().includes('eng') || (a.hardwareSpec && a.hardwareSpec.toLowerCase().includes('eng'));
+                    // Expanded ENG check: ENG, US, USA, ANSI, English
+                    const lowerName = (a.name || '').toLowerCase();
+                    const lowerSpec = (a.hardwareSpec || '').toLowerCase();
+                    const hasEng = lowerName.includes('eng') || lowerName.includes(' us ') || lowerName.includes('usa') || lowerName.includes('ansi') ||
+                        lowerSpec.includes('eng') || lowerSpec.includes(' us ') || lowerSpec.includes('usa') || lowerSpec.includes('ansi');
                     if (!hasEng) return false;
                 }
                 if (filters.size !== 'All') {
@@ -280,7 +316,7 @@ export default function TicketDetailPage() {
 
         setEditedData(prev => ({
             ...prev,
-            associatedAssets: [...prev.associatedAssets.filter(a => (typeof a === 'string' ? a : a.serial) !== assetToReplace.serial), { serial: serialToLink, type: 'Entrega' }]
+            associatedAssets: [...prev.associatedAssets.filter(a => (typeof a === 'string' ? a : a.serial) !== assetToReplace.serial), { serial: serialToLink, type: '' }]
         }));
 
         const requesterName = editedData.requester || ticket.requester;
@@ -308,7 +344,7 @@ export default function TicketDetailPage() {
             if (!isAlreadyLinked) {
                 setEditedData(prev => ({
                     ...prev,
-                    associatedAssets: [...currentAssets, { serial: serialToLink, type: 'Entrega' }]
+                    associatedAssets: [...currentAssets, { serial: serialToLink, type: '' }]
                 }));
 
                 const fullAsset = assets.find(a => a.serial.toLowerCase() === serialToLink.toLowerCase());
@@ -360,7 +396,7 @@ export default function TicketDetailPage() {
         const currentAssets = editedData.associatedAssets || [];
         setEditedData({
             ...editedData,
-            associatedAssets: [...currentAssets, serialQuery]
+            associatedAssets: [...currentAssets, { serial: serialQuery, type: '' }]
         });
 
         setIsAssetModalOpen(false);
@@ -671,55 +707,7 @@ export default function TicketDetailPage() {
                     >
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                             {/* Smart Provisioning Recommendations */}
-                            {provisioningSuggestions.length > 0 && !ticket.associatedAssets?.length && (
-                                <div style={{
-                                    padding: '1.25rem',
-                                    background: 'linear-gradient(to right, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.02))',
-                                    borderRadius: '16px',
-                                    border: '1px solid rgba(37, 99, 235, 0.15)',
-                                    marginBottom: '0.5rem',
-                                    animation: 'fadeIn 0.5s ease-out'
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                                        <div style={{ padding: '0.5rem', background: 'var(--primary-color)', color: 'white', borderRadius: '10px' }}>
-                                            <CheckCircle2 size={18} />
-                                        </div>
-                                        <div>
-                                            <h5 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>Sugerencia de Provisioning</h5>
-                                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Basado en el perfil del ticket y stock actual.</p>
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                        {provisioningSuggestions.map(sug => (
-                                            <div key={sug.id} style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                padding: '0.75rem 1rem',
-                                                background: 'white',
-                                                borderRadius: '12px',
-                                                border: '1px solid var(--border)',
-                                                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                                            }} className="hover-card">
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                    <div style={{ padding: '0.4rem', background: 'var(--background)', borderRadius: '8px' }}>
-                                                        <Laptop size={14} color="var(--primary-color)" />
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{sug.name}</div>
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>SN: {sug.serial} • {sug.hardwareSpec || sug.status}</div>
-                                                    </div>
-                                                </div>
-                                                <Button size="sm" variant="outline" onClick={() => {
-                                                    setAssetSearchResult(sug);
-                                                    setSerialQuery(sug.serial);
-                                                    handleLinkAsset();
-                                                }}>Asignar Este</Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+
 
                             {/* 1. Hardware Assets List or Edit UI */}
                             <div>
@@ -732,7 +720,7 @@ export default function TicketDetailPage() {
                                     )}
                                     {(editedData.associatedAssets || []).map(item => {
                                         const serial = typeof item === 'string' ? item : item.serial;
-                                        const type = typeof item === 'string' ? (editedData.logistics?.type || 'Entrega') : item.type;
+                                        const type = typeof item === 'string' ? (editedData.logistics?.type || '') : item.type;
                                         const assetInfo = assets.find(a => a.serial === serial);
 
                                         return (
@@ -755,14 +743,14 @@ export default function TicketDetailPage() {
 
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                     {!editAssets ? (
-                                                        <Badge variant={type === 'Recupero' ? 'warning' : 'success'} style={{ fontSize: '0.7rem' }}>
-                                                            {type === 'Recupero' ? 'RETIRO' : 'ENTREGA'}
+                                                        <Badge variant={type === 'Recupero' ? 'warning' : (type === 'Entrega' ? 'success' : 'secondary')} style={{ fontSize: '0.7rem' }}>
+                                                            {type === 'Recupero' ? 'RETIRO' : (type === 'Entrega' ? 'ENTREGA' : 'SELECCIONA')}
                                                         </Badge>
                                                     ) : (
                                                         <select
                                                             className="form-select"
                                                             style={{ fontSize: '0.8rem', padding: '2px 8px', width: 'auto', height: '30px' }}
-                                                            value={type}
+                                                            value={type || ''}
                                                             onChange={(e) => {
                                                                 const newValue = e.target.value;
                                                                 if (newValue === 'Entrega') {
@@ -777,6 +765,7 @@ export default function TicketDetailPage() {
                                                                 setEditedData({ ...editedData, associatedAssets: newAssets });
                                                             }}
                                                         >
+                                                            <option value="">- Selecciona -</option>
                                                             <option value="Entrega">Entrega</option>
                                                             <option value="Recupero">Recupero</option>
                                                         </select>
@@ -794,322 +783,423 @@ export default function TicketDetailPage() {
                                 </div>
                             </div>
 
-                            {/* 2. Accessories Section (Integrated) */}
-                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                                <h4 style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>Accesorios (Sin Serial)</h4>
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {/* Accessory Row Style */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                                        {/* Backpack Item */}
-                                        <div
-                                            onClick={() => editAccessories && toggleAccessory('backpack')}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.75rem',
-                                                padding: '0.75rem',
-                                                borderRadius: 'var(--radius-md)',
-                                                border: '1px solid',
-                                                borderColor: editedData.accessories?.backpack ? 'var(--primary-color)' : 'var(--border)',
-                                                background: editedData.accessories?.backpack ? 'rgba(37, 99, 235, 0.03)' : 'var(--background)',
-                                                cursor: editAccessories ? 'pointer' : 'default',
-                                                opacity: !editAccessories && !editedData.accessories?.backpack ? 0.5 : 1
-                                            }}
-                                        >
-                                            <div style={{
-                                                width: '32px', height: '32px', borderRadius: '6px',
-                                                background: editedData.accessories?.backpack ? 'var(--primary-color)' : 'rgba(0,0,0,0.05)',
-                                                color: editedData.accessories?.backpack ? 'white' : 'var(--text-secondary)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                            }}>
-                                                <Package size={16} />
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <span style={{ fontWeight: 600, fontSize: '0.85rem', display: 'block' }}>Mochila Técnica</span>
-                                                {editAccessories && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Stock: {consumables.find(c => c.id === 'CON-005')?.stock || 0}</span>}
-                                            </div>
-                                            {editAccessories && <input type="checkbox" checked={!!editedData.accessories?.backpack} readOnly />}
-                                        </div>
+                            {/* 2. Accessories Section (Conditional: Only for Laptop Delivery) */
+                                (() => {
+                                    const hasLaptopDelivery = (editedData.associatedAssets || []).some(item => {
+                                        const serial = typeof item === 'string' ? item : item.serial;
+                                        const actionType = typeof item === 'string' ? (editedData.logistics?.type || '') : item.type;
+                                        const assetInfo = assets.find(a => a.serial === serial);
+                                        return actionType === 'Entrega' && assetInfo?.type === 'Laptop';
+                                    });
 
-                                        {/* Screen Filter Item */}
-                                        <div
-                                            onClick={() => editAccessories && toggleAccessory('screenFilter')}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.75rem',
-                                                padding: '0.75rem',
-                                                borderRadius: 'var(--radius-md)',
-                                                border: '1px solid',
-                                                borderColor: editedData.accessories?.screenFilter ? 'var(--primary-color)' : 'var(--border)',
-                                                background: editedData.accessories?.screenFilter ? 'rgba(37, 99, 235, 0.03)' : 'var(--background)',
-                                                cursor: editAccessories ? 'pointer' : 'default',
-                                                opacity: !editAccessories && !editedData.accessories?.screenFilter ? 0.5 : 1
-                                            }}
-                                        >
-                                            <div style={{
-                                                width: '32px', height: '32px', borderRadius: '6px',
-                                                background: editedData.accessories?.screenFilter ? 'var(--primary-color)' : 'rgba(0,0,0,0.05)',
-                                                color: editedData.accessories?.screenFilter ? 'white' : 'var(--text-secondary)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                            }}>
-                                                <Monitor size={16} />
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <span style={{ fontWeight: 600, fontSize: '0.85rem', display: 'block' }}>Filtro de Pantalla</span>
-                                                {editAccessories ? (
-                                                    <select
-                                                        className="form-select"
-                                                        style={{ height: '24px', fontSize: '0.7rem', padding: '0 4px', marginTop: '2px', width: '90px' }}
-                                                        value={editedData.accessories?.filterSize || '14"'}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        onChange={e => setEditedData({
-                                                            ...editedData,
-                                                            accessories: { ...editedData.accessories, filterSize: e.target.value }
-                                                        })}
+                                    if (!hasLaptopDelivery) return null;
+
+                                    return (
+                                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                                            <h4 style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>Accesorios (Sin Serial)</h4>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                {/* Accessory Row Style */}
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                                                    {/* Backpack Item */}
+                                                    <div
+                                                        onClick={() => editAccessories && toggleAccessory('backpack')}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.75rem',
+                                                            padding: '0.75rem',
+                                                            borderRadius: 'var(--radius-md)',
+                                                            border: '1px solid',
+                                                            borderColor: editedData.accessories?.backpack ? 'var(--primary-color)' : 'var(--border)',
+                                                            background: editedData.accessories?.backpack ? 'rgba(37, 99, 235, 0.03)' : 'var(--background)',
+                                                            cursor: editAccessories ? 'pointer' : 'default',
+                                                            opacity: !editAccessories && !editedData.accessories?.backpack ? 0.5 : 1
+                                                        }}
                                                     >
-                                                        <option value='13"'>13"</option>
-                                                        <option value='14"'>14"</option>
-                                                        <option value='15"'>15"</option>
-                                                        <option value='16"'>16"</option>
-                                                    </select>
-                                                ) : (
-                                                    editedData.accessories?.screenFilter && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Size: {editedData.accessories?.filterSize}</span>
-                                                )}
+                                                        <div style={{
+                                                            width: '32px', height: '32px', borderRadius: '6px',
+                                                            background: editedData.accessories?.backpack ? 'var(--primary-color)' : 'rgba(0,0,0,0.05)',
+                                                            color: editedData.accessories?.backpack ? 'white' : 'var(--text-secondary)',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                        }}>
+                                                            <Package size={16} />
+                                                        </div>
+                                                        <div style={{ flex: 1 }}>
+                                                            <span style={{ fontWeight: 600, fontSize: '0.85rem', display: 'block' }}>Mochila Técnica</span>
+                                                            {editAccessories && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Stock: {consumables.find(c => c.id === 'CON-005')?.stock || 0}</span>}
+                                                        </div>
+                                                        {editAccessories && <input type="checkbox" checked={!!editedData.accessories?.backpack} readOnly />}
+                                                    </div>
+
+                                                    {/* Screen Filter Item */}
+                                                    <div
+                                                        onClick={() => editAccessories && toggleAccessory('screenFilter')}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.75rem',
+                                                            padding: '0.75rem',
+                                                            borderRadius: 'var(--radius-md)',
+                                                            border: '1px solid',
+                                                            borderColor: editedData.accessories?.screenFilter ? 'var(--primary-color)' : 'var(--border)',
+                                                            background: editedData.accessories?.screenFilter ? 'rgba(37, 99, 235, 0.03)' : 'var(--background)',
+                                                            cursor: editAccessories ? 'pointer' : 'default',
+                                                            opacity: !editAccessories && !editedData.accessories?.screenFilter ? 0.5 : 1
+                                                        }}
+                                                    >
+                                                        <div style={{
+                                                            width: '32px', height: '32px', borderRadius: '6px',
+                                                            background: editedData.accessories?.screenFilter ? 'var(--primary-color)' : 'rgba(0,0,0,0.05)',
+                                                            color: editedData.accessories?.screenFilter ? 'white' : 'var(--text-secondary)',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                        }}>
+                                                            <Monitor size={16} />
+                                                        </div>
+                                                        <div style={{ flex: 1 }}>
+                                                            <span style={{ fontWeight: 600, fontSize: '0.85rem', display: 'block' }}>Filtro de Pantalla</span>
+                                                            {editAccessories ? (
+                                                                <select
+                                                                    className="form-select"
+                                                                    style={{ height: '24px', fontSize: '0.7rem', padding: '0 4px', marginTop: '2px', width: '90px' }}
+                                                                    value={editedData.accessories?.filterSize || '14"'}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    onChange={e => setEditedData({
+                                                                        ...editedData,
+                                                                        accessories: { ...editedData.accessories, filterSize: e.target.value }
+                                                                    })}
+                                                                >
+                                                                    <option value='13"'>13"</option>
+                                                                    <option value='14"'>14"</option>
+                                                                    <option value='15"'>15"</option>
+                                                                    <option value='16"'>16"</option>
+                                                                </select>
+                                                            ) : (
+                                                                editedData.accessories?.screenFilter && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Size: {editedData.accessories?.filterSize}</span>
+                                                            )}
+                                                        </div>
+                                                        {editAccessories && <input type="checkbox" checked={!!editedData.accessories?.screenFilter} readOnly />}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {editAccessories && <input type="checkbox" checked={!!editedData.accessories?.screenFilter} readOnly />}
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
+
+                                    );
+                                })()}
 
                             {/* Smart replacement UI */}
-                            {isSmartSearchOpen && (
-                                <div style={{
-                                    borderTop: '1px solid var(--border)',
-                                    paddingTop: '1.25rem',
-                                    marginTop: '0.5rem',
-                                    background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.03) 0%, transparent 100%)',
-                                    borderRadius: '12px',
-                                    padding: '1rem'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <h5 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-color)', margin: 0 }}>Smart Replacement</h5>
-                                        <Button variant="ghost" size="sm" onClick={() => setIsSmartSearchOpen(false)}>Cerrar</Button>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-                                        <div style={{ position: 'relative' }}>
-                                            <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-secondary)' }} />
-                                            <input
-                                                className="form-input"
-                                                placeholder="Serial a reemplazar..."
-                                                style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem', height: '36px', fontSize: '0.85rem' }}
-                                                value={replacementSerial}
-                                                onChange={e => handleReplacementSearch(e.target.value)}
-                                            />
-                                            {replacementSerial && (
-                                                <button
-                                                    onClick={() => handleReplacementSearch('')}
-                                                    style={{
-                                                        position: 'absolute',
-                                                        right: '12px',
-                                                        top: '50%',
-                                                        transform: 'translateY(-50%)',
-                                                        border: 'none',
-                                                        background: 'none',
-                                                        color: 'var(--text-secondary)',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        padding: '4px',
-                                                        borderRadius: '50%'
-                                                    }}
-                                                    onMouseOver={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'}
-                                                    onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            )}
+                            {
+                                isSmartSearchOpen && (
+                                    <div style={{
+                                        borderTop: '1px solid var(--border)',
+                                        marginTop: '0.5rem',
+                                        background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.03) 0%, transparent 100%)',
+                                        borderRadius: '12px',
+                                        paddingTop: '1.25rem',
+                                        paddingRight: '1rem',
+                                        paddingBottom: '1rem',
+                                        paddingLeft: '1rem'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                            <h5 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-color)', margin: 0 }}>Smart Replacement</h5>
+                                            <Button variant="ghost" size="sm" onClick={() => setIsSmartSearchOpen(false)}>Cerrar</Button>
                                         </div>
 
-                                        {/* Filtros Manuales */}
-                                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                        <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
+                                            <div style={{ position: 'relative' }}>
+                                                <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-secondary)' }} />
                                                 <input
-                                                    type="checkbox"
-                                                    checked={smartFilters.eng}
-                                                    onChange={(e) => {
-                                                        const newFilters = { ...smartFilters, eng: e.target.checked };
-                                                        setSmartFilters(newFilters);
-                                                        handleReplacementSearch(undefined, newFilters);
-                                                    }}
+                                                    className="form-input"
+                                                    placeholder="Serial a reemplazar..."
+                                                    style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem', height: '36px', fontSize: '0.85rem' }}
+                                                    value={replacementSerial}
+                                                    onChange={e => handleReplacementSearch(e.target.value)}
                                                 />
-                                                Teclado ENG
-                                            </label>
-
-                                            <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
-                                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.25rem' }}>Pantalla:</span>
-                                                {['All', '13', '14', '15', '16', 'Otro'].map(sz => (
+                                                {replacementSerial && (
                                                     <button
-                                                        key={sz}
-                                                        onClick={() => {
-                                                            const newFilters = { ...smartFilters, size: sz };
+                                                        onClick={() => handleReplacementSearch('')}
+                                                        style={{
+                                                            position: 'absolute',
+                                                            right: '12px',
+                                                            top: '50%',
+                                                            transform: 'translateY(-50%)',
+                                                            border: 'none',
+                                                            background: 'none',
+                                                            color: 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            padding: '4px',
+                                                            borderRadius: '50%'
+                                                        }}
+                                                        onMouseOver={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'}
+                                                        onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Auto-Recommendations based on Ticket Header */}
+                                            {provisioningSuggestions.length > 0 && !replacementSerial && (
+                                                <div style={{ marginBottom: '1rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                                                        <Badge variant="info" style={{ fontSize: '0.7rem' }}>IA Assistant</Badge>
+                                                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                                            Sugerencia basada en ticket "{ticket.subject}"
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                        {provisioningSuggestions.filter(rec => {
+                                                            // Apply manual Smart Filters to Auto-Suggestions too
+                                                            if (smartFilters.eng) {
+                                                                const lowerName = (rec.name || '').toLowerCase();
+                                                                const lowerSpec = (rec.hardwareSpec || '').toLowerCase();
+                                                                const hasEng = lowerName.includes('eng') || lowerName.includes(' us ') || lowerName.includes('usa') || lowerName.includes('ansi') ||
+                                                                    lowerSpec.includes('eng') || lowerSpec.includes(' us ') || lowerSpec.includes('usa') || lowerSpec.includes('ansi');
+                                                                if (!hasEng) return false;
+                                                            }
+                                                            if (smartFilters.size !== 'All') {
+                                                                const name = (rec.name || '');
+                                                                const spec = (rec.hardwareSpec || '');
+                                                                if (smartFilters.size === 'Otro') {
+                                                                    const knownSizes = ['13', '14', '15', '16'];
+                                                                    const hasKnownSize = knownSizes.some(s => name.includes(s) || spec.includes(s));
+                                                                    if (hasKnownSize) return false;
+                                                                } else {
+                                                                    const hasSize = name.includes(smartFilters.size) || spec.includes(smartFilters.size);
+                                                                    if (!hasSize) return false;
+                                                                }
+                                                            }
+                                                            return true;
+                                                        }).map(rec => (
+                                                            <div
+                                                                key={rec.id}
+                                                                onClick={() => {
+                                                                    setAssetSearchResult(rec);
+                                                                    setSerialQuery(rec.serial);
+                                                                    handleLinkAsset(); // Or handleReplaceAsset if that was the intent
+                                                                    setIsSmartSearchOpen(false);
+                                                                }}
+                                                                style={{
+                                                                    paddingTop: '0.6rem',
+                                                                    paddingBottom: '0.6rem',
+                                                                    paddingLeft: '0.8rem',
+                                                                    paddingRight: '0.8rem',
+                                                                    background: 'white',
+                                                                    borderRadius: '10px',
+                                                                    border: '1px solid var(--accent-color)', // Highlight recommendation
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: 'center',
+                                                                    boxShadow: '0 2px 5px rgba(14, 165, 233, 0.1)'
+                                                                }}
+                                                                className="hover-card"
+                                                            >
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                                    <div style={{ padding: '0.3rem', background: '#e0f2fe', borderRadius: '6px' }}>
+                                                                        <Laptop size={14} color="#0284c7" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div style={{ fontWeight: 600, fontSize: '0.8rem', color: '#0f172a' }}>{rec.name}</div>
+                                                                        <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                                                                            {rec.status} • {rec.hardwareSpec || 'N/A'} • SN: {rec.serial}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#0284c7' }}>Seleccionar</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Filtros Manuales */}
+                                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={smartFilters.eng}
+                                                        onChange={(e) => {
+                                                            const newFilters = { ...smartFilters, eng: e.target.checked };
                                                             setSmartFilters(newFilters);
                                                             handleReplacementSearch(undefined, newFilters);
                                                         }}
-                                                        style={{
-                                                            padding: '2px 8px',
-                                                            borderRadius: '6px',
-                                                            fontSize: '0.7rem',
-                                                            fontWeight: 600,
-                                                            border: '1px solid',
-                                                            cursor: 'pointer',
-                                                            background: smartFilters.size === sz ? 'var(--primary-color)' : 'white',
-                                                            color: smartFilters.size === sz ? 'white' : 'var(--text-secondary)',
-                                                            borderColor: smartFilters.size === sz ? 'var(--primary-color)' : 'var(--border)'
-                                                        }}
-                                                    >
-                                                        {sz === 'All' ? 'Todas' : sz === 'Otro' ? 'Otro' : sz + '"'}
-                                                    </button>
-                                                ))}
+                                                    />
+                                                    Teclado ENG
+                                                </label>
+
+                                                <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.25rem' }}>Pantalla:</span>
+                                                    {['All', '13', '14', '15', '16', 'Otro'].map(sz => (
+                                                        <button
+                                                            key={sz}
+                                                            onClick={() => {
+                                                                const newFilters = { ...smartFilters, size: sz };
+                                                                setSmartFilters(newFilters);
+                                                                handleReplacementSearch(undefined, newFilters);
+                                                            }}
+                                                            style={{
+                                                                padding: '2px 8px',
+                                                                borderRadius: '6px',
+                                                                fontSize: '0.7rem',
+                                                                fontWeight: 600,
+                                                                border: '1px solid',
+                                                                cursor: 'pointer',
+                                                                background: smartFilters.size === sz ? 'var(--primary-color)' : 'white',
+                                                                color: smartFilters.size === sz ? 'white' : 'var(--text-secondary)',
+                                                                borderColor: smartFilters.size === sz ? 'var(--primary-color)' : 'var(--border)'
+                                                            }}
+                                                        >
+                                                            {sz === 'All' ? 'Todas' : sz === 'Otro' ? 'Otro' : sz + '"'}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
+
+                                            {assetToReplace && (
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
+                                                    <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>Sugerencias Disponibles en Almacén:</p>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                                                        {smartRecommendations.length > 0 ? smartRecommendations.map(rec => (
+                                                            <div
+                                                                key={rec.id}
+                                                                onClick={() => handleReplaceAsset(rec)}
+                                                                style={{
+                                                                    paddingTop: '0.6rem',
+                                                                    paddingBottom: '0.6rem',
+                                                                    paddingLeft: '0.8rem',
+                                                                    paddingRight: '0.8rem',
+                                                                    background: 'white',
+                                                                    borderRadius: '10px',
+                                                                    border: '1px solid var(--border)',
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: 'center'
+                                                                }}
+                                                                className="hover-card"
+                                                            >
+                                                                <div>
+                                                                    <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>{rec.name}</div>
+                                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>SN: {rec.serial}</div>
+                                                                </div>
+                                                                <CheckCircle2 size={14} color="#16a34a" />
+                                                            </div>
+                                                        )) : (
+                                                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>No hay equipos similares disponibles.</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            }
+
+                            {/* 3. Asset Search (Only in Edit Assets mode) */}
+                            {
+                                editAssets && (
+                                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>Vincular Nuevo Dispositivo:</p>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                icon={Truck}
+                                                onClick={() => setIsSmartSearchOpen(!isSmartSearchOpen)}
+                                                style={{ fontSize: '0.75rem', height: '24px', color: 'var(--primary-color)' }}
+                                            >
+                                                {isSmartSearchOpen ? 'Cerrar Buscador' : 'Buscador de Reemplazos'}
+                                            </Button>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <div style={{ position: 'relative', flex: 1 }}>
+                                                <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-secondary)' }} />
+                                                <input
+                                                    className="form-input"
+                                                    placeholder="Serial (S/N)..."
+                                                    style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem', height: '40px', fontSize: '0.9rem' }}
+                                                    value={serialQuery}
+                                                    onChange={e => setSerialQuery(e.target.value)}
+                                                    onKeyPress={e => e.key === 'Enter' && handleAssetSearch()}
+                                                />
+                                                {serialQuery && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setSerialQuery('');
+                                                            setAssetSearchResult(null);
+                                                        }}
+                                                        style={{
+                                                            position: 'absolute',
+                                                            right: '12px',
+                                                            top: '50%',
+                                                            transform: 'translateY(-50%)',
+                                                            border: 'none',
+                                                            background: 'none',
+                                                            color: 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            padding: '4px',
+                                                            borderRadius: '50%'
+                                                        }}
+                                                        onMouseOver={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'}
+                                                        onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <Button onClick={handleAssetSearch} style={{ height: '40px' }}>Buscar</Button>
                                         </div>
 
-                                        {assetToReplace && (
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
-                                                <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>Sugerencias Disponibles en Almacén:</p>
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                                                    {smartRecommendations.length > 0 ? smartRecommendations.map(rec => (
-                                                        <div
-                                                            key={rec.id}
-                                                            onClick={() => handleReplaceAsset(rec)}
-                                                            style={{
-                                                                padding: '0.6rem 0.8rem',
-                                                                background: 'white',
-                                                                borderRadius: '10px',
-                                                                border: '1px solid var(--border)',
-                                                                cursor: 'pointer',
-                                                                display: 'flex',
-                                                                justifyContent: 'space-between',
-                                                                alignItems: 'center'
-                                                            }}
-                                                            className="hover-card"
-                                                        >
-                                                            <div>
-                                                                <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>{rec.name}</div>
-                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>SN: {rec.serial}</div>
-                                                            </div>
-                                                            <CheckCircle2 size={14} color="#16a34a" />
-                                                        </div>
-                                                    )) : (
-                                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>No hay equipos similares disponibles.</p>
-                                                    )}
+                                        {assetSearchResult === 'not_found' && (
+                                            <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px dashed #ef4444', borderRadius: 'var(--radius-md)', textAlign: 'center', background: 'rgba(239, 68, 68, 0.02)' }}>
+                                                <p style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.5rem' }}>Serial no encontrado.</p>
+                                                <Button variant="secondary" size="sm" icon={PlusCircle} onClick={() => setIsAssetModalOpen(true)}>Dar de Alta</Button>
+                                            </div>
+                                        )}
+
+                                        {assetSearchResult && assetSearchResult !== 'not_found' && (
+                                            <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--background)' }}>
+                                                <div>
+                                                    <p style={{ fontWeight: 600, margin: 0, fontSize: '0.85rem' }}>{assetSearchResult.name}</p>
+                                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>{assetSearchResult.type} • {assetSearchResult.status}</p>
                                                 </div>
+                                                <Button variant="outline" size="sm" onClick={handleLinkAsset}>Vincular</Button>
                                             </div>
                                         )}
                                     </div>
-                                </div>
-                            )}
+                                )
+                            }
 
-                            {/* 3. Asset Search (Only in Edit Assets mode) */}
-                            {editAssets && (
-                                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>Vincular Nuevo Dispositivo:</p>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            icon={Truck}
-                                            onClick={() => setIsSmartSearchOpen(!isSmartSearchOpen)}
-                                            style={{ fontSize: '0.75rem', height: '24px', color: 'var(--primary-color)' }}
-                                        >
-                                            {isSmartSearchOpen ? 'Cerrar Buscador' : 'Buscador de Reemplazos'}
-                                        </Button>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                        <div style={{ position: 'relative', flex: 1 }}>
-                                            <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-secondary)' }} />
-                                            <input
-                                                className="form-input"
-                                                placeholder="Serial (S/N)..."
-                                                style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem', height: '40px', fontSize: '0.9rem' }}
-                                                value={serialQuery}
-                                                onChange={e => setSerialQuery(e.target.value)}
-                                                onKeyPress={e => e.key === 'Enter' && handleAssetSearch()}
-                                            />
-                                            {serialQuery && (
-                                                <button
-                                                    onClick={() => {
-                                                        setSerialQuery('');
-                                                        setAssetSearchResult(null);
-                                                    }}
-                                                    style={{
-                                                        position: 'absolute',
-                                                        right: '12px',
-                                                        top: '50%',
-                                                        transform: 'translateY(-50%)',
-                                                        border: 'none',
-                                                        background: 'none',
-                                                        color: 'var(--text-secondary)',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        padding: '4px',
-                                                        borderRadius: '50%'
-                                                    }}
-                                                    onMouseOver={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'}
-                                                    onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            )}
-                                        </div>
-                                        <Button onClick={handleAssetSearch} style={{ height: '40px' }}>Buscar</Button>
-                                    </div>
-
-                                    {assetSearchResult === 'not_found' && (
-                                        <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px dashed #ef4444', borderRadius: 'var(--radius-md)', textAlign: 'center', background: 'rgba(239, 68, 68, 0.02)' }}>
-                                            <p style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: 500, marginBottom: '0.5rem' }}>Serial no encontrado.</p>
-                                            <Button variant="secondary" size="sm" icon={PlusCircle} onClick={() => setIsAssetModalOpen(true)}>Dar de Alta</Button>
-                                        </div>
-                                    )}
-
-                                    {assetSearchResult && assetSearchResult !== 'not_found' && (
-                                        <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--background)' }}>
-                                            <div>
-                                                <p style={{ fontWeight: 600, margin: 0, fontSize: '0.85rem' }}>{assetSearchResult.name}</p>
-                                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>{assetSearchResult.type} • {assetSearchResult.status}</p>
-                                            </div>
-                                            <Button variant="outline" size="sm" onClick={handleLinkAsset}>Vincular</Button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {(editAssets || editAccessories) && (
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
-                                    <Button variant="secondary" size="sm" onClick={() => {
-                                        setEditAssets(false);
-                                        setEditAccessories(false);
-                                        setEditedData(ticket);
-                                    }}>Cancelar</Button>
-                                    <Button
-                                        size="sm"
-                                        icon={Save}
-                                        onClick={() => {
-                                            handleUpdate();
+                            {
+                                (editAssets || editAccessories) && (
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+                                        <Button variant="secondary" size="sm" onClick={() => {
                                             setEditAssets(false);
                                             setEditAccessories(false);
-                                        }}
-                                    >
-                                        Guardar Equipamiento
-                                    </Button>
-                                </div>
-                            )}
+                                            setEditedData(ticket);
+                                        }}>Cancelar</Button>
+                                        <Button
+                                            size="sm"
+                                            icon={Save}
+                                            onClick={() => {
+                                                handleUpdate();
+                                                setEditAssets(false);
+                                                setEditAccessories(false);
+                                            }}
+                                        >
+                                            Guardar Equipamiento
+                                        </Button>
+                                    </div>
+                                )
+                            }
                         </div>
                     </Card >
 
@@ -1459,6 +1549,7 @@ export default function TicketDetailPage() {
                                     />
                                 </div>
                             </div>
+
                             <div className="form-group">
                                 <label className="form-label">Turno</label>
                                 <div style={{ display: 'flex', gap: '0.5rem', height: '42px' }}>
@@ -1633,7 +1724,8 @@ export default function TicketDetailPage() {
             {/* Modal for New Asset */}
             < Modal
                 isOpen={isAssetModalOpen}
-                onClose={() => setIsAssetModalOpen(false)}
+                onClose={() => setIsAssetModalOpen(false)
+                }
                 title="Dar de Alta en Inventario"
             >
                 <form onSubmit={handleCreateAsset}>

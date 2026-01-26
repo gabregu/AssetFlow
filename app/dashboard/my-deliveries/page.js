@@ -75,10 +75,25 @@ export default function MyDeliveriesPage() {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        const myTickets = tickets.filter(t => t.logistics?.deliveryPerson === currentUser?.name);
+        const myTickets = tickets.filter(t =>
+            (t.logistics?.deliveryPerson === currentUser?.name || t.logistics?.deliveryPerson === currentUser?.username)
+        );
 
-        const pending = myTickets.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado').length;
-        const resolved = myTickets.filter(t => t.status === 'Resuelto' || t.status === 'Cerrado').length;
+        // Pendientes son aquellos activos (no resueltos) que están En Transito o asignados para hoy/pasado
+        // O simplemente todos los activos asignados al conductor
+        const pending = myTickets.filter(t =>
+            t.status !== 'Resuelto' &&
+            t.status !== 'Cerrado' &&
+            t.status !== 'Caso SFDC Cerrado' &&
+            t.status !== 'Servicio Facturado'
+        ).length;
+
+        const resolved = myTickets.filter(t =>
+            t.status === 'Resuelto' ||
+            t.status === 'Cerrado' ||
+            t.status === 'Caso SFDC Cerrado' ||
+            t.status === 'Servicio Facturado'
+        ).length;
 
         const finishedThisMonth = myTickets.filter(t => {
             if (!t.deliveryCompletedDate) return false;

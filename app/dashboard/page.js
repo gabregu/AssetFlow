@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation';
 
 export default function Dashboard() {
     const router = useRouter();
-    const { tickets, assets, currentUser } = useStore();
+    const { tickets, assets, currentUser, users } = useStore();
 
     // Redirección para conductores (solo deben ver Mis Envíos y Mis Servicios)
     useEffect(() => {
@@ -221,6 +221,45 @@ export default function Dashboard() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
                         <span style={{ color: 'var(--text-secondary)' }}>En manos de usuarios</span>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Employee Workload Stats */}
+            <div style={{ marginBottom: '2rem' }}>
+                <Card>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1.5rem' }}>Carga de Trabajo (Empleados)</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                        {users.filter(u => u.role !== 'admin').map(user => {
+                            const activeCount = tickets.filter(t =>
+                                (t.logistics?.deliveryPerson === user.name || t.logistics?.deliveryPerson === user.username) &&
+                                t.status !== 'Resuelto' &&
+                                t.status !== 'Cerrado'
+                            ).length;
+
+                            return (
+                                <div key={user.id} style={{
+                                    padding: '1rem',
+                                    background: 'var(--surface)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.5rem'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{user.name}</span>
+                                        {user.role === 'Conductor' && <Truck size={14} style={{ opacity: 0.5 }} />}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{ fontSize: '1.5rem', fontWeight: 700, color: activeCount > 0 ? 'var(--primary-color)' : 'var(--text-secondary)' }}>
+                                            {activeCount}
+                                        </span>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>casos activos</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </Card>
             </div>

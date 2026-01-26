@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 
 export default function SFDCCasesPage() {
     const router = useRouter();
-    const { sfdcCases, tickets, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportCount, currentUser } = useStore();
+    const { sfdcCases, tickets, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportCount, currentUser, users } = useStore();
     const [filter, setFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCase, setSelectedCase] = useState(null);
@@ -20,6 +20,11 @@ export default function SFDCCasesPage() {
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' }); // Nuevo estado
     const fileInputRef = useRef(null);
+
+    // Bulk Actions State
+    const [selectedCases, setSelectedCases] = useState([]);
+    const [bulkDriver, setBulkDriver] = useState('');
+    const [bulkStatus, setBulkStatus] = useState('Pendiente');
 
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
@@ -131,16 +136,133 @@ export default function SFDCCasesPage() {
         setIsModalOpen(true);
     };
 
-    const handleCreateService = (e) => {
-        e.preventDefault();
-        const createdTicket = addTicket(newTicket);
-        if (selectedCase) {
-            removeSfdcCase(selectedCase.caseNumber);
+    const handleCreateService = async (e) => {
+        if (e) e.preventDefault();
+
+        try {
+            const createdTicket = await addTicket(newTicket);
+
+            if (createdTicket && createdTicket.id) {
+                if (selectedCase) {
+                    await removeSfdcCase(selectedCase.caseNumber);
+                }
+                setIsModalOpen(false);
+                // Navegación automática al detalle del nuevo ticket
+                router.push(`/dashboard/tickets/${createdTicket.id}`);
+            } else {
+                showToast('Error al crear el ticket', 'error');
+            }
+        } catch (error) {
+            console.error('Error creando servicio:', error);
+            showToast('Ocurrió un error inesperado de red o base de datos.', 'error');
         }
-        setIsModalOpen(false);
-        // Navegación automática al detalle del nuevo ticket
-        router.push(`/dashboard/tickets/${createdTicket.id}`);
     };
+
+
+    // Bulk Actions Logic
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedCases(filteredCases.map(c => c.caseNumber));
+        } else {
+            setSelectedCases([]);
+        }
+    };
+
+    const handleSelectCase = (caseNumber) => {
+        if (selectedCases.includes(caseNumber)) {
+            setSelectedCases(selectedCases.filter(id => id !== caseNumber));
+        } else {
+            setSelectedCases([...selectedCases, caseNumber]);
+        }
+    };
+
+    const handleBulkCreate = async () => {
+        if (!bulkDriver) {
+            alert('Por favor, selecciona un repartidor para asignar los casos.');
+            return;
+        }
+
+        if (!confirm(`¿Estás seguro de crear ${selectedCases.length} servicios asignados a ${bulkDriver}?`)) return;
+
+        let successCount = 0;
+
+        for (const caseNum of selectedCases) {
+            const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
+            if (!sfdcCase) continue;
+
+            const ticketData = {
+                subject: `[SFDC-${sfdcCase.caseNumber}] ${sfdcCase.subject}`,
+                requester: sfdcCase.requestedFor,
+                priority: sfdcCase.priority === 'High' ? 'Alta' : 'Media',
+                status: 'Abierto', // Or 'En Progreso' since it is assigned? Left as Abierto per request logic
+                logistics: {
+                    address: sfdcCase.mailingStreet && sfdcCase.country ? `${sfdcCase.mailingStreet}, ${sfdcCase.country} ${sfdcCase.zipCode}` : '',
+                    phone: sfdcCase.mobile || '',
+                    email: sfdcCase.email || '',
+                    type: 'Entrega',
+                    method: 'Repartidor Propio',
+                    deliveryPerson: bulkDriver,
+                    deliveryStatus: bulkStatus
+                }
+            };
+
+            try {
+                const created = await addTicket(ticketData);
+                if (created && created.id) {
+                    await removeSfdcCase(caseNum);
+                    successCount++;
+                }
+            } catch (err) {
+                console.error(`Error processing bulk case ${caseNum}`, err);
+            }
+        }
+
+        setSelectedCases([]);
+        setBulkDriver('');
+        showToast(`Se crearon ${successCount} servicios correctamente.`, 'success');
+    };
+
+    // ... (resto del código)
+
+    <div style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        gap: '1rem',
+        marginTop: '2rem',
+        paddingTop: '1rem',
+        borderTop: '1px solid var(--border)'
+    }}>
+        <button
+            type="button"
+            onClick={() => setIsModalOpen(false)}
+            style={{
+                padding: '0.5rem 1rem',
+                border: '1px solid var(--border)',
+                background: 'white',
+                borderRadius: '4px',
+                cursor: 'pointer'
+            }}
+        >
+            Cancelar
+        </button>
+
+        <button
+            type="button"
+            onClick={handleCreateService}
+            style={{
+                padding: '0.5rem 1rem',
+                background: '#3b82f6', // Azul brillante
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                zIndex: 9999 // Forzar capa superior
+            }}
+        >
+            Generar Ticket (Nativo)
+        </button>
+    </div>
 
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
@@ -398,52 +520,59 @@ export default function SFDCCasesPage() {
                 </div>
             </div>
 
-            {/* Dashboard / Metrics Section */}
+            {/* Dashboard / Metrics Section - Compacted Row */}
             {sfdcCases.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{
+                    display: 'flex',
+                    gap: '0.75rem',
+                    marginBottom: '1.5rem',
+                    overflowX: 'auto',
+                    paddingBottom: '4px',
+                }}>
                     {/* Total Backlog Card */}
-                    <Card>
+                    <Card style={{ minWidth: '140px', flex: 1, padding: '1rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
-                            <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 TOTAL BACKLOG
                             </div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.5rem' }}>
+                            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.25rem' }}>
                                 {sfdcCases.length}
                             </div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Casos importados</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Casos</div>
                         </div>
                     </Card>
 
                     {/* New Imported Card */}
-                    <Card style={{ borderLeft: '4px solid #8b5cf6', background: 'rgba(139, 92, 246, 0.03)' }}>
+                    <Card style={{ minWidth: '140px', flex: 1, padding: '1rem', borderLeft: '3px solid #8b5cf6', background: 'rgba(139, 92, 246, 0.03)' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
-                            <div style={{ fontSize: '0.875rem', color: '#8b5cf6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                Nuevos Importados
+                            <div style={{ fontSize: '0.7rem', color: '#8b5cf6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Nuevos
                             </div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#8b5cf6', marginTop: '0.5rem' }}>
+                            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#8b5cf6', marginTop: '0.25rem' }}>
                                 +{lastImportCount}
                             </div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>En la última sincronización</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Última carga</div>
                         </div>
                     </Card>
 
                     {/* Dynamic Status Cards */}
                     {Object.entries(stats).map(([status, count]) => (
-                        <Card key={status}>
+                        <Card key={status} style={{ minWidth: '140px', flex: 1, padding: '1rem' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>{status}</div>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{status}</div>
                                     <div style={{
-                                        width: '12px',
-                                        height: '12px',
+                                        width: '8px',
+                                        height: '8px',
                                         borderRadius: '50%',
                                         backgroundColor: getStatusColor(status),
-                                        boxShadow: `0 0 8px ${getStatusColor(status)}`
+                                        boxShadow: `0 0 5px ${getStatusColor(status)}`,
+                                        flexShrink: 0
                                     }} />
                                 </div>
-                                <div style={{ marginTop: '1rem' }}>
-                                    <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--text-main)' }}>{count}</div>
-                                    <div style={{ width: '100%', height: '4px', background: 'var(--border)', borderRadius: '2px', marginTop: '0.5rem', overflow: 'hidden' }}>
+                                <div style={{ marginTop: '0.5rem' }}>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)' }}>{count}</div>
+                                    <div style={{ width: '100%', height: '3px', background: 'var(--border)', borderRadius: '2px', marginTop: '0.25rem', overflow: 'hidden' }}>
                                         <div style={{
                                             width: `${(count / sfdcCases.length) * 100}%`,
                                             height: '100%',
@@ -458,31 +587,84 @@ export default function SFDCCasesPage() {
             )}
 
             <Card>
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                    <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
-                        <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                        <input
-                            type="text"
-                            placeholder="Buscar por Case #, Asunto o Solicitante..."
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '0.6rem 1rem 0.6rem 2.5rem',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--border)',
-                                outline: 'none',
-                                backgroundColor: 'var(--background)',
-                                color: 'var(--text-main)'
-                            }}
-                        />
-                    </div>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {selectedCases.length > 0 ? (
+                        <div style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1rem',
+                            background: '#f0f9ff',
+                            border: '1px solid #bae6fd',
+                            padding: '0.5rem 1rem',
+                            borderRadius: 'var(--radius-md)',
+                            animation: 'fadeIn 0.3s ease-out'
+                        }}>
+                            <span style={{ fontWeight: 600, color: '#0369a1' }}>{selectedCases.length} seleccionados</span>
+                            <select
+                                className="form-select"
+                                style={{ width: 'auto', padding: '0.4rem' }}
+                                value={bulkDriver}
+                                onChange={(e) => setBulkDriver(e.target.value)}
+                            >
+                                <option value="">Asignar Repartidor...</option>
+                                {(users || []).filter(u => u.role !== 'admin').map(u => (
+                                    <option key={u.id} value={u.name}>
+                                        {u.name} {u.role === 'Conductor' ? '(Conductor)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                className="form-select"
+                                style={{ width: 'auto', padding: '0.4rem' }}
+                                value={bulkStatus}
+                                onChange={(e) => setBulkStatus(e.target.value)}
+                            >
+                                <option value="Pendiente">Estado: Pendiente</option>
+                                <option value="En Transito">Estado: En Tránsito</option>
+                                <option value="Para Coordinar">Estado: Para Coordinar</option>
+                            </select>
+                            <Button size="sm" onClick={handleBulkCreate} style={{ backgroundColor: '#0369a1', borderColor: '#0369a1' }}>
+                                Crear {selectedCases.length} Servicios
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedCases([])} style={{ marginLeft: 'auto', color: '#64748b' }}>
+                                Cancelar
+                            </Button>
+                        </div>
+                    ) : (
+                        <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
+                            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                            <input
+                                type="text"
+                                placeholder="Buscar por Case #, Asunto o Solicitante..."
+                                value={filter}
+                                onChange={(e) => setFilter(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.6rem 1rem 0.6rem 2.5rem',
+                                    borderRadius: 'var(--radius-md)',
+                                    border: '1px solid var(--border)',
+                                    outline: 'none',
+                                    backgroundColor: 'var(--background)',
+                                    color: 'var(--text-main)'
+                                }}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                <th style={{ padding: '1rem', width: '40px' }}>
+                                    <input
+                                        type="checkbox"
+                                        onChange={handleSelectAll}
+                                        checked={filteredCases.length > 0 && selectedCases.length === filteredCases.length}
+                                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                    />
+                                </th>
                                 <Th id="caseNumber">Case #</Th>
                                 <Th id="status">Status</Th>
                                 <Th id="age">Age</Th>
@@ -494,7 +676,15 @@ export default function SFDCCasesPage() {
                         </thead>
                         <tbody>
                             {sortedCases.map((c) => (
-                                <tr key={c.caseNumber} style={{ borderBottom: '1px solid var(--border)' }}>
+                                <tr key={c.caseNumber} style={{ borderBottom: '1px solid var(--border)', background: selectedCases.includes(c.caseNumber) ? '#f0f9ff' : 'transparent' }}>
+                                    <td style={{ padding: '1rem' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedCases.includes(c.caseNumber)}
+                                            onChange={() => handleSelectCase(c.caseNumber)}
+                                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                        />
+                                    </td>
                                     <td style={{ padding: '1rem', fontWeight: 500 }}>{c.caseNumber}</td>
                                     <td style={{ padding: '1rem' }}>
                                         <Badge variant="outline">{c.status}</Badge>
@@ -524,7 +714,7 @@ export default function SFDCCasesPage() {
             </Card>
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Servicio desde SFDC">
-                <form onSubmit={handleCreateService}>
+                <div /* Changed from form to div to avoid validation issues */ >
                     {/* Resumen del Caso Original - Compacto y Visual */}
                     <div style={{
                         background: 'var(--background)',
@@ -561,7 +751,6 @@ export default function SFDCCasesPage() {
                         <div className="form-group">
                             <label className="form-label" style={{ marginBottom: '0.5rem', display: 'block' }}>Asunto del Servicio</label>
                             <input
-                                required
                                 className="form-input"
                                 value={newTicket.subject}
                                 onChange={e => setNewTicket({ ...newTicket, subject: e.target.value })}
@@ -572,7 +761,6 @@ export default function SFDCCasesPage() {
                             <div className="form-group">
                                 <label className="form-label" style={{ marginBottom: '0.5rem', display: 'block' }}>Solicitante</label>
                                 <input
-                                    required
                                     className="form-input"
                                     value={newTicket.requester}
                                     onChange={e => setNewTicket({ ...newTicket, requester: e.target.value })}
@@ -602,10 +790,39 @@ export default function SFDCCasesPage() {
                         paddingTop: '1rem',
                         borderTop: '1px solid var(--border)'
                     }}>
-                        <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-                        <Button type="submit">Generar Ticket</Button>
+                        <button
+                            type="button"
+                            onClick={() => setIsModalOpen(false)}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                border: '1px solid #ccc',
+                                background: 'white',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleCreateService}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                background: '#dc2626', // ROJO FUERTE
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: '0.9rem',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                            }}
+                        >
+                            Generar Ticket
+                        </button>
                     </div>
-                </form>
+                </div>
             </Modal>
         </div>
     );

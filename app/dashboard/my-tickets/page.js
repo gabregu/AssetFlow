@@ -16,7 +16,7 @@ export default function MyTicketsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
     const [filter, setFilter] = useState('');
-    const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+    const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', requester: '' });
     const [selectedTickets, setSelectedTickets] = useState([]);
 
@@ -133,7 +133,7 @@ export default function MyTicketsPage() {
             historyData.push({
                 month: date.getMonth(),
                 year: date.getFullYear(),
-                label: date.toLocaleString('default', { month: 'short' }),
+                label: date.toLocaleDateString('es-ES', { month: 'short' }),
                 total: 0
             });
         }
@@ -441,6 +441,7 @@ export default function MyTicketsPage() {
                                     <th onClick={() => handleSort('subject')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>Asunto <SortIcon column="subject" /></th>
                                     <th onClick={() => handleSort('requester')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>Solicitante <SortIcon column="requester" /></th>
                                     <th onClick={() => handleSort('date')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>Fecha Coordinada <SortIcon column="date" /></th>
+                                    <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Días</th>
                                     <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Estado Envío</th>
                                     <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Acciones</th>
                                 </tr>
@@ -472,6 +473,18 @@ export default function MyTicketsPage() {
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                                                 {ticket.logistics?.timeSlot ? `Turno: ${ticket.logistics.timeSlot}` : ''}
                                             </div>
+                                        </td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <span style={{
+                                                fontSize: '0.85rem',
+                                                fontWeight: 600,
+                                                color: (() => {
+                                                    const days = Math.floor((new Date() - new Date(ticket.date)) / (1000 * 60 * 60 * 24));
+                                                    return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
+                                                })()
+                                            }}>
+                                                {Math.floor((new Date() - new Date(ticket.date)) / (1000 * 60 * 60 * 24))}d
+                                            </span>
                                         </td>
                                         <td style={{ padding: '1rem' }}>
                                             <Badge variant={
@@ -521,6 +534,16 @@ export default function MyTicketsPage() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
                                             <Clock size={14} style={{ color: 'var(--text-secondary)' }} />
                                             <span>{ticket.date}</span>
+                                            <span style={{
+                                                marginLeft: 'auto',
+                                                fontWeight: 700,
+                                                color: (() => {
+                                                    const days = Math.floor((new Date() - new Date(ticket.date)) / (1000 * 60 * 60 * 24));
+                                                    return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
+                                                })()
+                                            }}>
+                                                {Math.floor((new Date() - new Date(ticket.date)) / (1000 * 60 * 60 * 24))} días
+                                            </span>
                                         </div>
                                     </div>
 

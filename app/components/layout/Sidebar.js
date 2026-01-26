@@ -23,7 +23,7 @@ export function Sidebar({ isOpen, onClose }) {
 
     const personalItems = [
         { name: 'Mis Servicios', icon: Ticket, path: '/dashboard/my-tickets', roles: ['admin', 'Administrativo', 'Gerencial', 'Conductor'] },
-        { name: 'Mis Envíos', icon: Truck, path: '/dashboard/my-deliveries', roles: ['Conductor', 'admin'] },
+        { name: 'Mis Envíos', icon: Truck, path: '/dashboard/my-deliveries', roles: ['Conductor', 'admin', 'Gerencial'] },
     ];
 
     const reportItems = [

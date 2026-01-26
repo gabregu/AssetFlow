@@ -25,7 +25,7 @@ import {
 import { resolveTicketServiceDetails, getRate } from './utils';
 
 export default function BillingPage() {
-    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets } = useStore();
+    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense } = useStore();
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [isRatesModalOpen, setIsRatesModalOpen] = useState(false);
@@ -33,6 +33,8 @@ export default function BillingPage() {
     const [selectedTickets, setSelectedTickets] = useState(new Set());
     const [detailModal, setDetailModal] = useState({ isOpen: false, ticket: null, financials: null });
     const [dolarQuotes, setDolarQuotes] = useState({ official: null, blue: null });
+    const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+    const [expenseForm, setExpenseForm] = useState({ description: '', amount: '' });
 
     useEffect(() => {
         if (isRatesModalOpen) {
@@ -57,7 +59,7 @@ export default function BillingPage() {
     }, [isRatesModalOpen, rates]);
 
     // Advanced analysis
-    const { metrics, filteredTickets, currency } = useMemo(() => {
+    const { metrics, filteredTickets, currency, filteredExpenses } = useMemo(() => {
         let totalRevenue = 0;
         let totalLogisticsCost = 0;
         let totalOperationalCost = 0;
@@ -71,9 +73,12 @@ export default function BillingPage() {
 
         // Currency Conversion Logic
         const exchangeRate = parseFloat(rates?.exchangeRate) || 0;
-        const useArs = exchangeRate > 0;
-        const multiplier = useArs ? exchangeRate : 1;
-        const currencyKey = useArs ? 'ARS' : 'USD';
+        // const useArs = exchangeRate > 0; // DISABLED: User wants USD enforced
+        // const multiplier = useArs ? exchangeRate : 1;
+        // const currencyKey = useArs ? 'ARS' : 'USD';
+        const useArs = false;
+        const multiplier = 1;
+        const currencyKey = 'USD';
 
         const filtered = tickets.filter(ticket => {
             const ticketDate = new Date(ticket.date || ticket.deliveryCompletedDate || Date.now());
@@ -81,6 +86,13 @@ export default function BillingPage() {
             const isStatusMatch = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
             return isDateMatch && isStatusMatch;
         });
+
+        // Filter Expenses
+        const filteredExpenses = (expenses || []).filter(e => {
+            const d = new Date(e.date);
+            return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+        });
+        const totalManualExpenses = filteredExpenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
 
 
 
@@ -210,6 +222,8 @@ export default function BillingPage() {
             }
         });
 
+        totalOperationalCost += (totalManualExpenses * multiplier); // Expenses are usually USD, apply multiplier if converting to ARS logic matches
+
         // Apply Currency Multiplier to Finals
         totalRevenue *= multiplier;
         totalLogisticsCost *= multiplier;
@@ -236,12 +250,14 @@ export default function BillingPage() {
                 totalPostalCost,
                 totalDriverCost,
                 driverPayments,
-                pendingDeliveriesCount
+                pendingDeliveriesCount,
+                totalManualExpenses
             },
             filteredTickets: filtered,
+            filteredExpenses,
             currency: currencyKey
         };
-    }, [tickets, selectedMonth, selectedYear, rates, globalAssets]);
+    }, [tickets, selectedMonth, selectedYear, rates, globalAssets, expenses]);
 
     const handleSaveRates = (e) => {
         e.preventDefault();
@@ -269,6 +285,26 @@ export default function BillingPage() {
             deleteTickets(Array.from(selectedTickets));
             setSelectedTickets(new Set());
         }
+    };
+
+    const handleCreateExpense = async () => {
+        if (!expenseForm.description || !expenseForm.amount) return alert('Completa todos los campos');
+
+        const exchangeRate = parseFloat(rates?.exchangeRate) || 0;
+        if (exchangeRate <= 0) return alert('No hay un valor de referencia (dólar) configurado en las tarifas. Configúralo primero.');
+
+        const amountARS = parseFloat(expenseForm.amount);
+        const amountUSD = amountARS / exchangeRate;
+
+        await addExpense({
+            description: expenseForm.description,
+            amount: amountUSD, // Stored in USD
+            date: new Date().toISOString(),
+            type: 'Operational',
+            created_by: currentUser?.name || currentUser?.username || 'Usuario'
+        });
+        setExpenseForm({ description: '', amount: '' });
+        setIsExpenseModalOpen(false);
     };
 
     return (
@@ -300,6 +336,13 @@ export default function BillingPage() {
                         <Button icon={Trash} onClick={handleDeleteSelected} style={{ backgroundColor: '#ef4444', color: 'white', borderColor: '#ef4444' }}>Eliminar ({selectedTickets.size})</Button>
                     )}
                     <Button icon={Settings} onClick={() => setIsRatesModalOpen(true)}>Configurar Tarifas</Button>
+                    <Button
+                        icon={DollarSign}
+                        onClick={() => setIsExpenseModalOpen(true)}
+                        style={{ backgroundColor: '#800020', borderColor: '#800020', color: 'white' }}
+                    >
+                        Agregar Gasto
+                    </Button>
                     <Button icon={Download} variant="outline">Exportar</Button>
                 </div>
             </div>
@@ -311,6 +354,9 @@ export default function BillingPage() {
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Facturación Total</p>
                             <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>{currency} {metrics.totalRevenue.toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                            {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.totalRevenue * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                            )}
                         </div>
                         <div style={{ padding: '0.6rem', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', borderRadius: '12px' }}>
                             <TrendingUp size={24} />
@@ -327,6 +373,9 @@ export default function BillingPage() {
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Costos Operativos</p>
                             <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>{currency} {metrics.totalCost.toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                            {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.totalCost * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                            )}
                         </div>
                         <div style={{ padding: '0.6rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '12px' }}>
                             <TrendingDown size={24} />
@@ -342,6 +391,9 @@ export default function BillingPage() {
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Utilidad Neta</p>
                             <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>{currency} {metrics.netMargin.toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                            {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.netMargin * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                            )}
                         </div>
                         <div style={{ padding: '0.6rem', background: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary-color)', borderRadius: '12px' }}>
                             <DollarSign size={24} />
@@ -357,6 +409,9 @@ export default function BillingPage() {
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Pago a Repartidores</p>
                             <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>{currency} {Object.values(metrics.driverPayments).reduce((sum, d) => sum + d.total, 0).toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}</h3>
+                            {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(Object.values(metrics.driverPayments).reduce((sum, d) => sum + d.total, 0) * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                            )}
                         </div>
                         <div style={{ padding: '0.6rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', borderRadius: '12px' }}>
                             <Users size={24} />
@@ -605,8 +660,15 @@ export default function BillingPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                                            {currency} {data.total.toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                            <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                                                {currency} {data.total.toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}
+                                            </div>
+                                            {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                    ARS {(data.total * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 ))
@@ -663,9 +725,59 @@ export default function BillingPage() {
                                     <div style={{ height: '100%', background: '#f59e0b', width: `${metrics.totalRevenue > 0 ? (metrics.totalDriverCost / metrics.totalRevenue) * 100 : 0}%` }} />
                                 </div>
                             </div>
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Gastos Operativos (Manual)</span>
+                                    <span style={{ fontWeight: 600, color: '#800020' }}>{currency} {(metrics.totalManualExpenses * (currency === 'USD' ? 1 : (parseFloat(rates?.exchangeRate) || 1))).toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div style={{ height: '6px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', background: '#800020', width: `${metrics.totalRevenue > 0 ? ((metrics.totalManualExpenses * (currency === 'USD' ? 1 : (parseFloat(rates?.exchangeRate) || 1))) / metrics.totalRevenue) * 100 : 0}%` }} />
+                                </div>
+                            </div>
                         </div>
                     </Card>
-                </div>
+
+                    {/* Manual Expenses Detail Card */}
+                    <Card title="Gastos Operativos (Manual)" action={<DollarSign size={18} style={{ opacity: 0.6 }} />}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {filteredExpenses && filteredExpenses.length > 0 ? (
+                                filteredExpenses.map(expense => (
+                                    <div key={expense.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'var(--background)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                        <div>
+                                            <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>{expense.description}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                <span>{new Date(expense.date).toLocaleDateString()}</span>
+                                                <span style={{ width: '4px', height: '4px', background: 'var(--text-secondary)', borderRadius: '50%', opacity: 0.5 }}></span>
+                                                <span style={{ fontStyle: 'italic' }}>{expense.created_by || 'Usuario'}</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                                <span style={{ fontWeight: 700, color: '#800020' }}>
+                                                    {currency} {(parseFloat(expense.amount) * (currency === 'USD' ? 1 : (parseFloat(rates?.exchangeRate) || 1))).toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                                {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                        ARS {(parseFloat(expense.amount) * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => { if (confirm('¿Eliminar este gasto?')) deleteExpense(expense.id); }}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px' }}
+                                                title="Eliminar gasto"
+                                            >
+                                                <Trash size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>No hay gastos manuales registrados este mes.</p>
+                            )}
+                        </div>
+                    </Card>
+                </div >
             </div >
 
             <Modal isOpen={isRatesModalOpen} onClose={() => setIsRatesModalOpen(false)} title="Configuración de Cuadro Tarifario">
@@ -700,7 +812,7 @@ export default function BillingPage() {
                                     style={{ paddingLeft: '45px', fontWeight: 700 }}
                                     placeholder={dolarQuotes.official?.venta ? String(dolarQuotes.official.venta) : '0.00'}
                                     value={tempRates.exchangeRate || ''}
-                                    onChange={e => setTempRates({ ...tempRates, exchangeRate: parseFloat(e.target.value) })}
+                                    onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, exchangeRate: val === '' ? '' : parseFloat(val) })) }}
                                 />
                             </div>
                             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
@@ -718,7 +830,7 @@ export default function BillingPage() {
                                     <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>USD</span>
                                     <input type="number" className="form-input" style={{ paddingLeft: '45px' }}
                                         value={tempRates.service_Laptop_Delivery !== undefined ? tempRates.service_Laptop_Delivery : (tempRates.laptopService || 25)}
-                                        onChange={e => setTempRates({ ...tempRates, service_Laptop_Delivery: parseFloat(e.target.value) })}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, service_Laptop_Delivery: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -728,7 +840,7 @@ export default function BillingPage() {
                                     <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>USD</span>
                                     <input type="number" className="form-input" style={{ paddingLeft: '45px' }}
                                         value={tempRates.service_Laptop_Recovery !== undefined ? tempRates.service_Laptop_Recovery : (tempRates.laptopService || 25)}
-                                        onChange={e => setTempRates({ ...tempRates, service_Laptop_Recovery: parseFloat(e.target.value) })}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, service_Laptop_Recovery: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -740,7 +852,7 @@ export default function BillingPage() {
                                     <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>USD</span>
                                     <input type="number" className="form-input" style={{ paddingLeft: '45px' }}
                                         value={tempRates.service_Smartphone_Delivery !== undefined ? tempRates.service_Smartphone_Delivery : (tempRates.smartphoneService || 5)}
-                                        onChange={e => setTempRates({ ...tempRates, service_Smartphone_Delivery: parseFloat(e.target.value) })}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, service_Smartphone_Delivery: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -750,7 +862,7 @@ export default function BillingPage() {
                                     <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>USD</span>
                                     <input type="number" className="form-input" style={{ paddingLeft: '45px' }}
                                         value={tempRates.service_Smartphone_Recovery !== undefined ? tempRates.service_Smartphone_Recovery : (tempRates.smartphoneService || 5)}
-                                        onChange={e => setTempRates({ ...tempRates, service_Smartphone_Recovery: parseFloat(e.target.value) })}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, service_Smartphone_Recovery: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -762,7 +874,7 @@ export default function BillingPage() {
                                     <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>USD</span>
                                     <input type="number" className="form-input" style={{ paddingLeft: '45px' }}
                                         value={tempRates.service_Key_Delivery !== undefined ? tempRates.service_Key_Delivery : (tempRates.securityKeyService || 5)}
-                                        onChange={e => setTempRates({ ...tempRates, service_Key_Delivery: parseFloat(e.target.value) })}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, service_Key_Delivery: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -772,7 +884,7 @@ export default function BillingPage() {
                                     <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>USD</span>
                                     <input type="number" className="form-input" style={{ paddingLeft: '45px' }}
                                         value={tempRates.service_Key_Recovery !== undefined ? tempRates.service_Key_Recovery : (tempRates.securityKeyService || 5)}
-                                        onChange={e => setTempRates({ ...tempRates, service_Key_Recovery: parseFloat(e.target.value) })}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, service_Key_Recovery: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -784,7 +896,7 @@ export default function BillingPage() {
                                     <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>USD</span>
                                     <input type="number" className="form-input" style={{ paddingLeft: '45px' }}
                                         value={tempRates.service_Warranty !== undefined ? tempRates.service_Warranty : (tempRates.warrantyService || 60)}
-                                        onChange={e => setTempRates({ ...tempRates, service_Warranty: parseFloat(e.target.value) })}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, service_Warranty: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -797,8 +909,8 @@ export default function BillingPage() {
                                 <div style={{ position: 'relative' }}>
                                     <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>USD</span>
                                     <input type="number" className="form-input" style={{ paddingLeft: '45px' }}
-                                        value={tempRates.internalDeliveryRevenue || ''}
-                                        onChange={e => setTempRates({ ...tempRates, internalDeliveryRevenue: parseFloat(e.target.value) })}
+                                        value={tempRates.logistics_Internal_Revenue !== undefined ? tempRates.logistics_Internal_Revenue : (tempRates.internalDeliveryRevenue || '')}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, logistics_Internal_Revenue: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -807,8 +919,8 @@ export default function BillingPage() {
                                 <div style={{ position: 'relative' }}>
                                     <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>USD</span>
                                     <input type="number" className="form-input" style={{ paddingLeft: '45px' }}
-                                        value={tempRates.postalServiceMarkup || ''}
-                                        onChange={e => setTempRates({ ...tempRates, postalServiceMarkup: parseFloat(e.target.value) })}
+                                        value={tempRates.logistics_Postal_Markup !== undefined ? tempRates.logistics_Postal_Markup : (tempRates.postalServiceMarkup || '')}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, logistics_Postal_Markup: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -826,8 +938,8 @@ export default function BillingPage() {
                                         type="number"
                                         className="form-input"
                                         style={{ paddingLeft: '45px' }}
-                                        value={tempRates.driverCommission || ''}
-                                        onChange={e => setTempRates({ ...tempRates, driverCommission: parseFloat(e.target.value) })}
+                                        value={tempRates.cost_Driver_Commission !== undefined ? tempRates.cost_Driver_Commission : (tempRates.driverCommission || '')}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, cost_Driver_Commission: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -839,8 +951,8 @@ export default function BillingPage() {
                                         type="number"
                                         className="form-input"
                                         style={{ paddingLeft: '45px' }}
-                                        value={tempRates.postalBaseCost || ''}
-                                        onChange={e => setTempRates({ ...tempRates, postalBaseCost: parseFloat(e.target.value) })}
+                                        value={tempRates.cost_Postal_Base !== undefined ? tempRates.cost_Postal_Base : (tempRates.postalBaseCost || '')}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, cost_Postal_Base: val === '' ? '' : parseFloat(val) })) }}
                                     />
                                 </div>
                             </div>
@@ -879,7 +991,10 @@ export default function BillingPage() {
                                                                     className="form-input"
                                                                     style={{ padding: '0.25rem 0.5rem', height: 'auto', fontSize: '0.8rem' }}
                                                                     value={tempRates[`driverExtra_${driver}_Delivery_${type}`] || ''}
-                                                                    onChange={e => setTempRates({ ...tempRates, [`driverExtra_${driver}_Delivery_${type}`]: parseFloat(e.target.value) })}
+                                                                    onChange={e => {
+                                                                        const val = e.target.value;
+                                                                        setTempRates(prev => ({ ...prev, [`driverExtra_${driver}_Delivery_${type}`]: val === '' ? '' : parseFloat(val) }))
+                                                                    }}
                                                                 />
                                                             </td>
                                                             <td style={{ padding: '0.25rem 0 0.25rem 0.25rem' }}>
@@ -889,7 +1004,10 @@ export default function BillingPage() {
                                                                     className="form-input"
                                                                     style={{ padding: '0.25rem 0.5rem', height: 'auto', fontSize: '0.8rem' }}
                                                                     value={tempRates[`driverExtra_${driver}_Recovery_${type}`] || ''}
-                                                                    onChange={e => setTempRates({ ...tempRates, [`driverExtra_${driver}_Recovery_${type}`]: parseFloat(e.target.value) })}
+                                                                    onChange={e => {
+                                                                        const val = e.target.value;
+                                                                        setTempRates(prev => ({ ...prev, [`driverExtra_${driver}_Recovery_${type}`]: val === '' ? '' : parseFloat(val) }))
+                                                                    }}
                                                                 />
                                                             </td>
                                                         </tr>
@@ -1063,6 +1181,47 @@ export default function BillingPage() {
 
                     <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
                         <Button onClick={() => setDetailModal({ ...detailModal, isOpen: false })}>Cerrar</Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Expense Modal */}
+            <Modal isOpen={isExpenseModalOpen} onClose={() => setIsExpenseModalOpen(false)} title="Agregar Gasto Operativo">
+                <div style={{ padding: '1rem' }}>
+                    <div className="form-group">
+                        <label className="form-label">Descripción del Gasto</label>
+                        <input
+                            className="form-input"
+                            placeholder="Ej: Cajas, Cinta de embalar"
+                            value={expenseForm.description}
+                            onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                        <label className="form-label">Monto (ARS)</label>
+                        <input
+                            type="number"
+                            className="form-input"
+                            placeholder="0.00"
+                            value={expenseForm.amount}
+                            onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                        />
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', background: 'var(--surface-hover)', padding: '0.5rem', borderRadius: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Cotización ref (Guardada):</span>
+                                <strong style={{ color: 'var(--primary-color)' }}>${rates?.exchangeRate || '0.00'}</strong>
+                            </div>
+                            {(!rates?.exchangeRate || rates.exchangeRate === 0) && (
+                                <div style={{ color: '#ef4444', marginTop: '0.25rem', fontWeight: 600 }}>
+                                    ⚠️ Configura y GUARDA el "Valor de Referencia" en Tarifas.
+                                </div>
+                            )}
+                            <div>Equivalente: <strong>USD {((parseFloat(expenseForm.amount) || 0) / (parseFloat(rates?.exchangeRate) || 1)).toFixed(2)}</strong></div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                        <Button variant="secondary" onClick={() => setIsExpenseModalOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleCreateExpense} style={{ backgroundColor: '#800020', borderColor: '#800020', color: 'white' }}>Registrar Gasto</Button>
                     </div>
                 </div>
             </Modal>

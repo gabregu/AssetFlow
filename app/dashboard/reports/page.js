@@ -317,10 +317,12 @@ export default function ReportsPage() {
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    icon={Download}
-                                                                    title="Descargar Remito"
-                                                                    onClick={() => generateTicketPDF(ticket, assets)}
-                                                                />
+                                                                    title="Ver POD (Proof of Delivery)"
+                                                                    onClick={() => generateTicketPDF(ticket, assets, null, 'view')}
+                                                                    style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)' }}
+                                                                >
+                                                                    POD
+                                                                </Button>
                                                             </div>
                                                         </td>
                                                     </tr>
