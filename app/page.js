@@ -11,22 +11,22 @@ export default function Home() {
     const router = useRouter();
     const { login, users } = useStore();
     const [isLoginOpen, setIsLoginOpen] = useState(false);
-    const [formData, setFormData] = useState({ username: '', password: '' });
+    const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        const success = login(formData.username, formData.password);
+        const { error, user } = await login(formData.email, formData.password);
 
-        if (success) {
-            const user = users.find(u => u.username === formData.username);
-            if (user?.role === 'Conductor') {
+        if (error) {
+            setError('Credenciales inválidas. Por favor verifique su email y contraseña.');
+        } else if (user) {
+            // Check role redirect
+            if (user.role === 'Conductor') {
                 router.push('/dashboard/my-deliveries');
             } else {
                 router.push('/dashboard');
             }
-        } else {
-            setError('Credenciales inválidas. Por favor intente nuevamente.');
         }
     };
 
@@ -88,7 +88,7 @@ export default function Home() {
 
             <Modal
                 isOpen={isLoginOpen}
-                onClose={() => { setIsLoginOpen(false); setError(''); setFormData({ username: '', password: '' }); }}
+                onClose={() => { setIsLoginOpen(false); setError(''); setFormData({ email: '', password: '' }); }}
                 title="Iniciar Sesión"
             >
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -98,14 +98,14 @@ export default function Home() {
                         </div>
                     )}
                     <div>
-                        <label className="form-label" htmlFor="username">Usuario</label>
+                        <label className="form-label" htmlFor="email">Email</label>
                         <input
-                            id="username"
-                            type="text"
+                            id="email"
+                            type="email"
                             className="form-input"
-                            placeholder="Ingrese su usuario"
-                            value={formData.username}
-                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                            placeholder="Ingrese su email"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             required
                         />
                     </div>
