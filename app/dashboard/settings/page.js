@@ -4,18 +4,39 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { useStore } from '../../../lib/store';
-import { UserPlus, Trash2, Shield, Moon, Sun, Pencil } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Moon, Sun, Pencil, Lock } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 
 export default function SettingsPage() {
-    const { users, currentUser, addUser, deleteUser, updateUser } = useStore();
+    const { users, currentUser, addUser, deleteUser, updateUser, updatePassword } = useStore();
     const { theme } = useTheme();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [pwdData, setPwdData] = useState({ new: '', confirm: '' });
     const [newUser, setNewUser] = useState({ username: '', role: 'Conductor', name: '' });
     const [userToEdit, setUserToEdit] = useState(null);
 
     const isAdmin = currentUser?.role === 'admin';
+
+    const handlePasswordChange = async (e) => {
+        e.preventDefault();
+        if (pwdData.new.length < 6) {
+            alert('La contraseña debe tener al menos 6 caracteres.');
+            return;
+        }
+        if (pwdData.new !== pwdData.confirm) {
+            alert('Las contraseñas no coinciden.');
+            return;
+        }
+
+        const { error } = await updatePassword(pwdData.new);
+        if (error) {
+            alert('Error al actualizar: ' + error.message);
+        } else {
+            alert('Contraseña actualizada correctamente.');
+            setPwdData({ new: '', confirm: '' });
+        }
+    };
 
     const handleAddUser = (e) => {
         e.preventDefault();
@@ -68,6 +89,40 @@ export default function SettingsPage() {
                         </div>
                         <ThemeToggle />
                     </div>
+                </Card>
+
+                {/* Security Settings (Change Password) */}
+                <Card title="Seguridad" action={<Lock size={20} />}>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                        Actualiza tu contraseña de acceso.
+                    </p>
+                    <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Nueva Contraseña</label>
+                            <input
+                                type="password"
+                                className="form-input"
+                                placeholder="Mínimo 6 caracteres"
+                                value={pwdData.new}
+                                onChange={e => setPwdData({ ...pwdData, new: e.target.value })}
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Confirmar Contraseña</label>
+                            <input
+                                type="password"
+                                className="form-input"
+                                placeholder="Repite la contraseña"
+                                value={pwdData.confirm}
+                                onChange={e => setPwdData({ ...pwdData, confirm: e.target.value })}
+                                required
+                            />
+                        </div>
+                        <div style={{ alignSelf: 'flex-end' }}>
+                            <Button type="submit" size="sm">Actualizar</Button>
+                        </div>
+                    </form>
                 </Card>
 
                 {/* User Management (Admin Only) */}
