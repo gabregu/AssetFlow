@@ -88,11 +88,14 @@ export default function Home() {
                         Iniciar Sesión
                     </button>
                     <button
-                        onClick={() => setIsSignupOpen(true)}
+                        onClick={() => {
+                            console.log('Opening Signup Modal');
+                            setIsSignupOpen(true);
+                        }}
                         className="btn"
                         style={{ background: 'transparent', border: '1px solid var(--border)', padding: '0.75rem 1.5rem', fontSize: '1rem' }}
                     >
-                        Solicitar Acceso
+                        Solicitar Acceso Ahora
                     </button>
                 </div>
             </div>
