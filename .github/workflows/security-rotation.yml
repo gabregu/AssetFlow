@@ -1,0 +1,47 @@
+name: Security Key Rotation Reminder
+
+on:
+  schedule:
+    # Runs at 00:00 on day 1 of every 3rd month (Quarterly)
+    - cron: '0 0 1 */3 *'
+  workflow_dispatch: # Allows manual triggering for testing
+
+jobs:
+  create-reminder:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create Rotation Reminder Issue
+        uses: imjohnbo/issue-bot@v3
+        with:
+          title: "🔐 Security Alert: Rotate Supabase Keys & Service Roles"
+          labels: "security, high-priority, maintenance"
+          body: |
+            ### 🛡️ 90-Day Security Key Rotation Required
+
+            This is an automated reminder that it is time to rotate the application's security keys.
+
+            **Required Actions:**
+            
+            1.  **Supabase:**
+                - [ ] Go to [Supabase Dashboard](https://supabase.com/dashboard)
+                - [ ] Select Project > Project Settings > API
+                - [ ] Click "Generate New JWT Secret" (This will invalidate `anon` and `service_role` keys immediately).
+                - [ ] Copy the new `anon` key and `service_role` key.
+            
+            2.  **Environment Variables:**
+                - [ ] Update `.env.local` locally for development.
+                - [ ] Update Deployment Environment Variables (e.g., Vercel, Netlify).
+                    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+                    - `SUPABASE_SERVICE_ROLE_KEY` (if used)
+            
+            3.  **Deployment:**
+                - [ ] Trigger a new deployment/rebuild to apply changes.
+            
+            4.  **Verification:**
+                - [ ] Verify user login still works.
+                - [ ] Check logs for any 401/403 errors.
+
+            ---
+            *This issue was automatically created by the Security Rotation Workflow.*

@@ -1,10 +1,36 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Sidebar } from '../components/layout/Sidebar';
-import { Menu, X } from 'lucide-react';
+import { Menu, Loader2 } from 'lucide-react';
+import { useStore } from '../../lib/store';
 
 export default function DashboardLayout({ children }) {
+    const router = useRouter();
+    const { currentUser, loading } = useStore();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    // Auth Guard
+    useEffect(() => {
+        if (!loading && !currentUser) {
+            router.push('/');
+        }
+    }, [currentUser, loading, router]);
+
+    if (loading) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--background)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: 'var(--text-secondary)' }}>
+                    <Loader2 size={48} className="animate-spin" style={{ color: 'var(--primary-color)' }} />
+                    <p>Verificando sesión...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!currentUser) {
+        return null; // Will redirect in useEffect
+    }
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--background)' }}>

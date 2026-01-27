@@ -1,18 +1,33 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Modal } from './components/ui/Modal';
 import { initialUsers } from '../lib/data';
 import { ThemeToggle } from './components/ui/ThemeToggle';
 import { useStore } from '../lib/store';
 import { Logo } from './components/ui/Logo';
+import { Loader2 } from 'lucide-react';
 
 export default function Home() {
     const router = useRouter();
-    const { login, users } = useStore();
+    const { login, users, currentUser, loading } = useStore();
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (!loading && currentUser) {
+            router.push('/dashboard');
+        }
+    }, [currentUser, loading, router]);
+
+    if (loading) {
+        return (
+            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--background)' }}>
+                <Loader2 className="animate-spin" size={48} style={{ color: 'var(--primary-color)' }} />
+            </div>
+        );
+    }
 
     const handleLogin = async (e) => {
         e.preventDefault();

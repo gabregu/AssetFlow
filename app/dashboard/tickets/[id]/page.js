@@ -629,7 +629,7 @@ export default function TicketDetailPage() {
                                 <div style={{ gridColumn: 'span 2', display: 'flex', gap: '0.5rem', marginTop: '4px' }}>
                                     {editedData.logistics?.email && (
                                         <button
-                                            onClick={() => window.open(`https://slack.com/app_redirect?channel=${editedData.logistics.email}`, '_blank')}
+                                            onClick={() => window.open(`https://slack.com/app_redirect?channel=${encodeURIComponent(editedData.logistics.email)}`, '_blank')}
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',

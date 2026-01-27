@@ -12,7 +12,7 @@ export default function SettingsPage() {
     const { theme } = useTheme();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [newUser, setNewUser] = useState({ username: '', password: '', role: 'Conductor', name: '' });
+    const [newUser, setNewUser] = useState({ username: '', role: 'Conductor', name: '' });
     const [userToEdit, setUserToEdit] = useState(null);
 
     const isAdmin = currentUser?.role === 'admin';
@@ -20,7 +20,7 @@ export default function SettingsPage() {
     const handleAddUser = (e) => {
         e.preventDefault();
         addUser(newUser);
-        setNewUser({ username: '', password: '', role: 'Conductor', name: '' });
+        setNewUser({ username: '', role: 'Conductor', name: '' });
         setIsModalOpen(false);
     };
 
@@ -198,13 +198,9 @@ export default function SettingsPage() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Contraseña</label>
-                                <input
-                                    type="password"
-                                    className="form-input"
-                                    required
-                                    value={newUser.password}
-                                    onChange={e => setNewUser({ ...newUser, password: e.target.value })}
-                                />
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '0.5rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px' }}>
+                                    Este formulario crea un <strong>Perfil de Usuario</strong>. Para dar acceso de login, debe invitar al usuario desde el Panel de Supabase o pedirle que se registre con este mismo email.
+                                </p>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Rol del Usuario</label>
@@ -263,14 +259,10 @@ export default function SettingsPage() {
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Nueva Contraseña (Opcional)</label>
-                                <input
-                                    type="password"
-                                    className="form-input"
-                                    placeholder="Dejar en blanco para no cambiar"
-                                    value={userToEdit.password || ''}
-                                    onChange={e => setUserToEdit({ ...userToEdit, password: e.target.value })}
-                                />
+                                <label className="form-label">Contraseña</label>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '0.5rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px' }}>
+                                    La gestión de contraseñas se realiza a través del sistema de autenticación seguro. No se puede cambiar desde aquí.
+                                </p>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginTop: '2rem' }}>
                                 <Button
