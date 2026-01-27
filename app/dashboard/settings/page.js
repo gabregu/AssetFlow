@@ -86,10 +86,45 @@ export default function SettingsPage() {
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-                                    {users.length} usuarios registrados
+                                    {users.length} usuarios totales
                                 </p>
                                 <Button size="sm" icon={UserPlus} onClick={() => setIsModalOpen(true)}>Nuevo Usuario</Button>
                             </div>
+
+                            {/* Pending Users Section */}
+                            {users.some(u => u.role === 'pending') && (
+                                <div style={{ marginBottom: '2rem', border: '1px solid #f59e0b', borderRadius: 'var(--radius-md)', padding: '1rem', background: 'rgba(245, 158, 11, 0.1)' }}>
+                                    <h3 style={{ color: '#d97706', fontSize: '1rem', marginTop: 0, marginBottom: '1rem', fontWeight: 700 }}>Solicitudes Pendientes</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        {users.filter(u => u.role === 'pending').map(u => (
+                                            <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--background)', padding: '0.75rem', borderRadius: 'var(--radius-md)' }}>
+                                                <div>
+                                                    <p style={{ fontWeight: 600, margin: 0 }}>{u.name}</p>
+                                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>{u.email} (@{u.username})</p>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <select
+                                                        onChange={(e) => {
+                                                            if (e.target.value !== 'pending') {
+                                                                if (confirm(`¿Aprobar acceso para ${u.name} como ${e.target.value}?`)) {
+                                                                    updateUser(u.id, { role: e.target.value });
+                                                                }
+                                                            }
+                                                        }}
+                                                        style={{ padding: '0.3rem', borderRadius: '4px', border: '1px solid var(--border)' }}
+                                                        defaultValue="pending"
+                                                    >
+                                                        <option value="pending" disabled>Aprobar como...</option>
+                                                        {roles.filter(r => r !== 'pending').map(r => (
+                                                            <option key={r} value={r}>{r}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {users.map(u => (
