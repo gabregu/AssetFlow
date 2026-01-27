@@ -15,6 +15,8 @@ export default function SettingsPage() {
     const [newUser, setNewUser] = useState({ username: '', role: 'Conductor', name: '' });
     const [userToEdit, setUserToEdit] = useState(null);
     const [newPassword, setNewPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [message, setMessage] = useState({ type: '', text: '' });
 
     const isAdmin = currentUser?.role === 'admin';
 
@@ -54,15 +56,20 @@ export default function SettingsPage() {
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
-        if (newPassword.length < 6) return alert('La contraseña debe tener al menos 6 caracteres');
+        setMessage({ type: '', text: '' });
+        if (newPassword.length < 6) {
+            setMessage({ type: 'error', text: 'La contraseña debe tener al menos 6 caracteres' });
+            return;
+        }
 
         try {
             const { error } = await updatePassword(newPassword);
             if (error) throw error;
-            alert('Contraseña actualizada correctamente');
+            setMessage({ type: 'success', text: '¡Contraseña actualizada correctamente!' });
             setNewPassword('');
+            setTimeout(() => setMessage({ type: '', text: '' }), 3000);
         } catch (error) {
-            alert('Error al actualizar contraseña: ' + error.message);
+            setMessage({ type: 'error', text: 'Error: ' + error.message });
         }
     };
 
@@ -98,20 +105,53 @@ export default function SettingsPage() {
                     <form onSubmit={handleChangePassword}>
                         <div className="form-group">
                             <label className="form-label">Cambiar Contraseña</label>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <input
-                                    type="password"
-                                    className="form-input"
-                                    placeholder="Nueva contraseña"
-                                    value={newPassword}
-                                    onChange={(e) => setNewPassword(e.target.value)}
-                                    minLength={6}
-                                />
+                            <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
+                                <div style={{ position: 'relative', flex: 1 }}>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        className="form-input"
+                                        placeholder="Nueva contraseña"
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        minLength={6}
+                                        style={{ paddingRight: '2.5rem' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        style={{
+                                            position: 'absolute',
+                                            right: '0.5rem',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--text-secondary)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
                                 <Button type="submit" size="sm">Actualizar</Button>
                             </div>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                                Ingresa tu nueva contraseña para cambiarla inmediatamente.
-                            </p>
+                            {message.text && (
+                                <p style={{
+                                    fontSize: '0.8rem',
+                                    marginTop: '0.5rem',
+                                    fontWeight: 500,
+                                    color: message.type === 'error' ? '#ef4444' : '#10b981'
+                                }}>
+                                    {message.text}
+                                </p>
+                            )}
+                            {!message.text && (
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                                    Ingresa tu nueva contraseña para cambiarla inmediatamente.
+                                </p>
+                            )}
                         </div>
                     </form>
                 </Card>
