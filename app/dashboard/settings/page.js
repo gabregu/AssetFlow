@@ -4,11 +4,11 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { useStore } from '../../../lib/store';
-import { UserPlus, Trash2, Shield, Moon, Sun, Pencil, Lock, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Moon, Sun, Pencil, Lock, Eye, EyeOff, Key } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 
 export default function SettingsPage() {
-    const { users, currentUser, addUser, deleteUser, updateUser } = useStore();
+    const { users, currentUser, addUser, deleteUser, updateUser, sendPasswordReset } = useStore();
     const { theme } = useTheme();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -25,7 +25,7 @@ export default function SettingsPage() {
     };
 
     const handleEditClick = (user) => {
-        setUserToEdit({ ...user, password: '' }); // Clear password for security/don't show old one
+        setUserToEdit({ ...user, password: '' });
         setIsEditModalOpen(true);
     };
 
@@ -37,13 +37,22 @@ export default function SettingsPage() {
             name: userToEdit.name,
             username: userToEdit.username
         };
-        if (userToEdit.password) {
-            updates.password = userToEdit.password;
-        }
+        // Password update via this modal is tricky with Supabase Auth vs Public Profile.
+        // Usually we don't update password here for other users unless using Admin API.
+        // We removed password input in previous view, let's keep it safe.
 
         updateUser(userToEdit.id, updates);
         setIsEditModalOpen(false);
         setUserToEdit(null);
+    };
+
+    const handleSendReset = async (email) => {
+        if (!email) return alert('El usuario no tiene email asociado.');
+        if (confirm(`¿Enviar correo de restablecimiento de contraseña a ${email}?`)) {
+            const { error } = await sendPasswordReset(email);
+            if (error) alert('Error al enviar correo: ' + error.message);
+            else alert('Correo enviado correctamente. El usuario recibirá un enlace para crear una nueva clave.');
+        }
     };
 
     const roles = ['Gerencial', 'Administrativo', 'Conductor', 'user', 'admin'];
@@ -70,8 +79,6 @@ export default function SettingsPage() {
                     </div>
                 </Card>
 
-
-
                 {/* User Management (Admin Only) */}
                 <Card
                     title="Gestión de Usuarios"
@@ -88,7 +95,7 @@ export default function SettingsPage() {
                         <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-                                    {users.length} usuarios totales
+                                    {users.filter(u => u.email).length} usuarios activos
                                 </p>
                                 <Button size="sm" icon={UserPlus} onClick={() => setIsModalOpen(true)}>Nuevo Usuario</Button>
                             </div>
@@ -128,8 +135,8 @@ export default function SettingsPage() {
                                 </div>
                             )}
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                {users.map(u => (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
+                                {users.filter(u => u.role !== 'pending' && u.email).map(u => (
                                     <div key={u.id} style={{
                                         display: 'flex',
                                         justifyContent: 'space-between',
@@ -141,7 +148,7 @@ export default function SettingsPage() {
                                     }}>
                                         <div>
                                             <p style={{ fontWeight: 600, margin: 0, fontSize: '0.9rem' }}>{u.name}</p>
-                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '4px' }}>
                                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>@{u.username}</span>
                                                 {u.username === 'admin' ? (
                                                     <span style={{
@@ -180,7 +187,7 @@ export default function SettingsPage() {
                                             </div>
                                         </div>
                                         {u.username !== 'admin' && (
-                                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                 <button
                                                     onClick={() => handleSendReset(u.email)}
                                                     style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem' }}
@@ -210,52 +217,32 @@ export default function SettingsPage() {
                 isModalOpen && (
                     <div style={{
                         position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
+                        top: 0, left: 0, right: 0, bottom: 0,
                         backgroundColor: 'rgba(0,0,0,0.5)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 1000,
-                        backdropFilter: 'blur(4px)'
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 1000, backdropFilter: 'blur(4px)'
                     }}>
                         <Card title="Agregar Nuevo Usuario" style={{ width: '400px', margin: '2rem' }}>
                             <form onSubmit={handleAddUser}>
                                 <div className="form-group">
                                     <label className="form-label">Nombre Completo</label>
-                                    <input
-                                        className="form-input"
-                                        required
-                                        value={newUser.name}
-                                        onChange={e => setNewUser({ ...newUser, name: e.target.value })}
-                                    />
+                                    <input className="form-input" required value={newUser.name} onChange={e => setNewUser({ ...newUser, name: e.target.value })} />
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Usuario</label>
-                                    <input
-                                        className="form-input"
-                                        required
-                                        value={newUser.username}
-                                        onChange={e => setNewUser({ ...newUser, username: e.target.value })}
-                                    />
+                                    <input className="form-input" required value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Contraseña</label>
+                                    <label className="form-label">Información</label>
                                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '0.5rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px' }}>
-                                        Este formulario crea un <strong>Perfil de Usuario</strong>. Para dar acceso de login, debe invitar al usuario desde el Panel de Supabase o pedirle que se registre con este mismo email.
+                                        Este formulario crea un perfil. Para login real, el usuario debe registrarse con su email o ser invitado desde el panel de Supabase.
                                     </p>
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Rol del Usuario</label>
-                                    <select
-                                        className="form-select"
-                                        value={newUser.role}
-                                        onChange={e => setNewUser({ ...newUser, role: e.target.value })}
-                                    >
+                                    <select className="form-select" value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
                                         {roles.map(r => (
-                                            <option key={r} value={r}>{r === 'admin' ? 'Administrador (Full)' : r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                                            <option key={r} value={r}>{r}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -273,50 +260,26 @@ export default function SettingsPage() {
             {
                 isEditModalOpen && userToEdit && (
                     <div style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                         backgroundColor: 'rgba(0,0,0,0.5)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 1000,
-                        backdropFilter: 'blur(4px)'
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 1000, backdropFilter: 'blur(4px)'
                     }}>
                         <Card title="Editar Usuario" style={{ width: '400px', margin: '2rem' }}>
                             <form onSubmit={handleUpdateUser}>
                                 <div className="form-group">
                                     <label className="form-label">Nombre Completo</label>
-                                    <input
-                                        className="form-input"
-                                        required
-                                        value={userToEdit.name}
-                                        onChange={e => setUserToEdit({ ...userToEdit, name: e.target.value })}
-                                    />
+                                    <input className="form-input" required value={userToEdit.name} onChange={e => setUserToEdit({ ...userToEdit, name: e.target.value })} />
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Usuario</label>
-                                    <input
-                                        className="form-input"
-                                        required
-                                        value={userToEdit.username}
-                                        onChange={e => setUserToEdit({ ...userToEdit, username: e.target.value })}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Contraseña</label>
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '0.5rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px' }}>
-                                        La gestión de contraseñas se realiza a través del sistema de autenticación seguro. No se puede cambiar desde aquí.
-                                    </p>
+                                    <input className="form-input" required value={userToEdit.username} onChange={e => setUserToEdit({ ...userToEdit, username: e.target.value })} />
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginTop: '2rem' }}>
                                     <Button
-                                        type="button"
-                                        variant="ghost"
+                                        type="button" variant="ghost"
                                         onClick={async () => {
-                                            if (confirm(`¿Estás seguro de que deseas eliminar permanentemente a ${userToEdit.name}?`)) {
+                                            if (confirm(`¿Estás seguro de que deseas eliminar a ${userToEdit.name}?`)) {
                                                 await deleteUser(userToEdit.id);
                                                 setIsEditModalOpen(false);
                                                 setUserToEdit(null);
@@ -336,6 +299,6 @@ export default function SettingsPage() {
                     </div>
                 )
             }
-        </div >
+        </div>
     );
 }
