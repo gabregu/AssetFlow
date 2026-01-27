@@ -56,20 +56,29 @@ export default function SettingsPage() {
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
+        console.log("handleChangePassword triggered"); // Debug
         setMessage({ type: '', text: '' });
+
         if (newPassword.length < 6) {
             setMessage({ type: 'error', text: 'La contraseña debe tener al menos 6 caracteres' });
             return;
         }
 
         try {
+            console.log("Calling updatePassword..."); // Debug
             const { error } = await updatePassword(newPassword);
+            console.log("updatePassword result:", { error }); // Debug
+
             if (error) throw error;
+
             setMessage({ type: 'success', text: '¡Contraseña actualizada correctamente!' });
+            alert('¡Contraseña actualizada correctamente!'); // Force feedback for now
             setNewPassword('');
             setTimeout(() => setMessage({ type: '', text: '' }), 3000);
         } catch (error) {
+            console.error("Change Password Error:", error); // Debug
             setMessage({ type: 'error', text: 'Error: ' + error.message });
+            alert('Error: ' + error.message);
         }
     };
 
