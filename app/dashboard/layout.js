@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '../components/layout/Sidebar';
-import { Menu, Loader2 } from 'lucide-react';
+import { Menu, Loader2, Shield } from 'lucide-react';
 import { useStore } from '../../lib/store';
 
 export default function DashboardLayout({ children }) {
@@ -30,6 +30,28 @@ export default function DashboardLayout({ children }) {
 
     if (!currentUser) {
         return null; // Will redirect in useEffect
+    }
+
+    if (currentUser.role === 'pending') {
+        return (
+            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--background)', padding: '2rem', textAlign: 'center' }}>
+                <div style={{ padding: '2rem', background: 'var(--surface)', borderRadius: '1rem', border: '1px solid var(--border)', maxWidth: '500px' }}>
+                    <Shield size={64} style={{ color: '#f59e0b', marginBottom: '1.5rem', margin: '0 auto' }} />
+                    <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Cuenta en Revisión</h1>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                        Su solicitud de acceso ha sido recibida y está siendo revisada por un administrador.
+                        <br /><br />
+                        Recibirá una notificación por correo electrónico una vez que su cuenta haya sido aprobada.
+                    </p>
+                    <button
+                        onClick={() => window.location.href = '/'}
+                        style={{ padding: '0.75rem 1.5rem', background: 'transparent', border: '1px solid var(--border)', borderRadius: '0.5rem', cursor: 'pointer', color: 'var(--text-main)' }}
+                    >
+                        Volver al Inicio
+                    </button>
+                </div>
+            </div>
+        );
     }
 
     return (

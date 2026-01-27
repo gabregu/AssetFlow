@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Configuración directa para el script (usando las mismas credenciales que la app)
 const supabaseUrl = 'https://snbuluotryqjuttbeqfr.supabase.co';
-const supabaseKey = 'sb_publishable_qFRfGLQajQ28F_Z0HzF8Kw_1OfqdLN5';
+const supabaseKey = 'sb_publishable_e2CK76WGeE2KAZSy0ZFM-Q_Wsp8c7s1';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const initialUsers = [
