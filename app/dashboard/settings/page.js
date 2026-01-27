@@ -182,6 +182,13 @@ export default function SettingsPage() {
                                         {u.username !== 'admin' && (
                                             <div style={{ display: 'flex', gap: '0.25rem' }}>
                                                 <button
+                                                    onClick={() => handleSendReset(u.email)}
+                                                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem' }}
+                                                    title="Enviar correo de cambio de contraseña"
+                                                >
+                                                    <Key size={16} />
+                                                </button>
+                                                <button
                                                     onClick={() => handleEditClick(u)}
                                                     style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem' }}
                                                     title="Editar usuario"
