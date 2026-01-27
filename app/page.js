@@ -54,7 +54,10 @@ export default function Home() {
         const { error } = await signup(signupData.email, signupData.password, signupData.name);
 
         if (error) {
-            setError(error.message || 'Error al registrarse. Intente nuevamente.');
+            let msg = error.message;
+            if (msg.includes('rate limit')) msg = '⚠️ Límite de seguridad de Supabase excedido. Por favor espera unos minutos o pide al Adminsitrador que desactive la confirmación de email en el panel.';
+            else if (msg.includes('already registered')) msg = '⚠️ Este correo ya está registrado.';
+            setError(msg);
         } else {
             setSignupSuccess(true);
             setTimeout(() => {
