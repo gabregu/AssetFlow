@@ -168,8 +168,8 @@ export function Sidebar({ isOpen, onClose }) {
                     </Link>
                 )}
                 <button
-                    onClick={() => {
-                        logout();
+                    onClick={async () => {
+                        await logout();
                         window.location.href = '/';
                     }}
                     style={{
