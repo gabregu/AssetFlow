@@ -4,7 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { useStore } from '../../../lib/store';
-import { UserPlus, Trash2, Shield, Moon, Sun, Pencil, Lock } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Moon, Sun, Pencil, Lock, Eye, EyeOff } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 
 export default function SettingsPage() {
@@ -13,6 +13,7 @@ export default function SettingsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [pwdData, setPwdData] = useState({ new: '', confirm: '' });
+    const [showPassword, setShowPassword] = useState(false);
     const [newUser, setNewUser] = useState({ username: '', role: 'Conductor', name: '' });
     const [userToEdit, setUserToEdit] = useState(null);
 
@@ -20,6 +21,8 @@ export default function SettingsPage() {
 
     const handlePasswordChange = async (e) => {
         e.preventDefault();
+        console.log('Intentando actualizar contraseña...');
+
         if (pwdData.new.length < 6) {
             alert('La contraseña debe tener al menos 6 caracteres.');
             return;
@@ -29,12 +32,20 @@ export default function SettingsPage() {
             return;
         }
 
-        const { error } = await updatePassword(pwdData.new);
-        if (error) {
-            alert('Error al actualizar: ' + error.message);
-        } else {
-            alert('Contraseña actualizada correctamente.');
-            setPwdData({ new: '', confirm: '' });
+        console.log('Llamando a updatePassword store fn');
+        try {
+            const { error } = await updatePassword(pwdData.new);
+            if (error) {
+                console.error('Error cambio clave:', error);
+                alert('Error al actualizar: ' + error.message);
+            } else {
+                console.log('Cambio clave exitoso');
+                alert('Contraseña actualizada correctamente.');
+                setPwdData({ new: '', confirm: '' });
+            }
+        } catch (err) {
+            console.error('Excepcion en handleSubmit:', err);
+            alert('Error inesperado: ' + err.message);
         }
     };
 
@@ -99,25 +110,69 @@ export default function SettingsPage() {
                     <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <div>
                             <label className="form-label" style={{ fontSize: '0.8rem' }}>Nueva Contraseña</label>
-                            <input
-                                type="password"
-                                className="form-input"
-                                placeholder="Mínimo 6 caracteres"
-                                value={pwdData.new}
-                                onChange={e => setPwdData({ ...pwdData, new: e.target.value })}
-                                required
-                            />
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    className="form-input"
+                                    placeholder="Mínimo 6 caracteres"
+                                    value={pwdData.new}
+                                    onChange={e => setPwdData({ ...pwdData, new: e.target.value })}
+                                    required
+                                    style={{ paddingRight: '2.5rem' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '0.75rem',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--text-secondary)',
+                                        cursor: 'pointer',
+                                        padding: 0,
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
                         </div>
                         <div>
                             <label className="form-label" style={{ fontSize: '0.8rem' }}>Confirmar Contraseña</label>
-                            <input
-                                type="password"
-                                className="form-input"
-                                placeholder="Repite la contraseña"
-                                value={pwdData.confirm}
-                                onChange={e => setPwdData({ ...pwdData, confirm: e.target.value })}
-                                required
-                            />
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    className="form-input"
+                                    placeholder="Repite la contraseña"
+                                    value={pwdData.confirm}
+                                    onChange={e => setPwdData({ ...pwdData, confirm: e.target.value })}
+                                    required
+                                    style={{ paddingRight: '2.5rem' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '0.75rem',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--text-secondary)',
+                                        cursor: 'pointer',
+                                        padding: 0,
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
                         </div>
                         <div style={{ alignSelf: 'flex-end' }}>
                             <Button type="submit" size="sm">Actualizar</Button>
