@@ -151,22 +151,20 @@ export function Sidebar({ isOpen, onClose }) {
             </nav>
 
             <div style={{ padding: '1.5rem 1rem', borderTop: '1px solid var(--border)' }}>
-                {currentUser?.role !== 'Conductor' && (
-                    <Link href="/dashboard/settings" style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.75rem 1rem',
-                        color: pathname === '/dashboard/settings' ? 'var(--primary-color)' : 'var(--text-secondary)',
-                        backgroundColor: pathname === '/dashboard/settings' ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
-                        borderRadius: 'var(--radius-md)',
-                        marginBottom: '0.5rem',
-                        fontWeight: pathname === '/dashboard/settings' ? 600 : 500
-                    }}>
-                        <Settings size={20} />
-                        Configuración
-                    </Link>
-                )}
+                <Link href="/dashboard/settings" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.75rem 1rem',
+                    color: pathname === '/dashboard/settings' ? 'var(--primary-color)' : 'var(--text-secondary)',
+                    backgroundColor: pathname === '/dashboard/settings' ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: '0.5rem',
+                    fontWeight: pathname === '/dashboard/settings' ? 600 : 500
+                }}>
+                    <Settings size={20} />
+                    Configuración
+                </Link>
                 <button
                     onClick={async () => {
                         await logout();
