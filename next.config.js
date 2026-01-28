@@ -34,6 +34,10 @@ const nextConfig = {
                     {
                         key: 'Permissions-Policy',
                         value: 'camera=(), microphone=(), geolocation=()' // Limit risky features
+                    },
+                    {
+                        key: 'Content-Security-Policy',
+                        value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co https://snbuluotryqjuttbeqfr.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://snbuluotryqjuttbeqfr.supabase.co"
                     }
                 ]
             }
@@ -41,4 +45,11 @@ const nextConfig = {
     }
 };
 
-module.exports = nextConfig;
+const withPWA = require('next-pwa')({
+    dest: 'public',
+    disable: process.env.NODE_ENV === 'development',
+    register: true,
+    skipWaiting: true,
+});
+
+module.exports = withPWA(nextConfig);

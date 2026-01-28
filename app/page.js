@@ -37,7 +37,8 @@ export default function Home() {
         const { error, user } = await login(formData.email, formData.password);
 
         if (error) {
-            setError('Credenciales inválidas. Por favor verifique su email y contraseña.');
+            console.error('DEBUG LOGIN ERROR:', error);
+            setError(`DEBUG MODE: ${error.message || JSON.stringify(error)}`);
         } else if (user) {
             // Check role redirect
             if (user.role === 'Conductor') {
