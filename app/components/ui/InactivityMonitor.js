@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useStore } from '../../lib/store';
+import { useStore } from '@/lib/store';
 import { Button } from './Button';
 import { Modal } from './Modal';
 import { Timer } from 'lucide-react';
