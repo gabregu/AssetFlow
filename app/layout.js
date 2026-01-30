@@ -8,12 +8,15 @@ export const metadata = {
     description: 'Gestión integral de Casos, Inventario y Entregas',
 };
 
+import { InactivityMonitor } from './components/ui/InactivityMonitor';
+
 export default function RootLayout({ children }) {
     return (
         <html lang="es" suppressHydrationWarning={true}>
             <body suppressHydrationWarning={true}>
                 <ThemeProvider>
                     <StoreProvider>
+                        <InactivityMonitor />
                         <div className="app-layout">
                             {children}
                         </div>
