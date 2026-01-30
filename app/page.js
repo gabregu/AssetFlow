@@ -10,13 +10,10 @@ import { Loader2 } from 'lucide-react';
 
 export default function Home() {
     const router = useRouter();
-    const { login, signup, users, currentUser, loading } = useStore();
+    const { login, users, currentUser, loading } = useStore();
     const [isLoginOpen, setIsLoginOpen] = useState(false);
-    const [isSignupOpen, setIsSignupOpen] = useState(false);
     const [formData, setFormData] = useState({ email: '', password: '' });
-    const [signupData, setSignupData] = useState({ name: '', email: '', password: '' });
     const [error, setError] = useState('');
-    const [signupSuccess, setSignupSuccess] = useState(false);
 
     useEffect(() => {
         if (!loading && currentUser) {
@@ -37,8 +34,8 @@ export default function Home() {
         const { error, user } = await login(formData.email, formData.password);
 
         if (error) {
-            console.error('DEBUG LOGIN ERROR:', error);
-            setError(`DEBUG MODE: ${error.message || JSON.stringify(error)}`);
+            // console.error('Login error:', error); // Optional: keep for internal logging
+            setError(error.message || JSON.stringify(error));
         } else if (user) {
             // Check role redirect
             if (user.role === 'Conductor') {
@@ -46,25 +43,6 @@ export default function Home() {
             } else {
                 router.push('/dashboard');
             }
-        }
-    };
-
-    const handleSignup = async (e) => {
-        e.preventDefault();
-        setError('');
-        const { error } = await signup(signupData.email, signupData.password, signupData.name);
-
-        if (error) {
-            let msg = error.message;
-            if (msg.includes('rate limit')) msg = '⚠️ Límite de seguridad de Supabase excedido. Por favor espera unos minutos o pide al Adminsitrador que desactive la confirmación de email en el panel.';
-            else if (msg.includes('already registered')) msg = '⚠️ Este correo ya está registrado.';
-            setError(msg);
-        } else {
-            setSignupSuccess(true);
-            setTimeout(() => {
-                // Close modal after success, if auto-logged in, the effect will redirect
-                setIsSignupOpen(false);
-            }, 2000);
         }
     };
 
@@ -91,17 +69,10 @@ export default function Home() {
                     >
                         Iniciar Sesión
                     </button>
-                    <button
-                        onClick={() => {
-                            console.log('Opening Signup Modal');
-                            setIsSignupOpen(true);
-                        }}
-                        className="btn"
-                        style={{ background: 'transparent', border: '1px solid var(--border)', padding: '0.75rem 1.5rem', fontSize: '1rem' }}
-                    >
-                        Solicitar Acceso Ahora
-                    </button>
                 </div>
+                <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    Acceso restringido a personal autorizado.
+                </p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', width: '100%', maxWidth: '1000px' }}>
@@ -143,6 +114,9 @@ export default function Home() {
                             {error}
                         </div>
                     )}
+
+                    {/* DEBUG: Temporary Diagnostic Info */}
+
                     <div>
                         <label className="form-label" htmlFor="email">Email</label>
                         <input
@@ -183,82 +157,8 @@ export default function Home() {
                 </form>
             </Modal>
 
-            {/* SIGNUP MODAL */}
-            <Modal
-                isOpen={isSignupOpen}
-                onClose={() => { setIsSignupOpen(false); setError(''); setSignupSuccess(false); setSignupData({ name: '', email: '', password: '' }); }}
-                title="Solicitar Acceso"
-            >
-                {signupSuccess ? (
-                    <div style={{ textAlign: 'center', padding: '1rem' }}>
-                        <div style={{ color: 'green', fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
-                        <h3>¡Solicitud Enviada!</h3>
-                        <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                            Su cuenta ha sido creada y está pendiente de aprobación por un administrador.
-                        </p>
-                        <p style={{ fontSize: '0.9rem', marginTop: '1rem' }}>Redirigiendo...</p>
-                    </div>
-                ) : (
-                    <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {error && (
-                            <div style={{ padding: '0.75rem', borderRadius: 'var(--radius-md)', background: '#fee2e2', color: '#991b1b', fontSize: '0.9rem' }}>
-                                {error}
-                            </div>
-                        )}
-                        <div>
-                            <label className="form-label" htmlFor="signup-name">Nombre Completo</label>
-                            <input
-                                id="signup-name"
-                                type="text"
-                                className="form-input"
-                                placeholder="Ej: Juan Pérez"
-                                value={signupData.name}
-                                onChange={(e) => setSignupData({ ...signupData, name: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="form-label" htmlFor="signup-email">Email Corporativo</label>
-                            <input
-                                id="signup-email"
-                                type="email"
-                                className="form-input"
-                                placeholder="nombre@empresa.com"
-                                value={signupData.email}
-                                onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="form-label" htmlFor="signup-password">Contraseña</label>
-                            <input
-                                id="signup-password"
-                                type="password"
-                                className="form-input"
-                                placeholder="Cree una contraseña segura"
-                                value={signupData.password}
-                                onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                                required
-                                minLength={6}
-                            />
-                        </div>
-                        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                            <button
-                                type="button"
-                                onClick={() => setIsSignupOpen(false)}
-                                className="btn"
-                                style={{ background: 'transparent', border: '1px solid var(--border)' }}
-                            >
-                                Cancelar
-                            </button>
-                            <button type="submit" className="btn btn-primary">
-                                Registrarse
-                            </button>
-                        </div>
-                    </form>
-                )}
-            </Modal>
 
-        </main>
+
+        </main >
     );
 }

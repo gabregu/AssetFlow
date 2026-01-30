@@ -230,7 +230,7 @@ export default function Dashboard() {
                 <Card>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1.5rem' }}>Carga de Trabajo (Empleados)</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                        {users.filter(u => u.role !== 'admin').map(user => {
+                        {users.map(user => {
                             const activeCount = tickets.filter(t =>
                                 (t.logistics?.deliveryPerson === user.name || t.logistics?.deliveryPerson === user.username) &&
                                 t.status !== 'Resuelto' &&

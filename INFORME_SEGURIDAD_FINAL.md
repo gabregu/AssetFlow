@@ -32,24 +32,35 @@ Todos los vectores de ataque conocidos, incluyendo la vulnerabilidad crítica qu
 - **Acción Correctiva:** Se implementó una política RLS que fuerza a que el `user_email` insertado coincida exactamente con el email del Token JWT del usuario.
 - **Evidencia:** `migrations/09_security_final_audit.sql`
 
+### 🟢 Fase 2: Anti-Spam y Privacidad (Implementado)
+- **Privacidad de Usuarios:** Se detectó riesgo de enumeración.
+    - **Mitigación:** Política RLS restrictiva en `users`. Los empleados normales solo pueden verse a sí mismos y a sus superiores (Staff/Admin), pero no pueden listar a toda la compañía.
+- **Anti-Spam:** Se detectó riesgo de inyección de tickets.
+    - **Mitigación:** Bloqueo total de `INSERT` para usuarios en estado `pending`. Solo roles aprobados pueden crear tickets.
+- **Higiene de Datos:**
+    - **Mitigación:** Trigger `check_ticket_content` que rechaza tickets vacíos o con prioridad inválida a nivel de base de datos.
+    - **Evidencia:** `migrations/17_anti_spam_privacy.sql`
+
+
 ---
 
 ## 3. Arquitectura de Seguridad Actual
 
 ### 🔐 Capa 1: Autenticación (Identidad)
-- **Proveedor:** Supabase Auth (GoTrue).
-- **Mecanismo:** JSON Web Tokens (JWT) firmados.
-- **Control de Acceso:** No hay contraseñas almacenadas ni gestionadas por el código de la aplicación (eliminación de vulnerabilidades de inyección SQL en login propio).
-- **Gestión de Sesión:** Manejo seguro de cookies y local storage delegado al SDK de Supabase.
+- **Modelo:** Gestión Cerrada (Admin Provisioned / ABM Privado).
+- **Registro:** El registro público ha sido ELIMINADO para reducir superficie de ataque.
+- **Acceso:** Exclusivo por invitación/alta administrativa.
+- **Mecanismo:** JSON Web Tokens (JWT) firmados vía Supabase Auth.
+
 
 ### 🛡️ Capa 2: Autorización (Base de Datos - RLS)
 Esta es la barrera más fuerte. Aunque un atacante logre manipular el frontend, la base de datos rechazará cualquier consulta no autorizada.
 
 | Entidad (Tabla) | Lectura (SELECT) | Escritura (INSERT/UPDATE) | Borrado (DELETE) |
 | :--- | :--- | :--- | :--- |
-| **Tickets** | Admin, Staff, User, Conductor | Staff, Conductor, Admin | ❌ Nadie (Soft delete o Admin) |
+| **Tickets** | Admin, Staff, User, Conductor | **Solo Aprobados** (No Pending) | ❌ Nadie (Soft delete o Admin) |
 | **Activos (Assets)** | Admin, Staff, User, Conductor | Admin, Staff | ❌ Solo Admin |
-| **Usuarios** | Lista Blanca de Roles | **Solo Admin** | **Solo Admin** |
+| **Usuarios** | **Self + Staff Only** | **Solo Admin** | **Solo Admin** |
 | **Auditoría** | Solo Admin | ✅ Todos (Solo su propia acción) | ❌ Nadie (Inmutable) |
 | **Entregas** | Admin, Staff, User, Conductor | Staff, Admin | ❌ Solo Admin |
 

@@ -166,9 +166,12 @@ export default function BillingPage() {
                 const driverNameRaw = ticket.logistics?.deliveryPerson || '';
                 let driverKey = null;
                 const dLower = driverNameRaw.toLowerCase();
-                if (dLower.includes('lucas')) driverKey = 'Lucas';
-                else if (dLower.includes('facundo')) driverKey = 'Facundo';
-                else if (dLower.includes('guillermo')) driverKey = 'Guillermo';
+
+                // Dynamic Lookup (matches ANY user in the system)
+                const matchedUser = users.find(u => u.name && dLower.includes(u.name.toLowerCase()));
+                if (matchedUser) {
+                    driverKey = matchedUser.name;
+                }
 
                 if (driverKey) {
                     const moveKey = isDelivery ? 'Delivery' : (isRecovery ? 'Recovery' : null);
@@ -530,9 +533,12 @@ export default function BillingPage() {
                                             const driverNameRaw = ticket.logistics?.deliveryPerson || '';
                                             let driverKey = null;
                                             const dLower = driverNameRaw.toLowerCase();
-                                            if (dLower.includes('lucas')) driverKey = 'Lucas';
-                                            else if (dLower.includes('facundo')) driverKey = 'Facundo';
-                                            else if (dLower.includes('guillermo')) driverKey = 'Guillermo';
+
+                                            // Dynamic Lookup (matches ANY user in the system)
+                                            const matchedUser = users.find(u => u.name && dLower.includes(u.name.toLowerCase()));
+                                            if (matchedUser) {
+                                                driverKey = matchedUser.name;
+                                            }
 
                                             if (driverKey) {
                                                 const moveKey = isDelivery ? 'Delivery' : (isRecovery ? 'Recovery' : null);
@@ -962,61 +968,64 @@ export default function BillingPage() {
                         <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(239, 68, 68, 0.1)' }}>
                             <h5 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--text-secondary)' }}>Incentivos por Conductor</h5>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                                {['Lucas', 'Facundo', 'Guillermo'].map(driver => (
-                                    <div key={driver} style={{ background: 'rgba(255,255,255,0.5)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '0.8rem', marginBottom: '0.5rem', textTransform: 'uppercase', color: 'var(--primary-color)' }}>{driver}</div>
-                                        <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
-                                            <thead>
-                                                <tr style={{ color: 'var(--text-secondary)' }}>
-                                                    <th style={{ textAlign: 'left', paddingBottom: '0.25rem' }}>Disp.</th>
-                                                    <th style={{ textAlign: 'left', paddingBottom: '0.25rem' }}>Entrega</th>
-                                                    <th style={{ textAlign: 'left', paddingBottom: '0.25rem' }}>Recupero</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {['Laptop', 'Smartphone', 'Key'].map(type => {
-                                                    const displayType = {
-                                                        'Laptop': 'Notebook',
-                                                        'Smartphone': 'Celular',
-                                                        'Key': 'Llave'
-                                                    }[type] || type;
+                                {users.map(user => {
+                                    const driver = user.name;
+                                    return (
+                                        <div key={user.id} style={{ background: 'rgba(255,255,255,0.5)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '0.8rem', marginBottom: '0.5rem', textTransform: 'uppercase', color: 'var(--primary-color)' }}>{driver}</div>
+                                            <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                                                <thead>
+                                                    <tr style={{ color: 'var(--text-secondary)' }}>
+                                                        <th style={{ textAlign: 'left', paddingBottom: '0.25rem' }}>Disp.</th>
+                                                        <th style={{ textAlign: 'left', paddingBottom: '0.25rem' }}>Entrega</th>
+                                                        <th style={{ textAlign: 'left', paddingBottom: '0.25rem' }}>Recupero</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {['Laptop', 'Smartphone', 'Key'].map(type => {
+                                                        const displayType = {
+                                                            'Laptop': 'Notebook',
+                                                            'Smartphone': 'Celular',
+                                                            'Key': 'Llave'
+                                                        }[type] || type;
 
-                                                    return (
-                                                        <tr key={type}>
-                                                            <td style={{ padding: '0.25rem 0', fontWeight: 500 }}>{displayType}</td>
-                                                            <td style={{ padding: '0.25rem 0.25rem 0.25rem 0' }}>
-                                                                <input
-                                                                    type="number"
-                                                                    placeholder="0"
-                                                                    className="form-input"
-                                                                    style={{ padding: '0.25rem 0.5rem', height: 'auto', fontSize: '0.8rem' }}
-                                                                    value={tempRates[`driverExtra_${driver}_Delivery_${type}`] || ''}
-                                                                    onChange={e => {
-                                                                        const val = e.target.value;
-                                                                        setTempRates(prev => ({ ...prev, [`driverExtra_${driver}_Delivery_${type}`]: val === '' ? '' : parseFloat(val) }))
-                                                                    }}
-                                                                />
-                                                            </td>
-                                                            <td style={{ padding: '0.25rem 0 0.25rem 0.25rem' }}>
-                                                                <input
-                                                                    type="number"
-                                                                    placeholder="0"
-                                                                    className="form-input"
-                                                                    style={{ padding: '0.25rem 0.5rem', height: 'auto', fontSize: '0.8rem' }}
-                                                                    value={tempRates[`driverExtra_${driver}_Recovery_${type}`] || ''}
-                                                                    onChange={e => {
-                                                                        const val = e.target.value;
-                                                                        setTempRates(prev => ({ ...prev, [`driverExtra_${driver}_Recovery_${type}`]: val === '' ? '' : parseFloat(val) }))
-                                                                    }}
-                                                                />
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ))}
+                                                        return (
+                                                            <tr key={type}>
+                                                                <td style={{ padding: '0.25rem 0', fontWeight: 500 }}>{displayType}</td>
+                                                                <td style={{ padding: '0.25rem 0.25rem 0.25rem 0' }}>
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="0"
+                                                                        className="form-input"
+                                                                        style={{ padding: '0.25rem 0.5rem', height: 'auto', fontSize: '0.8rem' }}
+                                                                        value={tempRates[`driverExtra_${driver}_Delivery_${type}`] || ''}
+                                                                        onChange={e => {
+                                                                            const val = e.target.value;
+                                                                            setTempRates(prev => ({ ...prev, [`driverExtra_${driver}_Delivery_${type}`]: val === '' ? '' : parseFloat(val) }))
+                                                                        }}
+                                                                    />
+                                                                </td>
+                                                                <td style={{ padding: '0.25rem 0 0.25rem 0.25rem' }}>
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="0"
+                                                                        className="form-input"
+                                                                        style={{ padding: '0.25rem 0.5rem', height: 'auto', fontSize: '0.8rem' }}
+                                                                        value={tempRates[`driverExtra_${driver}_Recovery_${type}`] || ''}
+                                                                        onChange={e => {
+                                                                            const val = e.target.value;
+                                                                            setTempRates(prev => ({ ...prev, [`driverExtra_${driver}_Recovery_${type}`]: val === '' ? '' : parseFloat(val) }))
+                                                                        }}
+                                                                    />
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>

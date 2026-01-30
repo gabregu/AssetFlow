@@ -4,15 +4,13 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { useStore } from '../../../lib/store';
-import { UserPlus, Trash2, Shield, Moon, Sun, Pencil, Lock, Eye, EyeOff, Key } from 'lucide-react';
+import { Trash2, Shield, Moon, Sun, Pencil, Lock, Eye, EyeOff, Key } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 
 export default function SettingsPage() {
-    const { users, currentUser, addUser, deleteUser, updateUser, sendPasswordReset, updatePassword } = useStore();
+    const { users, currentUser, deleteUser, updateUser, sendPasswordReset, updatePassword } = useStore();
     const { theme } = useTheme();
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [newUser, setNewUser] = useState({ username: '', role: 'Conductor', name: '' });
     const [userToEdit, setUserToEdit] = useState(null);
     const [newPassword, setNewPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -20,12 +18,7 @@ export default function SettingsPage() {
 
     const isAdmin = currentUser?.role === 'admin';
 
-    const handleAddUser = (e) => {
-        e.preventDefault();
-        addUser(newUser);
-        setNewUser({ username: '', role: 'Conductor', name: '' });
-        setIsModalOpen(false);
-    };
+
 
     const handleEditClick = (user) => {
         setUserToEdit({ ...user, password: '' });
@@ -87,7 +80,7 @@ export default function SettingsPage() {
     return (
         <div>
             <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Configuración</h1>
+                <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Configuración del Sistema</h1>
                 <p style={{ color: 'var(--text-secondary)' }}>Personaliza tu experiencia y gestiona el acceso al sistema.</p>
             </div>
 
@@ -183,7 +176,6 @@ export default function SettingsPage() {
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
                                     {users.filter(u => u.email).length} usuarios activos
                                 </p>
-                                <Button size="sm" icon={UserPlus} onClick={() => setIsModalOpen(true)}>Nuevo Usuario</Button>
                             </div>
 
                             {/* Pending Users Section */}
@@ -298,49 +290,7 @@ export default function SettingsPage() {
                 </Card>
             </div>
 
-            {/* Modal para Nuevo Usuario */}
-            {
-                isModalOpen && (
-                    <div style={{
-                        position: 'fixed',
-                        top: 0, left: 0, right: 0, bottom: 0,
-                        backgroundColor: 'rgba(0,0,0,0.5)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        zIndex: 1000, backdropFilter: 'blur(4px)'
-                    }}>
-                        <Card title="Agregar Nuevo Usuario" style={{ width: '400px', margin: '2rem' }}>
-                            <form onSubmit={handleAddUser}>
-                                <div className="form-group">
-                                    <label className="form-label">Nombre Completo</label>
-                                    <input className="form-input" required value={newUser.name} onChange={e => setNewUser({ ...newUser, name: e.target.value })} />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Usuario</label>
-                                    <input className="form-input" required value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Información</label>
-                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', padding: '0.5rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px' }}>
-                                        Este formulario crea un perfil. Para login real, el usuario debe registrarse con su email o ser invitado desde el panel de Supabase.
-                                    </p>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Rol del Usuario</label>
-                                    <select className="form-select" value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}>
-                                        {roles.map(r => (
-                                            <option key={r} value={r}>{r}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
-                                    <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-                                    <Button type="submit">Crear Usuario</Button>
-                                </div>
-                            </form>
-                        </Card>
-                    </div>
-                )
-            }
+
 
             {/* Modal para Editar Usuario */}
             {

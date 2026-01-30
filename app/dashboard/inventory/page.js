@@ -493,7 +493,7 @@ export default function InventoryPage() {
                                     }
                                 }
                             } else {
-                                alert(`❌ Error DB: ${err.message || 'Error desconocido'}\n\nDetalles: ${err.details || 'Revisa la consola'}`);
+                                alert(`❌ Error DB: ${err.message}\nCódigo: ${err.code || 'N/A'}\nHint: ${err.hint || 'Posible Bloqueo por Permisos o Datos Inválidos'}`);
                             }
                         }
                     } else {

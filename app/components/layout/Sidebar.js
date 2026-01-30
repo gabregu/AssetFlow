@@ -167,8 +167,13 @@ export function Sidebar({ isOpen, onClose }) {
                 </Link>
                 <button
                     onClick={async () => {
-                        await logout();
-                        window.location.href = '/';
+                        try {
+                            await logout();
+                        } catch (e) {
+                            console.error("Logout error:", e);
+                        } finally {
+                            window.location.href = '/';
+                        }
                     }}
                     style={{
                         display: 'flex',
