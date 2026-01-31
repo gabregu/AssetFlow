@@ -37,7 +37,7 @@ const nextConfig = {
                     },
                     {
                         key: 'Content-Security-Policy',
-                        value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.supabase.co https://snbuluotryqjuttbeqfr.supabase.co; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://snbuluotryqjuttbeqfr.supabase.co"
+                        value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com https://maps.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://*.supabase.co https://snbuluotryqjuttbeqfr.supabase.co https://maps.gstatic.com https://*.googleapis.com https://*.ggpht.com; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://snbuluotryqjuttbeqfr.supabase.co https://maps.googleapis.com"
                     }
                 ]
             }

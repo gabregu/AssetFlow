@@ -4,8 +4,9 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
+import { ServiceMap } from '../../components/ui/ServiceMap';
 import { useStore } from '../../../lib/store';
-import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp } from 'lucide-react';
+import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { resolveTicketServiceDetails, getRate } from '../billing/utils';
@@ -13,7 +14,12 @@ import { resolveTicketServiceDetails, getRate } from '../billing/utils';
 export default function MyTicketsPage() {
     const router = useRouter();
     const { tickets, assets: globalAssets, addTicket, deleteTickets, currentUser, rates } = useStore();
+
+    // UI State
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isMapOpen, setIsMapOpen] = useState(false);
+
+    // Data State
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
@@ -105,13 +111,10 @@ export default function MyTicketsPage() {
 
     // Estadísticas para las tarjetas KPI basándose solo en mis tickets
     const stats = useMemo(() => {
-        const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local format approximation for simple match
+        const today = new Date().toLocaleDateString('en-CA');
 
-        // Para "Entregados Hoy", necesitamos mirar TODOS los tickets asignados, incluso los resueltos/cerrados
-        // que fueron filtrados en 'myTickets'. Así que usamos 'tickets' store directamente.
         const allMyTickets = tickets.filter(t => t.logistics?.deliveryPerson === currentUser?.name);
 
-        // Cálculo de Liquidación Personal y conteos detallados (Solo tickets finalizados del mes actual)
         let personalLiquidation = 0;
         let deliveriesCount = 0;
         let recoveriesCount = 0;
@@ -126,7 +129,6 @@ export default function MyTicketsPage() {
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
 
-        // Para el historial de 6 meses
         const historyData = [];
         for (let i = 5; i >= 0; i--) {
             const date = new Date(currentYear, currentMonth - i, 1);
@@ -177,14 +179,12 @@ export default function MyTicketsPage() {
 
             // --- Asignar a Meses ---
             if (isFinished) {
-                // Sumar al total del mes actual si corresponde
                 if (ticketDate.getMonth() === currentMonth && ticketDate.getFullYear() === currentYear) {
                     personalLiquidation += amount;
                     if (isDelivery) deliveriesCount++;
                     if (isRecovery) recoveriesCount++;
                 }
 
-                // Sumar al historial de 6 meses
                 const histIdx = historyData.findIndex(h => h.month === ticketDate.getMonth() && h.year === ticketDate.getFullYear());
                 if (histIdx !== -1) {
                     historyData[histIdx].total += amount;
@@ -228,7 +228,10 @@ export default function MyTicketsPage() {
                     <p style={{ color: 'var(--text-secondary)' }}>Tickets asignados bajo tu responsabilidad.</p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
-                    <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Servicio</Button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <Button variant="secondary" icon={MapIcon} onClick={() => setIsMapOpen(true)}>Ver Mapa</Button>
+                        <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Servicio</Button>
+                    </div>
                 </div>
             </div>
 
@@ -597,6 +600,14 @@ export default function MyTicketsPage() {
                         <Button type="submit" style={{ flex: 1 }}>Crear Servicio</Button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Service Map Modal */}
+            <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} title="Mapa de Servicios" maxWidth="900px">
+                <ServiceMap tickets={sortedAndFilteredTickets} />
+                <div style={{ marginTop: '1rem', textAlign: 'right' }}>
+                    <Button variant="secondary" onClick={() => setIsMapOpen(false)}>Cerrar</Button>
+                </div>
             </Modal>
         </div>
     );
