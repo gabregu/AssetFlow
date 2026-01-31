@@ -14,7 +14,6 @@ import {
     Truck,
     FileText,
     Calendar,
-    Calendar,
     ArrowRight,
     Map
 } from 'lucide-react';
