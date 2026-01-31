@@ -142,14 +142,36 @@ export default function MyDeliveriesPage() {
             (t.logistics?.deliveryPerson === currentUser?.name || t.logistics?.deliveryPerson === currentUser?.username)
         );
 
-        // Pendientes son aquellos activos (no resueltos) que están En Transito o asignados para hoy/pasado
-        // O simplemente todos los activos asignados al conductor
-        const pending = myTickets.filter(t =>
-            t.status !== 'Resuelto' &&
-            t.status !== 'Cerrado' &&
-            t.status !== 'Caso SFDC Cerrado' &&
-            t.status !== 'Servicio Facturado'
-        ).length;
+        // Calcular rango de la semana actual (Lunes a Domingo)
+        const currentDay = now.getDay(); // 0 (Sun) - 6 (Sat)
+        const diffToMonday = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
+        const startOfWeek = new Date(now.setDate(diffToMonday));
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        // Pendientes esta semana: Activos Y con fecha dentro de esta semana
+        const pendingThisWeek = myTickets.filter(t => {
+            if (
+                t.status === 'Resuelto' ||
+                t.status === 'Cerrado' ||
+                t.status === 'Caso SFDC Cerrado' ||
+                t.status === 'Servicio Facturado'
+            ) return false;
+
+            if (!t.logistics?.date) return false;
+
+            const ticketDate = new Date(t.logistics.date);
+            // Ajustar zona horaria si es necesario, pero asumiendo ISO string simple YYYY-MM-DD
+            // Para comparar fechas string 'YYYY-MM-DD' vs objetos Date
+            const ticketDateStr = t.logistics.date;
+            const startStr = startOfWeek.toISOString().split('T')[0];
+            const endStr = endOfWeek.toISOString().split('T')[0];
+
+            return ticketDateStr >= startStr && ticketDateStr <= endStr;
+        }).length;
 
         const resolved = myTickets.filter(t =>
             t.status === 'Resuelto' ||
@@ -177,7 +199,7 @@ export default function MyDeliveriesPage() {
             last6Months.push({ label: monthLabel, count });
         }
 
-        return { pending, finishedThisMonth, resolved, last6Months };
+        return { pendingThisWeek, finishedThisMonth, resolved, last6Months };
     }, [tickets, currentUser]);
 
     // Agrupamos por día para la interfaz (respetando orden optimizado)
@@ -514,10 +536,10 @@ export default function MyDeliveriesPage() {
 
                 <Card style={{ background: 'var(--primary-color)', color: 'white', border: 'none', padding: '1.25rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pendientes Hoy</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>PENDIENTES SEMANA</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <Clock size={20} style={{ color: 'rgba(255,255,255,0.8)' }} />
-                            <span style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.pending}</span>
+                            <span style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.pendingThisWeek}</span>
                         </div>
                     </div>
                 </Card>
