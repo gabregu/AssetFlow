@@ -6,8 +6,11 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
 import { useStore } from '../../../lib/store';
-import { Truck, MapPin, Calendar, Clock, CheckCircle2, Navigation, FileText, BarChart3, TrendingUp, Archive, QrCode } from 'lucide-react';
+import { Truck, MapPin, Calendar, Clock, CheckCircle2, Navigation, FileText, BarChart3, TrendingUp, Archive, QrCode, Route, Loader2 } from 'lucide-react';
 import { generateTicketPDF } from '../../../lib/pdf-generator';
+import { useJsApiLoader } from '@react-google-maps/api';
+
+const GOOGLE_MAPS_LIBRARIES = ['geometry'];
 
 export default function MyDeliveriesPage() {
     const { tickets, assets, currentUser, updateTicket } = useStore();
@@ -20,6 +23,19 @@ export default function MyDeliveriesPage() {
         actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         notes: '',
         photoUrl: ''
+    });
+
+    // Route Optimization State
+    const [isOptimizationModalOpen, setIsOptimizationModalOpen] = useState(false);
+    const [optimizationOrigin, setOptimizationOrigin] = useState('deposito'); // Default to Deposito for deliveries usually
+    const [isOptimizing, setIsOptimizing] = useState(false);
+    const [optimizedOrder, setOptimizedOrder] = useState(null); // Array of ticket IDs in order
+
+    // Load Google Maps Script Globaly for this page
+    const { isLoaded: isMapsLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+        libraries: GOOGLE_MAPS_LIBRARIES
     });
 
     // Colores vibrantes para los diferentes días
@@ -117,16 +133,29 @@ export default function MyDeliveriesPage() {
         return { pending, finishedThisMonth, resolved, last6Months };
     }, [tickets, currentUser]);
 
-    // Agrupamos por día para la interfaz
+    // Agrupamos por día para la interfaz (respetando orden optimizado)
     const groupedDeliveries = useMemo(() => {
+        // First, sort myDeliveries based on optimization if exists
+        let deliverisToSort = [...myDeliveries];
+
+        if (optimizedOrder) {
+            deliverisToSort.sort((a, b) => {
+                const idxA = optimizedOrder.indexOf(a.id);
+                const idxB = optimizedOrder.indexOf(b.id);
+                const safeIdxA = idxA === -1 ? 9999 : idxA;
+                const safeIdxB = idxB === -1 ? 9999 : idxB;
+                return safeIdxA - safeIdxB;
+            });
+        }
+
         const groups = {};
-        myDeliveries.forEach(d => {
+        deliverisToSort.forEach(d => {
             const date = d.logistics.date || d.logistics.datetime?.split('T')[0] || 'Sin Fecha';
             if (!groups[date]) groups[date] = [];
             groups[date].push(d);
         });
         return groups;
-    }, [myDeliveries]);
+    }, [myDeliveries, optimizedOrder]);
 
     const handleUpdateOrder = (id, newOrder) => {
         const ticket = tickets.find(t => t.id === id);
@@ -287,6 +316,101 @@ export default function MyDeliveriesPage() {
         }
     };
 
+    // Route Optimization Logic
+    const handleOptimizeRoute = async () => {
+        if (!isMapsLoaded) {
+            alert('El mapa aún se está cargando, por favor intenta nuevamente en unos segundos.');
+            return;
+        }
+        setIsOptimizing(true);
+        try {
+            const geocoder = new window.google.maps.Geocoder();
+
+            const originAddress = optimizationOrigin === 'oficina'
+                ? 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina'
+                : 'Fraga 1312, CABA, Argentina';
+
+            // 1. Geocode Origin
+            const originResult = await new Promise((resolve, reject) => {
+                geocoder.geocode({ address: originAddress }, (results, status) => {
+                    if (status === 'OK') resolve(results[0]);
+                    else reject(status);
+                });
+            });
+            const originLoc = originResult.geometry.location;
+
+            // 2. Geocode Deliveries (Limit to avoid limits)
+            const todayDate = new Date().toISOString().split('T')[0];
+            // Filter only for today or specifically relevant ones if needed? 
+            // The user wants to order "pedidos del dia", but groupedDeliveries has all pending.
+            // Let's optimize ALL pending deliveries currently displayed.
+            const deliveriesToRoute = myDeliveries.filter(t => t.logistics?.address && t.logistics.address.length > 5);
+
+            const ticketsWithLoc = [];
+            for (const ticket of deliveriesToRoute) {
+                try {
+                    const res = await new Promise((resolve) => {
+                        geocoder.geocode({ address: ticket.logistics.address }, (results, status) => {
+                            if (status === 'OK') resolve(results[0]);
+                            else resolve(null);
+                        });
+                    });
+
+                    if (res) {
+                        ticketsWithLoc.push({
+                            id: ticket.id,
+                            loc: res.geometry.location,
+                            ticket: ticket
+                        });
+                    }
+                    await new Promise(r => setTimeout(r, 250));
+                } catch (e) { console.error(e); }
+            }
+
+            // 3. Sort by Nearest Neighbor
+            let currentLoc = originLoc;
+            const orderedIds = [];
+            const pool = [...ticketsWithLoc];
+
+            while (pool.length > 0) {
+                let nearestIdx = -1;
+                let minDist = Infinity;
+
+                for (let i = 0; i < pool.length; i++) {
+                    const d = window.google.maps.geometry.spherical.computeDistanceBetween(currentLoc, pool[i].loc);
+                    if (d < minDist) {
+                        minDist = d;
+                        nearestIdx = i;
+                    }
+                }
+
+                if (nearestIdx !== -1) {
+                    const nearest = pool[nearestIdx];
+                    orderedIds.push(nearest.id);
+                    currentLoc = nearest.loc;
+                    pool.splice(nearestIdx, 1);
+                } else {
+                    break;
+                }
+            }
+
+            // Add remaining
+            const unmappedIds = myDeliveries
+                .filter(t => !orderedIds.includes(t.id))
+                .map(t => t.id);
+
+            setOptimizedOrder([...orderedIds, ...unmappedIds]);
+            setIsOptimizationModalOpen(false);
+            alert('¡Ruta optimizada correctamente!');
+
+        } catch (error) {
+            console.error(error);
+            alert('Error al optimizar ruta: ' + error.message);
+        } finally {
+            setIsOptimizing(false);
+        }
+    };
+
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -294,13 +418,23 @@ export default function MyDeliveriesPage() {
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Envíos Asignados</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Gestiona tus entregas programadas y registra el estado en tiempo real.</p>
                 </div>
-                <Button
-                    onClick={() => setIsScannerOpen(true)}
-                    icon={QrCode}
-                    style={{ backgroundColor: 'var(--text-main)', color: 'white' }}
-                >
-                    ESCANEAR
-                </Button>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <Button
+                        variant="secondary"
+                        icon={Route}
+                        onClick={() => setIsOptimizationModalOpen(true)}
+                        style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
+                    >
+                        OPTIMIZAR
+                    </Button>
+                    <Button
+                        onClick={() => setIsScannerOpen(true)}
+                        icon={QrCode}
+                        style={{ backgroundColor: 'var(--text-main)', color: 'white' }}
+                    >
+                        ESCANEAR
+                    </Button>
+                </div>
             </div>
 
             {/* Resumen de Productividad - Estética Cuidada y Alto Contraste */}
@@ -651,6 +785,38 @@ export default function MyDeliveriesPage() {
                 validationError={scanAlert}
                 resetValidationError={() => setScanAlert(null)}
             />
+
+            {/* Optimization Modal */}
+            <Modal isOpen={isOptimizationModalOpen} onClose={() => setIsOptimizationModalOpen(false)} title="Optimizar Recorrido">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <p style={{ color: 'var(--text-secondary)' }}>
+                        Selecciona el punto de partida. El sistema ordenará tus entregas automáticamente calculando la ruta más corta.
+                    </p>
+
+                    <div className="form-group">
+                        <label className="form-label">Punto de Partida</label>
+                        <select
+                            className="form-select"
+                            value={optimizationOrigin}
+                            onChange={(e) => setOptimizationOrigin(e.target.value)}
+                        >
+                            <option value="deposito">Depósito (Fraga 1312, CABA)</option>
+                            <option value="oficina">Oficina (Padre Castiglia 1638, Boulogne)</option>
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                        <Button variant="secondary" onClick={() => setIsOptimizationModalOpen(false)} disabled={isOptimizing}>Cancelar</Button>
+                        <Button
+                            onClick={handleOptimizeRoute}
+                            disabled={isOptimizing}
+                            icon={isOptimizing ? Loader2 : Route}
+                        >
+                            {isOptimizing ? 'Calculando...' : 'Optimizar Ahora'}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

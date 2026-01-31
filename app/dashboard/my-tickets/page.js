@@ -6,14 +6,24 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { ServiceMap } from '../../components/ui/ServiceMap';
 import { useStore } from '../../../lib/store';
-import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon } from 'lucide-react';
+import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon, Route } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { resolveTicketServiceDetails, getRate } from '../billing/utils';
+import { useJsApiLoader } from '@react-google-maps/api';
+
+const GOOGLE_MAPS_LIBRARIES = ['geometry'];
 
 export default function MyTicketsPage() {
     const router = useRouter();
     const { tickets, assets: globalAssets, addTicket, deleteTickets, currentUser, rates } = useStore();
+
+    // Load Google Maps Script Globaly for this page
+    const { isLoaded: isMapsLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+        libraries: GOOGLE_MAPS_LIBRARIES
+    });
 
     // UI State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,6 +35,12 @@ export default function MyTicketsPage() {
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', requester: '' });
     const [selectedTickets, setSelectedTickets] = useState([]);
+
+    // Route Optimization State
+    const [isOptimizationModalOpen, setIsOptimizationModalOpen] = useState(false);
+    const [optimizationOrigin, setOptimizationOrigin] = useState('oficina');
+    const [isOptimizing, setIsOptimizing] = useState(false);
+    const [optimizedOrder, setOptimizedOrder] = useState(null); // Array of ticket IDs in order
 
     const isAdmin = currentUser?.role === 'admin';
 
@@ -83,6 +99,103 @@ export default function MyTicketsPage() {
             direction = 'desc';
         }
         setSortConfig({ key, direction });
+        // Clear optimization when manual sort is triggered
+        if (key !== 'optimized') setOptimizedOrder(null);
+    };
+
+    // Route Optimization Logic
+    const handleOptimizeRoute = async () => {
+        if (!isMapsLoaded) {
+            alert('El mapa aún se está cargando, por favor intenta nuevamente en unos segundos.');
+            return;
+        }
+        setIsOptimizing(true);
+        try {
+            const geocoder = new window.google.maps.Geocoder();
+
+            const originAddress = optimizationOrigin === 'oficina'
+                ? 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina'
+                : 'Fraga 1312, CABA, Argentina';
+
+            // 1. Geocode Origin
+            const originResult = await new Promise((resolve, reject) => {
+                geocoder.geocode({ address: originAddress }, (results, status) => {
+                    if (status === 'OK') resolve(results[0]);
+                    else reject(status);
+                });
+            });
+            const originLoc = originResult.geometry.location;
+
+            // 2. Geocode Tickets (Limit 25 to avoid heavy API usage/limits)
+            // Using a simple greedy algorithm: Find nearest to current, then from that finding nearest to next, etc.
+            const ticketsToRoute = sortedAndFilteredTickets.filter(t => t.logistics?.address && t.logistics.address.length > 5);
+
+            const ticketsWithLoc = [];
+            for (const ticket of ticketsToRoute) {
+                try {
+                    const res = await new Promise((resolve) => {
+                        geocoder.geocode({ address: ticket.logistics.address }, (results, status) => {
+                            if (status === 'OK') resolve(results[0]);
+                            else resolve(null); // Skip if failed
+                        });
+                    });
+
+                    if (res) {
+                        ticketsWithLoc.push({
+                            id: ticket.id,
+                            loc: res.geometry.location,
+                            ticket: ticket
+                        });
+                    }
+                    // Small delay
+                    await new Promise(r => setTimeout(r, 250));
+                } catch (e) { console.error(e); }
+            }
+
+            // 3. Sort by Nearest Neighbor
+            let currentLoc = originLoc;
+            const orderedIds = [];
+            const pool = [...ticketsWithLoc];
+
+            while (pool.length > 0) {
+                // Find nearest in pool to currentLoc
+                let nearestIdx = -1;
+                let minDist = Infinity;
+
+                for (let i = 0; i < pool.length; i++) {
+                    const d = window.google.maps.geometry.spherical.computeDistanceBetween(currentLoc, pool[i].loc);
+                    if (d < minDist) {
+                        minDist = d;
+                        nearestIdx = i;
+                    }
+                }
+
+                if (nearestIdx !== -1) {
+                    const nearest = pool[nearestIdx];
+                    orderedIds.push(nearest.id);
+                    currentLoc = nearest.loc;
+                    pool.splice(nearestIdx, 1);
+                } else {
+                    break;
+                }
+            }
+
+            // Add remaining tickets that couldn't be geocoded at the end
+            const unmappedIds = sortedAndFilteredTickets
+                .filter(t => !orderedIds.includes(t.id))
+                .map(t => t.id);
+
+            setOptimizedOrder([...orderedIds, ...unmappedIds]);
+            setSortConfig({ key: 'optimized', direction: 'asc' });
+            setIsOptimizationModalOpen(false);
+            alert('¡Ruta optimizada correctamente!');
+
+        } catch (error) {
+            console.error(error);
+            alert('Error al optimizar ruta: ' + error.message);
+        } finally {
+            setIsOptimizing(false);
+        }
     };
 
     const sortedAndFilteredTickets = useMemo(() => {
@@ -97,6 +210,19 @@ export default function MyTicketsPage() {
             return matchesSearch && matchesStatus && matchesRequester;
         });
 
+        // Apply Optimized Order if Active
+        if (sortConfig.key === 'optimized' && optimizedOrder) {
+            result.sort((a, b) => {
+                const idxA = optimizedOrder.indexOf(a.id);
+                const idxB = optimizedOrder.indexOf(b.id);
+                // If ID not found (new ticket?), put at end
+                const safeIdxA = idxA === -1 ? 9999 : idxA;
+                const safeIdxB = idxB === -1 ? 9999 : idxB;
+                return safeIdxA - safeIdxB;
+            });
+            return result;
+        }
+
         if (sortConfig.key) {
             result.sort((a, b) => {
                 const valA = a[sortConfig.key] || '';
@@ -107,7 +233,7 @@ export default function MyTicketsPage() {
             });
         }
         return result;
-    }, [myTickets, filter, sortConfig, columnFilters]);
+    }, [myTickets, filter, sortConfig, columnFilters, optimizedOrder]);
 
     // Estadísticas para las tarjetas KPI basándose solo en mis tickets
     const stats = useMemo(() => {
@@ -229,6 +355,7 @@ export default function MyTicketsPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', gap: '8px' }}>
+                        <Button variant="secondary" icon={Route} onClick={() => setIsOptimizationModalOpen(true)}>Optimizar Ruta</Button>
                         <Button variant="secondary" icon={MapIcon} onClick={() => setIsMapOpen(true)}>Ver Mapa</Button>
                         <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Servicio</Button>
                     </div>
@@ -609,6 +736,39 @@ export default function MyTicketsPage() {
                     <Button variant="secondary" onClick={() => setIsMapOpen(false)}>Cerrar</Button>
                 </div>
             </Modal>
+
+            {/* Optimization Modal */}
+            <Modal isOpen={isOptimizationModalOpen} onClose={() => setIsOptimizationModalOpen(false)} title="Optimizar Recorrido">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <p style={{ color: 'var(--text-secondary)' }}>
+                        Selecciona el punto de partida. El sistema ordenará tus tickets automáticamente calculando la ruta más corta (Greedy Algorithm).
+                    </p>
+
+                    <div className="form-group">
+                        <label className="form-label">Punto de Partida</label>
+                        <select
+                            className="form-select"
+                            value={optimizationOrigin}
+                            onChange={(e) => setOptimizationOrigin(e.target.value)}
+                        >
+                            <option value="oficina">Oficina (Padre Castiglia 1638, Boulogne)</option>
+                            <option value="deposito">Depósito (Fraga 1312, CABA)</option>
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                        <Button variant="secondary" onClick={() => setIsOptimizationModalOpen(false)} disabled={isOptimizing}>Cancelar</Button>
+                        <Button
+                            onClick={handleOptimizeRoute}
+                            disabled={isOptimizing}
+                            icon={isOptimizing ? Loader2 : Route}
+                        >
+                            {isOptimizing ? 'Calculando...' : 'Optimizar Ahora'}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
         </div>
     );
 }
