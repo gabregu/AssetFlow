@@ -482,7 +482,7 @@ export default function MyDeliveriesPage() {
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div className="flex-mobile-column" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                 <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Envíos Asignados</h1>

@@ -348,7 +348,7 @@ export default function MyTicketsPage() {
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+            <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Servicios</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Tickets asignados bajo tu responsabilidad.</p>
@@ -449,7 +449,7 @@ export default function MyTicketsPage() {
             {/* Fila 2: Liquidación y Evolución */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
                 gap: '1.25rem',
                 marginBottom: '2rem'
             }}>
