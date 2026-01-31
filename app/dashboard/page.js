@@ -14,9 +14,12 @@ import {
     Truck,
     FileText,
     Calendar,
-    ArrowRight
+    Calendar,
+    ArrowRight,
+    Map
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { ServiceMap } from '../components/ui/ServiceMap';
 
 export default function Dashboard() {
     const router = useRouter();
@@ -225,6 +228,30 @@ export default function Dashboard() {
                 </Card>
             </div>
 
+            {/* Live Map - Only for non-drivers usually, or everyone */}
+            {
+                currentUser?.role !== 'Conductor' && (
+                    <div style={{ marginBottom: '2rem' }}>
+                        <Card>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Map size={18} /> Mapa en Vivo
+                                </h3>
+                                <Badge variant="default" style={{ background: 'var(--primary-color)', color: 'white' }}>
+                                    {users.filter(u => u.tracking_enabled && u.location_latitude).length} Conductor(es) Activo(s)
+                                </Badge>
+                            </div>
+                            <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                                <ServiceMap
+                                    tickets={tickets.filter(t => t.status === 'En Progreso' || t.status === 'Abierto').slice(0, 10)}
+                                    drivers={users.filter(u => u.tracking_enabled && u.location_latitude)}
+                                />
+                            </div>
+                        </Card>
+                    </div>
+                )
+            }
+
             {/* Employee Workload Stats */}
             <div style={{ marginBottom: '2rem' }}>
                 <Card>
@@ -293,6 +320,6 @@ export default function Dashboard() {
                     </div>
                 </Card>
             </div>
-        </div>
+        </div >
     );
 }

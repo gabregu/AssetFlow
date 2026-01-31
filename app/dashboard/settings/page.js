@@ -4,7 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { useStore } from '../../../lib/store';
-import { Trash2, Shield, Moon, Sun, Pencil, Lock, Eye, EyeOff, Key } from 'lucide-react';
+import { Trash2, Shield, Moon, Sun, Pencil, Lock, Eye, EyeOff, Key, MapPin, MapPinOff } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 
 export default function SettingsPage() {
@@ -266,6 +266,22 @@ export default function SettingsPage() {
                                         </div>
                                         {u.username !== 'admin' && (
                                             <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                {/* Botón de Tracking GPS */}
+                                                <button
+                                                    onClick={() => updateUser(u.id, { tracking_enabled: !u.tracking_enabled })}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: u.tracking_enabled ? '#10b981' : 'var(--text-secondary)',
+                                                        cursor: 'pointer',
+                                                        padding: '0.5rem',
+                                                        opacity: u.tracking_enabled ? 1 : 0.5
+                                                    }}
+                                                    title={u.tracking_enabled ? "Desactivar rastreo GPS" : "Activar rastreo GPS"}
+                                                >
+                                                    {u.tracking_enabled ? <MapPin size={16} /> : <MapPinOff size={16} />}
+                                                </button>
+
                                                 <button
                                                     onClick={() => handleSendReset(u.email)}
                                                     style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem' }}

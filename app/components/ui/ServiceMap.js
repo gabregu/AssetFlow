@@ -12,7 +12,7 @@ const centerDefault = {
     lng: -58.381592 // Buenos Aires
 };
 
-export function ServiceMap({ tickets = [] }) {
+export function ServiceMap({ tickets = [], drivers = [] }) {
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
@@ -53,21 +53,40 @@ export function ServiceMap({ tickets = [] }) {
             const geocoder = new window.google.maps.Geocoder();
             const newMarkers = [];
 
-            // We filter tickets that actually have an address
-            const validTickets = tickets.filter(t => t.logistics?.address && t.logistics.address.length > 5);
-            console.log('ServiceMap: Valid tickets for geocoding:', validTickets.length);
+            // 1. Add Drivers (Instant, no geocoding needed)
+            if (drivers && drivers.length > 0) {
+                drivers.forEach(d => {
+                    if (d.location_latitude && d.location_longitude) {
+                        newMarkers.push({
+                            id: `driver-${d.id}`,
+                            lat: d.location_latitude,
+                            lng: d.location_longitude,
+                            title: `Conductor: ${d.name}`,
+                            type: 'driver',
+                            details: d,
+                            icon: {
+                                path: "M1 3h14v2H1zm16 8H1V5h12v2h4v4zM1 18h2.5c0 1.93 1.57 3.5 3.5 3.5S10.5 19.93 10.5 18h3c0 1.93 1.57 3.5 3.5 3.5s3.5-1.57 3.5-3.5H23v-6l-3-4h-5V5c0-1.1-.9-2-2-2H1c-1.1 0-2 .9-2 2v13h2zm6 0c0 .83-.67 1.5-1.5 1.5S4 18.83 4 18s.67-1.5 1.5-1.5 1.5.67 1.5 1.5zm11.5 1.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM17 9h4l1.3 2H17V9z", // Simple Truck Path
+                                fillColor: "#2563eb",
+                                fillOpacity: 1,
+                                strokeColor: "#ffffff",
+                                strokeWeight: 2,
+                                scale: 1.2,
+                                anchor: new window.google.maps.Point(0, 20)
+                            }
+                        });
+                    }
+                });
+            }
 
-            // Simple implementation: process sequentially to be nice to the API
-            // In a real production app, you should cache these lat/lng in your database
+            // 2. Geocode Tickets (if any)
+            const validTickets = tickets.filter(t => t.logistics?.address && t.logistics.address.length > 5);
+
             for (const ticket of validTickets) {
                 try {
                     const result = await new Promise((resolve, reject) => {
                         geocoder.geocode({ address: ticket.logistics.address }, (results, status) => {
-                            if (status === 'OK' && results[0]) {
-                                resolve(results[0]);
-                            } else {
-                                reject(status);
-                            }
+                            if (status === 'OK' && results[0]) resolve(results[0]);
+                            else reject(status);
                         });
                     });
 
@@ -76,20 +95,18 @@ export function ServiceMap({ tickets = [] }) {
                         lat: result.geometry.location.lat(),
                         lng: result.geometry.location.lng(),
                         title: ticket.subject,
+                        type: 'ticket',
                         details: ticket
                     });
                 } catch (error) {
                     console.error(`Error geocoding ${ticket.id}:`, error);
                 }
-                // Small delay to avoid OVER_QUERY_LIMIT in rapid succession
                 await new Promise(r => setTimeout(r, 200));
             }
 
-            console.log('ServiceMap: Markers created:', newMarkers.length);
             setMarkers(newMarkers);
             setGeocoding(false);
 
-            // Fit bounds if markers exist
             if (newMarkers.length > 0 && map) {
                 const bounds = new window.google.maps.LatLngBounds();
                 newMarkers.forEach(m => bounds.extend({ lat: m.lat, lng: m.lng }));
@@ -98,7 +115,7 @@ export function ServiceMap({ tickets = [] }) {
         };
 
         geocodeTickets();
-    }, [isLoaded, tickets, map, loadError]);
+    }, [isLoaded, tickets, drivers, map, loadError]);
 
     if (loadError || initError) {
         return <div style={{ padding: '2rem', color: 'red' }}>Error cargando el mapa: {initError || loadError?.message}</div>;
@@ -148,6 +165,7 @@ export function ServiceMap({ tickets = [] }) {
                         position={{ lat: marker.lat, lng: marker.lng }}
                         onClick={() => setSelectedMarker(marker)}
                         title={marker.title}
+                        icon={marker.icon}
                     />
                 ))}
 
@@ -157,10 +175,21 @@ export function ServiceMap({ tickets = [] }) {
                         onCloseClick={() => setSelectedMarker(null)}
                     >
                         <div style={{ color: '#000', padding: '5px', maxWidth: '200px' }}>
-                            <h4 style={{ margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold' }}>#{selectedMarker.details.id}</h4>
-                            <p style={{ margin: '0 0 5px 0', fontSize: '12px' }}>{selectedMarker.details.subject}</p>
-                            <p style={{ margin: '0', fontSize: '11px', color: '#666' }}>📍 {selectedMarker.details.logistics?.address}</p>
-                            <a href={`/dashboard/tickets/${selectedMarker.details.id}`} style={{ display: 'block', marginTop: '8px', fontSize: '12px', color: '#2563eb' }}>Ver Ticket</a>
+                            {selectedMarker.type === 'driver' ? (
+                                <>
+                                    <h4 style={{ margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold' }}>🚛 {selectedMarker.details.name}</h4>
+                                    <p style={{ margin: '0', fontSize: '11px', color: '#666' }}>
+                                        Última señal: {selectedMarker.details.last_location_update ? new Date(selectedMarker.details.last_location_update).toLocaleTimeString() : 'Desconocido'}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <h4 style={{ margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold' }}>#{selectedMarker.details.id}</h4>
+                                    <p style={{ margin: '0 0 5px 0', fontSize: '12px' }}>{selectedMarker.details.subject}</p>
+                                    <p style={{ margin: '0', fontSize: '11px', color: '#666' }}>📍 {selectedMarker.details.logistics?.address}</p>
+                                    <a href={`/dashboard/tickets/${selectedMarker.details.id}`} style={{ display: 'block', marginTop: '8px', fontSize: '12px', color: '#2563eb' }}>Ver Ticket</a>
+                                </>
+                            )}
                         </div>
                     </InfoWindow>
                 )}

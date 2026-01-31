@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../../../lib/supabase';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -37,6 +38,52 @@ export default function MyDeliveriesPage() {
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
         libraries: GOOGLE_MAPS_LIBRARIES
     });
+
+    // Location Tracking Logic
+    useEffect(() => {
+        let watchId = null;
+        let lastUpdate = 0;
+        const UPDATE_INTERVAL = 30000; // Update DB every 30 seconds max to save calls
+
+        if (currentUser?.tracking_enabled && 'geolocation' in navigator) {
+            console.log("📍 Tracking GPS activado para:", currentUser.name);
+
+            watchId = navigator.geolocation.watchPosition(async (position) => {
+                const now = Date.now();
+                if (now - lastUpdate > UPDATE_INTERVAL) {
+                    lastUpdate = now;
+                    try {
+                        const { latitude, longitude } = position.coords;
+                        // Update Supabase
+                        const { error } = await supabase
+                            .from('users')
+                            .update({
+                                location_latitude: latitude,
+                                location_longitude: longitude,
+                                last_location_update: new Date().toISOString()
+                            })
+                            .eq('id', currentUser.id);
+
+                        if (error) console.error("Error updating location:", error);
+                        else console.log("📍 Location updated:", latitude, longitude);
+
+                    } catch (err) {
+                        console.error("GPS Error:", err);
+                    }
+                }
+            }, (err) => {
+                console.warn("GPS Access Denied or Error:", err);
+            }, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            });
+        }
+
+        return () => {
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+        };
+    }, [currentUser]);
 
     // Colores vibrantes para los diferentes días
     const dayColors = [
@@ -415,7 +462,18 @@ export default function MyDeliveriesPage() {
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Envíos Asignados</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Envíos Asignados</h1>
+                        {currentUser?.tracking_enabled && (
+                            <Badge variant="success" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}>
+                                <span style={{ position: 'relative', display: 'flex', height: '8px', width: '8px' }}>
+                                    <span style={{ position: 'absolute', display: 'inline-flex', height: '100%', width: '100%', borderRadius: '9999px', backgroundColor: '#22c55e', opacity: 0.75, animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite' }}></span>
+                                    <span style={{ position: 'relative', display: 'inline-flex', height: '8px', width: '8px', borderRadius: '9999px', backgroundColor: '#15803d' }}></span>
+                                </span>
+                                GPS ACTIVO
+                            </Badge>
+                        )}
+                    </div>
                     <p style={{ color: 'var(--text-secondary)' }}>Gestiona tus entregas programadas y registra el estado en tiempo real.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
