@@ -210,28 +210,32 @@ export default function MyTicketsPage() {
             return matchesSearch && matchesStatus && matchesRequester;
         });
 
-        // Apply Optimized Order if Active
-        if (sortConfig.key === 'optimized' && optimizedOrder) {
-            result.sort((a, b) => {
+        // Sort: "Para Coordinar" always top, then apply user sort config or default
+        result.sort((a, b) => {
+            const isCoordA = a.deliveryStatus === 'Para Coordinar';
+            const isCoordB = b.deliveryStatus === 'Para Coordinar';
+
+            if (isCoordA && !isCoordB) return -1;
+            if (!isCoordA && isCoordB) return 1;
+
+            // If both are "Para Coordinar" or both are NOT, apply other sorts
+            if (sortConfig.key === 'optimized' && optimizedOrder) {
                 const idxA = optimizedOrder.indexOf(a.id);
                 const idxB = optimizedOrder.indexOf(b.id);
-                // If ID not found (new ticket?), put at end
                 const safeIdxA = idxA === -1 ? 9999 : idxA;
                 const safeIdxB = idxB === -1 ? 9999 : idxB;
                 return safeIdxA - safeIdxB;
-            });
-            return result;
-        }
+            }
 
-        if (sortConfig.key) {
-            result.sort((a, b) => {
+            if (sortConfig.key) {
                 const valA = a[sortConfig.key] || '';
                 const valB = b[sortConfig.key] || '';
                 if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
                 if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-                return 0;
-            });
-        }
+            }
+            return 0; // Default order
+        });
+
         return result;
     }, [myTickets, filter, sortConfig, columnFilters, optimizedOrder]);
 
@@ -578,7 +582,10 @@ export default function MyTicketsPage() {
                             </thead>
                             <tbody>
                                 {sortedAndFilteredTickets.map((ticket) => (
-                                    <tr key={ticket.id} style={{ borderBottom: '1px solid var(--border)' }} className="table-row-hover">
+                                    <tr key={ticket.id} style={{
+                                        borderBottom: '1px solid var(--border)',
+                                        backgroundColor: ticket.status === 'Pendiente' ? '#fff7ed' : 'transparent' // Orange-50 equivalent for visibility
+                                    }} className={ticket.status === 'Pendiente' ? '' : 'table-row-hover'}>
                                         <td style={{ padding: '1rem', fontWeight: 600 }}>{ticket.id}</td>
                                         <td style={{ padding: '1rem' }}>
                                             <div style={{ fontWeight: 600 }}>{ticket.subject}</div>
