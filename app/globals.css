@@ -468,6 +468,11 @@ a {
     flex-direction: column !important;
     align-items: stretch !important;
   }
+
+  .grid-mobile-single {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
 }
 
 @media (min-width: 769px) {
