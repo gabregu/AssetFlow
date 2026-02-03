@@ -136,12 +136,20 @@ export default function SFDCCasesPage() {
         setIsModalOpen(true);
     };
 
+    const [isCreating, setIsCreating] = useState(false);
+
     const handleCreateService = async (e) => {
         console.log("handleCreateService called");
-        if (e) e.preventDefault();
-        console.log("Creating ticket with data:", newTicket);
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        if (isCreating) return; // Prevent double clicks
+        setIsCreating(true);
 
         try {
+            console.log("Creating ticket with data:", newTicket);
             const createdTicket = await addTicket(newTicket);
 
             if (createdTicket && createdTicket.id) {
@@ -152,11 +160,15 @@ export default function SFDCCasesPage() {
                 // Navegación automática al detalle del nuevo ticket
                 router.push(`/dashboard/tickets/${createdTicket.id}`);
             } else {
-                showToast('Error al crear el ticket', 'error');
+                throw new Error("No se recibió confirmación del ticket creado.");
             }
         } catch (error) {
             console.error('Error creando servicio:', error);
-            showToast(`Error: ${error.message || 'Ocurrió un error inesperado.'}`, 'error');
+            const msg = `Error: ${error.message || 'Ocurrió un error inesperado.'}`;
+            showToast(msg, 'error');
+            alert(msg); // Fallback alert ensures user sees the error
+        } finally {
+            setIsCreating(false);
         }
     };
 
@@ -783,19 +795,22 @@ export default function SFDCCasesPage() {
                         <button
                             type="button"
                             onClick={handleCreateService}
+                            disabled={isCreating}
                             style={{
                                 padding: '0.75rem 1.5rem',
-                                background: '#dc2626', // ROJO FUERTE
+                                background: isCreating ? '#9ca3af' : '#dc2626', // Gray if processing, Red if active
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '6px',
-                                cursor: 'pointer',
+                                cursor: isCreating ? 'not-allowed' : 'pointer',
                                 fontWeight: 'bold',
                                 fontSize: '0.9rem',
-                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                zIndex: 10001, // Ensure it's on top
+                                position: 'relative'
                             }}
                         >
-                            Generar Ticket
+                            {isCreating ? 'Procesando...' : 'Generar Ticket'}
                         </button>
                     </div>
                 </div>
