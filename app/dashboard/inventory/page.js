@@ -919,7 +919,15 @@ export default function InventoryPage() {
                                 className="form-input"
                                 style={{ paddingLeft: '2.5rem' }}
                                 value={searchFilter}
-                                onChange={(e) => setSearchFilter(e.target.value)}
+                                onChange={(e) => {
+                                    let val = e.target.value;
+                                    // Scanner Fix: Si empieza con S seguido de al menos 5 caracteres alfanuméricos en mayúsculas (Serial), quitamos la S.
+                                    // Evita romper búsquedas de texto normal como "Samsung" o nombres.
+                                    if (/^S[A-Z0-9]{5,}$/.test(val)) {
+                                        val = val.substring(1);
+                                    }
+                                    setSearchFilter(val);
+                                }}
                             />
                         </div>
 
