@@ -242,7 +242,7 @@ export default function Dashboard() {
                             </div>
                             <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
                                 <ServiceMap
-                                    tickets={tickets.filter(t => t.status === 'En Progreso' || t.status === 'Abierto').slice(0, 10)}
+                                    tickets={tickets.filter(t => t.status === 'En Progreso' || t.status === 'Abierto')}
                                     drivers={users.filter(u => u.tracking_enabled && u.location_latitude)}
                                 />
                             </div>
