@@ -137,7 +137,9 @@ export default function SFDCCasesPage() {
     };
 
     const handleCreateService = async (e) => {
+        console.log("handleCreateService called");
         if (e) e.preventDefault();
+        console.log("Creating ticket with data:", newTicket);
 
         try {
             const createdTicket = await addTicket(newTicket);
@@ -368,15 +370,30 @@ export default function SFDCCasesPage() {
             const existingInboxCaseNumbers = new Set(sfdcCases.map(c => c.caseNumber));
 
             // Filtrar duplicados ya convertidos a SERVICIOS/TICKETS
-            // Buscamos tickets cuyo asunto comience con [SFDC-XXXXX]
-            const existingConvertedCaseNumbers = new Set(tickets.map(t => {
-                const match = t.subject.match(/^\[SFDC-(\d+)\]/);
-                return match ? match[1] : null;
-            }).filter(Boolean));
+            // Buscamos si el caseNumber está PRESENTE en el asunto de algún ticket existente
+            // Esto es más robusto que solo buscar [SFDC-XXXX] al inicio
+            const existingConvertedCaseNumbers = new Set();
+
+            // Recorremos todos los tickets una sola vez para extraer posibles casos
+            tickets.forEach(t => {
+                if (!t.subject) return;
+                // Si el asunto contiene el número de caso (ej: "00168969"), lo marcamos como existente
+                // Usamos una verificación simple de inclusión string para máxima cobertura
+                // pero validamos contra la lista de nuevos casos para no falsos positivos random
+                newCases.forEach(nc => {
+                    if (t.subject.includes(nc.caseNumber)) {
+                        existingConvertedCaseNumbers.add(nc.caseNumber);
+                    }
+                });
+            });
 
             const uniqueCases = newCases.filter(c => {
                 const isInData = existingInboxCaseNumbers.has(c.caseNumber);
                 const isConverted = existingConvertedCaseNumbers.has(c.caseNumber);
+
+                // Debug log para ver qué estamos saltando
+                if (isConverted) console.log(`Skipping Case ${c.caseNumber} (Already valid Ticket)`);
+
                 return !isInData && !isConverted;
             });
 
