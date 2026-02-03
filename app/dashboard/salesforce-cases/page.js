@@ -154,7 +154,7 @@ export default function SFDCCasesPage() {
             }
         } catch (error) {
             console.error('Error creando servicio:', error);
-            showToast('Ocurrió un error inesperado de red o base de datos.', 'error');
+            showToast(`Error: ${error.message || 'Ocurrió un error inesperado.'}`, 'error');
         }
     };
 
@@ -222,47 +222,6 @@ export default function SFDCCasesPage() {
         showToast(`Se crearon ${successCount} servicios correctamente.`, 'success');
     };
 
-    // ... (resto del código)
-
-    <div style={{
-        display: 'flex',
-        justifyContent: 'flex-end',
-        gap: '1rem',
-        marginTop: '2rem',
-        paddingTop: '1rem',
-        borderTop: '1px solid var(--border)'
-    }}>
-        <button
-            type="button"
-            onClick={() => setIsModalOpen(false)}
-            style={{
-                padding: '0.5rem 1rem',
-                border: '1px solid var(--border)',
-                background: 'white',
-                borderRadius: '4px',
-                cursor: 'pointer'
-            }}
-        >
-            Cancelar
-        </button>
-
-        <button
-            type="button"
-            onClick={handleCreateService}
-            style={{
-                padding: '0.5rem 1rem',
-                background: '#3b82f6', // Azul brillante
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                zIndex: 9999 // Forzar capa superior
-            }}
-        >
-            Generar Ticket (Nativo)
-        </button>
-    </div>
 
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
