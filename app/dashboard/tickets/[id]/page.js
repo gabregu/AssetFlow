@@ -501,12 +501,22 @@ export default function TicketDetailPage() {
                                     {editMode ? (
                                         <input
                                             className="form-input"
-                                            style={{ padding: '0.2rem', marginTop: '2px', fontSize: '1rem', fontWeight: 600 }}
+                                            style={{ padding: '0.2rem', marginTop: '2px', fontSize: '1rem', fontWeight: 600, width: '100%' }}
                                             value={editedData.requester}
                                             onChange={e => setEditedData({ ...editedData, requester: e.target.value })}
                                         />
                                     ) : (
-                                        <p style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>{ticket.requester}</p>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <p style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>{ticket.requester}</p>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                style={{ padding: '0 4px', height: 'auto', opacity: 0.5 }}
+                                                onClick={() => setEditMode(true)}
+                                            >
+                                                <small style={{ fontSize: '0.7rem' }}>Editar</small>
+                                            </Button>
+                                        </div>
                                     )}
                                 </div>
                             </div>
