@@ -578,13 +578,15 @@ export default function InventoryPage() {
         }
     };
 
-    // KPI Calculations
-    const totalAssets = assets.length;
-    const novos = assets.filter(a => a.status === 'Nuevo' || a.status === 'Disponible').length;
-    const recuperados = assets.filter(a => a.status === 'Recuperado').length;
-    const enReparacion = assets.filter(a => a.status === 'En Reparación').length;
-    const dañados = assets.filter(a => ['Dañado', 'EOL', 'Rota', 'De Baja'].includes(a.status)).length;
-    const categoriesCount = new Set(assets.map(a => a.type)).size || (isHardwareTab ? 4 : 0);
+    // KPI Calculations - FILTERED BY WAREHOUSE ONLY
+    const warehouseAssets = assets.filter(a => a.assignee === 'Almacén' && a.status !== 'Asignado');
+
+    const totalAssets = warehouseAssets.length;
+    const novos = warehouseAssets.filter(a => a.status === 'Nuevo' || a.status === 'Disponible').length;
+    const recuperados = warehouseAssets.filter(a => a.status === 'Recuperado').length;
+    const enReparacion = warehouseAssets.filter(a => a.status === 'En Reparación').length;
+    const dañados = warehouseAssets.filter(a => ['Dañado', 'EOL', 'Rota', 'De Baja'].includes(a.status)).length;
+    const categoriesCount = new Set(warehouseAssets.map(a => a.type)).size || (isHardwareTab ? 4 : 0);
 
     const deviceTypes = ['Laptop', 'Smartphone', 'Security keys', 'Tablet'];
     const statuses = ['Nuevo', 'Asignado', 'Recuperado', 'En Reparación', 'Dañado', 'EOL'];
@@ -695,7 +697,7 @@ export default function InventoryPage() {
                             <TrendingUp size={24} />
                         </div>
                         <div>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>Total de Activos</p>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>Activos en Almacén</p>
                             <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>{totalAssets}</h3>
                         </div>
                     </div>
@@ -919,15 +921,7 @@ export default function InventoryPage() {
                                 className="form-input"
                                 style={{ paddingLeft: '2.5rem' }}
                                 value={searchFilter}
-                                onChange={(e) => {
-                                    let val = e.target.value;
-                                    // Scanner Fix: Si empieza con S seguido de al menos 5 caracteres alfanuméricos en mayúsculas (Serial), quitamos la S.
-                                    // Evita romper búsquedas de texto normal como "Samsung" o nombres.
-                                    if (/^S[A-Z0-9]{5,}$/.test(val)) {
-                                        val = val.substring(1);
-                                    }
-                                    setSearchFilter(val);
-                                }}
+                                onChange={(e) => setSearchFilter(e.target.value)}
                             />
                         </div>
 
