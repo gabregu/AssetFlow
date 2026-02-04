@@ -34,7 +34,77 @@ export default function MyDeliveriesPage() {
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [optimizedOrder, setOptimizedOrder] = useState(null); // Array of ticket IDs in order
 
-    // ... (rest of loading maps)
+    // Maps Loader
+    const { isLoaded: isMapsLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+        libraries: GOOGLE_MAPS_LIBRARIES
+    });
+
+    const [scanAlert, setScanAlert] = useState(null);
+
+    // Filter deliveries assigned to me
+    const myDeliveries = useMemo(() => {
+        if (!currentUser) return [];
+        let filtered = tickets.filter(t =>
+            (t.logistics?.deliveryPerson === currentUser.name || t.logistics?.deliveryPerson === currentUser.username) &&
+            t.logistics?.enabled
+        );
+
+        // Apply optimized order if exists
+        if (optimizedOrder) {
+            return [...filtered].sort((a, b) => {
+                const idxA = optimizedOrder.indexOf(a.id);
+                const idxB = optimizedOrder.indexOf(b.id);
+                if (idxA === -1 && idxB === -1) return 0;
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxA - idxB;
+            });
+        }
+
+        // Default sort by date
+        return filtered.sort((a, b) => {
+            const dateA = a.logistics?.date || a.logistics?.datetime || '';
+            const dateB = b.logistics?.date || b.logistics?.datetime || '';
+            return dateA.localeCompare(dateB);
+        });
+    }, [tickets, currentUser, optimizedOrder]);
+
+    const stats = useMemo(() => {
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const finishedThisMonth = tickets.filter(t =>
+            (t.logistics?.deliveryPerson === currentUser?.name || t.logistics?.deliveryPerson === currentUser?.username) &&
+            t.status === 'Resuelto' &&
+            new Date(t.date) >= firstDayOfMonth
+        ).length;
+
+        const pendingThisWeek = myDeliveries.filter(t => t.status !== 'Resuelto').length;
+
+        // Mock history for chart
+        const last6Months = Array.from({ length: 6 }, (_, i) => {
+            const date = new Date();
+            date.setMonth(date.getMonth() - (5 - i));
+            return {
+                label: date.toLocaleString('default', { month: 'short' }),
+                count: Math.floor(Math.random() * 10) + 5
+            };
+        });
+
+        return { finishedThisMonth, pendingThisWeek, last6Months };
+    }, [tickets, currentUser, myDeliveries]);
+
+    const groupedDeliveries = useMemo(() => {
+        const groups = {};
+        myDeliveries.forEach(delivery => {
+            const date = delivery.logistics?.date || delivery.logistics?.datetime?.split('T')[0] || 'Sin Fecha';
+            if (!groups[date]) groups[date] = [];
+            groups[date].push(delivery);
+        });
+        return groups;
+    }, [myDeliveries]);
 
     const validateOriginAddress = () => {
         if (!isMapsLoaded) return;
@@ -45,14 +115,77 @@ export default function MyDeliveriesPage() {
         geocoder.geocode({ address: customOriginAddress }, (results, status) => {
             if (status === 'OK' && results[0]) {
                 setOriginAddressStatus('valid');
-                setCustomOriginAddress(results[0].formatted_address); // Normalize
+                setCustomOriginAddress(results[0].formatted_address);
             } else {
                 setOriginAddressStatus('invalid');
             }
         });
     };
 
-    // Route Optimization Logic
+    const handleDeliverySubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedDelivery) return;
+
+        const updatedData = {
+            ...selectedDelivery,
+            status: 'Resuelto',
+            deliveryStatus: 'Entregado',
+            logistics: {
+                ...selectedDelivery.logistics,
+                receivedBy: deliveryForm.receivedBy,
+                receivedDni: deliveryForm.dni,
+                deliveredAt: new Date().toISOString(),
+                notes: deliveryForm.notes
+            }
+        };
+
+        updateTicket(selectedDelivery.id, updatedData);
+        setIsDeliveryModalOpen(false);
+        alert('Entrega registrada con éxito');
+    };
+
+    const handleScanSuccess = (qrData) => {
+        const delivery = myDeliveries.find(d => d.id === qrData || d.logistics?.qrCode === qrData);
+        if (delivery) {
+            setSelectedDelivery(delivery);
+            setIsDeliveryModalOpen(true);
+            setIsScannerOpen(false);
+        } else {
+            setScanAlert('No se encontró un envío asignado con ese código.');
+        }
+    };
+
+    const sendWhatsApp = () => {
+        const text = `Hola! Soy ${currentUser.name} de IT. Te informo que tu equipo ha sido entregado.\nRecibió: ${deliveryForm.receivedBy}\nTicket: #${selectedDelivery.id}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    };
+
+    const sendEmail = () => {
+        const subject = `Comprobante de Entrega - Ticket #${selectedDelivery.id}`;
+        const body = `Hola,\n\nSe ha registrado la entrega de tu equipo.\nRecibió: ${deliveryForm.receivedBy}\nDNI: ${deliveryForm.dni}\nFecha: ${new Date().toLocaleDateString()}`;
+        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    };
+
+    const getDevicesList = (ticket) => {
+        if (!ticket.associatedAssets) return [];
+        return ticket.associatedAssets.map(a => typeof a === 'string' ? a : a.serial);
+    };
+
+    const openGoogleMaps = (address) => {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`);
+    };
+
+    const getColorByDate = (dateStr) => {
+        if (dateStr === 'Sin Fecha') return '#94a3b8';
+        const date = new Date(dateStr + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (date < today) return '#ef4444'; // Masado
+        if (date.getTime() === today.getTime()) return '#3b82f6'; // Hoy
+        return '#10b981'; // Futuro
+    };
+
     const handleOptimizeRoute = async () => {
         if (!isMapsLoaded) {
             alert('El mapa aún se está cargando, por favor intenta nuevamente en unos segundos.');
@@ -73,7 +206,6 @@ export default function MyDeliveriesPage() {
             else if (optimizationOrigin === 'oficina') originAddress = 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina';
             else if (optimizationOrigin === 'custom') originAddress = customOriginAddress;
 
-            // 1. Geocode Origin
             const originResult = await new Promise((resolve, reject) => {
                 geocoder.geocode({ address: originAddress }, (results, status) => {
                     if (status === 'OK') resolve(results[0]);
@@ -82,9 +214,6 @@ export default function MyDeliveriesPage() {
             });
             const originLoc = originResult.geometry.location;
 
-            // ... (rest of the logic remains mostly same)
-            // 2. Geocode Deliveries (Limit to avoid limits)
-            const todayDate = new Date().toISOString().split('T')[0];
             const deliveriesToRoute = myDeliveries.filter(t => t.logistics?.address && t.logistics.address.length > 5);
 
             const ticketsWithLoc = [];
@@ -104,11 +233,10 @@ export default function MyDeliveriesPage() {
                             ticket: ticket
                         });
                     }
-                    await new Promise(r => setTimeout(r, 250));
+                    await new Promise(r => setTimeout(r, 200));
                 } catch (e) { console.error(e); }
             }
 
-            // 3. Sort by Nearest Neighbor
             let currentLoc = originLoc;
             const orderedIds = [];
             const pool = [...ticketsWithLoc];
@@ -135,7 +263,6 @@ export default function MyDeliveriesPage() {
                 }
             }
 
-            // Add remaining
             const unmappedIds = myDeliveries
                 .filter(t => !orderedIds.includes(t.id))
                 .map(t => t.id);
