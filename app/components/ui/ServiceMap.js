@@ -90,8 +90,13 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                         });
                     });
 
-                    const isAssigned = ticket.logistics && ticket.logistics.deliveryPerson;
-                    const markerColor = isAssigned ? "#16a34a" : "#ef4444"; // Green vs Red
+                    const status = ticket.deliveryStatus || 'Pendiente';
+                    let markerColor = "#3b82f6"; // Default Blue (Pendiente)
+
+                    if (status === 'Para Coordinar') markerColor = "#f97316"; // Orange
+                    else if (status === 'En Transito') markerColor = "#06b6d4"; // Cyan
+                    else if (status === 'Entregado') markerColor = "#22c55e"; // Green
+                    else markerColor = "#3b82f6"; // Pendiente
 
                     newMarkers.push({
                         id: ticket.id,

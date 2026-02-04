@@ -51,7 +51,8 @@ export default function MyTicketsPage() {
             t.status !== 'Cerrado' &&
             t.status !== 'Resuelto' &&
             t.status !== 'Caso SFDC Cerrado' &&
-            t.status !== 'Servicio Facturado'
+            t.status !== 'Servicio Facturado' &&
+            t.deliveryStatus !== 'Entregado'
         );
     }, [tickets, currentUser]);
 

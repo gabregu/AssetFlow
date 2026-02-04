@@ -245,12 +245,6 @@ export default function TicketsPage() {
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                 {isAdmin && (
                                     <th style={{ padding: '1rem', width: '40px' }}>
-                                        <input
-                                            type="checkbox"
-                                            onChange={handleSelectAll}
-                                            checked={selectedTickets.length === sortedAndFilteredTickets.length && sortedAndFilteredTickets.length > 0}
-                                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                                        />
                                     </th>
                                 )}
                                 <th
