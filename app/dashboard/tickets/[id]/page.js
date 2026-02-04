@@ -74,14 +74,11 @@ export default function TicketDetailPage() {
         geocoder.geocode({ address: address }, (results, status) => {
             if (status === 'OK' && results[0]) {
                 setAddressStatus('valid');
-                // Optional: We could autofill lat/lng here if we wanted to store it
-                console.log('Address validated:', results[0].formatted_address);
-                if (confirm(`Dirección encontrada en Google Maps:\n\n"${results[0].formatted_address}"\n\n¿Deseas actualizar con este formato oficial?`)) {
-                    setEditedData(prev => ({
-                        ...prev,
-                        logistics: { ...prev.logistics, address: results[0].formatted_address }
-                    }));
-                }
+                // Auto-update with formatted address silently as per request for "just validate"
+                setEditedData(prev => ({
+                    ...prev,
+                    logistics: { ...prev.logistics, address: results[0].formatted_address }
+                }));
             } else {
                 setAddressStatus('invalid');
                 console.error('Geocoding failed:', status);
@@ -726,6 +723,8 @@ export default function TicketDetailPage() {
                                                 <Loader2 size={12} className="animate-spin" />
                                             ) : addressStatus === 'valid' ? (
                                                 <><CheckCircle size={12} /> OK</>
+                                            ) : addressStatus === 'invalid' ? (
+                                                <span style={{ color: '#ef4444' }}>Dirección no válida</span>
                                             ) : (
                                                 'Validar'
                                             )}

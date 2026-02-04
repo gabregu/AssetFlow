@@ -402,7 +402,7 @@ export default function DeliveriesPage() {
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Envíos</h1>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Envíos (Actualizado)</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Logística avanzada con posicionamiento geográfico real.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
