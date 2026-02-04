@@ -673,7 +673,11 @@ export default function TicketDetailPage() {
                             <div className="form-group" style={{ gridColumn: 'span 2', marginBottom: 0 }}>
                                 <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Dirección Completa</label>
                                 <div style={{ position: 'relative' }}>
-                                    <MapPin size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                                    {addressStatus === 'valid' ? (
+                                        <CheckCircle2 size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: '#22c55e' }} />
+                                    ) : (
+                                        <MapPin size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                                    )}
                                     <input
                                         className="form-input"
                                         style={{
