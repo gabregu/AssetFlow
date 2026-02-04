@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useStore } from '../../../lib/store';
 import { ServiceMap } from '../../components/ui/ServiceMap';
-import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map } from 'lucide-react';
+import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -20,6 +20,7 @@ export default function TicketsPage() {
     const [columnFilters, setColumnFilters] = useState({ status: 'All', requester: '' });
     const [showStatusFilter, setShowStatusFilter] = useState(false);
     const [selectedTickets, setSelectedTickets] = useState([]);
+    const [showMap, setShowMap] = useState(false);
 
     const isAdmin = currentUser?.role === 'admin';
 
@@ -214,23 +215,41 @@ export default function TicketsPage() {
 
             {/* Live Map Integration */}
             <div style={{ marginBottom: '2.5rem' }}>
-                <Card>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Map size={18} /> Mapa de Operaciones
+                <Card style={{ padding: 0, overflow: 'hidden' }}>
+                    <div
+                        style={{
+                            padding: '1rem 1.25rem',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            background: showMap ? 'var(--background)' : 'transparent',
+                            borderBottom: showMap ? '1px solid var(--border)' : 'none'
+                        }}
+                        onClick={() => setShowMap(!showMap)}
+                    >
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>
+                            <Map size={18} style={{ color: 'var(--primary-color)' }} /> Mapa de Operaciones
                         </h3>
-                        {users && (
-                            <Badge variant="default" style={{ background: 'var(--primary-color)', color: 'white' }}>
-                                {users.filter(u => u.tracking_enabled && u.location_latitude).length} Conductor(es) Activo(s)
-                            </Badge>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            {users && (
+                                <Badge variant="default" style={{ background: 'var(--primary-color)', color: 'white', fontSize: '0.7rem' }}>
+                                    {users.filter(u => u.tracking_enabled && u.location_latitude).length} Conductor(es) Activo(s)
+                                </Badge>
+                            )}
+                            {showMap ? <ChevronUp size={20} style={{ color: 'var(--text-secondary)' }} /> : <ChevronDown size={20} style={{ color: 'var(--text-secondary)' }} />}
+                        </div>
                     </div>
-                    <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                        <ServiceMap
-                            tickets={tickets.filter(t => t.status === 'En Progreso' || t.status === 'Abierto' || t.status === 'Pendiente')}
-                            drivers={users ? users.filter(u => u.tracking_enabled && u.location_latitude) : []}
-                        />
-                    </div>
+
+                    {showMap && (
+                        <div style={{ borderRadius: 0, overflow: 'hidden' }}>
+                            <ServiceMap
+                                tickets={tickets.filter(t => t.status === 'En Progreso' || t.status === 'Abierto' || t.status === 'Pendiente')}
+                                drivers={users ? users.filter(u => u.tracking_enabled && u.location_latitude) : []}
+                            />
+                        </div>
+                    )}
                 </Card>
             </div>
 

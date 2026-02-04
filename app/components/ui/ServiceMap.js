@@ -12,6 +12,55 @@ const centerDefault = {
     lng: -58.381592 // Buenos Aires
 };
 
+const minimalistStyles = [
+    {
+        "featureType": "all",
+        "elementType": "labels.text.fill",
+        "stylers": [{ "color": "#7c919e" }]
+    },
+    {
+        "featureType": "all",
+        "elementType": "labels.text.stroke",
+        "stylers": [{ "visibility": "off" }]
+    },
+    {
+        "featureType": "poi",
+        "stylers": [{ "visibility": "off" }]
+    },
+    {
+        "featureType": "transit",
+        "stylers": [{ "visibility": "off" }]
+    },
+    {
+        "featureType": "road",
+        "elementType": "geometry",
+        "stylers": [{ "color": "#e2e8f0" }, { "lightness": 50 }]
+    },
+    {
+        "featureType": "road",
+        "elementType": "labels",
+        "stylers": [{ "visibility": "off" }]
+    },
+    {
+        "featureType": "landscape",
+        "stylers": [{ "color": "#f8fafc" }]
+    },
+    {
+        "featureType": "water",
+        "stylers": [{ "color": "#cbd5e1" }]
+    },
+    {
+        "featureType": "administrative.locality",
+        "elementType": "labels",
+        "stylers": [{ "visibility": "on" }]
+    },
+    {
+        "featureType": "administrative.neighborhood",
+        "elementType": "labels",
+        "stylers": [{ "visibility": "on" }]
+    }
+];
+
 export function ServiceMap({ tickets = [], drivers = [] }) {
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
@@ -175,6 +224,13 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                 zoom={12}
                 onLoad={onLoad}
                 onUnmount={onUnmount}
+                options={{
+                    styles: minimalistStyles,
+                    disableDefaultUI: false,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: true
+                }}
             >
                 {markers.map(marker => (
                     <Marker
