@@ -244,7 +244,14 @@ export default function MyTicketsPage() {
     const stats = useMemo(() => {
         const today = new Date().toLocaleDateString('en-CA');
 
-        const allMyTickets = tickets.filter(t => t.logistics?.deliveryPerson === currentUser?.name);
+        const allMyTickets = tickets.filter(t => {
+            const driver = t.logistics?.deliveryPerson;
+            if (!driver) return false;
+            const dLower = driver.toLowerCase();
+            const uName = (currentUser?.name || '').toLowerCase();
+            const uUser = (currentUser?.username || '').toLowerCase();
+            return dLower === uName || dLower === uUser || (uName && uName.includes(dLower)) || (dLower && dLower.includes(uName));
+        });
 
         let personalLiquidation = 0;
         let deliveriesCount = 0;
@@ -272,7 +279,9 @@ export default function MyTicketsPage() {
         }
 
         allMyTickets.forEach(t => {
-            const ticketDate = new Date(t.date || t.deliveryCompletedDate || Date.now());
+            // Precise date parsing to avoid timezone shift
+            const rawDate = t.deliveryCompletedDate || t.date || Date.now();
+            const ticketDate = new Date(rawDate && !rawDate.toString().includes('T') ? rawDate + 'T00:00:00' : rawDate);
             const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status);
 
             const { moveType: finalMoveType, assetType: finalDeviceType } = resolveTicketServiceDetails(t, globalAssets);
@@ -288,12 +297,20 @@ export default function MyTicketsPage() {
             const baseCommission = getRate(rates?.cost_Driver_Commission, rates?.driverCommission, 15);
             let extra = 0;
 
-            const driverNameRaw = currentUser?.name || '';
+            const driverNameRaw = t.logistics?.deliveryPerson || '';
             let driverKey = null;
             const dLower = driverNameRaw.toLowerCase();
-            if (dLower.includes('lucas')) driverKey = 'Lucas';
-            else if (dLower.includes('facundo')) driverKey = 'Facundo';
-            else if (dLower.includes('guillermo')) driverKey = 'Guillermo';
+
+            // Dynamic lookup instead of hardcoded list
+            const matchedUser = [...users].find(u => u.name && (dLower.includes(u.name.toLowerCase()) || u.name.toLowerCase().includes(dLower)));
+            if (matchedUser) {
+                driverKey = matchedUser.name;
+            } else {
+                // Fallback to existing manual check if no user match
+                if (dLower.includes('lucas')) driverKey = 'Lucas';
+                else if (dLower.includes('facundo')) driverKey = 'Facundo';
+                else if (dLower.includes('guillermo')) driverKey = 'Guillermo';
+            }
 
             if (driverKey) {
                 const moveKey = isDelivery ? 'Delivery' : (isRecovery ? 'Recovery' : null);
@@ -488,6 +505,11 @@ export default function MyTicketsPage() {
                             <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.5px' }}>
                                 USD {stats.personalLiquidation.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </div>
+                            {parseFloat(rates?.exchangeRate) > 0 && (
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, marginTop: '2px' }}>
+                                    ARS {(stats.personalLiquidation * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </Card>
