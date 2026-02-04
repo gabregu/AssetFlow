@@ -126,6 +126,18 @@ export default function DeliveriesPage() {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
     };
 
+    const getStatusVariant = (status) => {
+        switch (status) {
+            case 'Abierto': return 'danger';
+            case 'En Progreso': return 'info';
+            case 'Resuelto': return 'success';
+            case 'Pendiente': return 'warning';
+            case 'Caso SFDC Cerrado': return 'success';
+            case 'Servicio Facturado': return 'info';
+            default: return 'default';
+        }
+    };
+
     // Unimos los datos de envíos
     const combinedDeliveries = React.useMemo(() => {
         const ticketDeliveries = tickets.filter(t => {
@@ -141,7 +153,8 @@ export default function DeliveriesPage() {
                 if (deliveryCount > 0) summaryItems.push(`${deliveryCount} Entr.`);
                 if (pickupCount > 0) summaryItems.push(`${pickupCount} Rec.`);
 
-                const displayDate = t.logistics.date || (t.logistics.datetime ? t.logistics.datetime.split('T')[0] : t.date);
+                const logisticsDate = t.logistics.date;
+                const displayDate = logisticsDate || (t.logistics.datetime ? t.logistics.datetime.split('T')[0] : t.date);
                 const timeSlot = t.logistics.timeSlot || 'AM';
 
                 const hasDriver = !!t.logistics.deliveryPerson && t.logistics.deliveryPerson !== 'No definido';
@@ -154,12 +167,19 @@ export default function DeliveriesPage() {
                     courier: t.logistics.method || 'No definido',
                     deliveryPerson: t.logistics.deliveryPerson,
                     status: hasDriver ? 'En Tránsito' : 'Pendiente',
-                    date: `${displayDate} [${timeSlot}]`,
+                    ticketStatus: t.status,
+                    deliveryStatusOriginal: t.deliveryStatus,
+                    date: logisticsDate ? `${displayDate} [${timeSlot}]` : 'A Confirmar',
                     source: 'Ticket'
                 };
             });
 
-        const activeManualDeliveries = deliveries.filter(d => d.status !== 'Entregado').map(d => ({ ...d, source: 'Manual' }));
+        const activeManualDeliveries = deliveries.filter(d => d.status !== 'Entregado').map(d => ({
+            ...d,
+            source: 'Manual',
+            ticketStatus: d.status,
+            deliveryStatusOriginal: d.status
+        }));
 
         return [...activeManualDeliveries, ...ticketDeliveries];
     }, [deliveries, tickets]);
@@ -176,7 +196,7 @@ export default function DeliveriesPage() {
     ];
 
     const getColorByDate = (dateStr) => {
-        if (!dateStr || dateStr === 'No definida' || dateStr === 'Sin fecha') return '#64748b';
+        if (!dateStr || dateStr === 'No definida' || dateStr === 'Sin fecha' || dateStr === 'A Confirmar') return '#64748b';
         const hash = dateStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         return dayColors[hash % dayColors.length];
     };
@@ -677,7 +697,7 @@ export default function DeliveriesPage() {
                                                             <div style={{ backgroundColor: dateColor, width: '8px', height: '8px', borderRadius: '50%' }}></div>
                                                             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                                                 {(() => {
-                                                                    if (!delivery.date) return 'Fecha no definida';
+                                                                    if (!delivery.date || delivery.date === 'A Confirmar') return 'Por Confirmar';
                                                                     const cleanDate = delivery.date.split(' ')[0]; // Extraer 'YYYY-MM-DD'
                                                                     return new Date(cleanDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                                                                 })()}
@@ -709,8 +729,9 @@ export default function DeliveriesPage() {
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{delivery.recipient}</div>
+                                                    <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic', opacity: 0.8 }}>{delivery.address}</div>
                                                     {delivery.deliveryPerson && (
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Repartidor: {delivery.deliveryPerson}</div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Repartidor: {delivery.deliveryPerson}</div>
                                                     )}
                                                 </td>
                                                 <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
@@ -726,10 +747,24 @@ export default function DeliveriesPage() {
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <Badge variant={
-                                                        delivery.status === 'Entregado' ? 'success' :
-                                                            (delivery.status === 'En Tránsito' ? 'info' : 'warning')
-                                                    }>{delivery.status}</Badge>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                                        <Badge variant={getStatusVariant(delivery.ticketStatus)} style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
+                                                            S: {delivery.ticketStatus || 'N/A'}
+                                                        </Badge>
+                                                        {delivery.deliveryStatusOriginal && (
+                                                            <Badge
+                                                                variant={
+                                                                    delivery.deliveryStatusOriginal === 'Entregado' ? 'success' :
+                                                                        delivery.deliveryStatusOriginal === 'En Transito' ? 'info' :
+                                                                            delivery.deliveryStatusOriginal === 'Para Coordinar' ? 'warning' :
+                                                                                'default'
+                                                                }
+                                                                style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                                                            >
+                                                                E: {delivery.deliveryStatusOriginal}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
