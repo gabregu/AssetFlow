@@ -10,7 +10,7 @@ import { useStore } from '../../../lib/store';
 import { Plus, Search, Truck, MapPin, Calendar, CheckCircle, Clock, Loader2, Trash2, ChevronDown, ChevronUp, Sun, Moon, Archive, QrCode } from 'lucide-react';
 
 export default function DeliveriesPage() {
-    const { deliveries, addDelivery, deleteDelivery, tickets, users } = useStore();
+    const { deliveries, addDelivery, deleteDelivery, deleteDeliveries, tickets, deleteTickets, users, currentUser } = useStore();
     const router = useRouter();
     const mapRef = useRef(null);
     const googleMap = useRef(null);
@@ -25,6 +25,43 @@ export default function DeliveriesPage() {
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
     const [showMap, setShowMap] = useState(false);
     const [mapTheme, setMapTheme] = useState('dark');
+    const [selectedIds, setSelectedIds] = useState([]);
+
+    const handleBulkDelete = async () => {
+        if (!confirm(`¿Estás seguro de eliminar ${selectedIds.length} envíos seleccionados? Esta acción no se puede deshacer.`)) return;
+
+        const manualIds = [];
+        const ticketIds = [];
+
+        selectedIds.forEach(id => {
+            const item = combinedDeliveries.find(d => d.id === id);
+            if (item) {
+                if (item.source === 'Ticket') ticketIds.push(id);
+                else manualIds.push(id);
+            }
+        });
+
+        if (manualIds.length > 0) await deleteDeliveries(manualIds);
+        if (ticketIds.length > 0) await deleteTickets(ticketIds);
+
+        setSelectedIds([]);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.length === sortedAndFilteredDeliveries.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(sortedAndFilteredDeliveries.map(d => d.id));
+        }
+    };
+
+    const toggleSelect = (id) => {
+        if (selectedIds.includes(id)) {
+            setSelectedIds(selectedIds.filter(i => i !== id));
+        } else {
+            setSelectedIds([...selectedIds, id]);
+        }
+    };
 
     // Estilos de Mapa
     const nightStyles = [
@@ -357,6 +394,15 @@ export default function DeliveriesPage() {
                     <p style={{ color: 'var(--text-secondary)' }}>Logística avanzada con posicionamiento geográfico real.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
+                    {currentUser?.role === 'Administrador' && selectedIds.length > 0 && (
+                        <Button
+                            icon={Trash2}
+                            onClick={handleBulkDelete}
+                            style={{ backgroundColor: '#ef4444', color: 'white', border: 'none' }}
+                        >
+                            Eliminar ({selectedIds.length})
+                        </Button>
+                    )}
                     {isGeocoding && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', fontSize: '0.875rem', fontWeight: 500 }}>
                             <Loader2 className="animate-spin" size={18} />
@@ -554,6 +600,16 @@ export default function DeliveriesPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                {currentUser?.role === 'Administrador' && (
+                                    <th style={{ padding: '1rem', width: '40px' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={sortedAndFilteredDeliveries.length > 0 && selectedIds.length === sortedAndFilteredDeliveries.length}
+                                            onChange={toggleSelectAll}
+                                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                        />
+                                    </th>
+                                )}
                                 <th
                                     onClick={() => handleSort('id')}
                                     style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}
@@ -616,7 +672,7 @@ export default function DeliveriesPage() {
                                         <React.Fragment key={delivery.id}>
                                             {showDateHeader && (
                                                 <tr style={{ backgroundColor: 'var(--background)' }}>
-                                                    <td colSpan="6" style={{ padding: '1.5rem 1rem 0.5rem 1rem' }}>
+                                                    <td colSpan={currentUser?.role === 'Administrador' ? "7" : "6"} style={{ padding: '1.5rem 1rem 0.5rem 1rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                             <div style={{ backgroundColor: dateColor, width: '8px', height: '8px', borderRadius: '50%' }}></div>
                                                             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

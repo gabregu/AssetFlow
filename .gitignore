@@ -16,3 +16,5 @@ yarn-error.log*
 .agent
 data/*.json
 !data/example.json
+
+certificates
