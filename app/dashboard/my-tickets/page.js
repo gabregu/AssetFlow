@@ -607,7 +607,7 @@ export default function MyTicketsPage() {
                                         </td>
                                         <td style={{ padding: '1rem' }}>{ticket.requester}</td>
                                         <td style={{ padding: '1rem' }}>
-                                            <div style={{ fontWeight: 500 }}>{ticket.logistics?.date ? new Date(ticket.logistics.date).toLocaleDateString() : '-'}</div>
+                                            <div style={{ fontWeight: 500 }}>{ticket.logistics?.date ? new Date(ticket.logistics.date + 'T00:00:00').toLocaleDateString() : '-'}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                                                 {ticket.logistics?.timeSlot ? `Turno: ${ticket.logistics.timeSlot}` : ''}
                                             </div>
@@ -617,11 +617,11 @@ export default function MyTicketsPage() {
                                                 fontSize: '0.85rem',
                                                 fontWeight: 600,
                                                 color: (() => {
-                                                    const days = Math.floor((new Date() - new Date(ticket.date)) / (1000 * 60 * 60 * 24));
+                                                    const days = Math.floor((new Date() - new Date(ticket.date + 'T00:00:00')) / (1000 * 60 * 60 * 24));
                                                     return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
                                                 })()
                                             }}>
-                                                {Math.floor((new Date() - new Date(ticket.date)) / (1000 * 60 * 60 * 24))}d
+                                                {Math.floor((new Date() - new Date(ticket.date + 'T00:00:00')) / (1000 * 60 * 60 * 24))}d
                                             </span>
                                         </td>
                                         <td style={{ padding: '1rem' }}>

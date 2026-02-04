@@ -48,7 +48,7 @@ export default function MyDeliveriesPage() {
         if (!currentUser) return [];
         let filtered = tickets.filter(t =>
             (t.logistics?.deliveryPerson === currentUser.name || t.logistics?.deliveryPerson === currentUser.username) &&
-            t.logistics?.enabled
+            (t.logistics?.enabled || t.logistics?.userContacted || t.deliveryStatus === 'En Transito')
         );
 
         // Apply optimized order if exists

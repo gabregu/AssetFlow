@@ -1751,7 +1751,8 @@ export default function TicketDetailPage() {
                                                 logistics: {
                                                     ...(editedData.logistics || {}),
                                                     userContacted: isChecked,
-                                                    coordinatedBy: isChecked ? (currentUser?.name || 'Sistema') : ''
+                                                    coordinatedBy: isChecked ? (currentUser?.name || 'Sistema') : '',
+                                                    enabled: isChecked
                                                 },
                                                 deliveryStatus: isChecked ? 'En Transito' : 'Para Coordinar'
                                             };

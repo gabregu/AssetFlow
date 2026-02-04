@@ -44,7 +44,7 @@ export default function HistoryPage() {
             let matchesMonth = true;
             if (selectedMonth !== 'All') {
                 const rawDate = t.deliveryCompletedDate || t.closedDate || t.date;
-                const d = new Date(rawDate);
+                const d = new Date((rawDate && !rawDate.includes('T') ? rawDate + 'T00:00:00' : rawDate));
                 const ticketMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
                 matchesMonth = ticketMonth === selectedMonth;
             }
@@ -209,8 +209,7 @@ export default function HistoryPage() {
                                     // Fallback
                                     const safeDate = isNaN(dateObj.getTime()) ? new Date() : dateObj;
 
-                                    // Clave por día para mostrar: Domingo, 19 de Enero 2026
-                                    const key = safeDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                                    const key = new Date(safeDate.toISOString().split('T')[0] + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                                     // Capitalizar
                                     const finalKey = key.charAt(0).toUpperCase() + key.slice(1);
 
