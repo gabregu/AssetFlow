@@ -24,7 +24,6 @@ export default function DeliveriesPage() {
     const [isGeocoding, setIsGeocoding] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
     const [showMap, setShowMap] = useState(false);
-    const [mapTheme, setMapTheme] = useState('dark');
     const [selectedIds, setSelectedIds] = useState([]);
 
     const handleBulkDelete = async () => {
@@ -63,29 +62,18 @@ export default function DeliveriesPage() {
         }
     };
 
-    // Estilos de Mapa
-    const nightStyles = [
-        { "featureType": "all", "elementType": "labels.text.fill", "stylers": [{ "color": "#76a5af" }] },
-        { "featureType": "all", "elementType": "labels.text.stroke", "stylers": [{ "color": "#000000" }, { "lightness": 13 }] },
-        { "featureType": "administrative", "elementType": "geometry.fill", "stylers": [{ "color": "#000000" }, { "lightness": 20 }] },
-        { "featureType": "administrative", "elementType": "geometry.stroke", "stylers": [{ "color": "#000000" }, { "lightness": 17 }, { "weight": 1.2 }] },
-        { "featureType": "landscape", "elementType": "geometry", "stylers": [{ "color": "#08304b" }] },
+    // Estilos de Mapa Minimalistas
+    const minimalistStyles = [
+        { "featureType": "all", "elementType": "labels.text.fill", "stylers": [{ "color": "#7c919e" }] },
+        { "featureType": "all", "elementType": "labels.text.stroke", "stylers": [{ "visibility": "off" }] },
         { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
-        { "featureType": "road.highway", "elementType": "geometry.fill", "stylers": [{ "color": "#000000" }, { "lightness": 17 }] },
-        { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#000000" }, { "lightness": 29 }, { "weight": 0.2 }] },
-        { "featureType": "road.arterial", "elementType": "geometry", "stylers": [{ "color": "#000000" }, { "lightness": 18 }] },
-        { "featureType": "road.local", "elementType": "geometry", "stylers": [{ "color": "#134262" }] },
-        { "featureType": "transit", "elementType": "geometry", "stylers": [{ "color": "#000000" }, { "lightness": 19 }] },
-        { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#001e32" }] }
-    ];
-
-    const dayStyles = [
-        { "featureType": "water", "stylers": [{ "color": "#e9e9e9" }, { "visibility": "on" }] },
-        { "featureType": "landscape", "stylers": [{ "color": "#f5f5f5" }] },
-        { "featureType": "road", "stylers": [{ "color": "#ffffff" }] },
-        { "featureType": "poi", "stylers": [{ "visibility": "off" }] },
-        { "elementType": "labels.text.fill", "stylers": [{ "color": "#616161" }] },
-        { "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] }
+        { "featureType": "transit", "stylers": [{ "visibility": "off" }] },
+        { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#e2e8f0" }, { "lightness": 50 }] },
+        { "featureType": "road", "elementType": "labels", "stylers": [{ "visibility": "off" }] },
+        { "featureType": "landscape", "stylers": [{ "color": "#f8fafc" }] },
+        { "featureType": "water", "stylers": [{ "color": "#cbd5e1" }] },
+        { "featureType": "administrative.locality", "elementType": "labels", "stylers": [{ "visibility": "on" }] },
+        { "featureType": "administrative.neighborhood", "elementType": "labels", "stylers": [{ "visibility": "on" }] }
     ];
 
     // Cargar Google Maps API Principal
@@ -315,7 +303,7 @@ export default function DeliveriesPage() {
         const mapOptions = {
             center: { lat: -34.6037, lng: -58.3816 },
             zoom: 12,
-            styles: mapTheme === 'dark' ? nightStyles : dayStyles,
+            styles: minimalistStyles,
             disableDefaultUI: false,
             zoomControl: true,
             mapTypeControl: false,
@@ -325,7 +313,11 @@ export default function DeliveriesPage() {
         const bounds = new window.google.maps.LatLngBounds();
 
         geocodedPoints.forEach(d => {
-            const color = d.status === 'Entregado' ? '#22c55e' : (d.status === 'En Tránsito' ? '#2563eb' : '#ca8a04');
+            let color = '#3b82f6'; // Default Blue (Pendiente)
+            if (d.deliveryStatusOriginal === 'Entregado') color = '#22c55e';
+            else if (d.deliveryStatusOriginal === 'En Transito') color = '#06b6d4';
+            else if (d.deliveryStatusOriginal === 'Para Coordinar') color = '#f97316';
+
             const initials = getInitials(d.deliveryPerson || d.courier);
 
             const marker = new window.google.maps.Marker({
@@ -383,7 +375,7 @@ export default function DeliveriesPage() {
             googleMap.current.fitBounds(bounds, { padding: 50 });
         }
 
-    }, [googleLoaded, geocodedPoints, mapTheme]);
+    }, [googleLoaded, geocodedPoints]);
 
     const handleCreate = (e) => {
         e.preventDefault();
@@ -534,16 +526,6 @@ export default function DeliveriesPage() {
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setMapTheme(mapTheme === 'dark' ? 'light' : 'dark')}
-                            style={{ padding: '0.5rem', color: mapTheme === 'dark' ? '#fbbf24' : '#64748b' }}
-                            title={mapTheme === 'dark' ? 'Modo Día' : 'Modo Noche'}
-                        >
-                            {mapTheme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                        </Button>
-                        <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 0.5rem' }}></div>
                         <Badge variant="outline" style={{ fontSize: '0.7rem' }}>Ubicaciones Reales: {geocodedPoints.length}</Badge>
                         <Button
                             variant="ghost"
@@ -570,13 +552,17 @@ export default function DeliveriesPage() {
                     </div>
 
                     <div style={{ padding: '1rem 1.5rem', background: 'var(--background)', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', gap: '2rem' }}>
+                        <div style={{ display: 'flex', gap: '1.5rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: '12px', height: '12px', background: '#eab308', borderRadius: '50%', boxShadow: '0 0 0 4px rgba(234, 179, 8, 0.1)' }}></div>
+                                <div style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '50%', boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.1)' }}></div>
                                 <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>Pendiente</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: '12px', height: '12px', background: '#2563eb', borderRadius: '50%', boxShadow: '0 0 0 4px rgba(37, 99, 235, 0.1)' }}></div>
+                                <div style={{ width: '12px', height: '12px', background: '#f97316', borderRadius: '50%', boxShadow: '0 0 0 4px rgba(249, 115, 22, 0.1)' }}></div>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>Para Coordinar</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ width: '12px', height: '12px', background: '#06b6d4', borderRadius: '50%', boxShadow: '0 0 0 4px rgba(6, 182, 212, 0.1)' }}></div>
                                 <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>En Tránsito</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
