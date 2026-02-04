@@ -5,13 +5,14 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useStore } from '../../../lib/store';
-import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2 } from 'lucide-react';
+import { ServiceMap } from '../../components/ui/ServiceMap';
+import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function TicketsPage() {
     const router = useRouter();
-    const { tickets, addTicket, deleteTickets, currentUser } = useStore();
+    const { tickets, addTicket, deleteTickets, currentUser, users } = useStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
     const [filter, setFilter] = useState('');
@@ -211,6 +212,28 @@ export default function TicketsPage() {
 
             </div>
 
+            {/* Live Map Integration */}
+            <div style={{ marginBottom: '2.5rem' }}>
+                <Card>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Map size={18} /> Mapa de Operaciones
+                        </h3>
+                        {users && (
+                            <Badge variant="default" style={{ background: 'var(--primary-color)', color: 'white' }}>
+                                {users.filter(u => u.tracking_enabled && u.location_latitude).length} Conductor(es) Activo(s)
+                            </Badge>
+                        )}
+                    </div>
+                    <div style={{ borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                        <ServiceMap
+                            tickets={tickets.filter(t => t.status === 'En Progreso' || t.status === 'Abierto' || t.status === 'Pendiente')}
+                            drivers={users ? users.filter(u => u.tracking_enabled && u.location_latitude) : []}
+                        />
+                    </div>
+                </Card>
+            </div>
+
             <Card>
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                     <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
@@ -347,7 +370,24 @@ export default function TicketsPage() {
                                     </td>
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{ticket.date}</td>
                                     <td style={{ padding: '1rem' }}>
-                                        <Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                            <Badge variant={getStatusVariant(ticket.status)} style={{ fontSize: '0.75rem', padding: '2px 6px' }}>
+                                                S: {ticket.status}
+                                            </Badge>
+                                            {ticket.deliveryStatus && (
+                                                <Badge
+                                                    variant={
+                                                        ticket.deliveryStatus === 'Entregado' ? 'success' :
+                                                            ticket.deliveryStatus === 'En Transito' ? 'info' :
+                                                                ticket.deliveryStatus === 'Para Coordinar' ? 'warning' :
+                                                                    'default'
+                                                    }
+                                                    style={{ fontSize: '0.75rem', padding: '2px 6px' }}
+                                                >
+                                                    E: {ticket.deliveryStatus}
+                                                </Badge>
+                                            )}
+                                        </div>
                                     </td>
                                     <td style={{ padding: '1rem' }}>
                                         <Link href={`/dashboard/tickets/${ticket.id}`}>

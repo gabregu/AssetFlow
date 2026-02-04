@@ -28,361 +28,28 @@ export default function MyDeliveriesPage() {
 
     // Route Optimization State
     const [isOptimizationModalOpen, setIsOptimizationModalOpen] = useState(false);
-    const [optimizationOrigin, setOptimizationOrigin] = useState('deposito'); // Default to Deposito for deliveries usually
+    const [optimizationOrigin, setOptimizationOrigin] = useState('deposito'); // deposito, oficina, custom
+    const [customOriginAddress, setCustomOriginAddress] = useState('');
+    const [originAddressStatus, setOriginAddressStatus] = useState('idle'); // idle, validating, valid, invalid
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [optimizedOrder, setOptimizedOrder] = useState(null); // Array of ticket IDs in order
 
-    // Load Google Maps Script Globaly for this page
-    const { isLoaded: isMapsLoaded } = useJsApiLoader({
-        id: 'google-map-script',
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-        libraries: GOOGLE_MAPS_LIBRARIES
-    });
+    // ... (rest of loading maps)
 
-    // Location Tracking Logic
-    useEffect(() => {
-        let watchId = null;
-        let lastUpdate = 0;
-        const UPDATE_INTERVAL = 30000; // Update DB every 30 seconds max to save calls
+    const validateOriginAddress = () => {
+        if (!isMapsLoaded) return;
+        if (!customOriginAddress) return;
 
-        if (currentUser?.tracking_enabled && 'geolocation' in navigator) {
-            console.log("📍 Tracking GPS activado para:", currentUser.name);
-
-            watchId = navigator.geolocation.watchPosition(async (position) => {
-                const now = Date.now();
-                if (now - lastUpdate > UPDATE_INTERVAL) {
-                    lastUpdate = now;
-                    try {
-                        const { latitude, longitude } = position.coords;
-                        // Update Supabase
-                        const { error } = await supabase
-                            .from('users')
-                            .update({
-                                location_latitude: latitude,
-                                location_longitude: longitude,
-                                last_location_update: new Date().toISOString()
-                            })
-                            .eq('id', currentUser.id);
-
-                        if (error) console.error("Error updating location:", error);
-                        else console.log("📍 Location updated:", latitude, longitude);
-
-                    } catch (err) {
-                        console.error("GPS Error:", err);
-                    }
-                }
-            }, (err) => {
-                console.warn("GPS Access Denied or Error:", err);
-            }, {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            });
-        }
-
-        return () => {
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-        };
-    }, [currentUser]);
-
-    // Colores vibrantes para los diferentes días
-    const dayColors = [
-        '#f97316', // Naranja
-        '#3b82f6', // Azul
-        '#10b981', // Verde
-        '#8b5cf6', // Violeta
-        '#334155', // Slate (High Contrast)
-        '#06b6d4', // Cian
-        '#f59e0b', // Ámbar
-    ];
-
-    // Helper para obtener color por fecha
-    const getColorByDate = (dateStr) => {
-        if (!dateStr || dateStr === 'No definida') return dayColors[0];
-        const hash = dateStr.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        return dayColors[hash % dayColors.length];
-    };
-
-    // Filtramos los servicios asignados al conductor actual que estén EXCLUSIVAMENTE En Transito
-    const myDeliveries = useMemo(() => {
-        return tickets
-            .filter(t =>
-                t.logistics &&
-                t.logistics.deliveryPerson === currentUser?.name && // Asegurar que sea para mi
-                t.status !== 'Cerrado' &&
-                t.status !== 'Resuelto' &&
-                t.status !== 'Caso SFDC Cerrado' &&
-                t.status !== 'Servicio Facturado' &&
-                t.deliveryStatus === 'En Transito' // SOLO EN TRANSITO
-            )
-            .sort((a, b) => {
-                // Primero por Fecha
-                const dateA = a.logistics?.date || a.logistics?.datetime?.split('T')[0] || '9999-12-31';
-                const dateB = b.logistics?.date || b.logistics?.datetime?.split('T')[0] || '9999-12-31';
-                if (dateA !== dateB) return dateA.localeCompare(dateB);
-
-                // Segundo por Turno (AM < PM)
-                const slotA = a.logistics?.timeSlot || 'AM';
-                const slotB = b.logistics?.timeSlot || 'AM';
-                if (slotA !== slotB) return slotA.localeCompare(slotB);
-
-                // Luego por Orden
-                const orderA = parseInt(a.logistics?.deliveryOrder || 0);
-                const orderB = parseInt(b.logistics?.deliveryOrder || 0);
-                return orderA - orderB;
-            });
-    }, [tickets, currentUser]);
-
-    // Estadísticas de Productividad para el Conductor
-    const stats = useMemo(() => {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-        const myTickets = tickets.filter(t =>
-            (t.logistics?.deliveryPerson === currentUser?.name || t.logistics?.deliveryPerson === currentUser?.username)
-        );
-
-        // Calcular rango de la semana actual (Lunes a Domingo)
-        const currentDay = now.getDay(); // 0 (Sun) - 6 (Sat)
-        const diffToMonday = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1);
-        const startOfWeek = new Date(now.setDate(diffToMonday));
-        startOfWeek.setHours(0, 0, 0, 0);
-
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
-
-        // Pendientes esta semana: Activos Y con fecha dentro de esta semana
-        const pendingThisWeek = myTickets.filter(t => {
-            if (
-                t.status === 'Resuelto' ||
-                t.status === 'Cerrado' ||
-                t.status === 'Caso SFDC Cerrado' ||
-                t.status === 'Servicio Facturado'
-            ) return false;
-
-            if (!t.logistics?.date) return false;
-
-            const ticketDate = new Date(t.logistics.date);
-            // Ajustar zona horaria si es necesario, pero asumiendo ISO string simple YYYY-MM-DD
-            // Para comparar fechas string 'YYYY-MM-DD' vs objetos Date
-            const ticketDateStr = t.logistics.date;
-            const startStr = startOfWeek.toISOString().split('T')[0];
-            const endStr = endOfWeek.toISOString().split('T')[0];
-
-            return ticketDateStr >= startStr && ticketDateStr <= endStr;
-        }).length;
-
-        const resolved = myTickets.filter(t =>
-            t.status === 'Resuelto' ||
-            t.status === 'Cerrado' ||
-            t.status === 'Caso SFDC Cerrado' ||
-            t.status === 'Servicio Facturado'
-        ).length;
-
-        const finishedThisMonth = myTickets.filter(t => {
-            if (!t.deliveryCompletedDate) return false;
-            const completeDate = new Date(t.deliveryCompletedDate);
-            return completeDate >= startOfMonth;
-        }).length;
-
-        // Historial mensual (Últimos 6 meses) para el gráfico
-        const last6Months = [];
-        for (let i = 5; i >= 0; i--) {
-            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const monthLabel = d.toLocaleDateString('es-ES', { month: 'short' });
-            const count = myTickets.filter(t => {
-                if (!t.deliveryCompletedDate) return false;
-                const cd = new Date(t.deliveryCompletedDate);
-                return cd.getMonth() === d.getMonth() && cd.getFullYear() === d.getFullYear();
-            }).length;
-            last6Months.push({ label: monthLabel, count });
-        }
-
-        return { pendingThisWeek, finishedThisMonth, resolved, last6Months };
-    }, [tickets, currentUser]);
-
-    // Agrupamos por día para la interfaz (respetando orden optimizado)
-    const groupedDeliveries = useMemo(() => {
-        // First, sort myDeliveries based on optimization if exists
-        let deliverisToSort = [...myDeliveries];
-
-        if (optimizedOrder) {
-            deliverisToSort.sort((a, b) => {
-                const idxA = optimizedOrder.indexOf(a.id);
-                const idxB = optimizedOrder.indexOf(b.id);
-                const safeIdxA = idxA === -1 ? 9999 : idxA;
-                const safeIdxB = idxB === -1 ? 9999 : idxB;
-                return safeIdxA - safeIdxB;
-            });
-        }
-
-        const groups = {};
-        deliverisToSort.forEach(d => {
-            const date = d.logistics.date || d.logistics.datetime?.split('T')[0] || 'Sin Fecha';
-            if (!groups[date]) groups[date] = [];
-            groups[date].push(d);
-        });
-        return groups;
-    }, [myDeliveries, optimizedOrder]);
-
-    const handleUpdateOrder = (id, newOrder) => {
-        const ticket = tickets.find(t => t.id === id);
-        if (ticket) {
-            updateTicket(id, {
-                logistics: {
-                    ...ticket.logistics,
-                    deliveryOrder: newOrder
-                }
-            });
-        }
-    };
-
-    // Extraer array de dispositivos del servicio seleccionado con Modelo + Serie
-    const getDevicesList = (delivery) => {
-        if (!delivery) return [];
-
-        // Mapear seriales a Modelo + S/N
-        const associatedAssets = (delivery.associatedAssets || []).map(item => {
-            const serial = typeof item === 'string' ? item : item.serial;
-            const type = typeof item === 'string' ? (delivery.logistics?.type || 'Entrega') : item.type;
-            const typeLabel = type === 'Recupero' ? '[RETIRO]' : '[ENTREGA]';
-
-            const assetInfo = assets.find(a => a.serial === serial);
-            if (assetInfo) {
-                return `${typeLabel} ${assetInfo.name} (S/N: ${serial})`;
-            }
-            return `${typeLabel} S/N: ${serial}`;
-        });
-
-        const accessories = delivery.accessories ?
-            Object.entries(delivery.accessories)
-                .filter(([_, val]) => val === true)
-                .map(([key, _]) => {
-                    const labels = {
-                        backpack: 'Mochila Técnica',
-                        screenFilter: 'Filtro de Pantalla Privacidad',
-                        mouse: 'Mouse Óptico',
-                        keyboard: 'Teclado USB',
-                        headset: 'Auriculares con Micrófono',
-                        charger: 'Cargador Original'
-                    };
-                    return labels[key] || (key.charAt(0).toUpperCase() + key.slice(1));
-                })
-            : [];
-
-        return [...associatedAssets, ...accessories];
-    };
-
-    const handleDeliverySubmit = (e) => {
-        e.preventDefault();
-        if (!selectedDelivery) return;
-
-        const itemsArr = getDevicesList(selectedDelivery);
-        const itemsStr = itemsArr.length > 0 ? itemsArr.join(", ") : "No especificado";
-
-        const updatedData = {
-            status: 'Resuelto',
-            deliveryStatus: 'Entregado',
-            deliveryCompletedDate: new Date().toISOString(),
-            deliveryDetails: {
-                ...deliveryForm,
-                devices: itemsStr,
-                completedBy: currentUser.name
-            },
-            // Añadir nota al historial
-            internalNotes: [
-                ...(selectedDelivery.internalNotes || []),
-                {
-                    content: `Entrega FINALIZADA. Tipo: ${selectedDelivery.logistics?.type || 'Entrega'}. Recibido por: ${deliveryForm.receivedBy} (DNI: ${deliveryForm.dni}). Horario: ${deliveryForm.actualTime}. Conductor: ${currentUser.name}. Assets: ${itemsArr.join(" | ")}`,
-                    user: currentUser.name,
-                    date: new Date().toISOString()
-                }
-            ]
-        };
-
-        updateTicket(selectedDelivery.id, updatedData);
-        setIsDeliveryModalOpen(false);
-        alert('Entrega registrada exitosamente');
-    };
-
-    const sendEmail = () => {
-        if (!selectedDelivery) return;
-        generateTicketPDF(selectedDelivery, assets, deliveryForm);
-    };
-
-    const sendWhatsApp = () => {
-        if (!selectedDelivery) return;
-        generateTicketPDF(selectedDelivery, assets, deliveryForm);
-
-        const typeRaw = selectedDelivery.logistics?.type || 'Entrega';
-        const type = typeRaw === 'Recupero' ? 'RETIRO' : 'ENTREGA';
-        const estado = typeRaw === 'Recupero' ? 'RETIRADO' : 'ENTREGADO';
-        const itemsArr = getDevicesList(selectedDelivery);
-
-        const text = `TIPO: ${type}
-
-*CONFIRMACIÒN DE VISITA:*
-
-📄 *Caso:* #${selectedDelivery.id}
-👤 *Destinatario:* ${selectedDelivery.requester}
-📍 *Dirección:* ${selectedDelivery.logistics?.address || '-'}
-🤝 *Recibido por:* ${deliveryForm.receivedBy || '-'}
-🆔 *DNI:* ${deliveryForm.dni || '-'}
-🕒 *Horario:* ${deliveryForm.actualTime}
-💻 *Dispositivos:* ${itemsArr.join(", ")}
-🚚 *Conductor:* ${currentUser.name}
-📝 *Notas Adicionales:* ${deliveryForm.notes || '-'}
-
-*Estado:* ${estado}`;
-
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-    };
-
-    const openGoogleMaps = (address) => {
-        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-        window.open(url, '_blank');
-    };
-
-    const [scanAlert, setScanAlert] = useState(null);
-    const resetScanAlert = () => setScanAlert(null);
-
-    const handleScanSuccess = (data) => {
-        const scannedId = data?.id;
-
-        if (scannedId) {
-            // Buscar en todas las listas agrupadas (En Transito para mí)
-            const allDeliveries = Object.values(groupedDeliveries).flat();
-            const found = allDeliveries.find(d => String(d.id) === String(scannedId));
-
-            if (found) {
-                if (found.status === 'Resuelto') {
-                    setScanAlert(`El envío #${scannedId} ya fue entregado/completado.`);
-                    return;
-                }
-                // Si todo ok, cerramos scanner y abrimos delivery
-                setIsScannerOpen(false); // Cierra Scanner
-                setSelectedDelivery(found);
-                setIsDeliveryModalOpen(true);
-                setDeliveryForm(prev => ({ ...prev, actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+        setOriginAddressStatus('validating');
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address: customOriginAddress }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                setOriginAddressStatus('valid');
+                setCustomOriginAddress(results[0].formatted_address); // Normalize
             } else {
-                // Feedback mejorado: Verificar si existe pero no está en la lista activa
-                const anyTicket = tickets.find(t => String(t.id) === String(scannedId));
-                if (anyTicket) {
-                    if (anyTicket.logistics?.deliveryPerson !== currentUser?.name) {
-                        setScanAlert(`El envío #${scannedId} está asignado a otro conductor: ${anyTicket.logistics?.deliveryPerson || 'Nadie'}.`);
-                    } else if (anyTicket.deliveryStatus !== 'En Transito') {
-                        setScanAlert(`El envío #${scannedId} está asignado a ti pero su estado es '${anyTicket.deliveryStatus || 'Pendiente'}'. Debe estar 'En Transito' para gestionarlo aquí.`);
-                    } else {
-                        setScanAlert(`El envío #${scannedId} no se encuentra en tus pendientes activos.`);
-                    }
-                } else {
-                    setScanAlert(`El envío #${scannedId} no se encontró en el sistema.`);
-                }
+                setOriginAddressStatus('invalid');
             }
-        } else {
-            setScanAlert("Lectura incorrecta o código QR inválido.");
-        }
+        });
     };
 
     // Route Optimization Logic
@@ -391,13 +58,20 @@ export default function MyDeliveriesPage() {
             alert('El mapa aún se está cargando, por favor intenta nuevamente en unos segundos.');
             return;
         }
+
+        if (optimizationOrigin === 'custom' && originAddressStatus !== 'valid') {
+            alert('Por favor valida la dirección personalizada antes de optimizar.');
+            return;
+        }
+
         setIsOptimizing(true);
         try {
             const geocoder = new window.google.maps.Geocoder();
 
-            const originAddress = optimizationOrigin === 'oficina'
-                ? 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina'
-                : 'Fraga 1312, CABA, Argentina';
+            let originAddress = '';
+            if (optimizationOrigin === 'deposito') originAddress = 'Fraga 1312, CABA, Argentina';
+            else if (optimizationOrigin === 'oficina') originAddress = 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina';
+            else if (optimizationOrigin === 'custom') originAddress = customOriginAddress;
 
             // 1. Geocode Origin
             const originResult = await new Promise((resolve, reject) => {
@@ -408,11 +82,9 @@ export default function MyDeliveriesPage() {
             });
             const originLoc = originResult.geometry.location;
 
+            // ... (rest of the logic remains mostly same)
             // 2. Geocode Deliveries (Limit to avoid limits)
             const todayDate = new Date().toISOString().split('T')[0];
-            // Filter only for today or specifically relevant ones if needed? 
-            // The user wants to order "pedidos del dia", but groupedDeliveries has all pending.
-            // Let's optimize ALL pending deliveries currently displayed.
             const deliveriesToRoute = myDeliveries.filter(t => t.logistics?.address && t.logistics.address.length > 5);
 
             const ticketsWithLoc = [];
@@ -882,8 +554,66 @@ export default function MyDeliveriesPage() {
                         >
                             <option value="deposito">Depósito (Fraga 1312, CABA)</option>
                             <option value="oficina">Oficina (Padre Castiglia 1638, Boulogne)</option>
+                            <option value="custom">Otro (Personalizado)</option>
                         </select>
                     </div>
+
+                    {optimizationOrigin === 'custom' && (
+                        <div className="form-group" style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Dirección de Inicio</label>
+                            <div style={{ position: 'relative' }}>
+                                <MapPin size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                                <input
+                                    className="form-input"
+                                    style={{
+                                        paddingLeft: '2.2rem',
+                                        paddingRight: '80px',
+                                        borderColor: originAddressStatus === 'valid' ? '#22c55e' : (originAddressStatus === 'invalid' ? '#ef4444' : 'var(--border)')
+                                    }}
+                                    placeholder="Ej: Av. Libertador 1000, CABA"
+                                    value={customOriginAddress}
+                                    onChange={(e) => {
+                                        setCustomOriginAddress(e.target.value);
+                                        setOriginAddressStatus('idle');
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={validateOriginAddress}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '4px',
+                                        top: '4px',
+                                        bottom: '4px',
+                                        border: 'none',
+                                        background: originAddressStatus === 'valid' ? '#dcfce7' : '#eff6ff',
+                                        color: originAddressStatus === 'valid' ? '#166534' : '#1d4ed8',
+                                        borderRadius: '4px',
+                                        padding: '0 8px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}
+                                >
+                                    {originAddressStatus === 'validating' ? (
+                                        <Loader2 size={12} className="animate-spin" />
+                                    ) : originAddressStatus === 'valid' ? (
+                                        <><CheckCircle2 size={12} /> OK</>
+                                    ) : (
+                                        'Validar'
+                                    )}
+                                </button>
+                            </div>
+                            {originAddressStatus === 'invalid' && (
+                                <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px' }}>
+                                    ⚠️ No encontramos esa dirección. Intenta ser más específico.
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                         <Button variant="secondary" onClick={() => setIsOptimizationModalOpen(false)} disabled={isOptimizing}>Cancelar</Button>

@@ -226,6 +226,34 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                     </InfoWindow>
                 )}
             </GoogleMap>
+
+            <div style={{
+                display: 'flex',
+                gap: '1.5rem',
+                justifyContent: 'center',
+                padding: '12px',
+                marginTop: '-1px', // Collapse border
+                backgroundColor: '#f8fafc',
+                borderTop: '1px solid #e2e8f0',
+                borderBottomLeftRadius: '8px',
+                borderBottomRightRadius: '8px',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                color: '#64748b'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#3b82f6' }}></div>
+                    <span>Pendiente</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#f97316' }}></div>
+                    <span>Para Coordinar</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#06b6d4' }}></div>
+                    <span>En Tránsito</span>
+                </div>
+            </div>
         </div>
     );
 }

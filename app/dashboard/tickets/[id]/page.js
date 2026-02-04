@@ -38,6 +38,9 @@ import {
 } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import { generateTicketPDF, generateLabelPDF } from '../../../../lib/pdf-generator';
+import { useJsApiLoader } from '@react-google-maps/api';
+
+const libraries = ['geometry'];
 
 export default function TicketDetailPage() {
     const params = useParams();
@@ -53,6 +56,38 @@ export default function TicketDetailPage() {
     const [editContact, setEditContact] = useState(false);
     const [editedData, setEditedData] = useState({});
     const [newNote, setNewNote] = useState('');
+    const [addressStatus, setAddressStatus] = useState('idle'); // idle, validating, valid, invalid
+
+    const { isLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+        libraries
+    });
+
+    const validateAddress = () => {
+        if (!isLoaded) return;
+        const address = editedData.logistics?.address;
+        if (!address) return;
+
+        setAddressStatus('validating');
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address: address }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                setAddressStatus('valid');
+                // Optional: We could autofill lat/lng here if we wanted to store it
+                console.log('Address validated:', results[0].formatted_address);
+                if (confirm(`Dirección encontrada en Google Maps:\n\n"${results[0].formatted_address}"\n\n¿Deseas actualizar con este formato oficial?`)) {
+                    setEditedData(prev => ({
+                        ...prev,
+                        logistics: { ...prev.logistics, address: results[0].formatted_address }
+                    }));
+                }
+            } else {
+                setAddressStatus('invalid');
+                console.error('Geocoding failed:', status);
+            }
+        });
+    };
 
     // State for Asset Search
     const [serialQuery, setSerialQuery] = useState('');
@@ -304,6 +339,26 @@ export default function TicketDetailPage() {
         }
     };
 
+    // --- AUTOMATION HELPERS ---
+    const automateDeliveryStatus = (updatedData) => {
+        // Si hay logística activa (logistics object exists)
+        // Y el estado del envío es Pendiente o no existe
+        // Y ahora tenemos assets vinculados...
+        // -> Pasar a 'Para Coordinar'
+        const currentDeliveryStatus = updatedData.deliveryStatus;
+
+        if (
+            (!currentDeliveryStatus || currentDeliveryStatus === 'Pendiente') &&
+            (updatedData.associatedAssets && updatedData.associatedAssets.length > 0)
+        ) {
+            return {
+                ...updatedData,
+                deliveryStatus: 'Para Coordinar'
+            };
+        }
+        return updatedData;
+    };
+
     const handleReplaceAsset = (newAsset) => {
         if (!assetToReplace) return;
 
@@ -314,10 +369,19 @@ export default function TicketDetailPage() {
         const currentAssets = editedData.associatedAssets || [];
         const serialToLink = newAsset.serial;
 
-        setEditedData(prev => ({
-            ...prev,
-            associatedAssets: [...prev.associatedAssets.filter(a => (typeof a === 'string' ? a : a.serial) !== assetToReplace.serial), { serial: serialToLink, type: '' }]
-        }));
+        setEditedData(prev => {
+            const newData = {
+                ...prev,
+                associatedAssets: [...prev.associatedAssets.filter(a => (typeof a === 'string' ? a : a.serial) !== assetToReplace.serial), { serial: serialToLink, type: '' }]
+            };
+            // Apply Automation
+            const automatedData = automateDeliveryStatus(newData);
+            // If we automated, we should probably persist it immediately or ensure the user saves.
+            // Since this runs inside an edit flow, updating local state `editedData` is correct, 
+            // but for 'Replace' which feels like an immediate action, we might want to save ticket.
+            updateTicket(ticket.id, automatedData);
+            return automatedData;
+        });
 
         const requesterName = editedData.requester || ticket.requester;
         updateAsset(newAsset.id, {
@@ -342,10 +406,20 @@ export default function TicketDetailPage() {
             const isAlreadyLinked = currentAssets.some(item => (typeof item === 'string' ? item : item.serial) === serialToLink);
 
             if (!isAlreadyLinked) {
-                setEditedData(prev => ({
-                    ...prev,
+                const newData = {
+                    ...editedData,
                     associatedAssets: [...currentAssets, { serial: serialToLink, type: '' }]
-                }));
+                };
+
+                // Apply Automation
+                const automatedData = automateDeliveryStatus(newData);
+
+                // Update Local State (and persist if not in pure edit mode, but here we are usually in edit mode effectively)
+                // Actually, handleLinkAsset updates `editedData`. We should update ticket if we are NOT in full edit mode,
+                // but usually this action happens inside a modal or inline.
+                // To be safe and persistent:
+                updateTicket(ticket.id, automatedData);
+                setEditedData(automatedData);
 
                 const fullAsset = assets.find(a => a.serial.toLowerCase() === serialToLink.toLowerCase());
 
@@ -365,10 +439,15 @@ export default function TicketDetailPage() {
     };
 
     const handleUnlinkAsset = (serial) => {
-        setEditedData(prev => ({
-            ...prev,
-            associatedAssets: (prev.associatedAssets || []).filter(item => (typeof item === 'string' ? item : item.serial) !== serial)
-        }));
+        setEditedData(prev => {
+            const newData = {
+                ...prev,
+                associatedAssets: (prev.associatedAssets || []).filter(item => (typeof item === 'string' ? item : item.serial) !== serial)
+            };
+            // Optionally revert status if empty? No, better keep it manually managed to avoid confusion.
+            updateTicket(ticket.id, newData);
+            return newData;
+        });
 
         // Automatización inversa: Devolver al almacén
         const fullAsset = assets.find(a => a.serial.toLowerCase() === serial.toLowerCase());
@@ -384,20 +463,26 @@ export default function TicketDetailPage() {
 
     const handleCreateAsset = (e) => {
         e.preventDefault();
-        const created = {
+        const createdAsset = {
             ...newAsset,
             name: newAsset.model,
             serial: serialQuery,
             status: 'Asignado',
             assignee: editedData.requester || ticket.requester
         };
-        addAsset(created);
+        addAsset(createdAsset);
 
         const currentAssets = editedData.associatedAssets || [];
-        setEditedData({
+
+        const newData = {
             ...editedData,
             associatedAssets: [...currentAssets, { serial: serialQuery, type: '' }]
-        });
+        };
+
+        // Apply Automation
+        const automatedData = automateDeliveryStatus(newData);
+        updateTicket(ticket.id, automatedData);
+        setEditedData(automatedData);
 
         setIsAssetModalOpen(false);
         setAssetSearchResult(null);
@@ -591,15 +676,63 @@ export default function TicketDetailPage() {
                                     <MapPin size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
                                     <input
                                         className="form-input"
-                                        style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
+                                        style={{
+                                            paddingLeft: '2.2rem',
+                                            paddingRight: (editMode || editContact) ? '80px' : '10px',
+                                            height: '32px',
+                                            fontSize: '0.85rem',
+                                            borderColor: addressStatus === 'valid' ? '#22c55e' : (addressStatus === 'invalid' ? '#ef4444' : 'var(--border)')
+                                        }}
                                         disabled={!editMode && !editContact}
                                         value={editedData.logistics?.address || ''}
-                                        onChange={e => setEditedData({
-                                            ...editedData,
-                                            logistics: { ...(editedData.logistics || {}), address: e.target.value }
-                                        })}
+                                        onChange={e => {
+                                            setAddressStatus('idle'); // Reset validation on change
+                                            setEditedData({
+                                                ...editedData,
+                                                logistics: { ...(editedData.logistics || {}), address: e.target.value }
+                                            });
+                                        }}
+                                        onBlur={() => {
+                                            // Optional: Auto-validate on blur if needed, currently manual via button is safer to avoid annoyance
+                                        }}
                                     />
+                                    {(editMode || editContact) && isLoaded && (
+                                        <button
+                                            type="button"
+                                            onClick={validateAddress}
+                                            style={{
+                                                position: 'absolute',
+                                                right: '4px',
+                                                top: '4px',
+                                                bottom: '4px',
+                                                border: 'none',
+                                                background: addressStatus === 'valid' ? '#dcfce7' : '#eff6ff',
+                                                color: addressStatus === 'valid' ? '#166534' : '#1d4ed8',
+                                                borderRadius: '4px',
+                                                padding: '0 8px',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            {addressStatus === 'validating' ? (
+                                                <Loader2 size={12} className="animate-spin" />
+                                            ) : addressStatus === 'valid' ? (
+                                                <><CheckCircle size={12} /> OK</>
+                                            ) : (
+                                                'Validar'
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
+                                {addressStatus === 'invalid' && (
+                                    <p style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '4px', margin: 0 }}>
+                                        ⚠️ Dirección no encontrada en Google Maps.
+                                    </p>
+                                )}
                             </div>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Correo Electrónico</label>
