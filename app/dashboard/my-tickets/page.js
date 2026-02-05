@@ -505,11 +505,13 @@ export default function MyTicketsPage() {
                             <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.5px' }}>
                                 USD {stats.personalLiquidation.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </div>
-                            {parseFloat(rates?.exchangeRate) > 0 && (
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, marginTop: '2px' }}>
-                                    ARS {(stats.personalLiquidation * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                                </div>
-                            )}
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, marginTop: '2px' }}>
+                                {rates?.exchangeRate ? (
+                                    <>ARS {(stats.personalLiquidation * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</>
+                                ) : (
+                                    <span style={{ color: '#ef4444', fontSize: '0.7rem' }}>Configurar T.C. en Billing</span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </Card>
