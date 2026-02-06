@@ -22,7 +22,7 @@ export default function TicketsPage() {
     const [selectedTickets, setSelectedTickets] = useState([]);
     const [showMap, setShowMap] = useState(false);
 
-    const isAdmin = currentUser?.role === 'admin';
+    const canDelete = currentUser?.role === 'admin' || currentUser?.role === 'Administrativo';
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
@@ -132,7 +132,7 @@ export default function TicketsPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
                     <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Ticket</Button>
-                    {isAdmin && selectedTickets.length > 0 && (
+                    {canDelete && selectedTickets.length > 0 && (
                         <Button
                             variant="secondary"
                             size="sm"
@@ -285,7 +285,7 @@ export default function TicketsPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                {isAdmin && (
+                                {canDelete && (
                                     <th style={{ padding: '1rem', width: '40px' }}>
                                     </th>
                                 )}
@@ -364,7 +364,7 @@ export default function TicketsPage() {
                         <tbody>
                             {sortedAndFilteredTickets.map((ticket, index) => (
                                 <tr key={`${ticket.id}-${index}`} style={{ borderBottom: '1px solid var(--border)' }} className="table-row-hover">
-                                    {isAdmin && (
+                                    {canDelete && (
                                         <td style={{ padding: '1rem' }}>
                                             <input
                                                 type="checkbox"
@@ -378,6 +378,11 @@ export default function TicketsPage() {
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ fontWeight: 500 }}>{ticket.subject}</div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Prioridad: {ticket.priority}</div>
+                                        {ticket.logistics?.address && (
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                <Map size={12} /> {ticket.logistics.address}
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

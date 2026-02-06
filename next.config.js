@@ -33,7 +33,7 @@ const nextConfig = {
                     },
                     {
                         key: 'Permissions-Policy',
-                        value: 'camera=(), microphone=(), geolocation=()' // Limit risky features
+                        value: 'camera=(), microphone=(), geolocation=(self)' // Allow geolocation
                     },
                     { // Missing brace restored here
                         key: 'Content-Security-Policy',

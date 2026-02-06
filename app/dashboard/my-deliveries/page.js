@@ -21,7 +21,7 @@ export default function MyDeliveriesPage() {
     const [deliveryForm, setDeliveryForm] = useState({
         receivedBy: '',
         dni: '',
-        actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        actualTime: '',
         notes: '',
         photoUrl: ''
     });
@@ -122,6 +122,8 @@ export default function MyDeliveriesPage() {
         });
     };
 
+    const [successData, setSuccessData] = useState(null);
+
     const handleDeliverySubmit = async (e) => {
         e.preventDefault();
         if (!selectedDelivery) return;
@@ -141,7 +143,7 @@ export default function MyDeliveriesPage() {
 
         updateTicket(selectedDelivery.id, updatedData);
         setIsDeliveryModalOpen(false);
-        alert('Entrega registrada con éxito');
+        setSuccessData({ clientName: deliveryForm.receivedBy, id: selectedDelivery.id });
     };
 
     const handleScanSuccess = (qrData) => {
@@ -412,7 +414,10 @@ export default function MyDeliveriesPage() {
                                                             {delivery.deliveryStatus || 'Pendiente'}
                                                         </Badge>
                                                     </div>
-                                                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.75rem' }}>{delivery.requester}</h3>
+                                                    <div style={{ marginBottom: '0.5rem' }}>
+                                                        <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.2' }}>{delivery.subject}</p>
+                                                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{delivery.requester}</h3>
+                                                    </div>
 
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                                                         <div
@@ -473,7 +478,13 @@ export default function MyDeliveriesPage() {
                                                             onClick={() => {
                                                                 setSelectedDelivery(delivery);
                                                                 setIsDeliveryModalOpen(true);
-                                                                setDeliveryForm(prev => ({ ...prev, actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }));
+                                                                setDeliveryForm(prev => ({
+                                                                    ...prev,
+                                                                    receivedBy: '', // Reset
+                                                                    dni: '',
+                                                                    notes: '',
+                                                                    actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                                }));
                                                             }}
                                                             style={{ padding: '0.75rem 1.5rem', fontSize: '1rem', width: '100%', backgroundColor: dayColor, borderColor: dayColor }}
                                                         >
@@ -520,140 +531,143 @@ export default function MyDeliveriesPage() {
                 title={`Registro de Entrega/Recupero: #${selectedDelivery?.id}`}
             >
                 <form onSubmit={handleDeliverySubmit}>
-                    <div className="flex-mobile-column" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div className="form-group" style={{ marginBottom: '1rem' }}>
-                            <label className="form-label">Persona que recibe (Nombre)</label>
-                            <input
-                                required
-                                className="form-input"
-                                placeholder="..."
-                                value={deliveryForm.receivedBy}
-                                onChange={e => setDeliveryForm({ ...deliveryForm, receivedBy: e.target.value })}
-                            />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {/* Fecha y Hora Auto-detectada */}
+                        <div style={{
+                            background: 'var(--surface-active)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '0.75rem',
+                            border: '1px solid var(--border)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Horario de Entrega</label>
+                                <span style={{ fontSize: '1.1rem', fontWeight: 800 }}>{deliveryForm.actualTime}</span>
+                            </div>
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => setDeliveryForm({ ...deliveryForm, actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })}
+                                variant="ghost"
+                                style={{ height: '32px' }}
+                            >
+                                <Clock size={14} style={{ marginRight: '4px' }} /> Actualizar
+                            </Button>
                         </div>
-                        <div className="form-group" style={{ marginBottom: '1rem' }}>
-                            <label className="form-label">DNI</label>
-                            <input
-                                required
-                                className="form-input"
-                                placeholder="..."
-                                value={deliveryForm.dni}
-                                onChange={e => setDeliveryForm({ ...deliveryForm, dni: e.target.value })}
-                            />
-                        </div>
-                    </div>
 
-                    <div className="flex-mobile-column" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div className="form-group" style={{ marginBottom: '1rem' }}>
-                            <label className="form-label">Horario Real</label>
-                            <input
-                                required
-                                type="time"
-                                className="form-input"
-                                value={deliveryForm.actualTime}
-                                onChange={e => setDeliveryForm({ ...deliveryForm, actualTime: e.target.value })}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Asset(s) Vinculado(s) - {selectedDelivery?.logistics?.type || 'Entrega'}</label>
-                            <div style={{
-                                padding: '0.75rem',
-                                background: 'rgba(0,0,0,0.05)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--border)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '0.5rem'
-                            }}>
-                                <div style={{ marginBottom: '4px' }}>
-                                    <Badge variant="info" style={{ fontSize: '0.65rem' }}>
-                                        LISTADO DE MOVIMIENTOS
-                                    </Badge>
-                                </div>
-                                <div style={{
-                                    fontSize: '0.85rem',
-                                    color: 'var(--text-main)',
-                                    fontWeight: 500,
-                                    lineHeight: '1.6',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '0.25rem'
-                                }}>
-                                    {selectedDelivery && getDevicesList(selectedDelivery).length > 0 ? (
-                                        getDevicesList(selectedDelivery).map((item, idx) => (
-                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <div style={{ width: '4px', height: '4px', backgroundColor: 'var(--primary-color)', borderRadius: '50%' }}></div>
-                                                {item}
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div style={{ opacity: 0.5 }}>- No especificado -</div>
-                                    )}
-                                </div>
+                        {/* Datos del Receptor */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '0.75rem' }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Recibe (Nombre)</label>
+                                <input
+                                    required
+                                    className="form-input"
+                                    placeholder="Nombre Apellido"
+                                    value={deliveryForm.receivedBy}
+                                    onChange={e => setDeliveryForm({ ...deliveryForm, receivedBy: e.target.value })}
+                                    style={{ padding: '0.5rem' }}
+                                />
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: '0.75rem' }}>DNI</label>
+                                <input
+                                    required
+                                    className="form-input"
+                                    placeholder="Sin puntos"
+                                    value={deliveryForm.dni}
+                                    onChange={e => setDeliveryForm({ ...deliveryForm, dni: e.target.value })}
+                                    style={{ padding: '0.5rem' }}
+                                />
                             </div>
                         </div>
-                    </div>
 
-                    <div className="form-group">
-                        <label className="form-label">Conductor responsable</label>
-                        <input
-                            disabled
-                            className="form-input"
-                            value={currentUser?.name || ''}
-                            style={{ backgroundColor: 'rgba(0,0,0,0.05)' }}
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">Notas Adicionales</label>
-                        <textarea
-                            className="form-textarea"
-                            placeholder="Observaciones adicionales..."
-                            style={{ minHeight: '60px' }}
-                            value={deliveryForm.notes}
-                            onChange={e => setDeliveryForm({ ...deliveryForm, notes: e.target.value })}
-                        />
-                    </div>
-
-                    <div style={{ marginTop: '2.5rem', padding: '1.5rem', background: 'rgba(37, 99, 235, 0.03)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--primary-color)' }}>
-                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <CheckCircle2 size={16} /> Preparar y Enviar Comprobante
-                        </h4>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                            Genera el comprobante digital para el usuario. Asegúrate de haber completado los datos arriba.
-                        </p>
-                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }} className="flex-mobile-column">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={sendWhatsApp}
-                                style={{ flex: '1', minWidth: '100px', borderColor: '#25D366', color: '#25D366', fontWeight: 600, padding: '0.75rem' }}
-                            >
-                                WhatsApp
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={sendEmail}
-                                style={{ flex: '1', minWidth: '100px', fontWeight: 600, padding: '0.75rem' }}
-                            >
-                                Email
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                icon={FileText}
-                                onClick={() => generateTicketPDF(selectedDelivery, assets, deliveryForm)}
-                                style={{ flex: '1', minWidth: '100px', fontWeight: 600, borderColor: 'var(--primary-color)', color: 'var(--primary-color)', padding: '0.75rem' }}
-                            >
-                                Descargar PDF
-                            </Button>
+                        {/* Assets - Compacto */}
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Equipos Entregados</label>
+                            <div style={{
+                                padding: '0.5rem',
+                                background: 'rgba(0,0,0,0.03)',
+                                borderRadius: 'var(--radius-md)',
+                                border: '1px solid var(--border)',
+                                maxHeight: '100px',
+                                overflowY: 'auto'
+                            }}>
+                                {selectedDelivery && getDevicesList(selectedDelivery).length > 0 ? (
+                                    getDevicesList(selectedDelivery).map((item, idx) => (
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', padding: '2px 0' }}>
+                                            <CheckCircle2 size={12} style={{ color: 'var(--primary-color)' }} />
+                                            {item}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={{ opacity: 0.5, fontSize: '0.8rem' }}>Sin equipos vinculados</div>
+                                )}
+                            </div>
                         </div>
-                    </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem', marginTop: '2rem' }} className="flex-mobile-column">
-                        <Button type="button" variant="secondary" onClick={() => setIsDeliveryModalOpen(false)} style={{ flex: 1 }}>Cancelar</Button>
-                        <Button type="submit" disabled={!deliveryForm.receivedBy || !deliveryForm.dni} style={{ flex: 1 }}>Confirmar y Finalizar</Button>
+                        {/* Notas */}
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Observaciones</label>
+                            <textarea
+                                className="form-textarea"
+                                placeholder="Nota rápida..."
+                                style={{ minHeight: '50px', padding: '0.5rem', fontSize: '0.9rem' }}
+                                value={deliveryForm.notes}
+                                onChange={e => setDeliveryForm({ ...deliveryForm, notes: e.target.value })}
+                            />
+                        </div>
+
+                        {/* Acciones Rápidas */}
+                        <div style={{
+                            marginTop: '0.5rem',
+                            padding: '0.75rem',
+                            background: 'rgba(37, 99, 235, 0.05)',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px dashed var(--primary-color)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.5rem'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-color)' }}>Enviar Comprobante</span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={sendWhatsApp}
+                                    style={{ borderColor: '#25D366', color: '#25D366', fontSize: '0.75rem', padding: '0.3rem' }}
+                                >
+                                    WhatsApp
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={sendEmail}
+                                    style={{ fontSize: '0.75rem', padding: '0.3rem' }}
+                                >
+                                    Email
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => generateTicketPDF(selectedDelivery, assets, deliveryForm)}
+                                    style={{ borderColor: 'var(--primary-color)', color: 'var(--primary-color)', fontSize: '0.75rem', padding: '0.3rem' }}
+                                >
+                                    PDF
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', marginTop: '0.5rem' }}>
+                            <Button type="button" variant="ghost" onClick={() => setIsDeliveryModalOpen(false)}>Cancelar</Button>
+                            <Button type="submit" disabled={!deliveryForm.receivedBy || !deliveryForm.dni}>Confirmar Entrega</Button>
+                        </div>
                     </div>
                 </form>
             </Modal>
@@ -754,6 +768,43 @@ export default function MyDeliveriesPage() {
                     </div>
                 </div>
             </Modal>
+
+            {/* Success Popup */}
+            {successData && (
+                <Modal
+                    isOpen={!!successData}
+                    onClose={() => setSuccessData(null)}
+                    title="¡Entrega Completada!"
+                >
+                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                        <div style={{
+                            width: '70px',
+                            height: '70px',
+                            background: '#dcfce7',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto',
+                            animation: 'bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                        }}>
+                            <CheckCircle2 size={40} style={{ color: '#15803d' }} />
+                        </div>
+                        <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+                            ¡Genial!
+                        </h3>
+                        <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '2rem', lineHeight: '1.5' }}>
+                            La entrega a <strong style={{ color: 'var(--text-main)' }}>{successData.clientName}</strong> ha sido registrada exitosamente.
+                        </p>
+                        <Button
+                            onClick={() => setSuccessData(null)}
+                            style={{ width: '100%', backgroundColor: '#22c55e', border: 'none', padding: '1rem', fontSize: '1.1rem' }}
+                        >
+                            Entendido
+                        </Button>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 }

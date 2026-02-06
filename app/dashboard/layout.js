@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Menu, Loader2, Shield } from 'lucide-react';
 import { useStore } from '../../lib/store';
+import { LocationTracker } from '../components/logic/LocationTracker';
+import { DeliveryNotificationListener } from '../components/logic/DeliveryNotificationListener';
 
 export default function DashboardLayout({ children }) {
     const router = useRouter();
@@ -56,6 +58,8 @@ export default function DashboardLayout({ children }) {
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--background)' }}>
+            <LocationTracker />
+            <DeliveryNotificationListener />
             {/* Overlay para móvil */}
             <div
                 className={`mobile-sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}

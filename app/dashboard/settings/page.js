@@ -268,7 +268,17 @@ export default function SettingsPage() {
                                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                 {/* Botón de Tracking GPS */}
                                                 <button
-                                                    onClick={() => updateUser(u.id, { tracking_enabled: !u.tracking_enabled })}
+                                                    onClick={async () => {
+                                                        const newValue = !u.tracking_enabled;
+                                                        console.log(`Toggling GPS for ${u.name} (${u.id}) to ${newValue}`);
+                                                        const { error } = await updateUser(u.id, { tracking_enabled: newValue });
+                                                        if (error) {
+                                                            console.error("Failed to toggle GPS:", error);
+                                                            // Alert handled in store.js, but we could add toast here if needed
+                                                        } else {
+                                                            console.log("GPS toggled successfully");
+                                                        }
+                                                    }}
                                                     style={{
                                                         background: 'none',
                                                         border: 'none',
