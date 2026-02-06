@@ -11,11 +11,18 @@ export function ThemeProvider({ children }) {
 
     useEffect(() => {
         // Check local storage or system preference on mount
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            setTheme(savedTheme);
-            applyTheme(savedTheme);
-        } else {
+        try {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                setTheme(savedTheme);
+                applyTheme(savedTheme);
+            } else {
+                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                setTheme(systemPrefersDark ? 'dark' : 'light');
+                applyTheme(systemPrefersDark ? 'dark' : 'light');
+            }
+        } catch (e) {
+            console.warn('LocalStorage not available for theme');
             const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             setTheme(systemPrefersDark ? 'dark' : 'light');
             applyTheme(systemPrefersDark ? 'dark' : 'light');
@@ -23,15 +30,19 @@ export function ThemeProvider({ children }) {
     }, []);
 
     const applyTheme = (newTheme) => {
-        const root = window.document.documentElement;
-        root.classList.remove('light', 'dark');
-        root.classList.add(newTheme);
+        try {
+            const root = window.document.documentElement;
+            root.classList.remove('light', 'dark');
+            root.classList.add(newTheme);
+        } catch (e) { }
     };
 
     const toggleTheme = () => {
         const newTheme = theme === 'dark' ? 'light' : 'dark';
         setTheme(newTheme);
-        localStorage.setItem('theme', newTheme);
+        try {
+            localStorage.setItem('theme', newTheme);
+        } catch (e) { }
         applyTheme(newTheme);
     };
 
