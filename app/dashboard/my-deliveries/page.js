@@ -71,7 +71,15 @@ export default function MyDeliveriesPage() {
         });
     }, [tickets, currentUser, optimizedOrder]);
 
-    const stats = useMemo(() => {
+    const [stats, setStats] = useState({
+        finishedThisMonth: 0,
+        pendingThisWeek: 0,
+        last6Months: []
+    });
+
+    useEffect(() => {
+        if (!currentUser) return;
+
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -83,17 +91,16 @@ export default function MyDeliveriesPage() {
 
         const pendingThisWeek = myDeliveries.filter(t => t.status !== 'Resuelto').length;
 
-        // Mock history for chart
         const last6Months = Array.from({ length: 6 }, (_, i) => {
             const date = new Date();
             date.setMonth(date.getMonth() - (5 - i));
             return {
-                label: date.toLocaleString('default', { month: 'short' }),
+                label: date.toLocaleString('es-ES', { month: 'short' }),
                 count: Math.floor(Math.random() * 10) + 5
             };
         });
 
-        return { finishedThisMonth, pendingThisWeek, last6Months };
+        setStats({ finishedThisMonth, pendingThisWeek, last6Months });
     }, [tickets, currentUser, myDeliveries]);
 
     const groupedDeliveries = useMemo(() => {
@@ -394,7 +401,13 @@ export default function MyDeliveriesPage() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0 0.5rem' }}>
                                     <div style={{ backgroundColor: dayColor, width: '12px', height: '12px', borderRadius: '50%' }}></div>
                                     <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        {date === 'Sin Fecha' ? 'Fecha no definida' : new Date(date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                        {(() => {
+                                            if (date === 'Sin Fecha') return 'Fecha no definida';
+                                            const d = new Date(date + 'T00:00:00');
+                                            const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                                            const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                                            return `${days[d.getDay()]}, ${d.getDate()} de ${months[d.getMonth()]}`;
+                                        })()}
                                     </h2>
                                     <div style={{ flex: 1, height: '1px', background: `linear-gradient(to right, ${dayColor}44, transparent)` }}></div>
                                 </div>
