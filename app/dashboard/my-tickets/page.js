@@ -16,7 +16,7 @@ const GOOGLE_MAPS_LIBRARIES = ['geometry'];
 
 export default function MyTicketsPage() {
     const router = useRouter();
-    const { tickets, assets: globalAssets, addTicket, deleteTickets, currentUser, rates } = useStore();
+    const { tickets, assets: globalAssets, addTicket, deleteTickets, currentUser, rates, users } = useStore();
 
     // Load Google Maps Script Globaly for this page
     const { isLoaded: isMapsLoaded } = useJsApiLoader({

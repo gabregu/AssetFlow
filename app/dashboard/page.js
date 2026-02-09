@@ -18,11 +18,12 @@ import {
     Map
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { CountryFilter } from '../components/layout/CountryFilter';
 
 
 export default function Dashboard() {
     const router = useRouter();
-    const { tickets, assets, currentUser, users } = useStore();
+    const { tickets, assets, currentUser, users, countryFilter, sfdcCases } = useStore();
 
     // Redirección para conductores (solo deben ver Mis Envíos y Mis Servicios)
     useEffect(() => {
@@ -31,20 +32,57 @@ export default function Dashboard() {
         }
     }, [currentUser, router]);
 
-    // Calcular métricas reales
-    const openTickets = tickets.filter(t => t.status === 'Abierto').length;
-    const inProgressTickets = tickets.filter(t => t.status === 'En Progreso').length;
-    const resolvedTickets = tickets.filter(t => t.status === 'Resuelto' || t.status === 'Cerrado').length;
-    const assignedAssets = assets.filter(a => a.status === 'Assigned').length;
+    // Calcular métricas reales (Filtradas por País)
+    const filteredTickets = React.useMemo(() => {
+        if (countryFilter === 'Todos') return tickets;
+        return tickets.filter(t => {
+            let matches = false;
+            // 1. Try Address
+            if (t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
+                matches = true;
+            } else {
+                // 2. Try SFDC Link
+                const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
+                if (sfdcMatch) {
+                    const caseNum = sfdcMatch[1];
+                    const sfdcCase = sfdcCases?.find(c => c.caseNumber === caseNum);
+                    if (sfdcCase && sfdcCase.country) {
+                        matches = sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase());
+                    }
+                }
+            }
+            return matches;
+        });
+    }, [tickets, countryFilter, sfdcCases]);
+
+    const filteredAssets = React.useMemo(() => {
+        if (countryFilter === 'Todos') return assets;
+        return assets.filter(a => {
+            if (a.country) {
+                return a.country.toLowerCase().includes(countryFilter.toLowerCase());
+            } else if (a.notes && a.notes.includes(countryFilter)) {
+                return true;
+            }
+            return false;
+        });
+    }, [assets, countryFilter]);
+
+    const openTickets = filteredTickets.filter(t => t.status === 'Abierto').length;
+    const inProgressTickets = filteredTickets.filter(t => t.status === 'En Progreso').length;
+    const resolvedTickets = filteredTickets.filter(t => t.status === 'Resuelto' || t.status === 'Cerrado').length;
+    const assignedAssets = filteredAssets.filter(a => a.status === 'Assigned').length;
 
     // Obtener los últimos 3 tickets reales
-    const recentTickets = tickets.slice(0, 3);
+    const recentTickets = filteredTickets.slice(0, 3);
 
     return (
         <div>
             <div style={{ marginBottom: '2rem' }}>
                 <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Hola, {currentUser?.name || 'Usuario'}</h1>
                 <p style={{ color: 'var(--text-secondary)' }}>Aquí tienes un resumen de la actividad de hoy en AssetFlow.</p>
+                <div style={{ marginTop: '1rem' }}>
+                    <CountryFilter />
+                </div>
             </div>
 
             {/* Quick Actions */}
@@ -232,8 +270,9 @@ export default function Dashboard() {
                 <Card>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1.5rem' }}>Carga de Trabajo (Empleados)</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+
                         {users.map(user => {
-                            const activeCount = tickets.filter(t =>
+                            const activeCount = filteredTickets.filter(t =>
                                 (t.logistics?.deliveryPerson === user.name || t.logistics?.deliveryPerson === user.username) &&
                                 t.status !== 'Resuelto' &&
                                 t.status !== 'Cerrado'

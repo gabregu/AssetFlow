@@ -7,12 +7,13 @@ import { Modal } from '../../components/ui/Modal';
 import { useStore } from '../../../lib/store';
 import { Filter, Search, ArrowRight, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useRef, useMemo } from 'react';
+import { CountryFilter } from '../../components/layout/CountryFilter';
 
 import { useRouter } from 'next/navigation';
 
 export default function SFDCCasesPage() {
     const router = useRouter();
-    const { sfdcCases, tickets, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportCount, currentUser, users } = useStore();
+    const { sfdcCases, tickets, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter } = useStore();
     const [filter, setFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCase, setSelectedCase] = useState(null);
@@ -33,12 +34,16 @@ export default function SFDCCasesPage() {
 
     // 1. Filtrado
     const filteredCases = useMemo(() => {
-        return sfdcCases.filter(c =>
-            c.subject.toLowerCase().includes(filter.toLowerCase()) ||
-            c.requestedFor.toLowerCase().includes(filter.toLowerCase()) ||
-            c.caseNumber.toLowerCase().includes(filter.toLowerCase())
-        );
-    }, [sfdcCases, filter]);
+        return sfdcCases.filter(c => {
+            const matchesText = c.subject.toLowerCase().includes(filter.toLowerCase()) ||
+                c.requestedFor.toLowerCase().includes(filter.toLowerCase()) ||
+                c.caseNumber.toLowerCase().includes(filter.toLowerCase());
+
+            const matchesCountry = countryFilter === 'Todos' || (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()));
+
+            return matchesText && matchesCountry;
+        });
+    }, [sfdcCases, filter, countryFilter]);
 
     // 2. Ordenamiento
     const sortedCases = useMemo(() => {
@@ -137,6 +142,17 @@ export default function SFDCCasesPage() {
     };
 
     const [isCreating, setIsCreating] = useState(false);
+
+    const getCountryInitial = (country) => {
+        if (!country) return '-';
+        const c = country.toUpperCase();
+        if (c.includes('ARGENTINA')) return 'AR';
+        if (c.includes('CHILE')) return 'CH';
+        if (c.includes('COLOMBIA')) return 'CO';
+        if (c.includes('COSTA RICA')) return 'CR';
+        if (c.includes('URUGUAY')) return 'UY';
+        return country.substring(0, 2).toUpperCase();
+    };
 
     const handleCreateService = async (e) => {
         console.log("handleCreateService called");
@@ -423,14 +439,20 @@ export default function SFDCCasesPage() {
     };
 
     // 3. Estadísticas
+    const countryFilteredCases = useMemo(() => {
+        return sfdcCases.filter(c => {
+            return countryFilter === 'Todos' || (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()));
+        });
+    }, [sfdcCases, countryFilter]);
+
     const stats = useMemo(() => {
         const counts = {};
-        sfdcCases.forEach(c => {
+        countryFilteredCases.forEach(c => {
             const s = c.status || 'Desconocido';
             counts[s] = (counts[s] || 0) + 1;
         });
         return counts;
-    }, [sfdcCases]);
+    }, [countryFilteredCases]);
 
     const getStatusColor = (status) => {
         const s = status.toLowerCase();
@@ -469,6 +491,9 @@ export default function SFDCCasesPage() {
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Casos Salesforce (SFDC)</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Importar y gestionar casos provenientes de Salesforce.</p>
+                    <div style={{ marginTop: '1rem' }}>
+                        <CountryFilter />
+                    </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
                     <div>
@@ -524,7 +549,7 @@ export default function SFDCCasesPage() {
                                 TOTAL BACKLOG
                             </div>
                             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.25rem' }}>
-                                {sfdcCases.length}
+                                {countryFilteredCases.length}
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Casos</div>
                         </div>
@@ -537,7 +562,7 @@ export default function SFDCCasesPage() {
                                 Nuevos
                             </div>
                             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#8b5cf6', marginTop: '0.25rem' }}>
-                                +{lastImportCount}
+                                +{lastImportedCases.filter(c => countryFilter === 'Todos' || (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()))).length}
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Última carga</div>
                         </div>
@@ -562,7 +587,7 @@ export default function SFDCCasesPage() {
                                     <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)' }}>{count}</div>
                                     <div style={{ width: '100%', height: '3px', background: 'var(--border)', borderRadius: '2px', marginTop: '0.25rem', overflow: 'hidden' }}>
                                         <div style={{
-                                            width: `${(count / sfdcCases.length) * 100}%`,
+                                            width: `${(count / countryFilteredCases.length) * 100}%`,
                                             height: '100%',
                                             background: getStatusColor(status)
                                         }} />
@@ -653,7 +678,8 @@ export default function SFDCCasesPage() {
                                         style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                                     />
                                 </th>
-                                <Th id="caseNumber">Case #</Th>
+                                <Th id="caseNumber" width="100px">Case #</Th>
+                                <th style={{ padding: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.8rem', width: '50px' }}>País</th>
                                 <Th id="status">Status</Th>
                                 <Th id="age">Age</Th>
                                 <Th id="dateOpened">Opened</Th>
@@ -674,6 +700,25 @@ export default function SFDCCasesPage() {
                                         />
                                     </td>
                                     <td style={{ padding: '1rem', fontWeight: 500 }}>{c.caseNumber}</td>
+                                    <td style={{ padding: '0.75rem' }}>
+                                        {c.country && (
+                                            <span style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: '24px',
+                                                height: '24px',
+                                                borderRadius: '50%',
+                                                background: '#f1f5f9',
+                                                color: '#475569',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 700,
+                                                border: '1px solid #e2e8f0'
+                                            }} title={c.country}>
+                                                {getCountryInitial(c.country)}
+                                            </span>
+                                        )}
+                                    </td>
                                     <td style={{ padding: '1rem' }}>
                                         <Badge variant="outline">{c.status}</Badge>
                                     </td>

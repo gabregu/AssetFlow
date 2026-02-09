@@ -13,10 +13,11 @@ import {
     ChevronDown, ChevronUp, Key, UserPlus, Truck, MapPin
 } from 'lucide-react';
 import Link from 'next/link';
+import { CountryFilter } from '../../components/layout/CountryFilter';
 
 export default function InventoryPage() {
     const router = useRouter();
-    const { assets, consumables, addAsset, addAssets, updateAsset, deleteAsset, updateConsumableStock, addConsumable, deleteConsumable, clearInventory, currentUser, addTicket, users } = useStore();
+    const { assets, consumables, addAsset, addAssets, updateAsset, deleteAsset, updateConsumableStock, addConsumable, deleteConsumable, clearInventory, currentUser, addTicket, users, countryFilter } = useStore();
     const [isHardwareTab, setIsHardwareTab] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isConsumableModalOpen, setIsConsumableModalOpen] = useState(false);
@@ -106,7 +107,20 @@ export default function InventoryPage() {
             const matchesType = columnFilters.type === 'All' || a.type === columnFilters.type;
             const matchesAssignee = !columnFilters.assignee || a.assignee.toLowerCase().includes(columnFilters.assignee.toLowerCase());
 
-            return matchesSearch && matchesStatus && matchesType && matchesAssignee;
+            // Filter by Country
+            let matchesCountry = true;
+            if (countryFilter !== 'Todos') {
+                if (a.country) {
+                    matchesCountry = a.country.toLowerCase().includes(countryFilter.toLowerCase());
+                } else if (a.notes && a.notes.includes(countryFilter)) {
+                    // Fallback: check notes if country was imported there
+                    matchesCountry = true;
+                } else {
+                    matchesCountry = false; // Unknown country -> hide
+                }
+            }
+
+            return matchesSearch && matchesStatus && matchesType && matchesAssignee && matchesCountry;
         });
 
         if (sortConfig.key) {
@@ -445,7 +459,6 @@ export default function InventoryPage() {
                             // Si falla por columnas faltantes, movemos los datos extra a 'notes'
                             if (err.message && (err.message.includes('Could not find') || err.message.includes('column'))) {
                                 const confirmation = window.confirm(
-                                    `⚠️ Tu base de datos no tiene algunas columnas nuevas (como IMEI, Country, etc.)\n\n` +
                                     `¿Quieres que guarde estos datos dentro del campo "Notas" para no perderlos y completar la importación?`
                                 );
 
@@ -459,12 +472,13 @@ export default function InventoryPage() {
                                             assignee: asset.assignee,
                                             date: asset.date,
                                             hardwareSpec: asset.hardwareSpec,
-                                            notes: asset.notes || ''
+                                            notes: asset.notes || '',
+                                            country: asset.country // Now safe to keep
                                         };
 
-                                        // Campos potencialmente "nuevos" o conflictivos
+                                        // Campos potencialmente "nuevos" o conflictivos (Country ya no es riesgoso)
                                         const riskyFields = [
-                                            'imei', 'imei2', 'country', 'purchaseOrder', 'sfdcCase',
+                                            'imei', 'imei2', 'purchaseOrder', 'sfdcCase',
                                             'oem', 'modelNumber', 'partNumber', 'eolDate', 'vendor'
                                         ];
 
@@ -591,12 +605,26 @@ export default function InventoryPage() {
     const deviceTypes = ['Laptop', 'Smartphone', 'Security keys', 'Tablet'];
     const statuses = ['Nuevo', 'Asignado', 'Recuperado', 'En Reparación', 'Dañado', 'EOL'];
 
+    const getCountryInitial = (country) => {
+        if (!country) return '-';
+        const c = country.toUpperCase();
+        if (c.includes('ARGENTINA')) return 'AR';
+        if (c.includes('CHILE')) return 'CH';
+        if (c.includes('COLOMBIA')) return 'CO';
+        if (c.includes('COSTA RICA')) return 'CR';
+        if (c.includes('URUGUAY')) return 'UY';
+        return country.substring(0, 2).toUpperCase();
+    };
+
     return (
         <div style={{ paddingBottom: '4rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Inventario</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Control de activos de hardware y stock de consumibles.</p>
+                    <div style={{ marginTop: '1rem' }}>
+                        <CountryFilter />
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -1137,6 +1165,7 @@ export default function InventoryPage() {
                                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                                 <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ACTIVO <SortIcon column="name" /></th>
                                                 <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
+                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>PAÍS</th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
@@ -1159,6 +1188,25 @@ export default function InventoryPage() {
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.9rem' }}>{asset.serial}</td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        {asset.country && (
+                                                            <span style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                width: '28px',
+                                                                height: '28px',
+                                                                borderRadius: '6px',
+                                                                backgroundColor: 'var(--background)',
+                                                                border: '1px solid var(--border)',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: 700,
+                                                                color: 'var(--text-primary)'
+                                                            }} title={asset.country}>
+                                                                {getCountryInitial(asset.country)}
+                                                            </span>
+                                                        )}
+                                                    </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         {asset.assignee === 'Almacén' ? (
                                                             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', background: 'var(--background)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>En Almacén</span>

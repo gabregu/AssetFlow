@@ -21,11 +21,12 @@ import {
     Trash,
     Info
 } from 'lucide-react';
+import { CountryFilter } from '../../components/layout/CountryFilter';
 
 import { resolveTicketServiceDetails, getRate } from './utils';
 
 export default function BillingPage() {
-    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense } = useStore();
+    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, sfdcCases, countryFilter } = useStore();
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [isRatesModalOpen, setIsRatesModalOpen] = useState(false);
@@ -84,7 +85,30 @@ export default function BillingPage() {
             const ticketDate = new Date(ticket.date || ticket.deliveryCompletedDate || Date.now());
             const isDateMatch = ticketDate.getMonth() === selectedMonth && ticketDate.getFullYear() === selectedYear;
             const isStatusMatch = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
-            return isDateMatch && isStatusMatch;
+
+            let isCountryMatch = true;
+            if (countryFilter !== 'Todos') {
+                // Try to determine country from address
+                if (ticket.logistics?.address && ticket.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
+                    isCountryMatch = true;
+                } else {
+                    // Try SFDC match
+                    const sfdcMatch = ticket.subject.match(/SFDC-(\d+)/);
+                    if (sfdcMatch) {
+                        const caseNum = sfdcMatch[1];
+                        const sfdcCase = sfdcCases?.find(c => c.caseNumber === caseNum);
+                        if (sfdcCase && sfdcCase.country) {
+                            isCountryMatch = sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase());
+                        } else {
+                            isCountryMatch = false;
+                        }
+                    } else {
+                        isCountryMatch = false;
+                    }
+                }
+            }
+
+            return isDateMatch && isStatusMatch && isCountryMatch;
         });
 
         // Filter Expenses
@@ -260,7 +284,7 @@ export default function BillingPage() {
             filteredExpenses,
             currency: currencyKey
         };
-    }, [tickets, selectedMonth, selectedYear, rates, globalAssets, expenses]);
+    }, [tickets, selectedMonth, selectedYear, rates, globalAssets, expenses, sfdcCases, countryFilter]);
 
     const handleSaveRates = (e) => {
         e.preventDefault();
@@ -316,6 +340,9 @@ export default function BillingPage() {
                 <div>
                     <h1 style={{ fontSize: '1.875rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>Facturación ({currency})</h1>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Análisis financiero en {currency === 'USD' ? 'Dólares Estadounidenses' : 'Pesos Argentinos'}.</p>
+                    <div style={{ marginTop: '0.5rem' }}>
+                        <CountryFilter />
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>

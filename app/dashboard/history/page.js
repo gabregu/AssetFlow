@@ -5,12 +5,13 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
 import { Search, Eye, History, Filter, ArrowUpRight } from 'lucide-react';
+import { CountryFilter } from '../../components/layout/CountryFilter';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function HistoryPage() {
     const router = useRouter();
-    const { tickets, currentUser } = useStore();
+    const { tickets, currentUser, countryFilter, sfdcCases } = useStore();
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ requester: '' });
@@ -49,7 +50,28 @@ export default function HistoryPage() {
                 matchesMonth = ticketMonth === selectedMonth;
             }
 
-            return matchesSearch && matchesRequester && matchesMonth;
+            let matchesCountry = true;
+            if (countryFilter !== 'Todos') {
+                // Try to determine country
+                if (t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
+                    matchesCountry = true;
+                } else {
+                    const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
+                    if (sfdcMatch) {
+                        const caseNum = sfdcMatch[1];
+                        const sfdcCase = sfdcCases?.find(c => c.caseNumber === caseNum);
+                        if (sfdcCase && sfdcCase.country) {
+                            matchesCountry = sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase());
+                        } else {
+                            matchesCountry = false;
+                        }
+                    } else {
+                        matchesCountry = false;
+                    }
+                }
+            }
+
+            return matchesSearch && matchesRequester && matchesMonth && matchesCountry;
         });
 
         if (sortConfig.key) {
@@ -62,7 +84,7 @@ export default function HistoryPage() {
             });
         }
         return result;
-    }, [historicalTickets, filter, sortConfig, columnFilters]);
+    }, [historicalTickets, filter, sortConfig, columnFilters, countryFilter, sfdcCases]);
 
     const getStatusVariant = (status) => {
         switch (status) {
@@ -85,6 +107,9 @@ export default function HistoryPage() {
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Histórico de Servicios</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Repositorio de todos los casos resueltos y cerrados.</p>
+                    <div style={{ marginTop: '1rem' }}>
+                        <CountryFilter />
+                    </div>
                 </div>
                 <div style={{ padding: '0.75rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: '50%', color: '#22c55e' }}>
                     <History size={24} />

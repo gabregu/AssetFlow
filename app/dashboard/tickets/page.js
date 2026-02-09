@@ -9,10 +9,11 @@ import { ServiceMap } from '../../components/ui/ServiceMap';
 import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { CountryFilter } from '../../components/layout/CountryFilter';
 
 export default function TicketsPage() {
     const router = useRouter();
-    const { tickets, addTicket, deleteTickets, currentUser, users } = useStore();
+    const { tickets, assets, sfdcCases, addTicket, deleteTickets, currentUser, users, countryFilter } = useStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
     const [filter, setFilter] = useState('');
@@ -75,7 +76,35 @@ export default function TicketsPage() {
             // Excluir Resueltos de esta vista
             const isNotResolved = t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado';
 
-            return matchesSearch && matchesStatus && matchesRequester && isNotResolved;
+            // Filtrado por Pais (Link with SFDC Case)
+            let matchesCountry = true;
+            if (countryFilter !== 'Todos') {
+                let foundCountry = false;
+
+                // 1. Try Address
+                if (t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
+                    matchesCountry = true;
+                    foundCountry = true;
+                }
+
+                if (!foundCountry) {
+                    // 2. Try SFDC match
+                    const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
+                    if (sfdcMatch) {
+                        const caseNum = sfdcMatch[1];
+                        const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
+                        if (sfdcCase && sfdcCase.country) {
+                            matchesCountry = sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase());
+                        } else {
+                            matchesCountry = false;
+                        }
+                    } else {
+                        matchesCountry = false;
+                    }
+                }
+            }
+
+            return matchesSearch && matchesStatus && matchesRequester && isNotResolved && matchesCountry;
         });
 
         if (sortConfig.key) {
@@ -129,6 +158,9 @@ export default function TicketsPage() {
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Servicios</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Gestiona y resuelve las incidencias reportadas.</p>
+                    <div style={{ marginTop: '1rem' }}>
+                        <CountryFilter />
+                    </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
                     <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Ticket</Button>

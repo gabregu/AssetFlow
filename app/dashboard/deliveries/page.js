@@ -8,9 +8,10 @@ import { Modal } from '../../components/ui/Modal';
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
 import { useStore } from '../../../lib/store';
 import { Plus, Search, Truck, MapPin, Calendar, CheckCircle, Clock, Loader2, Trash2, ChevronDown, ChevronUp, Sun, Moon, Archive, QrCode } from 'lucide-react';
+import { CountryFilter } from '../../components/layout/CountryFilter';
 
 export default function DeliveriesPage() {
-    const { deliveries, addDelivery, deleteDelivery, deleteDeliveries, tickets, deleteTickets, users, currentUser } = useStore();
+    const { deliveries, addDelivery, deleteDelivery, deleteDeliveries, tickets, deleteTickets, users, currentUser, countryFilter } = useStore();
     const router = useRouter();
     const mapRef = useRef(null);
     const googleMap = useRef(null);
@@ -203,7 +204,20 @@ export default function DeliveriesPage() {
                 d.id.toLowerCase().includes(filter.toLowerCase()) ||
                 d.address.toLowerCase().includes(filter.toLowerCase());
             const matchesStatus = statusFilter === 'All' || d.status === statusFilter;
-            return matchesText && matchesStatus;
+
+            // Simple country filter based on address or hardcoded logic
+            let matchesCountry = true;
+            if (countryFilter !== 'Todos') {
+                // Heuristic: check if address contains country name or specific cities
+                const addressLower = d.address.toLowerCase();
+                const countryLower = countryFilter.toLowerCase();
+                matchesCountry = addressLower.includes(countryLower);
+
+                // Specific logic for 'Argentina' as default if no country specified? 
+                // For now, let's keep it simple: strict text match in address.
+            }
+
+            return matchesText && matchesStatus && matchesCountry;
         });
 
         if (sortConfig.key) {
@@ -404,6 +418,9 @@ export default function DeliveriesPage() {
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Envíos (Actualizado)</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Logística avanzada con posicionamiento geográfico real.</p>
+                    <div style={{ marginTop: '1rem' }}>
+                        <CountryFilter />
+                    </div>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     {currentUser?.role === 'Administrador' && selectedIds.length > 0 && (
