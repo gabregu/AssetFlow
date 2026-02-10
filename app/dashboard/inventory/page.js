@@ -43,8 +43,10 @@ export default function InventoryPage() {
     const [newAsset, setNewAsset] = useState({
         name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Nuevo',
         date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
-        modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-',
-        eolDate: '', notes: '', sfd_case: '', oem: ''
+        name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Nuevo',
+        date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
+        modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
+        eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina'
     });
     const [replacementSerial, setReplacementSerial] = useState('');
     const [smartRecommendations, setSmartRecommendations] = useState([]);
@@ -611,6 +613,20 @@ export default function InventoryPage() {
     const dañados = warehouseAssets.filter(a => ['Dañado', 'EOL', 'Rota', 'De Baja'].includes(a.status)).length;
     const categoriesCount = new Set(warehouseAssets.map(a => a.type)).size || (isHardwareTab ? 4 : 0);
 
+    // Helper: Apply country filter to assets (same logic as filteredAssets)
+    const applyCountryFilter = (assetList) => {
+        if (countryFilter === 'Todos') return assetList;
+        return assetList.filter(a => {
+            if (a.country) {
+                return a.country.toLowerCase().includes(countryFilter.toLowerCase());
+            } else if (a.notes && a.notes.includes(countryFilter)) {
+                return true; // Fallback: check notes if country was imported there
+            } else {
+                return false; // Unknown country -> hide
+            }
+        });
+    };
+
     const deviceTypes = ['Laptop', 'Smartphone', 'Security keys', 'Tablet'];
     const statuses = ['Nuevo', 'Asignado', 'Recuperado', 'En Reparación', 'Dañado', 'EOL'];
 
@@ -797,7 +813,8 @@ export default function InventoryPage() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {deviceTypes.map(type => {
-                                    const count = assets.filter(a => a.type === type).length;
+                                    const countryFilteredAssets = applyCountryFilter(assets);
+                                    const count = countryFilteredAssets.filter(a => a.type === type).length;
                                     const Icon = getTypeIcon(type);
                                     const isSelected = selectedDeviceType === type;
                                     return (
@@ -843,7 +860,9 @@ export default function InventoryPage() {
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                                 {statuses.map(status => {
-                                    const filteredByType = selectedDeviceType ? assets.filter(a => a.type === selectedDeviceType) : assets;
+                                    // Apply country filter first, then device type filter
+                                    const countryFilteredAssets = applyCountryFilter(assets);
+                                    const filteredByType = selectedDeviceType ? countryFilteredAssets.filter(a => a.type === selectedDeviceType) : countryFilteredAssets;
                                     const count = filteredByType.filter(a => a.status === status || (status === 'Nuevo' && a.status === 'Disponible')).length;
                                     const color = getStatusVariant(status) === 'success' ? '#16a34a' : getStatusVariant(status) === 'info' ? '#2563eb' : getStatusVariant(status) === 'warning' ? '#f59e0b' : getStatusVariant(status) === 'danger' ? '#ef4444' : 'var(--text-secondary)';
                                     return (
@@ -1427,6 +1446,20 @@ export default function InventoryPage() {
                                 onChange={e => setNewAsset({ ...newAsset, assignee: e.target.value })}
                             />
                         </div>
+                        <div className="form-group">
+                            <label className="form-label">País</label>
+                            <select
+                                className="form-select"
+                                value={newAsset.country || 'Argentina'}
+                                onChange={e => setNewAsset({ ...newAsset, country: e.target.value })}
+                            >
+                                <option value="Argentina">Argentina</option>
+                                <option value="Chile">Chile</option>
+                                <option value="Colombia">Colombia</option>
+                                <option value="Costa Rica">Costa Rica</option>
+                                <option value="Uruguay">Uruguay</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
@@ -1477,8 +1510,8 @@ export default function InventoryPage() {
                             <input
                                 className="form-input"
                                 placeholder="Case #..."
-                                value={newAsset.sfd_case || ''}
-                                onChange={e => setNewAsset({ ...newAsset, sfd_case: e.target.value })}
+                                value={newAsset.sfdcCase || ''}
+                                onChange={e => setNewAsset({ ...newAsset, sfdcCase: e.target.value })}
                             />
                         </div>
                         <div className="form-group">
@@ -1488,6 +1521,15 @@ export default function InventoryPage() {
                                 placeholder="358900..."
                                 value={newAsset.imei || ''}
                                 onChange={e => setNewAsset({ ...newAsset, imei: e.target.value })}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">IMEI 2 (Opcional)</label>
+                            <input
+                                className="form-input"
+                                placeholder="358900..."
+                                value={newAsset.imei2 || ''}
+                                onChange={e => setNewAsset({ ...newAsset, imei2: e.target.value })}
                             />
                         </div>
                     </div>
