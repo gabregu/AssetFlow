@@ -53,6 +53,8 @@ export default function InventoryPage() {
     const [searchFilter, setSearchFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'dateLastUpdate', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', type: 'All', assignee: '' });
+    const [selectedDeviceType, setSelectedDeviceType] = useState(null); // null = todos los tipos
+
 
     // Quick Detail Modal State
     const [stockDetailModal, setStockDetailModal] = useState({ isOpen: false, model: '', status: '', items: [] });
@@ -431,14 +433,14 @@ export default function InventoryPage() {
                     const existingSerials = new Set(assets.map(a => (a.serial || '').toString().toLowerCase().trim()));
                     const seenInCsv = new Set();
                     const toAdd = [];
-                    let skippedCount = 0;
+                    const skippedItems = [];
 
                     newAssets.forEach(asset => {
                         const normalizedSerial = (asset.serial || '').toString().toLowerCase().trim();
 
                         // Check against DB assets AND duplicates within the file itself
                         if (existingSerials.has(normalizedSerial) || seenInCsv.has(normalizedSerial)) {
-                            skippedCount++;
+                            skippedItems.push(`${asset.serial} (${asset.name || 'Sin nombre'})`);
                         } else {
                             seenInCsv.add(normalizedSerial);
                             // Ensure strict string format for Serial to match consistency
@@ -451,7 +453,14 @@ export default function InventoryPage() {
                         try {
                             // Intento 1: Guardar con TODOS los campos mapeados
                             await addAssets(toAdd);
-                            alert(`✅ Éxito: ${toAdd.length} activos cargados correctamente.\n(Se omitieron ${skippedCount} duplicados).`);
+
+                            let msg = `✅ Éxito: ${toAdd.length} activos cargados correctamente.`;
+                            if (skippedItems.length > 0) {
+                                msg += `\n\n⚠️ Se omitieron ${skippedItems.length} duplicados:\n${skippedItems.slice(0, 15).join('\n')}`;
+                                if (skippedItems.length > 15) msg += `\n... y ${skippedItems.length - 15} más. (Ver consola para detalle)`;
+                                console.warn("Duplicados omitidos:", skippedItems);
+                            }
+                            alert(msg);
                         } catch (err) {
                             console.warn("Intento de carga completa falló, probando importación segura...", err);
 
@@ -790,13 +799,28 @@ export default function InventoryPage() {
                                 {deviceTypes.map(type => {
                                     const count = assets.filter(a => a.type === type).length;
                                     const Icon = getTypeIcon(type);
+                                    const isSelected = selectedDeviceType === type;
                                     return (
-                                        <div key={type} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0.8rem', background: 'var(--background)', borderRadius: '10px' }}>
+                                        <div
+                                            key={type}
+                                            onClick={() => setSelectedDeviceType(isSelected ? null : type)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '0.6rem 0.8rem',
+                                                background: isSelected ? 'var(--primary-color)' : 'var(--background)',
+                                                borderRadius: '10px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                border: isSelected ? '2px solid var(--primary-color)' : '2px solid transparent'
+                                            }}
+                                        >
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                <div style={{ color: 'var(--primary-color)' }}><Icon size={16} /></div>
-                                                <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{type}s</span>
+                                                <div style={{ color: isSelected ? 'white' : 'var(--primary-color)' }}><Icon size={16} /></div>
+                                                <span style={{ fontSize: '0.85rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'white' : 'var(--text-main)' }}>{type}s</span>
                                             </div>
-                                            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{count}</span>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: isSelected ? 'white' : 'var(--text-main)' }}>{count}</span>
                                         </div>
                                     );
                                 })}
@@ -808,13 +832,19 @@ export default function InventoryPage() {
 
                         {/* Columna Derecha: Totales por Estado (Columnado) */}
                         <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                                <div style={{ width: '3px', height: '16px', background: 'var(--primary-color)', borderRadius: '2px' }}></div>
-                                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>Equipos por Estado</h4>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ width: '3px', height: '16px', background: 'var(--primary-color)', borderRadius: '2px' }}></div>
+                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>Equipos por Estado</h4>
+                                </div>
+                                {selectedDeviceType && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Filtrado: {selectedDeviceType}s</span>
+                                )}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                                 {statuses.map(status => {
-                                    const count = assets.filter(a => a.status === status || (status === 'Nuevo' && a.status === 'Disponible')).length;
+                                    const filteredByType = selectedDeviceType ? assets.filter(a => a.type === selectedDeviceType) : assets;
+                                    const count = filteredByType.filter(a => a.status === status || (status === 'Nuevo' && a.status === 'Disponible')).length;
                                     const color = getStatusVariant(status) === 'success' ? '#16a34a' : getStatusVariant(status) === 'info' ? '#2563eb' : getStatusVariant(status) === 'warning' ? '#f59e0b' : getStatusVariant(status) === 'danger' ? '#ef4444' : 'var(--text-secondary)';
                                     return (
                                         <div key={status} style={{
