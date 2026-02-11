@@ -368,6 +368,13 @@ export default function InventoryPage() {
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
+                // Validación de País Seleccionado
+                if (countryFilter === 'Todos') {
+                    alert('⚠️ Por favor selecciona un PAÍS específico antes de cargar el archivo.\n\nEsto asegura que los activos se asignen a la ubicación correcta.');
+                    e.target.value = null;
+                    return;
+                }
+
                 const text = event.target.result;
                 const rows = text.split('\n').filter(row => row.trim() !== '');
                 if (rows.length < 2) {
@@ -406,6 +413,12 @@ export default function InventoryPage() {
                 // Validate critical headers
                 if (!mappedHeaders.includes('serial')) {
                     alert('Error: No se encontró la columna "Serial" o "Numero de Serie" en el CSV. Es obligatoria.');
+                    return;
+                }
+
+                // Validación de Seguridad: Columna Country Obligatoria
+                if (countryFilter !== 'Todos' && !mappedHeaders.includes('country')) {
+                    alert(`⛔ BLOQUEO DE SEGURIDAD ⛔\n\nPara cargar inventario en "${countryFilter}", el archivo CSV DEBE tener una columna "Country" o "Pais".\n\nEsto es necesario para verificar que no estés cargando datos incorrectos por error.`);
                     return;
                 }
 
@@ -481,6 +494,12 @@ export default function InventoryPage() {
                         asset.assignee = assigneeMap[lowerAssignee];
                     }
                     // --- NORMALIZATION END ---
+
+                    // --- ASIGNACIÓN FORZADA DE PAÍS ---
+                    // Si estamos en una vista de país específico, forzamos esa ubicación
+                    if (countryFilter !== 'Todos') {
+                        asset.country = countryFilter;
+                    }
 
                     return asset;
                 }).filter(a => a.serial && a.serial.length > 2); // Filter empty rows
@@ -591,8 +610,13 @@ export default function InventoryPage() {
     };
 
     const handleExportWarehouse = () => {
-        // 1. Filtrar Hardware en Almacén
-        const hardwareData = assets
+        // Obtenemos las listas ya filtradas por el país seleccionado
+        const filteredDocs = applyCountryFilter(assets);
+        const filteredYubis = applyCountryFilter(yubikeys);
+        const filteredCons = applyCountryFilter(consumables);
+
+        // 1. Filtrar Hardware en Almacén (Usando la lista filtrada por país)
+        const hardwareData = filteredDocs
             .filter(a => a.assignee === 'Almacén' && a.status !== 'Asignado')
             .map(a => ({
                 "Tipo": "Hardware",
@@ -609,7 +633,7 @@ export default function InventoryPage() {
             }));
 
         // 2. Filtrar Yubikeys Disponibles
-        const yubikeyData = yubikeys
+        const yubikeyData = filteredYubis
             .filter(y => y.status === 'Nuevo' || y.status === 'Disponible')
             .map(y => ({
                 "Tipo": "Security Key",
@@ -622,7 +646,7 @@ export default function InventoryPage() {
             }));
 
         // 3. Filtrar Accesorios (Stock)
-        const accessoryData = consumables.map(c => ({
+        const accessoryData = filteredCons.map(c => ({
             "Artículo": c.name,
             "Categoría": c.category,
             "Stock Actual": c.stock,
@@ -888,16 +912,16 @@ export default function InventoryPage() {
                                 size="sm"
                                 icon={Trash2}
                                 onClick={() => {
-                                    if (window.confirm('⚠️ ADVERTENCIA: Esta acción BORRARÁ TODO el inventario (Equipos y Accesorios). ¿Estás absolutamente seguro?')) {
+                                    const scopeMsg = countryFilter === 'Todos' ? 'TODO EL INVENTARIO (GLOBAL)' : `EL INVENTARIO DE ${countryFilter.toUpperCase()}`;
+                                    if (window.confirm(`⚠️ ADVERTENCIA: Esta acción BORRARÁ ${scopeMsg}.\n\n¿Estás absolutamente seguro?`)) {
                                         if (window.confirm('¿Confirmación final? Esta acción es irreversible.')) {
-                                            clearInventory();
-                                            alert('Inventario vaciado con éxito.');
+                                            clearInventory(countryFilter);
                                         }
                                     }
                                 }}
                                 style={{ color: '#ef4444', borderColor: '#ef4444', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
                             >
-                                Vaciar Inventario
+                                {countryFilter === 'Todos' ? 'Vaciar Todo' : `Vaciar ${countryFilter}`}
                             </Button>
                         )}
                     </div>
