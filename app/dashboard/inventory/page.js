@@ -71,6 +71,7 @@ export default function InventoryPage() {
     const [searchFilter, setSearchFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'dateLastUpdate', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', type: 'All', assignee: '' });
+    const [statusFilter, setStatusFilter] = useState(null); // Nuevo estado para el filtro visual de tarjetas
     const [selectedDeviceType, setSelectedDeviceType] = useState(null); // null = todos los tipos
     const [activeTab, setActiveTab] = useState('hardware'); // 'hardware', 'accessories', 'yubikeys'
     const [yubikeySearchFilter, setYubikeySearchFilter] = useState('');
@@ -127,6 +128,17 @@ export default function InventoryPage() {
                 matchesStatus = a.status === columnFilters.status;
             }
 
+            // --- NUEVO FILTRO VISUAL POR ESTADO ---
+            if (statusFilter) {
+                if (statusFilter === 'Nuevo') {
+                    matchesStatus = matchesStatus && (a.status === 'Nuevo' || a.status === 'Disponible');
+                } else if (statusFilter === 'Dañado') {
+                    matchesStatus = matchesStatus && ['Dañado', 'Rota', 'De Baja'].includes(a.status);
+                } else {
+                    matchesStatus = matchesStatus && a.status === statusFilter;
+                }
+            }
+
             const matchesType = columnFilters.type === 'All' || a.type === columnFilters.type;
             const matchesAssignee = !columnFilters.assignee || a.assignee.toLowerCase().includes(columnFilters.assignee.toLowerCase());
 
@@ -156,7 +168,7 @@ export default function InventoryPage() {
             });
         }
         return result;
-    }, [assets, searchFilter, sortConfig, columnFilters]);
+    }, [assets, searchFilter, sortConfig, columnFilters, statusFilter]);
 
     const SortIcon = ({ column }) => {
         if (sortConfig.key !== column) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
@@ -405,10 +417,10 @@ export default function InventoryPage() {
                     'imei': 'imei', 'imei 2': 'imei2', 'imei2': 'imei2',
                     'eol': 'eolDate', 'eol date': 'eolDate', 'fin de vida': 'eolDate',
                     'notes': 'notes', 'notas': 'notes', 'comentarios': 'notes', 'comments': 'notes',
-                    'country': 'country', 'pais': 'country'
+                    'country': 'country', 'pais': 'country', 'país': 'country', 'location': 'country', 'ubicacion': 'country', 'ubicación': 'country'
                 };
 
-                const mappedHeaders = rawHeaders.map(h => headerMap[h] || h); // Use map or keep original if no match
+                const mappedHeaders = rawHeaders.map(h => headerMap[h] || h);
 
                 // Validate critical headers
                 if (!mappedHeaders.includes('serial')) {
@@ -416,11 +428,7 @@ export default function InventoryPage() {
                     return;
                 }
 
-                // Validación de Seguridad: Columna Country Obligatoria
-                if (countryFilter !== 'Todos' && !mappedHeaders.includes('country')) {
-                    alert(`⛔ BLOQUEO DE SEGURIDAD ⛔\n\nPara cargar inventario en "${countryFilter}", el archivo CSV DEBE tener una columna "Country" o "Pais".\n\nEsto es necesario para verificar que no estés cargando datos incorrectos por error.`);
-                    return;
-                }
+                // NOTE: We relaxed the mandatory column check. If column is missing, we assume user wants to import into selected filter.
 
                 const newAssets = rows.slice(1).map(row => {
                     // Robust CSV Parser: Handles commas in quotes AND empty fields correctly
@@ -495,12 +503,23 @@ export default function InventoryPage() {
                     }
                     // --- NORMALIZATION END ---
 
-                    // --- VALIDACIÓN DE PAÍS ESTRICTA ---
+                    // --- VALIDACIÓN Y ASIGNACIÓN DE PAÍS ---
                     if (countryFilter !== 'Todos') {
                         const rowCountry = (asset.country || '').trim();
-                        if (!rowCountry || rowCountry.toLowerCase() !== countryFilter.toLowerCase()) {
-                            asset._validationError = `País incorrecto: "${rowCountry}". Se espera: "${countryFilter}"`;
+
+                        if (rowCountry) {
+                            // If country exists, it MUST match the filter
+                            if (rowCountry.toLowerCase() !== countryFilter.toLowerCase()) {
+                                asset._validationError = `Conflicto de País: El archivo dice "${rowCountry}" pero estás en la vista "${countryFilter}".`;
+                            }
+                        } else {
+                            // If country is missing in CSV row, AUTO-ASSIGN the selected filter
+                            asset.country = countryFilter;
                         }
+                    } else {
+                        // If Global view (Todos), allow whatever is in CSV, default to Argentina if missing?
+                        // Better to leave as is or default to Argentina if undefined
+                        if (!asset.country) asset.country = 'Argentina';
                     }
 
                     return asset;
@@ -1135,8 +1154,11 @@ export default function InventoryPage() {
                                     <div style={{ width: '3px', height: '16px', background: 'var(--primary-color)', borderRadius: '2px' }}></div>
                                     <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>Equipos por Estado</h4>
                                 </div>
-                                {selectedDeviceType && (
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Filtrado: {selectedDeviceType}s</span>
+                                {(selectedDeviceType || statusFilter) && (
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        {statusFilter && <Badge variant="primary" style={{ cursor: 'pointer' }} onClick={() => setStatusFilter(null)}>Filtro: {statusFilter} x</Badge>}
+                                        {selectedDeviceType && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Tipo: {selectedDeviceType}s</span>}
+                                    </div>
                                 )}
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
@@ -1146,14 +1168,36 @@ export default function InventoryPage() {
                                     const filteredByType = selectedDeviceType ? countryFilteredAssets.filter(a => a.type === selectedDeviceType) : countryFilteredAssets;
                                     const count = filteredByType.filter(a => a.status === status || (status === 'Nuevo' && a.status === 'Disponible')).length;
                                     const color = getStatusVariant(status) === 'success' ? '#16a34a' : getStatusVariant(status) === 'info' ? '#2563eb' : getStatusVariant(status) === 'warning' ? '#f59e0b' : getStatusVariant(status) === 'danger' ? '#ef4444' : 'var(--text-secondary)';
+
+                                    const isSelected = statusFilter === status;
+
                                     return (
-                                        <div key={status} style={{
-                                            padding: '1rem 0.5rem',
-                                            background: 'var(--background)',
-                                            borderRadius: '12px',
-                                            textAlign: 'center',
-                                            border: `1px solid ${color}20`
-                                        }}>
+                                        <div
+                                            key={status}
+                                            onClick={() => {
+                                                if (statusFilter === status) {
+                                                    setStatusFilter(null); // Toggle off
+                                                } else {
+                                                    setStatusFilter(status); // Set filter
+                                                    setIsInventoryExpanded(true); // Auto-expand list
+                                                }
+                                            }}
+                                            style={{
+                                                padding: '1rem',
+                                                background: 'var(--background)',
+                                                borderRadius: '12px',
+                                                border: isSelected ? `2px solid ${color}` : '1px solid var(--border)',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.5rem',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                                                boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+                                                textAlign: 'center',
+                                            }}>
                                             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: color, marginBottom: '0.2rem' }}>
                                                 {count}
                                             </div>
