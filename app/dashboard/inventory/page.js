@@ -495,14 +495,23 @@ export default function InventoryPage() {
                     }
                     // --- NORMALIZATION END ---
 
-                    // --- ASIGNACIÓN FORZADA DE PAÍS ---
-                    // Si estamos en una vista de país específico, forzamos esa ubicación
+                    // --- VALIDACIÓN DE PAÍS ESTRICTA ---
                     if (countryFilter !== 'Todos') {
-                        asset.country = countryFilter;
+                        const rowCountry = (asset.country || '').trim();
+                        if (!rowCountry || rowCountry.toLowerCase() !== countryFilter.toLowerCase()) {
+                            asset._validationError = `País incorrecto: "${rowCountry}". Se espera: "${countryFilter}"`;
+                        }
                     }
 
                     return asset;
                 }).filter(a => a.serial && a.serial.length > 2); // Filter empty rows
+
+                // --- BLOQUEO DE SEGURIDAD (Post-Procesamiento) ---
+                const invalidAssets = newAssets.filter(a => a._validationError);
+                if (invalidAssets.length > 0) {
+                    alert(`⛔ BLOQUEO DE SEGURIDAD ⛔\n\nEl archivo CSV contiene items que NO coinciden con el país seleccionado (${countryFilter}).\n\nEjemplo de error: ${invalidAssets[0]._validationError}\n\nPor seguridad, verifica tu archivo y asegúrate de que la columna "Country" tenga el valor "${countryFilter}" en TODAS las filas.`);
+                    return; // Abortar toda la operación
+                }
 
                 if (newAssets.length > 0) {
                     const existingSerials = new Set(assets.map(a => (a.serial || '').toString().toLowerCase().trim()));
