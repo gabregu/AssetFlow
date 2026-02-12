@@ -9,7 +9,7 @@ import { Logo } from '../ui/Logo';
 
 export function Sidebar({ isOpen, onClose }) {
     const pathname = usePathname();
-    const { currentUser, logout } = useStore();
+    const { currentUser, logout, onlineUsers } = useStore();
 
     const menuItems = [
         { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'Administrativo', 'Gerencial'] },
@@ -74,18 +74,22 @@ export function Sidebar({ isOpen, onClose }) {
         );
     };
 
+    const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+
     return (
         <aside className={`sidebar-container ${isOpen ? 'open' : ''}`} style={{
             width: '260px',
-            height: '100vh',
+            height: '100dvh', // Use dvh for better mobile support
+            maxHeight: '100vh', // Fallback
             backgroundColor: 'var(--surface)',
             borderRight: '1px solid var(--border)',
             display: 'flex',
             flexDirection: 'column',
             position: 'sticky',
-            top: 0
+            top: 0,
+            zIndex: 1000 // Ensure it stays on top
         }}>
-            <div style={{ padding: '2rem', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+            <div style={{ padding: '2rem', borderBottom: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Logo size="small" />
                     <button className="show-mobile" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
@@ -100,7 +104,15 @@ export function Sidebar({ isOpen, onClose }) {
                 )}
             </div>
 
-            <nav style={{ flex: 1, padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto' }}>
+            <nav style={{ 
+                flex: 1, 
+                padding: '1.5rem 1rem', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.5rem', 
+                overflowY: 'auto',
+                minHeight: 0 // Crucial for flex nested scrolling
+            }}>
                 {filteredMainItems.map(renderMenuItem)}
 
                 {filteredPersonalItems.length > 0 && filteredMainItems.length > 0 && (
@@ -150,7 +162,57 @@ export function Sidebar({ isOpen, onClose }) {
                 {filteredReportItems.map(renderMenuItem)}
             </nav>
 
-            <div style={{ padding: '1.5rem 1rem', borderTop: '1px solid var(--border)' }}>
+            <div style={{ 
+                marginTop: 'auto', 
+                paddingTop: '1rem', 
+                borderTop: '1px solid var(--border)',
+                flexShrink: 0, // Prevent shrinking
+                backgroundColor: 'var(--surface)', // Ensure background
+                paddingBottom: 'safe-area-inset-bottom' // For iPhone home bar
+            }}>
+                {/* Sección Usuarios Online (Solo Admin/Gerencial) */}
+                {currentUser && ['admin', 'Gerencial'].includes(currentUser.role) && (
+                    <div style={{
+                        marginBottom: '1rem',
+                        padding: '0.75rem',
+                        background: 'rgba(34, 197, 94, 0.1)',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        border: '1px solid rgba(34, 197, 94, 0.2)'
+                    }}>
+                        <div style={{ position: 'relative' }}>
+                            <div style={{
+                                width: '10px',
+                                height: '10px',
+                                background: '#22c55e',
+                                borderRadius: '50%',
+                                boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.3)'
+                            }}></div>
+                            <div style={{
+                                position: 'absolute',
+                                top: '-2px',
+                                left: '-2px',
+                                width: '14px',
+                                height: '14px',
+                                background: '#22c55e',
+                                borderRadius: '50%',
+                                opacity: 0.5,
+                                animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                            }}></div>
+                        </div>
+                        <div>
+                            <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                                Usuarios Online
+                            </p>
+                            <p style={{ fontSize: '0.7rem', color: '#15803d', margin: 0, fontWeight: 600 }}>
+                                {onlineUsers.length} conectados
+                            </p>
+                        </div>
+                    </div>
+                )}
+
                 <Link href="/dashboard/settings" style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -166,8 +228,12 @@ export function Sidebar({ isOpen, onClose }) {
                     Configuración
                 </Link>
                 <button
+                    disabled={isLoggingOut}
                     onClick={async () => {
+                        setIsLoggingOut(true);
                         try {
+                            // Small delay to show feedback if network is instant
+                            await new Promise(resolve => setTimeout(resolve, 500));
                             await logout();
                         } catch (e) {
                             console.error("Logout error:", e);
@@ -180,19 +246,36 @@ export function Sidebar({ isOpen, onClose }) {
                         alignItems: 'center',
                         gap: '0.75rem',
                         padding: '0.75rem 1rem',
-                        color: '#ef4444',
+                        color: isLoggingOut ? 'var(--text-secondary)' : '#ef4444',
                         background: 'none',
                         border: 'none',
-                        cursor: 'pointer',
+                        cursor: isLoggingOut ? 'wait' : 'pointer',
                         width: '100%',
                         textAlign: 'left',
                         fontFamily: 'inherit',
                         fontSize: 'inherit',
-                        fontWeight: 500
+                        fontWeight: 500,
+                        opacity: isLoggingOut ? 0.7 : 1
                     }}
                 >
-                    <LogOut size={20} />
-                    Cerrar Sesión
+                    {isLoggingOut ? (
+                        <>
+                            <div style={{
+                                width: '20px',
+                                height: '20px',
+                                border: '2px solid var(--text-secondary)',
+                                borderTop: '2px solid transparent',
+                                borderRadius: '50%',
+                                animation: 'spin 1s linear infinite'
+                            }} />
+                            <span>Cerrando...</span>
+                        </>
+                    ) : (
+                        <>
+                            <LogOut size={20} />
+                            Cerrar Sesión
+                        </>
+                    )}
                 </button>
             </div>
         </aside>
