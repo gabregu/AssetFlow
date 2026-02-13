@@ -20,6 +20,10 @@ export default function SFDCCasesPage() {
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' }); // Nuevo estado
+
+    // New State for Delivery/Collection Filter
+    const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION'
+
     const fileInputRef = useRef(null);
 
     // Bulk Actions State
@@ -41,9 +45,63 @@ export default function SFDCCasesPage() {
 
             const matchesCountry = countryFilter === 'Todos' || (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()));
 
-            return matchesText && matchesCountry;
+            // Helper New Hire (Duplicated logic for filter consistency)
+            const isNewHire = (c) => {
+                const subject = c.subject.toLowerCase();
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                let futureStart = false;
+                if (c.startDate) {
+                    const start = new Date(c.startDate);
+                    if (!isNaN(start.getTime())) {
+                        start.setHours(0, 0, 0, 0);
+                        if (start > today) futureStart = true;
+                    }
+                }
+                return subject.includes('new hire') || futureStart;
+            };
+
+            let matchesType = true;
+            if (filterType === 'DELIVERY') {
+                matchesType = !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding');
+            } else if (filterType === 'COLLECTION') {
+                matchesType = c.subject.toLowerCase().includes('collection') || c.subject.toLowerCase().includes('offboarding');
+            } else if (filterType === 'NEW_HIRE') {
+                matchesType = isNewHire(c);
+            }
+
+            return matchesText && matchesCountry && matchesType;
         });
-    }, [sfdcCases, filter, countryFilter]);
+    }, [sfdcCases, filter, countryFilter, filterType]);
+
+    // Metrics for Buttons (Including NEW HIRE filter)
+    const statsByType = useMemo(() => {
+        const relevantCases = sfdcCases.filter(c =>
+            countryFilter === 'Todos' || (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()))
+        );
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const isNewHire = (c) => {
+            const subject = c.subject.toLowerCase();
+            let futureStart = false;
+            if (c.startDate) {
+                const start = new Date(c.startDate);
+                if (!isNaN(start.getTime())) {
+                    start.setHours(0, 0, 0, 0);
+                    if (start > today) futureStart = true;
+                }
+            }
+            return subject.includes('new hire') || futureStart;
+        };
+
+        return {
+            delivery: relevantCases.filter(c => !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding')).length,
+            collection: relevantCases.filter(c => c.subject.toLowerCase().includes('collection') || c.subject.toLowerCase().includes('offboarding')).length,
+            newHire: relevantCases.filter(c => isNewHire(c)).length
+        };
+    }, [sfdcCases, countryFilter]);
 
     // 2. Ordenamiento
     const sortedCases = useMemo(() => {
@@ -59,8 +117,8 @@ export default function SFDCCasesPage() {
 
             // Manejo especial para números en strings (Age)
             if (key === 'age') {
-                aValue = parseInt(aValue) || 0;
-                bValue = parseInt(bValue) || 0;
+                aValue = parseInt(String(aValue).replace(/\D/g, '')) || 0;
+                bValue = parseInt(String(bValue).replace(/\D/g, '')) || 0;
             }
             // Manejo especial para fechas
             if (key === 'dateOpened') {
@@ -85,7 +143,6 @@ export default function SFDCCasesPage() {
 
             return 0;
         });
-
         return sortableItems;
     }, [filteredCases, sortConfig]);
 
@@ -96,6 +153,10 @@ export default function SFDCCasesPage() {
         }
         setSortConfig({ key, direction });
     };
+
+
+
+
 
     const SortIcon = ({ column }) => {
         if (sortConfig.key !== column) return <ArrowUpDown size={14} style={{ opacity: 0.3, marginLeft: '4px' }} />;
@@ -259,7 +320,20 @@ export default function SFDCCasesPage() {
 
         const reader = new FileReader();
         reader.onload = (event) => {
-            const text = event.target.result;
+            let text = event.target.result;
+
+            // --- SANITIZACIÓN DE HEADERS CORRUPTOS (Fix para reporte Chile/SFDC) ---
+            // El reporte de Chile viene con un error conocido donde "Mailing Country" y "Case Owner Alias"
+            // están fusionados sin coma: "Mailing Country"wner Alias"
+            // Esto rompe el parser. Lo arreglamos reemplazando por la versión correcta.
+            if (text.includes('"Mailing Country"wner Alias"')) {
+                console.warn('Detectado header corrupto SFDC. Aplicando parche...');
+                text = text.replace('"Mailing Country"wner Alias"', '"Mailing Country","Case Owner Alias"');
+            }
+
+            // Fix adicional para posibles saltos de línea excesivos en headers (campo "Start Date" a veces viene sucio)
+            // Buscamos patrones de comillas que no cierran en la misma línea si parece ser el header
+            // (Simplemente el parser lo manejará si las comillas están bien, pero el fix anterior es el crítico).
 
             // Parser CSV RFC 4180 robusto (Máquina de estados)
             const parseCSV = (str) => {
@@ -373,7 +447,7 @@ export default function SFDCCasesPage() {
                     }
                 }
 
-                newCases.push({
+                const newCase = {
                     caseNumber: caseNum,
                     status: getVal(rowValues, 'Status') || 'New',
                     priority: getVal(rowValues, 'Priority') || 'Medium',
@@ -391,7 +465,19 @@ export default function SFDCCasesPage() {
                     age: ageDisplay, // Age calculada
                     description: getVal(rowValues, 'Description') || '',
                     country: getVal(rowValues, 'Mailing Country') || ''
-                });
+                };
+
+                // --- VALIDACIÓN ESTRICTA DE PAÍS ---
+                // El usuario requiere que el campo "Mailing Country" sea OBLIGATORIO.
+                // Si no está presente o está vacío, no se debe importar el archivo.
+                if (!newCase.country) {
+                    alert(`Error en fila ${i + 2}: El campo "Mailing Country" es obligatorio.\n\nEl archivo no se importará.`);
+                    return; // Cancelamos TODA la importación
+                }
+
+                // Eliminamos la auto-asignación basada en filtro. El CSV es la fuente de la verdad.
+
+                newCases.push(newCase);
             }
 
             // Filtrar duplicados en INBOX
@@ -437,6 +523,8 @@ export default function SFDCCasesPage() {
         };
         reader.readAsText(file);
     };
+
+
 
     // 3. Estadísticas
     const countryFilteredCases = useMemo(() => {
@@ -534,6 +622,7 @@ export default function SFDCCasesPage() {
             </div>
 
             {/* Dashboard / Metrics Section - Compacted Row */}
+            {/* Dashboard / Metrics Section - Compacted Row */}
             {sfdcCases.length > 0 && (
                 <div style={{
                     display: 'flex',
@@ -600,6 +689,108 @@ export default function SFDCCasesPage() {
             )}
 
             <Card>
+                {/* FILTROS TIPO DE PEDIDO (ENTREGA, RECOLECCIÓN, NEW HIRE) */}
+                <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                    {/* BOTÓN VERDE (ENTREGA) */}
+                    <button
+                        onClick={() => setFilterType(filterType === 'DELIVERY' ? 'ALL' : 'DELIVERY')}
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1rem',
+                            backgroundColor: filterType === 'DELIVERY' ? '#dcfce7' : 'var(--background-secondary)',
+                            border: `2px solid ${filterType === 'DELIVERY' ? '#22c55e' : 'transparent'}`,
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: filterType === 'DELIVERY' ? '0 4px 6px -1px rgba(34, 197, 94, 0.1)' : 'none'
+                        }}
+                    >
+                        <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#15803d' }}>ENTREGA</div>
+                            <div style={{ fontSize: '0.75rem', color: '#166534', opacity: 0.8 }}>General</div>
+                        </div>
+                        <div style={{
+                            backgroundColor: '#22c55e',
+                            color: 'white',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '9999px',
+                            fontWeight: 700,
+                            fontSize: '1.25rem'
+                        }}>
+                            {statsByType.delivery}
+                        </div>
+                    </button>
+
+                    {/* BOTÓN NARANJA (RECOLECCIÓN) */}
+                    <button
+                        onClick={() => setFilterType(filterType === 'COLLECTION' ? 'ALL' : 'COLLECTION')}
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1rem',
+                            backgroundColor: filterType === 'COLLECTION' ? '#ffedd5' : 'var(--background-secondary)',
+                            border: `2px solid ${filterType === 'COLLECTION' ? '#f97316' : 'transparent'}`,
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: filterType === 'COLLECTION' ? '0 4px 6px -1px rgba(249, 115, 22, 0.1)' : 'none'
+                        }}
+                    >
+                        <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#c2410c' }}>RECOLECCIÓN</div>
+                            <div style={{ fontSize: '0.75rem', color: '#9a3412', opacity: 0.8 }}>Devoluciones</div>
+                        </div>
+                        <div style={{
+                            backgroundColor: '#f97316',
+                            color: 'white',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '9999px',
+                            fontWeight: 700,
+                            fontSize: '1.25rem'
+                        }}>
+                            {statsByType.collection}
+                        </div>
+                    </button>
+
+                    {/* BOTÓN ROJO (NEW HIRE) */}
+                    <button
+                        onClick={() => setFilterType(filterType === 'NEW_HIRE' ? 'ALL' : 'NEW_HIRE')}
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1rem',
+                            backgroundColor: filterType === 'NEW_HIRE' ? '#fee2e2' : 'var(--background-secondary)',
+                            border: `2px solid ${filterType === 'NEW_HIRE' ? '#ef4444' : 'transparent'}`,
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: filterType === 'NEW_HIRE' ? '0 4px 6px -1px rgba(239, 68, 68, 0.1)' : 'none'
+                        }}
+                    >
+                        <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#b91c1c' }}>NEW HIRE</div>
+                            <div style={{ fontSize: '0.75rem', color: '#991b1b', opacity: 0.8 }}>Ingresos / Futuros</div>
+                        </div>
+                        <div style={{
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '9999px',
+                            fontWeight: 700,
+                            fontSize: '1.25rem'
+                        }}>
+                            {statsByType.newHire}
+                        </div>
+                    </button>
+                </div>
+
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     {selectedCases.length > 0 ? (
                         <div style={{

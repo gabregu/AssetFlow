@@ -1,0 +1,549 @@
+"Case Number","Status","Priority","Date/Time Opened","Start Date","Subject","Case Record Type","Resource Type","Requested For","Contact: Email","Mailing Street","Mobile","Mailing Zip/Postal Code","Case Owner Alias","Age (Hours)","Description","Mailing Country"
+"00169897","In Progress","Medium","12/18/2025, 3:59 AM","12/9/2019","Provisioning - 16"" Development Laptop - Mac (Max) - Country Default - Mariano Lischetti","Service Request","Regular","Mariano Lischetti","lmariano@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541126585358","C1107CDA","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac (Max) - Country Default
+
+Shipping Address:
+Uriarte 192
+Baradero
+Buenos Aires
+2942
+Argentina
+5491126585358","Argentina"
+"00169882","In Progress","Medium","12/18/2025, 3:59 AM","7/6/2020","Provisioning - 13"" Standard Laptop - Mac - Country Default - Checho Molinero","Service Request","Regular","Checho Molinero","emolinero@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541157456580","C1107CDA","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+13"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Jose De San Martin 492, 18 A
+Quilmes
+Buenos Aires
+1878
+Argentina
+5491158099946","Argentina"
+"00259887","In Progress","Medium","2/6/2026, 9:03 AM","5/23/2022","Collection - Santiago Suarez","Service Request","Regular","Santiago Suarez","santiago.suarez@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541157456466","C1107CDA","GAbre","142.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # 4DXNCL3
+
+Collection Address:
+Juana Manso 999, 6th Floor
+Ciudad Autónoma De Buenos Aires
+Buenos Aires
+C1107CBS
+Argentina
++54 9 11 5745-6932
+
+If the above address is incorrect please provide the full correct address within 24 hours","Argentina"
+"00258619","In Progress","Medium","2/5/2026, 12:28 PM","11/19/2024","ITAM Asset Swap Request Bundle","Service Request","Regular","Malena Ornstein","mornstein@salesforce.com","Juana Manso 999, 5th and 6th Floor","","C1107CDA","GAbre","163.0000000000","","Argentina"
+"00258620","In Progress","Medium","2/5/2026, 12:28 PM","11/19/2024","Collection - Malena Ornstein","Service Request","Regular","Malena Ornstein","mornstein@salesforce.com","Juana Manso 999, 5th and 6th Floor","","C1107CDA","GAbre","163.0000000000","Juana Manso 999, 5th and 6th Floor
+Buenos Aires, Buenos Aires C1107CDA
+Argentina","Argentina"
+"00256475","In Progress","Medium","2/4/2026, 11:33 AM","7/31/2019","ITAM Asset Swap Request Bundle","Service Request","Regular","Nicolas Vekselman","nvekselman@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127344435","C1107CDA","GAbre","188.0000000000","","Argentina"
+"00256476","In Progress","Medium","2/4/2026, 11:33 AM","7/31/2019","Collection - Nicolas Vekselman","Service Request","Regular","Nicolas Vekselman","nvekselman@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127344435","C1107CDA","GAbre","188.0000000000","","Argentina"
+"00178747","In Progress","Medium","12/18/2025, 4:08 AM","2/5/2024","Provisioning - 16"" Development Laptop - Mac (Max) - Country Default - Petri Miroslav Sapunar","Service Request","Regular","Petri Miroslav Sapunar","psapunar@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541154604216","C1107CDA","ITAM MSP -Sycomp, Inc.","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac (Max) - Country Default
+
+Shipping Address:
+Juana Manso 999, 6th floor
+Ciudad Autonoma De Buenos Aires
+Ciudad Autonoma De Buenos Aires
+C1107CBS
+Argentina
+5491154604216","Argentina"
+"00178743","In Progress","Medium","12/18/2025, 4:08 AM","10/31/2023","Provisioning - 16"" Development Laptop - Mac (Max) - Country Default - Matias Lopez Luque","Service Request","Regular","Matias Lopez Luque","matias.lopez@salesforce.com","n/a - will be employee's home address","+541154585519","2800","ITAM MSP -Sycomp, Inc.","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac (Max) - Country Default
+
+Shipping Address:
+Juana Manso 999 6th Floor
+CABA
+CABA
+1424
+Argentina
+541140299995","Argentina"
+"00260919","In Progress","Medium","2/6/2026, 6:31 PM","7/30/2021","ITAM New Hire Services Bundle","Service Request","Regular","Florencia Scabuzzo","rmanetti@salesforce.com","Avenida Jornalista Roberto Marinho, 85 Bairro Brooklin Paulista Novo 30° Subdistrito Ibirapuera","+5511942406437","04576-010","GAbre","133.0000000000","Description for ITAM New Hire Services Bundle. N/A","Brazil"
+"00260921","In Progress","Medium","2/6/2026, 6:31 PM","7/30/2021","Provisioning - 16"" Development Laptop - Mac - Florencia Scabuzzo","Service Request","Regular","Florencia Scabuzzo","rmanetti@salesforce.com","Avenida Jornalista Roberto Marinho, 85 Bairro Brooklin Paulista Novo 30° Subdistrito Ibirapuera","+5511942406437","04576-010","GAbre","133.0000000000","N/A","Brazil"
+"00133609","In Progress","Medium","11/22/2025, 5:48 AM","3/25/2019","Provisioning - LATAM-Legacy Migration-Mexico-Apple-11-inch iPad Air (M3)-128GB - Alejandro Anton","Service Request","Regular","Alejandro Anton","aanton@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127337233","C1107CDA","EGonz","1970.0000000000","Please send to the Mexico Office K3YGHW7X72
+/***Additional Information starts***/
+
+Memory Size : NONE
+Number of device? : NONE
+Cost Center & Business Unit : NONE
+Who should each device be assigned to? : NONE
+
+/***Additional Information ends***/","Argentina"
+"00169884","In Progress","Medium","12/18/2025, 3:59 AM","1/9/2023","Provisioning - 13"" Standard Laptop - Mac - Country Default - Carolina Agudo","Service Request","Regular","Carolina Agudo","cagudo@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127267097","C1107CDA","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+13"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Libertad 310 - Barrio El Canton
+Belen De Escobar
+Buenos Aires
+1625
+Argentina
+111527267097","Argentina"
+"00169887","In Progress","Medium","12/18/2025, 3:59 AM","11/14/2022","Provisioning - 16"" Development Laptop - Mac - Country Default - Sebastian Salvucci","Service Request","Regular","Sebastian Salvucci","ssalvucci@salesforce.com","n/a - will be employee's home address","+541127334072","2800","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac - Country Default
+
+Shipping Address:
+Lote 10 Manzana 227 La Estanzuela
+La Calera
+Cordoba
+5151
+Argentina
+543516209227","Argentina"
+"00243895","In Progress","Medium","1/28/2026, 2:37 PM","10/3/2022","ITAM Asset Swap Request Bundle","Service Request","Regular","Facundo Reyes","facundo.reyes@salesforce.com","n/a - will be employee's home address","+541127323885","2800","GAbre","353.0000000000","","Argentina"
+"00243897","In Progress","Medium","1/28/2026, 2:37 PM","10/3/2022","Collection - Facundo Reyes","Service Request","Regular","Facundo Reyes","facundo.reyes@salesforce.com","n/a - will be employee's home address","+541127323885","2800","GAbre","353.0000000000","","Argentina"
+"00243898","In Progress","Medium","1/28/2026, 2:37 PM","10/3/2022","Provisioning - LATAM-Sycomp - Argentina-Argentina-Samsung-Galaxy S25-128GB - Facundo Reyes","Service Request","Regular","Facundo Reyes","facundo.reyes@salesforce.com","n/a - will be employee's home address","+541127323885","2800","GAbre","353.0000000000","null","Argentina"
+"00243927","In Progress","Medium","1/28/2026, 2:50 PM","10/3/2022","ITAM Asset Swap Request Bundle","Service Request","Regular","Juan Jose Barrera","juanjose.barrera@salesforce.com","n/a - will be employee's home address","+541127487018","2800","GAbre","353.0000000000","","Argentina"
+"00243928","In Progress","Medium","1/28/2026, 2:50 PM","10/3/2022","Collection - Juan Jose Barrera","Service Request","Regular","Juan Jose Barrera","juanjose.barrera@salesforce.com","n/a - will be employee's home address","+541127487018","2800","GAbre","353.0000000000","","Argentina"
+"00243892","In Progress","Medium","1/28/2026, 2:37 PM","10/17/2022","ITAM Asset Swap Request Bundle","Service Request","Regular","David Pendenza","dpendenza@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541162160815","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00243893","In Progress","Medium","1/28/2026, 2:37 PM","10/17/2022","Collection - David Pendenza","Service Request","Regular","David Pendenza","dpendenza@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541162160815","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00243894","In Progress","Medium","1/28/2026, 2:37 PM","10/17/2022","Provisioning - Samsung S24 - Onyx - Black 128GB - David Pendenza","Service Request","Regular","David Pendenza","dpendenza@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541162160815","C1107CDA","GAbre","353.0000000000","null","Argentina"
+"00169870","In Progress","Medium","12/18/2025, 3:59 AM","7/4/2022","Provisioning - LATAM-Sycomp-Apple-MacBook Air-13 M4-Spanish - María Inés Otero","Service Request","Regular","María Inés Otero","motero@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541150028492","C1107CDA","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+13"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Chile 849 (Barrio Ayres Plaza) LOTE: C13L17
+Pilar
+La Lonja
+1629
+Argentina
+1150443490","Argentina"
+"00253959","In Progress","Medium","2/3/2026, 9:26 AM","3/2/2022","Collection - Hernan Noriega","Service Request","Regular","Hernan Noriega","hernan.noriega@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541176132101","C1107CDA","GAbre","214.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # G7B4TG3
+
+Collection Address:
+Juana Manso 999, 6th & 5th Floor
+CABA
+CABA
+1405
+Argentina
+5491155666324
+
+If the above address is incorrect please provide the full correct address within 24 hours","Argentina"
+"00169857","In Progress","Medium","12/18/2025, 3:59 AM","2/21/2022","Provisioning - 15"" Standard Laptop - Mac - Country Default - Carolina Nancy Sanchez","Service Request","Regular","Carolina Nancy Sanchez","carolina.sanchez@salesforce.com","n/a - will be employee's home address","+541176131972","2800","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+15"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Alzaga 5401 - Casa 2
+Chacras De Coria - Luján De Cuyo
+Mendoza
+5505
+Argentina
+5491154168740","Argentina"
+"00169868","In Progress","Medium","12/18/2025, 3:59 AM","2/21/2022","Provisioning - 15"" Standard Laptop - Mac - Country Default - Nicolas Calcagno","Service Request","Regular","Nicolas Calcagno","ncalcagno@salesforce.com","n/a - will be employee's home address","+541176132108","2800","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+15"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Bernardo De Leon 2495
+Ciudad De Buenos Aires
+Ciudad De Buenos Aires
+1416
+Argentina
+5491134456426","Argentina"
+"00259883","In Progress","Medium","2/6/2026, 9:03 AM","1/31/2022","Collection - Ayelén López Bizón","Service Request","Regular","Ayelén López Bizón","ayelen.lopez@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541176132098","C1107CDA","GAbre","142.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # N2R765334L
+
+Collection Address:
+Hidalgo 1415 PB A
+CABA
+CABA
+1414
+Argentina
++5491156353963
+
+If the above address is incorrect please provide the full correct address within 24 hours","Argentina"
+"00169865","In Progress","Medium","12/18/2025, 3:59 AM","12/13/2021","Provisioning - 16"" Development Laptop - Mac - Country Default - Federico Gonzalez","Service Request","Regular","Federico Gonzalez","federico.gonzalez@salesforce.com","n/a - will be employee's home address","+541176132061","2800","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac - Country Default
+
+Shipping Address:
+Barrio Portal del Sur Mzna H Casa 17 Villa Aberastain
+Pocito
+San Juan
+5427
+Argentina
+5492645111866","Argentina"
+"00253126","In Progress","Medium","2/3/2026, 9:26 AM","11/29/2021","Collection - Fernando Gabriel Pardo","Service Request","Regular","Fernando Gabriel Pardo","fpardo@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541176132006","C1107CDA","GAbre","214.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # KW14R5QL2M
+
+Collection Address:
+Lugones 4307 Piso 1 Depto B
+Buenos Aires
+Ciudad Autonoma De Buenos Aires
+1430
+Argentina
++541156161009
+
+If the above address is incorrect please provide the full correct address within 24 hours","Argentina"
+"00267116","In Progress","Medium","2/11/2026, 10:14 AM","11/15/2021","Collection - Laura Egitto (Ella/She/Her)","Service Request","Regular","Laura Egitto (Ella/She/Her)","legitto@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127317492","C1107CDA","GAbre","21.0000000000","The asset Apple-MacBook Pro-13 TB-Generic Layout-C02G44AGML85 was returned to the Buenos Aires Techbar office","Argentina"
+"00235234","In Progress","Medium","1/24/2026, 12:07 PM","10/29/2021","Collection - Iris Espinoza","Service Request","Regular","Iris Espinoza","ireinoso@salesforce.com","n/a - will be employee's home address","+541176131962","2800","GAbre","451.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # JDJ4WX0KC6
+
+Collection Address:
+Barrio Acacias. Lote 84. Puertos del Lago. Escobar
+Provincia De Buenos Aires
+Provincia De Buenos Aires
+1625
+Argentina
+1135232064","Argentina"
+"00178750","In Progress","Medium","12/18/2025, 4:08 AM","10/29/2021","Provisioning - 13"" Standard Laptop - Mac - Country Default - Nicolás Lavezzari","Service Request","Regular","Nicolás Lavezzari","nlavezzari@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541159079421","C1107CDA","ITAM MSP -Sycomp, Inc.","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+13"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Juana Manso 999, 6to Piso
+Ciudad De Buenos Aires
+Buenos Aires
+1006
+Argentina
+5491128074460","Argentina"
+"00169869","In Progress","Medium","12/18/2025, 3:59 AM","6/14/2021","Provisioning - 15"" Standard Laptop - Mac - Country Default - Geraldina Fiore","Service Request","Regular","Geraldina Fiore","gfiore@salesforce.com","n/a - will be employee's home address","+541121691222","2800","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+15"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Calle 21 nro 88
+La Plata
+Buenos Aires
+1900
+Argentina
+5492214974646","Argentina"
+"00090294","In Progress","Medium","10/27/2025, 1:29 PM","5/10/2021","ITAM Asset Swap Request Bundle","Service Request","Regular","Alejandro Daniel Cragnolini","acragnolini@salesforce.com","n/a - will be employee's home address","+541156423173","2800","ITAM Provisioning","2587.0000000000","LATAM Android 13 EOL Swap","Argentina"
+"00090309","In Progress","Medium","10/27/2025, 1:34 PM","5/10/2021","ITAM Asset Collection Request","Service Request","Regular","Alejandro Daniel Cragnolini","acragnolini@salesforce.com","n/a - will be employee's home address","+541156423173","2800","GAbre","2587.0000000000","LATAM Android 13 EOL Swap","Argentina"
+"00235238","In Progress","Medium","1/24/2026, 12:07 PM","4/26/2021","Collection - Mailen Naveiro","Service Request","Regular","Mailen Naveiro","mnaveiro@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541121777872","C1107CDA","GAbre","451.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # C02F51R9ML85
+
+Collection Address:
+Lorenzo Caro 2122
+Villa Udaondo, Ituzaingó
+Buenos Aires
+1713
+Argentina
++5491121562147","Argentina"
+"00235233","In Progress","Medium","1/24/2026, 12:07 PM","4/26/2021","Collection - Andrés Rivas","Service Request","Regular","Andrés Rivas","andresfelipe.rivas@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541156422944","C1107CDA","GAbre","451.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # LH22L2RM6Y
+
+Collection Address:
+Av. Gral. Las Heras 2905
+Cdad. Autónoma De Buenos Aires
+Capital Federal
+C1425ASG
+Argentina
++5491137786393","Argentina"
+"00259799","In Progress","Medium","2/6/2026, 8:18 AM","1/29/2021","Collection - Lucia Etcheves","Service Request","Regular","Lucia Etcheves","letcheves@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127488249","C1107CDA","GAbre","143.0000000000","","Argentina"
+"00178731","In Progress","Medium","12/18/2025, 4:08 AM","1/29/2021","Provisioning - 13"" Standard Laptop - Mac - Country Default - Josefina Amespil","Service Request","Regular","Josefina Amespil","mamespil@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127484145","C1107CDA","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+13"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Juana Manso 999
+Buenos Aires
+Buenos Aires
+C1107CBS
+Argentina
+5491127484145","Argentina"
+"00169872","In Progress","Medium","12/18/2025, 3:59 AM","5/11/2020","Provisioning - 16"" Development Laptop - Mac (Max) - Country Default - Sebastian Rial","Service Request","Regular","Sebastian Rial","srial@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541133742297","C1107CDA","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac (Max) - Country Default
+
+Shipping Address:
+Cordoba 2056 6B
+Lanus Este
+Buenos Aires
+B1820AYX
+Argentina
+91165131953","Argentina"
+"00169874","In Progress","Medium","12/18/2025, 3:59 AM","4/27/2020","Provisioning - 15"" Standard Laptop - Mac - Country Default - Marina Gonzalez","Service Request","Regular","Marina Gonzalez","marina.gonzalez@salesforce.com","n/a - will be employee's home address","+541162052085","2800","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+15"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Dean Funes 2001 Barrio San Marco lote 313
+Ing. Maschwitz
+Buenos Aires
+1623
+Argentina
+5491133145005","Argentina"
+"00178741","In Progress","Medium","12/18/2025, 4:08 AM","3/16/2020","Provisioning - 16"" Development Laptop - Mac (Max) - Country Default - Fernando Lescano","Service Request","Regular","Fernando Lescano","flescano@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127072237","C1107CDA","ITAM MSP -Sycomp, Inc.","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac (Max) - Country Default
+
+Shipping Address:
+Juana Manso 999 ,6th & 5th Floor
+Buenos Aires
+Buenos Aires
+C1107CBS
+Argentina
+1141563556","Argentina"
+"00243899","In Progress","Medium","1/28/2026, 2:37 PM","10/21/2019","ITAM Asset Swap Request Bundle","Service Request","Regular","Francisco Lamarina","flamarina@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127342338","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00243900","In Progress","Medium","1/28/2026, 2:37 PM","10/21/2019","Collection - Francisco Lamarina","Service Request","Regular","Francisco Lamarina","flamarina@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127342338","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00235235","In Progress","Medium","1/24/2026, 12:07 PM","11/25/2019","Collection - Claudio Veron Valussi","Service Request","Regular","Claudio Veron Valussi","cveron@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541126568235","C1107CDA","GAbre","451.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # C02ZL0PJLVDQ
+
+Collection Address:
+Doctor Rene Favaloro 4370
+Jose C. Paz
+Buenos Aires
+1665
+Argentina
+15 5919 5748","Argentina"
+"00243905","In Progress","Medium","1/28/2026, 2:37 PM","10/15/2019","ITAM Asset Swap Request Bundle","Service Request","Regular","Joaquin Pega","jpega@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127342782","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00243906","In Progress","Medium","1/28/2026, 2:37 PM","10/15/2019","Collection - Joaquin Pega","Service Request","Regular","Joaquin Pega","jpega@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127342782","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00178749","In Progress","Medium","12/18/2025, 4:08 AM","11/4/2019","Provisioning - 13"" Standard Laptop - Mac - Country Default - Clau Delsol","Service Request","Regular","Clau Delsol","cdelsol@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541156476758","C1107CDA","ITAM MSP -Sycomp, Inc.","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+13"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Juana Manso 999, 6th floor, CABA
+Capital Federal
+Buenos Aires
+1107
+Argentina
+111560309671","Argentina"
+"00111715","In Progress","Medium","11/6/2025, 5:30 PM","7/10/2019","ITAM Employee Offboarding","Service Request","Regular","Florencia Calvo","florencia.calvo@salesforce.com","n/a - will be employee's home address","+541127273617","2800","GAbre","2342.0000000000","","Argentina"
+"00111716","In Progress","Medium","11/6/2025, 5:30 PM","7/10/2019","Collection - Florencia Calvo","Service Request","Regular","Florencia Calvo","florencia.calvo@salesforce.com","n/a - will be employee's home address","+541127273617","2800","GAbre","2342.0000000000","","Argentina"
+"00243908","In Progress","Medium","1/28/2026, 2:37 PM","1/14/2019","ITAM Asset Swap Request Bundle","Service Request","Regular","Belén Carcagno","mcarcagno@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541158784408","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00243909","In Progress","Medium","1/28/2026, 2:37 PM","1/14/2019","Collection - Belén Carcagno","Service Request","Regular","Belén Carcagno","mcarcagno@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541158784408","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00243910","In Progress","Medium","1/28/2026, 2:37 PM","1/14/2019","Provisioning - Samsung S24 - Onyx - Black 128GB - Belén Carcagno","Service Request","Regular","Belén Carcagno","mcarcagno@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541158784408","C1107CDA","GAbre","353.0000000000","null","Argentina"
+"00243933","In Progress","Medium","1/28/2026, 2:50 PM","1/7/2019","ITAM Asset Swap Request Bundle","Service Request","Regular","Nicolas Gamallo","ngamallo@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541158784451","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00243934","In Progress","Medium","1/28/2026, 2:50 PM","1/7/2019","Collection - Nicolas Gamallo","Service Request","Regular","Nicolas Gamallo","ngamallo@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541158784451","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00169866","In Progress","Medium","12/18/2025, 3:59 AM","1/2/2019","Provisioning - 16"" Development Laptop - Mac - Country Default - Cristian Venticinque","Service Request","Regular","Cristian Venticinque","cventicinque@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541161370402","C1107CDA","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac - Country Default
+
+Shipping Address:
+Belgrano 1811, Planta Baja E
+Banfield
+Buenos Aires
+1828
+Argentina
+1161370402","Argentina"
+"00178738","In Progress","Medium","12/18/2025, 4:08 AM","4/1/2019","Provisioning - 16"" Development Laptop - Mac (Max) - Country Default - Diego Saint Esteben","Service Request","Regular","Diego Saint Esteben","dsaintesteben@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541164371430","C1107CDA","ITAM MSP -Sycomp, Inc.","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac (Max) - Country Default
+
+Shipping Address:
+Juana Manso 999 - 5th Floor
+Buenos Aires
+Buenos Aires
+1107
+Argentina
+5491130824650","Argentina"
+"00243936","In Progress","Medium","1/28/2026, 2:51 PM","10/16/2018","ITAM Asset Swap Request Bundle","Service Request","Regular","Nicolás Ledesma","nledesma@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127267893","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00243937","In Progress","Medium","1/28/2026, 2:51 PM","10/16/2018","Collection - Nicolás Ledesma","Service Request","Regular","Nicolás Ledesma","nledesma@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127267893","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00243938","In Progress","Medium","1/28/2026, 2:51 PM","10/16/2018","Provisioning - LATAM-Sycomp - Argentina-Argentina-Samsung-Galaxy S25-128GB - Nicolás Ledesma","Service Request","Regular","Nicolás Ledesma","nledesma@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127267893","C1107CDA","GAbre","352.0000000000","null","Argentina"
+"00169873","In Progress","Medium","12/18/2025, 3:59 AM","1/21/2019","Provisioning - LATAM-Sycomp-Apple-MacBook Pro-16 M3 Pro-Spanish - Zeke Schiavone","Service Request","Regular","Zeke Schiavone","eschiavone@salesforce.com","n/a - will be employee's home address","+541158784507","2800","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac - Country Default
+
+Shipping Address:
+Coronel Artigas 2914, Barrio La Comarca Lote 260
+Tigre
+Buenos Aires
+1617
+Argentina
+111537657899","Argentina"
+"00243902","In Progress","Medium","1/28/2026, 2:37 PM","9/10/2018","ITAM Asset Swap Request Bundle","Service Request","Regular","Alejandro Larosa","jlarosa@salesforce.com","n/a - will be employee's home address","+541158784529","2800","GAbre","353.0000000000","","Argentina"
+"00243903","In Progress","Medium","1/28/2026, 2:37 PM","9/10/2018","Collection - Alejandro Larosa","Service Request","Regular","Alejandro Larosa","jlarosa@salesforce.com","n/a - will be employee's home address","+541158784529","2800","GAbre","353.0000000000","","Argentina"
+"00243904","In Progress","Medium","1/28/2026, 2:37 PM","9/10/2018","Provisioning - Samsung S24 - Onyx - Black 128GB - Alejandro Larosa","Service Request","Regular","Alejandro Larosa","jlarosa@salesforce.com","n/a - will be employee's home address","+541158784529","2800","GAbre","353.0000000000","null","Argentina"
+"00221120","In Progress","Medium","1/19/2026, 5:23 AM","9/10/2018","Collection - Diego Larralde","Service Request","Regular","Diego Larralde","dlarralde@salesforce.com","n/a - will be employee's home address","+541161370595","2800","GAbre","578.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # T19HTM7LJ4
+
+Collection Address:
+Guayaquil 2075
+Grand Bourg
+Buenos Aires
+1615
+Argentina
++54 9 11 61370595","Argentina"
+"00169854","In Progress","Medium","12/18/2025, 3:59 AM","9/10/2018","Provisioning - LATAM-Sycomp-Argentina-Apple-MacBook Pro-16 M4 Max-English US - Martin Battaglia","Service Request","Regular","Martin Battaglia","mbattaglia@salesforce.com","n/a - will be employee's home address","+541127197627","2800","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac (Max) - Country Default
+
+Shipping Address:
+Acceso Oeste Km 47 y Ruta 24, Barrio Terravista, Lote 438
+General Rodriguez
+Buenos Aires
+1748
+Argentina
+5491127197627","Argentina"
+"00235236","In Progress","Medium","1/24/2026, 12:07 PM","9/10/2018","Collection - Nicolas Battiato","Service Request","Regular","Nicolas Battiato","nbattiato@salesforce.com","n/a - will be employee's home address","+541127196685","2800","GAbre","451.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # TMX4YGWPWM
+
+Collection Address:
+Isla Rasa S/N, Barrio Los Potrillos UF 119
+Pilat
+Buenos Aires
+1633
+Argentina
++54 9 11 5748 7326","Argentina"
+"00178728","In Progress","Medium","12/18/2025, 4:08 AM","9/10/2018","Provisioning - 14"" Development Laptop - Mac - Country Default - Lucas Luppani","Service Request","Regular","Lucas Luppani","lluppani@salesforce.com","n/a - will be employee's home address","","2800","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+14"" Development Laptop - Mac - Country Default
+
+Shipping Address:
+Av Beliera 3025
+Pilar
+Buenos Aires
+B1629HVK
+Argentina
+5491136781200","Argentina"
+"00265650","In Progress","Medium","2/10/2026, 12:29 PM","9/10/2018","Collection - Diego Macías","Service Request","Regular","Diego Macías","diego.macias@salesforce.com","n/a - will be employee's home address","+541127184673","2800","GAbre","43.0000000000","","Argentina"
+"00267551","In Progress","Medium","2/11/2026, 12:47 PM","9/10/2018","Collection - Diego Macías","Service Request","Regular","Diego Macías","diego.macias@salesforce.com","n/a - will be employee's home address","+541127184673","2800","GAbre","19.0000000000","","Argentina"
+"00259885","In Progress","Medium","2/6/2026, 9:03 AM","9/10/2018","Collection - Maria Mare","Service Request","Regular","Maria Mare","mmare@salesforce.com","n/a - will be employee's home address","+541127190131","2800","GAbre","142.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # XXR3MF6JMH
+
+Collection Address:
+Tomas Le Breton 4249 Piso 3 Depto 304
+CABA
+CABA
+1430
+Argentina
++5491127190131
+
+If the above address is incorrect please provide the full correct address within 24 hours","Argentina"
+"00237172","In Progress","Medium","1/26/2026, 6:57 AM","9/10/2018","Salesforce Asset Collection","Service Request","Regular","Hernan Gegenschatz","hgegenschatz@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127287602","C1107CDA","GAbre","408.0000000000","Samsung S22 SM-S901E","Argentina"
+"00178735","In Progress","Medium","12/18/2025, 4:08 AM","9/10/2018","Provisioning - 16"" Development Laptop - Mac - Country Default - Martin Cocaro","Service Request","Regular","Martin Cocaro","mcocaro@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127277781","C1107CDA","ITAM MSP -Sycomp, Inc.","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac - Country Default
+
+Shipping Address:
+Juana Manso 999
+Capital Federal
+Buenos Aires
+C1107CBS
+Argentina
+5491158766850","Argentina"
+"00178736","In Progress","Medium","12/18/2025, 4:08 AM","9/10/2018","Provisioning - 14"" Development Laptop - Mac (Max) - Country Default - Julian Pascual","Service Request","Regular","Julian Pascual","julian.pascual@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541156424576","C1107CDA","ITAM MSP -Sycomp, Inc.","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+14"" Development Laptop - Mac (Max) - Country Default
+
+Shipping Address:
+Juana Manso 999
+Ciudad Autonoma De Buenos Aires
+Buenos Aires
+1006
+Argentina
+5491121620839","Argentina"
+"00178744","In Progress","Medium","12/18/2025, 4:08 AM","9/10/2018","Provisioning - 16"" Development Laptop - Mac (Max) - Country Default - Pablo Camino","Service Request","Regular","Pablo Camino","pcamino@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127217882","C1107CDA","ITAM MSP -Sycomp, Inc.","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac (Max) - Country Default
+
+Shipping Address:
+Juana Manso 999 floor 6
+Ciudad Autónoma De Buenos Aires
+CABA
+C 1107
+Argentina
+541127217882","Argentina"
+"00239971","In Progress","Medium","1/27/2026, 3:29 AM","9/10/2018","Collection - Santiago Vacas","Service Request","Regular","Santiago Vacas","svacas@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127215816","C1107CDA","GAbre","388.0000000000","","Argentina"
+"00243930","In Progress","Medium","1/28/2026, 2:50 PM","9/10/2018","ITAM Asset Swap Request Bundle","Service Request","Regular","Nahuel Dalla Vecchia","ndallavecchia@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127258212","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00243931","In Progress","Medium","1/28/2026, 2:50 PM","9/10/2018","Collection - Nahuel Dalla Vecchia","Service Request","Regular","Nahuel Dalla Vecchia","ndallavecchia@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127258212","C1107CDA","GAbre","353.0000000000","","Argentina"
+"00178732","In Progress","Medium","12/18/2025, 4:08 AM","9/10/2018","Provisioning - 16"" Development Laptop - Mac (Max) - Country Default - Hernan Rivero","Service Request","Regular","Hernan Rivero","hrivero@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127302080","C1107CDA","ITAM MSP -Sycomp, Inc.","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+16"" Development Laptop - Mac (Max) - Country Default
+
+Shipping Address:
+Juana Manso 999
+Buenos Aires
+CABA
+1107
+Argentina
+541167122848","Argentina"
+"00169893","In Progress","Medium","12/18/2025, 3:59 AM","9/10/2018","Provisioning - 13"" Standard Laptop - Mac - Country Default - Mariano Capurro","Service Request","Regular","Mariano Capurro","mcapurro@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127292176","C1107CDA","GAbre","1347.0000000000","FY26 Q4 - EOL - Laptop Refresh Provisioning
+
+Requested Item:
+13"" Standard Laptop - Mac - Country Default
+
+Shipping Address:
+Palpa 2390 13 C
+Ciudad Autonoma De Buenos Aires
+CABA
+1426
+Argentina
+541127292176","Argentina"
+"00243649","In Progress","Medium","1/28/2026, 10:49 AM","9/10/2018","Provisioning - AMER-Legacy Migration-United States of America-Samsung-Galaxy S22-128GB - Mariano Capurro","Service Request","Regular","Mariano Capurro","mcapurro@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127292176","C1107CDA","GAbre","357.0000000000","Customer lost his mobile in office premises","Argentina"
+"00265563","On Hold","Medium","2/10/2026, 11:50 AM","12/13/2021","Collection - Federico Gonzalez","Service Request","Regular","Federico Gonzalez","federico.gonzalez@salesforce.com","n/a - will be employee's home address","+541176132061","2800","GAbre","44.0000000000","","Argentina"
+"00259886","On Hold","Medium","2/6/2026, 9:03 AM","9/10/2018","Collection - Alejandro Dobniewski","Service Request","Regular","Alejandro Dobniewski","adobniewski@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127257247","C1107CDA","GAbre","142.0000000000","FY26 Q4 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # YDXDDQ1H7D
+
+Collection Address:
+Juana Manso 999 Piso 6
+Buenos Aires
+Ciudad Autonoma De Buenos Aires
+C1006
+Argentina
++5491122421473
+
+If the above address is incorrect please provide the full correct address within 24 hours","Argentina"
+"00260923","Approved","Medium","2/6/2026, 6:31 PM","7/30/2021","Provisioning - Florencia Scabuzzo","Service Request","Regular","Florencia Scabuzzo","rmanetti@salesforce.com","Avenida Jornalista Roberto Marinho, 85 Bairro Brooklin Paulista Novo 30° Subdistrito Ibirapuera","+5511942406437","04576-010","GAbre","133.0000000000","N/A","Brazil"
+"00136816","Approved","Medium","11/25/2025, 9:52 AM","9/12/2022","Collection - Juan Cruz Seminara","Service Request","Regular","Juan Cruz Seminara","jseminara@salesforce.com","Juana Manso 999, 5th and 6th Floor","+541127239030","C1107CDA","GAbre","1893.0000000000","","Argentina"

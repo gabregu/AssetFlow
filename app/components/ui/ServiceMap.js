@@ -115,11 +115,11 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                             details: d,
                             icon: {
                                 path: "M1 3h14v2H1zm16 8H1V5h12v2h4v4zM1 18h2.5c0 1.93 1.57 3.5 3.5 3.5S10.5 19.93 10.5 18h3c0 1.93 1.57 3.5 3.5 3.5s3.5-1.57 3.5-3.5H23v-6l-3-4h-5V5c0-1.1-.9-2-2-2H1c-1.1 0-2 .9-2 2v13h2zm6 0c0 .83-.67 1.5-1.5 1.5S4 18.83 4 18s.67-1.5 1.5-1.5 1.5.67 1.5 1.5zm11.5 1.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM17 9h4l1.3 2H17V9z", // Simple Truck Path
-                                fillColor: "#2563eb",
+                                fillColor: "#3E2723", // Dark Brown (single color)
                                 fillOpacity: 1,
-                                strokeColor: "#ffffff",
-                                strokeWeight: 2,
-                                scale: 1.2,
+                                strokeColor: "#3E2723", // Same as fill
+                                strokeWeight: 1, // Slight stroke for weight
+                                scale: 1.6, // Larger size
                                 anchor: new window.google.maps.Point(0, 20)
                             }
                         });
