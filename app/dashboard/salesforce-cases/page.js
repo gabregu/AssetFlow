@@ -63,7 +63,7 @@ export default function SFDCCasesPage() {
 
             let matchesType = true;
             if (filterType === 'DELIVERY') {
-                matchesType = !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding');
+                matchesType = !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding') && !isNewHire(c);
             } else if (filterType === 'COLLECTION') {
                 matchesType = c.subject.toLowerCase().includes('collection') || c.subject.toLowerCase().includes('offboarding');
             } else if (filterType === 'NEW_HIRE') {
@@ -97,7 +97,7 @@ export default function SFDCCasesPage() {
         };
 
         return {
-            delivery: relevantCases.filter(c => !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding')).length,
+            delivery: relevantCases.filter(c => !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding') && !isNewHire(c)).length,
             collection: relevantCases.filter(c => c.subject.toLowerCase().includes('collection') || c.subject.toLowerCase().includes('offboarding')).length,
             newHire: relevantCases.filter(c => isNewHire(c)).length
         };
@@ -227,12 +227,84 @@ export default function SFDCCasesPage() {
 
         try {
             console.log("Creating ticket with data:", newTicket);
-            const createdTicket = await addTicket(newTicket);
+
+            // 1. Automatización: Buscar casos hermanos si es ENTREGA/ENTREGAS
+            // Helper para identificar entrega (misma lógica que el filtro)
+            const isDelivery = (c) => !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding');
+
+            // Helper para normalizar nombres (Quitar acentos, lowercase, trim)
+            const normalizeName = (name) => {
+                return (name || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+            };
+
+            let finalTicket = { ...newTicket };
+            let casesToRemove = [selectedCase.caseNumber];
+
+            // Solo aplicar si el caso actual ES una entrega
+            if (selectedCase && isDelivery(selectedCase)) {
+                const currentRequestedFor = normalizeName(selectedCase.requestedFor);
+
+                // Buscar otros casos del mismo usuario que también sean entregas
+                // LÓGICA FLEXIBLE: Coincidencia parcial o exacta normalizada
+                const siblings = sfdcCases.filter(c => {
+                    if (c.caseNumber === selectedCase.caseNumber) return false; // Skip self
+                    if (!isDelivery(c)) return false; // Skip non-deliveries
+
+                    const siblingName = normalizeName(c.requestedFor);
+
+                    // 1. Coincidencia exacta normalizada
+                    if (siblingName === currentRequestedFor) return true;
+
+                    // 2. Coincidencia parcial segura (Solo si el nombre tiene cierta longitud para evitar falsos positivos con nombres cortos)
+                    if (currentRequestedFor.length > 3 && siblingName.length > 3) {
+                        return siblingName.includes(currentRequestedFor) || currentRequestedFor.includes(siblingName);
+                    }
+
+                    return false;
+                });
+
+                if (siblings.length > 0) {
+                    console.log(`Found ${siblings.length} sibling cases for ${selectedCase.requestedFor}`);
+
+                    // Consolidar
+                    const siblingNotes = siblings.map(s => `• Caso Adicional: [SFDC-${s.caseNumber}] ${s.subject}`).join('\n');
+                    const consolidationMsg = `=== AUTOMATIZACIÓN: CASOS AGRUPADOS ===\nSe han detectado y agrupado automáticamente otros casos pendientes para ${selectedCase.requestedFor}:\n${siblingNotes}`;
+
+                    // 1. Agregar a internalNotes (Registro)
+                    finalTicket.internalNotes = finalTicket.internalNotes || [];
+                    finalTicket.internalNotes.push(consolidationMsg);
+
+                    // 2. Agregar a la descripción o un campo visible "Item más"
+                    finalTicket.subject += ` (+ ${siblings.length} casos agrupados)`;
+
+                    // Si el ticket tiene un campo de descripción, lo adjuntamos ahí.
+                    finalTicket.description = (finalTicket.description || '') + '\n\n' + consolidationMsg;
+
+                    // 3. NUEVO: Guardar estructura de casos asociados para UI
+                    finalTicket.associatedCases = siblings.map(s => ({
+                        caseNumber: s.caseNumber,
+                        subject: s.subject,
+                        status: s.status,
+                        priority: s.priority,
+                        dateOpened: s.dateOpened
+                    }));
+
+                    // Marcar para eliminar
+                    siblings.forEach(s => casesToRemove.push(s.caseNumber));
+
+                    const count = siblings.length + 1;
+                    showToast(`Se agruparon ${count} casos para ${selectedCase.requestedFor}`, 'success');
+                }
+            }
+
+            const createdTicket = await addTicket(finalTicket);
 
             if (createdTicket && createdTicket.id) {
-                if (selectedCase) {
-                    await removeSfdcCase(selectedCase.caseNumber);
+                // Eliminar todos los casos procesados
+                for (const caseNum of casesToRemove) {
+                    await removeSfdcCase(caseNum);
                 }
+
                 setIsModalOpen(false);
                 // Navegación automática al detalle del nuevo ticket
                 router.push(`/dashboard/tickets/${createdTicket.id}`);
@@ -709,8 +781,8 @@ export default function SFDCCasesPage() {
                         }}
                     >
                         <div style={{ textAlign: 'left' }}>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#15803d' }}>ENTREGA</div>
-                            <div style={{ fontSize: '0.75rem', color: '#166534', opacity: 0.8 }}>General</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#166534' }}>ENTREGAS</div>
+                            <div style={{ fontSize: '0.75rem', color: '#14532d', opacity: 0.8 }}>General</div>
                         </div>
                         <div style={{
                             backgroundColor: '#22c55e',
@@ -742,7 +814,7 @@ export default function SFDCCasesPage() {
                         }}
                     >
                         <div style={{ textAlign: 'left' }}>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#c2410c' }}>RECOLECCIÓN</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#c2410c' }}>RECOLECCIONES</div>
                             <div style={{ fontSize: '0.75rem', color: '#9a3412', opacity: 0.8 }}>Devoluciones</div>
                         </div>
                         <div style={{

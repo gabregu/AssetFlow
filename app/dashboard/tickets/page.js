@@ -21,7 +21,9 @@ export default function TicketsPage() {
     const [columnFilters, setColumnFilters] = useState({ status: 'All', requester: '' });
     const [showStatusFilter, setShowStatusFilter] = useState(false);
     const [selectedTickets, setSelectedTickets] = useState([]);
+
     const [showMap, setShowMap] = useState(false);
+    const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
 
     const canDelete = currentUser?.role === 'admin' || currentUser?.role === 'Administrativo';
 
@@ -104,7 +106,33 @@ export default function TicketsPage() {
                 }
             }
 
-            return matchesSearch && matchesStatus && matchesRequester && isNotResolved && matchesCountry;
+            // Filtrado por Tipo (Delivery, Collection, New Hire)
+            // Helper New Hire
+            const isNewHire = (t) => {
+                const isNewHireSubject = t.subject.toLowerCase().includes('new hire') || t.subject.toLowerCase().includes('nuevo ingreso');
+                let isFutureDate = false;
+                if (t.logistics?.date) {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const ticketDate = new Date(t.logistics.date);
+                    if (!isNaN(ticketDate.getTime())) {
+                        ticketDate.setHours(0, 0, 0, 0);
+                        if (ticketDate > today) isFutureDate = true;
+                    }
+                }
+                return isNewHireSubject || isFutureDate;
+            };
+
+            let matchesType = true;
+            if (filterType === 'DELIVERY') {
+                matchesType = !t.subject.toLowerCase().includes('collection') && !t.subject.toLowerCase().includes('offboarding') && !isNewHire(t);
+            } else if (filterType === 'COLLECTION') {
+                matchesType = t.subject.toLowerCase().includes('collection') || t.subject.toLowerCase().includes('offboarding');
+            } else if (filterType === 'NEW_HIRE') {
+                matchesType = isNewHire(t);
+            }
+
+            return matchesSearch && matchesStatus && matchesRequester && isNotResolved && matchesCountry && matchesType;
         });
 
         if (sortConfig.key) {
@@ -123,17 +151,85 @@ export default function TicketsPage() {
             });
         }
         return result;
-    }, [tickets, filter, sortConfig, columnFilters]);
+    }, [tickets, filter, sortConfig, columnFilters, countryFilter, filterType]);
+
+    const statsByType = React.useMemo(() => {
+        // Filter by country first to match the view logic roughly (ignoring status for now or keeping it consistent?)
+        // The original logic in Cases filtered by country. Here we probably should too.
+        // But `tickets` here includes all statuses. We usually care about active tickets for these counts.
+        const activeTickets = tickets.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado');
+
+        const filteredByCountry = activeTickets.filter(t => {
+            if (countryFilter === 'Todos') return true;
+            // Reuse simplistic check or the complex one? Let's use simplified for perf, or copy complex if needed.
+            // Complex matchesCountry logic from above is better but harder to extract inside useMemo without refactor.
+            // Let's copy-paste the core logic for consistency.
+            let matchesCountry = false;
+            if (t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
+            else {
+                const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
+                if (sfdcMatch) {
+                    const caseNum = sfdcMatch[1];
+                    const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
+                    if (sfdcCase && sfdcCase.country && sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
+                }
+            }
+            return matchesCountry;
+        });
+
+        const isNewHire = (t) => {
+            const isNewHireSubject = t.subject.toLowerCase().includes('new hire') || t.subject.toLowerCase().includes('nuevo ingreso');
+            let isFutureDate = false;
+            if (t.logistics?.date) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const ticketDate = new Date(t.logistics.date);
+                if (!isNaN(ticketDate.getTime())) {
+                    ticketDate.setHours(0, 0, 0, 0);
+                    if (ticketDate > today) isFutureDate = true;
+                }
+            }
+            return isNewHireSubject || isFutureDate;
+        };
+
+        const deliveryCount = filteredByCountry.filter(t => !t.subject.toLowerCase().includes('collection') && !t.subject.toLowerCase().includes('offboarding') && !isNewHire(t)).length;
+        const collectionCount = filteredByCountry.filter(t => t.subject.toLowerCase().includes('collection') || t.subject.toLowerCase().includes('offboarding')).length;
+        const newHireCount = filteredByCountry.filter(t => isNewHire(t)).length;
+
+        return { delivery: deliveryCount, collection: collectionCount, newHire: newHireCount };
+    }, [tickets, countryFilter, sfdcCases]);
 
     // Estadísticas para las tarjetas KPI
+    // Estadísticas para las tarjetas KPI
     const stats = React.useMemo(() => {
+        // Filter by country first
+        const filteredByCountry = tickets.filter(t => {
+            if (countryFilter === 'Todos') return true;
+            let matchesCountry = false;
+            // 1. Try Address
+            if (t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
+                matchesCountry = true;
+            } else {
+                // 2. Try SFDC Link
+                const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
+                if (sfdcMatch) {
+                    const caseNum = sfdcMatch[1];
+                    const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
+                    if (sfdcCase && sfdcCase.country && sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase())) {
+                        matchesCountry = true;
+                    }
+                }
+            }
+            return matchesCountry;
+        });
+
         return {
-            total: tickets.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado').length,
-            abiertos: tickets.filter(t => t.status === 'Abierto').length,
-            enProgreso: tickets.filter(t => t.status === 'En Progreso').length,
-            pendientes: tickets.filter(t => t.status === 'Pendiente').length
+            total: filteredByCountry.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado').length,
+            abiertos: filteredByCountry.filter(t => t.status === 'Abierto').length,
+            enProgreso: filteredByCountry.filter(t => t.status === 'En Progreso').length,
+            pendientes: filteredByCountry.filter(t => t.status === 'Pendiente').length
         };
-    }, [tickets]);
+    }, [tickets, countryFilter, sfdcCases]);
 
     const getStatusVariant = (status) => {
         switch (status) {
@@ -285,7 +381,111 @@ export default function TicketsPage() {
                 </Card>
             </div>
 
+
+
             <Card>
+                {/* FILTROS TIPO DE PEDIDO (ENTREGA, RECOLECCIÓN, NEW HIRE) */}
+                <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                    {/* BOTÓN VERDE (ENTREGA) */}
+                    <button
+                        onClick={() => setFilterType(filterType === 'DELIVERY' ? 'ALL' : 'DELIVERY')}
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1rem',
+                            backgroundColor: filterType === 'DELIVERY' ? '#dcfce7' : 'var(--background-secondary)',
+                            border: `2px solid ${filterType === 'DELIVERY' ? '#22c55e' : 'transparent'}`,
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: filterType === 'DELIVERY' ? '0 4px 6px -1px rgba(34, 197, 94, 0.1)' : 'none'
+                        }}
+                    >
+                        <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#166534' }}>ENTREGAS</div>
+                            <div style={{ fontSize: '0.75rem', color: '#14532d', opacity: 0.8 }}>General</div>
+                        </div>
+                        <div style={{
+                            backgroundColor: '#22c55e',
+                            color: 'white',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '9999px',
+                            fontWeight: 700,
+                            fontSize: '1.25rem'
+                        }}>
+                            {statsByType.delivery}
+                        </div>
+                    </button>
+
+                    {/* BOTÓN NARANJA (RECOLECCIÓN) */}
+                    <button
+                        onClick={() => setFilterType(filterType === 'COLLECTION' ? 'ALL' : 'COLLECTION')}
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1rem',
+                            backgroundColor: filterType === 'COLLECTION' ? '#ffedd5' : 'var(--background-secondary)',
+                            border: `2px solid ${filterType === 'COLLECTION' ? '#f97316' : 'transparent'}`,
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: filterType === 'COLLECTION' ? '0 4px 6px -1px rgba(249, 115, 22, 0.1)' : 'none'
+                        }}
+                    >
+                        <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#c2410c' }}>RECOLECCIONES</div>
+                            <div style={{ fontSize: '0.75rem', color: '#9a3412', opacity: 0.8 }}>Devoluciones</div>
+                        </div>
+                        <div style={{
+                            backgroundColor: '#f97316',
+                            color: 'white',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '9999px',
+                            fontWeight: 700,
+                            fontSize: '1.25rem'
+                        }}>
+                            {statsByType.collection}
+                        </div>
+                    </button>
+
+                    {/* BOTÓN ROJO (NEW HIRE) */}
+                    <button
+                        onClick={() => setFilterType(filterType === 'NEW_HIRE' ? 'ALL' : 'NEW_HIRE')}
+                        style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1rem',
+                            backgroundColor: filterType === 'NEW_HIRE' ? '#fee2e2' : 'var(--background-secondary)',
+                            border: `2px solid ${filterType === 'NEW_HIRE' ? '#ef4444' : 'transparent'}`,
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: filterType === 'NEW_HIRE' ? '0 4px 6px -1px rgba(239, 68, 68, 0.1)' : 'none'
+                        }}
+                    >
+                        <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#b91c1c' }}>NEW HIRE</div>
+                            <div style={{ fontSize: '0.75rem', color: '#991b1b', opacity: 0.8 }}>Ingresos / Futuros</div>
+                        </div>
+                        <div style={{
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '9999px',
+                            fontWeight: 700,
+                            fontSize: '1.25rem'
+                        }}>
+                            {statsByType.newHire}
+                        </div>
+                    </button>
+                </div>
+
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                     <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
                         <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
@@ -498,6 +698,6 @@ export default function TicketsPage() {
                     </div>
                 </form>
             </Modal>
-        </div>
+        </div >
     );
 }

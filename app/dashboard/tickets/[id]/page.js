@@ -636,20 +636,49 @@ export default function TicketDetailPage() {
                         {/* Additional User Info in Header */}
                         <div className="grid-mobile-single" style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem 1.5rem' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Segundo Caso SFDC (Opcional)</label>
-                                <div style={{ position: 'relative' }}>
-                                    <Hash size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
-                                    <input
-                                        className="form-input"
-                                        style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
-                                        disabled={!editMode && !editContact}
-                                        value={editedData.logistics?.additionalCase || ''}
-                                        onChange={e => setEditedData({
-                                            ...editedData,
-                                            logistics: { ...(editedData.logistics || {}), additionalCase: e.target.value }
-                                        })}
-                                    />
-                                </div>
+                                {ticket.associatedCases && ticket.associatedCases.length > 0 ? (
+                                    <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                        <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <Hash size={12} /> Casos Asociados ({ticket.associatedCases.length})
+                                        </label>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            {ticket.associatedCases.map((ac, idx) => (
+                                                <div key={idx} style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    fontSize: '0.8rem',
+                                                    padding: '4px',
+                                                    background: 'white',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid var(--border)'
+                                                }}>
+                                                    <span style={{ fontWeight: 600, color: '#0369a1' }}>#{ac.caseNumber}</span>
+                                                    <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                                                        {ac.subject}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Segundo Caso SFDC (Opcional)</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <Hash size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                                            <input
+                                                className="form-input"
+                                                style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
+                                                disabled={!editMode && !editContact}
+                                                value={editedData.logistics?.additionalCase || ''}
+                                                onChange={e => setEditedData({
+                                                    ...editedData,
+                                                    logistics: { ...(editedData.logistics || {}), additionalCase: e.target.value }
+                                                })}
+                                            />
+                                        </div>
+                                    </>
+                                )}
                             </div>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Fecha de Ingreso</label>
