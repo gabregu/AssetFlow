@@ -668,11 +668,12 @@ export default function SFDCCasesPage() {
                             Importar CSV
                         </Button>
                     </div>
-                    {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
+                    {/* Mostrar botón solo para Admin/Gerencial Y SI HAY UN PAÍS SELECCIONADO (distinto a 'Todos') */}
+                    {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && countryFilter !== 'Todos' && (
                         <button
                             onClick={() => {
-                                if (confirm('¿Estás seguro de borrar todos los casos importados?')) {
-                                    clearSfdcCases();
+                                if (confirm(`¿Estás seguro de borrar todos los casos importados de ${countryFilter}?`)) {
+                                    clearSfdcCases(countryFilter);
                                 }
                             }}
                             style={{
@@ -687,7 +688,7 @@ export default function SFDCCasesPage() {
                                 padding: '0.25rem 0.5rem'
                             }}
                         >
-                            <Trash2 size={16} /> Limpiar Todo (Dev)
+                            <Trash2 size={16} /> Limpiar {countryFilter}
                         </button>
                     )}
                 </div>
