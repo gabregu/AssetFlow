@@ -1,20 +1,28 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useStore } from '../../../lib/store';
 import { ServiceMap } from '../../components/ui/ServiceMap';
-import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CountryFilter } from '../../components/layout/CountryFilter';
 
 export default function TicketsPage() {
     const router = useRouter();
-    const { tickets, assets, sfdcCases, addTicket, deleteTickets, currentUser, users, countryFilter } = useStore();
+    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, currentUser, users, countryFilter } = useStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const fileInputRef = useRef(null);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
+    };
+
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
@@ -26,6 +34,189 @@ export default function TicketsPage() {
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
 
     const canDelete = currentUser?.role === 'admin' || currentUser?.role === 'Administrativo';
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                let text = event.target.result;
+                if (text.includes('"Mailing Country"wner Alias"')) {
+                    text = text.replace('"Mailing Country"wner Alias"', '"Mailing Country","Case Owner Alias"');
+                }
+
+                const parseCSV = (str) => {
+                    const arr = [];
+                    let quote = false, col = 0, row = 0, c = 0, val = '';
+                    for (; c < str.length; c++) {
+                        const cc = str[c], nc = str[c + 1];
+                        if (cc === '"') {
+                            if (quote && nc === '"') { val += '"'; c++; }
+                            else { quote = !quote; }
+                        } else if (cc === ',' && !quote) {
+                            if (!arr[row]) arr[row] = [];
+                            arr[row][col] = val; val = ''; col++;
+                        } else if ((cc === '\r' || cc === '\n') && !quote) {
+                            if (cc === '\r' && nc === '\n') c++;
+                            if (!arr[row]) arr[row] = [];
+                            arr[row][col] = val; val = ''; row++; col = 0;
+                        } else {
+                            val += cc;
+                        }
+                    }
+                    if (val || (arr[row] && arr[row].length > 0)) {
+                        if (!arr[row]) arr[row] = [];
+                        arr[row][col] = val;
+                    }
+                    return arr;
+                };
+
+                const data = parseCSV(text);
+                if (data.length < 2) return;
+
+                const headers = data[0].map(h => h.trim().replace(/^"|"$/g, ''));
+                const rows = data.slice(1);
+                
+                const getVal = (rowValues, colName) => {
+                    const index = headers.indexOf(colName);
+                    if (index === -1) {
+                        const indexAlt = headers.findIndex(h => h.toLowerCase() === colName.toLowerCase());
+                        return indexAlt !== -1 ? (rowValues[indexAlt] || '').trim() : '';
+                    }
+                    return (rowValues[index] || '').trim();
+                };
+
+                const newCases = [];
+                for (let i = 0; i < rows.length; i++) {
+                    const rowValues = rows[i];
+                    if (!rowValues || rowValues.length === 0) continue;
+                    
+                    const caseNum = getVal(rowValues, 'Case Number');
+                    if (!caseNum) continue;
+
+                    const mailingCountry = getVal(rowValues, 'Mailing Country') || '';
+                    if (!mailingCountry) {
+                        alert(`Error en fila ${i + 2}: Falta "Mailing Country". Abortando importación.`);
+                        return;
+                    }
+
+                    newCases.push({
+                        caseNumber: caseNum,
+                        subject: getVal(rowValues, 'Subject') || 'Sin Asunto',
+                        requestedFor: getVal(rowValues, 'Requested For') || 'Desconocido',
+                        priority: getVal(rowValues, 'Priority') || 'Medium',
+                        status: getVal(rowValues, 'Status') || 'New',
+                        country: mailingCountry,
+                        mailingStreet: getVal(rowValues, 'Mailing Street') || '',
+                        mobile: getVal(rowValues, 'Mobile') || '',
+                        email: getVal(rowValues, 'Contact: Email') || '',
+                        zipCode: getVal(rowValues, 'Mailing Zip/Postal Code') || '',
+                        dateOpened: getVal(rowValues, 'Date/Time Opened') || ''
+                    });
+                }
+
+                const normalizeName = (name) => (name || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+                const normalizeCountry = (country) => (country || '').toLowerCase().trim();
+
+                const groupedCases = {};
+                for (const c of newCases) {
+                    const key = `${normalizeName(c.requestedFor)}|${normalizeCountry(c.country)}`;
+                    if (!groupedCases[key]) groupedCases[key] = [];
+                    groupedCases[key].push(c);
+                }
+
+                let ticketsCreated = 0;
+                let ticketsUpdated = 0;
+                let casesProcessed = 0;
+
+                for (const key of Object.keys(groupedCases)) {
+                    const group = groupedCases[key];
+                    if (group.length === 0) continue;
+
+                    const repCase = group[0];
+                    const reqNameNorm = normalizeName(repCase.requestedFor);
+                    const countryNorm = normalizeCountry(repCase.country);
+
+                    const existingActiveTicket = tickets.find(t => {
+                        const isNotResolved = t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado';
+                        const tReqNorm = normalizeName(t.requester);
+                        let tCountryNorm = '';
+                        if (t.logistics?.address) tCountryNorm = normalizeCountry(t.logistics.address);
+                        
+                        const hasSameReq = (tReqNorm === reqNameNorm || (tReqNorm.length > 3 && reqNameNorm.length > 3 && (tReqNorm.includes(reqNameNorm) || reqNameNorm.includes(tReqNorm))));
+                        const hasSameCountry = tCountryNorm.includes(countryNorm) || countryNorm.includes(tCountryNorm);
+
+                        return isNotResolved && hasSameReq && (hasSameCountry || !tCountryNorm);
+                    });
+
+                    if (existingActiveTicket) {
+                        let updatedNotes = existingActiveTicket.internalNotes ? [...existingActiveTicket.internalNotes] : [];
+                        let addedToExisting = 0;
+
+                        group.forEach(c => {
+                            const alreadyExists = existingActiveTicket.subject.includes(c.caseNumber) ||
+                                                  updatedNotes.some(n => n.includes(c.caseNumber));
+                                                  
+                            if (!alreadyExists) {
+                                const msg = `• Caso Adicional Agregado via CSV: [SFDC-${c.caseNumber}] ${c.subject}`;
+                                updatedNotes.push(msg);
+                                addedToExisting++;
+                                casesProcessed++;
+                            }
+                        });
+
+                        if (addedToExisting > 0) {
+                            await updateTicket(existingActiveTicket.id, {
+                                internalNotes: updatedNotes,
+                                subject: existingActiveTicket.subject + (existingActiveTicket.subject.includes('casos agrupados') ? '' : ` (+ casos agrupados)`)
+                            });
+                            ticketsUpdated++;
+                        }
+                    } else {
+                        const mainCase = group[0];
+                        const additionalCases = group.slice(1);
+                        
+                        let subject = `[SFDC-${mainCase.caseNumber}] ${mainCase.subject}`;
+                        let internalNotes = [];
+
+                        if (additionalCases.length > 0) {
+                            subject += ` (+ ${additionalCases.length} casos agrupados)`;
+                            const siblingNotes = additionalCases.map(s => `• Caso Adicional: [SFDC-${s.caseNumber}] ${s.subject}`).join('\n');
+                            internalNotes.push(`=== AUTOMATIZACIÓN: CASOS AGRUPADOS (CSV) ===\nSe importaron múltiples casos para ${mainCase.requestedFor}:\n${siblingNotes}`);
+                        }
+
+                        const newTicketData = {
+                            subject: subject,
+                            requester: mainCase.requestedFor,
+                            priority: mainCase.priority === 'High' ? 'Alta' : 'Media',
+                            status: 'Abierto',
+                            internalNotes: internalNotes,
+                            logistics: {
+                                address: mainCase.mailingStreet && mainCase.country ? `${mainCase.mailingStreet}, ${mainCase.country} ${mainCase.zipCode}` : mainCase.country,
+                                phone: mainCase.mobile || '',
+                                email: mainCase.email || '',
+                                type: 'Entrega'
+                            }
+                        };
+
+                        await addTicket(newTicketData);
+                        ticketsCreated++;
+                        casesProcessed += group.length;
+                    }
+                }
+
+                showToast(`Importación completa: ${casesProcessed} casos procesados. ${ticketsCreated} servicios nuevos y ${ticketsUpdated} actualizados.`, 'success');
+
+            } catch (err) {
+                console.error("Error procesando CSV:", err);
+                alert("Error al procesar el archivo CSV: " + err.message);
+            }
+            e.target.value = null; // reset 
+        };
+        reader.readAsText(file);
+    };
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
@@ -250,6 +441,26 @@ export default function TicketsPage() {
 
     return (
         <div>
+            {toast.show && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '2rem',
+                    right: '2rem',
+                    backgroundColor: toast.type === 'success' ? '#10b981' : '#ef4444',
+                    color: 'white',
+                    padding: '1rem 1.5rem',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    animation: 'fadeIn 0.3s ease-out',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontWeight: 500
+                }}>
+                    {toast.message}
+                </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Servicios</h1>
@@ -259,7 +470,19 @@ export default function TicketsPage() {
                     </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
-                    <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Ticket</Button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            style={{ display: 'none' }}
+                            accept=".csv"
+                            onChange={handleFileUpload}
+                        />
+                        <Button variant="secondary" icon={Upload} onClick={() => fileInputRef.current.click()}>
+                            Importar SFDC
+                        </Button>
+                        <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Ticket</Button>
+                    </div>
                     {canDelete && selectedTickets.length > 0 && (
                         <Button
                             variant="secondary"
@@ -486,26 +709,48 @@ export default function TicketsPage() {
                     </button>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                    <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
-                        <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                        <input
-                            type="text"
-                            placeholder="Buscar tickets..."
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value)}
-                            style={{
-                                width: '100%',
-                                padding: '0.6rem 1rem 0.6rem 2.5rem',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--border)',
-                                outline: 'none',
-                                backgroundColor: 'var(--background)',
-                                color: 'var(--text-main)'
-                            }}
-                        />
-                    </div>
-                    {(columnFilters.status !== 'All' || columnFilters.requester !== '' || filter !== '') && (
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {selectedTickets.length > 0 && canDelete ? (
+                        <div style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '1rem',
+                            background: '#fee2e2',
+                            border: '1px solid #fecaca',
+                            padding: '0.5rem 1rem',
+                            borderRadius: 'var(--radius-md)',
+                            animation: 'fadeIn 0.3s ease-out'
+                        }}>
+                            <span style={{ fontWeight: 600, color: '#991b1b' }}>{selectedTickets.length} servicios seleccionados</span>
+                            <Button size="sm" onClick={handleBulkDelete} style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', color: 'white' }}>
+                                <Trash2 size={16} style={{ marginRight: '0.5rem' }} /> Borrar Seleccionados
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedTickets([])} style={{ marginLeft: 'auto', color: '#64748b' }}>
+                                Cancelar
+                            </Button>
+                        </div>
+                    ) : (
+                        <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
+                            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                            <input
+                                type="text"
+                                placeholder="Buscar tickets..."
+                                value={filter}
+                                onChange={(e) => setFilter(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.6rem 1rem 0.6rem 2.5rem',
+                                    borderRadius: 'var(--radius-md)',
+                                    border: '1px solid var(--border)',
+                                    outline: 'none',
+                                    backgroundColor: 'var(--background)',
+                                    color: 'var(--text-main)'
+                                }}
+                            />
+                        </div>
+                    )}
+                    {(columnFilters.status !== 'All' || columnFilters.requester !== '' || filter !== '') && !selectedTickets.length && (
                         <Button variant="ghost" size="sm" onClick={() => {
                             setColumnFilters({ status: 'All', requester: '' });
                             setFilter('');
@@ -519,6 +764,12 @@ export default function TicketsPage() {
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                 {canDelete && (
                                     <th style={{ padding: '1rem', width: '40px' }}>
+                                        <input
+                                            type="checkbox"
+                                            onChange={handleSelectAll}
+                                            checked={sortedAndFilteredTickets.length > 0 && selectedTickets.length === sortedAndFilteredTickets.length}
+                                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                        />
                                     </th>
                                 )}
                                 <th

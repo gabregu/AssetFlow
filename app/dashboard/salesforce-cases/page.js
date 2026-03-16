@@ -240,6 +240,15 @@ export default function SFDCCasesPage() {
             let finalTicket = { ...newTicket };
             let casesToRemove = [selectedCase.caseNumber];
 
+            // 3. NUEVO: Siempre Guardar estructura de casos asociados para UI (Caso principal)
+            finalTicket.associatedCases = [{
+                caseNumber: selectedCase.caseNumber,
+                subject: selectedCase.subject,
+                status: selectedCase.status || 'Abierto',
+                priority: selectedCase.priority,
+                dateOpened: selectedCase.dateOpened
+            }];
+
             // Solo aplicar si el caso actual ES una entrega
             if (selectedCase && isDelivery(selectedCase)) {
                 const currentRequestedFor = normalizeName(selectedCase.requestedFor);
@@ -280,14 +289,15 @@ export default function SFDCCasesPage() {
                     // Si el ticket tiene un campo de descripción, lo adjuntamos ahí.
                     finalTicket.description = (finalTicket.description || '') + '\n\n' + consolidationMsg;
 
-                    // 3. NUEVO: Guardar estructura de casos asociados para UI
-                    finalTicket.associatedCases = siblings.map(s => ({
+                    // Agregar siblings a la estructura de casos asociados
+                    const mappedSiblings = siblings.map(s => ({
                         caseNumber: s.caseNumber,
                         subject: s.subject,
                         status: s.status,
                         priority: s.priority,
                         dateOpened: s.dateOpened
                     }));
+                    finalTicket.associatedCases = [...finalTicket.associatedCases, ...mappedSiblings];
 
                     // Marcar para eliminar
                     siblings.forEach(s => casesToRemove.push(s.caseNumber));
