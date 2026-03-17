@@ -46,7 +46,7 @@ const libraries = ['geometry'];
 export default function TicketDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const { tickets, assets, consumables, users, sfdcCases, updateTicket, deleteTicket, addAsset, updateAsset, updateConsumableStock, currentUser } = useStore();
+    const { tickets, assets, consumables, users, sfdcCases, yubikeys, updateTicket, deleteTicket, addAsset, updateAsset, updateConsumableStock, currentUser } = useStore();
 
     const [ticket, setTicket] = useState(null);
     const [editMode, setEditMode] = useState(false);
@@ -1425,78 +1425,202 @@ export default function TicketDetailPage() {
                                 </div>
                             )}
 
-                            {/* Accesorios (Only show if there is a Laptop for "Entrega") */}
-                            {(() => {
-                                const hasLaptopDelivery = (editedData.associatedCases[selectedCaseIndex].assets || []).some(item => {
-                                    const assetInfo = assets.find(a => a.serial === item.serial);
-                                    return item.type === 'Entrega' && assetInfo?.type === 'Laptop';
-                                });
+                            {/* Accesorios - Siempre visible */}
+                            <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                                <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>Accesorios Adicionales (Sin Serial)</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                                    {/* Backpack */}
+                                    <div
+                                        onClick={() => {
+                                            setEditedData(prev => {
+                                                const newCases = [...prev.associatedCases];
+                                                const accessories = newCases[selectedCaseIndex].accessories || { backpack: false, screenFilter: false, filterSize: '14"' };
+                                                newCases[selectedCaseIndex].accessories = { ...accessories, backpack: !accessories.backpack };
+                                                return { ...prev, associatedCases: newCases };
+                                            });
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', background: editedData.associatedCases[selectedCaseIndex].accessories?.backpack ? 'rgba(37, 99, 235, 0.05)' : 'transparent', borderColor: editedData.associatedCases[selectedCaseIndex].accessories?.backpack ? 'var(--primary-color)' : 'var(--border)' }}
+                                    >
+                                        <div style={{ padding: '0.3rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px' }}><Package size={14} /></div>
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 600, flex: 1 }}>Mochila</span>
+                                        <input type="checkbox" checked={!!editedData.associatedCases[selectedCaseIndex].accessories?.backpack} readOnly />
+                                    </div>
 
-                                if (!hasLaptopDelivery) return null;
-                                
-                                return (
-                                    <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                                        <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>Accesorios Adicionales (Sin Serial)</h4>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                                            {/* Backpack */}
-                                            <div
-                                                onClick={() => {
-                                                    setEditedData(prev => {
-                                                        const newCases = [...prev.associatedCases];
-                                                        const accessories = newCases[selectedCaseIndex].accessories || { backpack: false, screenFilter: false, filterSize: '14"' };
-                                                        newCases[selectedCaseIndex].accessories = { ...accessories, backpack: !accessories.backpack };
-                                                        return { ...prev, associatedCases: newCases };
-                                                    });
-                                                }}
-                                                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', background: editedData.associatedCases[selectedCaseIndex].accessories?.backpack ? 'rgba(37, 99, 235, 0.05)' : 'transparent', borderColor: editedData.associatedCases[selectedCaseIndex].accessories?.backpack ? 'var(--primary-color)' : 'var(--border)' }}
-                                            >
-                                                <div style={{ padding: '0.3rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px' }}><Package size={14} /></div>
-                                                <span style={{ fontSize: '0.8rem', fontWeight: 600, flex: 1 }}>Mochila</span>
-                                                <input type="checkbox" checked={!!editedData.associatedCases[selectedCaseIndex].accessories?.backpack} readOnly />
-                                            </div>
+                                    {/* Screen Filter */}
+                                    <div
+                                        onClick={() => {
+                                            setEditedData(prev => {
+                                                const newCases = [...prev.associatedCases];
+                                                const accessories = newCases[selectedCaseIndex].accessories || { backpack: false, screenFilter: false, filterSize: '14"' };
+                                                newCases[selectedCaseIndex].accessories = { ...accessories, screenFilter: !accessories.screenFilter };
+                                                return { ...prev, associatedCases: newCases };
+                                            });
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', background: editedData.associatedCases[selectedCaseIndex].accessories?.screenFilter ? 'rgba(37, 99, 235, 0.05)' : 'transparent', borderColor: editedData.associatedCases[selectedCaseIndex].accessories?.screenFilter ? 'var(--primary-color)' : 'var(--border)' }}
+                                    >
+                                        <div style={{ padding: '0.3rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px' }}><Monitor size={14} /></div>
+                                        <div style={{ flex: 1 }}>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block' }}>Filtro de Pantalla</span>
+                                            {editedData.associatedCases[selectedCaseIndex].accessories?.screenFilter && (
+                                                <select
+                                                    className="form-select" style={{ fontSize: '0.7rem', padding: '2px', height: '22px', marginTop: '2px', width: '80px' }}
+                                                    value={editedData.associatedCases[selectedCaseIndex].accessories?.filterSize || '14"'}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    onChange={e => {
+                                                        setEditedData(prev => {
+                                                            const newCases = [...prev.associatedCases];
+                                                            const accessories = newCases[selectedCaseIndex].accessories || {};
+                                                            newCases[selectedCaseIndex].accessories = { ...accessories, filterSize: e.target.value };
+                                                            return { ...prev, associatedCases: newCases };
+                                                        });
+                                                    }}
+                                                >
+                                                    <option value='13"'>13"</option>
+                                                    <option value='14"'>14"</option>
+                                                    <option value='15"'>15"</option>
+                                                    <option value='16"'>16"</option>
+                                                </select>
+                                            )}
+                                        </div>
+                                        <input type="checkbox" checked={!!editedData.associatedCases[selectedCaseIndex].accessories?.screenFilter} readOnly />
+                                    </div>
+                                </div>
+                            </div>
 
-                                            {/* Screen Filter */}
-                                            <div
-                                                onClick={() => {
-                                                    setEditedData(prev => {
-                                                        const newCases = [...prev.associatedCases];
-                                                        const accessories = newCases[selectedCaseIndex].accessories || { backpack: false, screenFilter: false, filterSize: '14"' };
-                                                        newCases[selectedCaseIndex].accessories = { ...accessories, screenFilter: !accessories.screenFilter };
-                                                        return { ...prev, associatedCases: newCases };
-                                                    });
-                                                }}
-                                                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', background: editedData.associatedCases[selectedCaseIndex].accessories?.screenFilter ? 'rgba(37, 99, 235, 0.05)' : 'transparent', borderColor: editedData.associatedCases[selectedCaseIndex].accessories?.screenFilter ? 'var(--primary-color)' : 'var(--border)' }}
-                                            >
-                                                <div style={{ padding: '0.3rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px' }}><Monitor size={14} /></div>
-                                                <div style={{ flex: 1 }}>
-                                                    <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block' }}>Filtro de Pantalla</span>
-                                                    {editedData.associatedCases[selectedCaseIndex].accessories?.screenFilter && (
+                            {/* Security Keys (YubiKeys) */}
+                            <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                                <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Key size={14} /> Security Keys (YubiKey)
+                                </h4>
+
+                                {/* YubiKeys asignados al caso */}
+                                {(editedData.associatedCases[selectedCaseIndex].yubikeys || []).length > 0 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                                        {editedData.associatedCases[selectedCaseIndex].yubikeys.map((yk, ykIdx) => {
+                                            const ykInfo = yubikeys.find(y => y.serial === yk.serial);
+                                            return (
+                                                <div key={ykIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: 'rgba(0,0,0,0.02)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                                    <div>
+                                                        <p style={{ fontWeight: 600, fontSize: '0.8rem', margin: 0 }}>
+                                                            <Key size={12} style={{ marginRight: '4px', display: 'inline' }} />
+                                                            {ykInfo?.type || 'YubiKey'} — S/N: {yk.serial}
+                                                        </p>
                                                         <select
-                                                            className="form-select" style={{ fontSize: '0.7rem', padding: '2px', height: '22px', marginTop: '2px', width: '80px' }}
-                                                            value={editedData.associatedCases[selectedCaseIndex].accessories?.filterSize || '14"'}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            onChange={e => {
+                                                            className="form-select"
+                                                            style={{ fontSize: '0.75rem', padding: '2px 6px', height: '26px', marginTop: '4px', width: 'auto' }}
+                                                            value={yk.type || ''}
+                                                            onChange={(e) => {
+                                                                const newType = e.target.value;
                                                                 setEditedData(prev => {
                                                                     const newCases = [...prev.associatedCases];
-                                                                    const accessories = newCases[selectedCaseIndex].accessories || {};
-                                                                    newCases[selectedCaseIndex].accessories = { ...accessories, filterSize: e.target.value };
+                                                                    const newYKs = [...(newCases[selectedCaseIndex].yubikeys || [])];
+                                                                    newYKs[ykIdx] = { ...newYKs[ykIdx], type: newType };
+                                                                    newCases[selectedCaseIndex] = { ...newCases[selectedCaseIndex], yubikeys: newYKs };
                                                                     return { ...prev, associatedCases: newCases };
                                                                 });
                                                             }}
                                                         >
-                                                            <option value='13"'>13"</option>
-                                                            <option value='14"'>14"</option>
-                                                            <option value='15"'>15"</option>
-                                                            <option value='16"'>16"</option>
+                                                            <option value="">Selecciona Acción</option>
+                                                            <option value="Entrega">Entrega</option>
+                                                            <option value="Recupero">Recupero</option>
                                                         </select>
-                                                    )}
+                                                    </div>
+                                                    <Button variant="ghost" size="sm" onClick={() => {
+                                                        setEditedData(prev => {
+                                                            const newCases = [...prev.associatedCases];
+                                                            newCases[selectedCaseIndex].yubikeys = (newCases[selectedCaseIndex].yubikeys || []).filter((_, i) => i !== ykIdx);
+                                                            return { ...prev, associatedCases: newCases };
+                                                        });
+                                                    }} style={{ color: '#ef4444', padding: '4px' }}>
+                                                        <Trash2 size={16} />
+                                                    </Button>
                                                 </div>
-                                                <input type="checkbox" checked={!!editedData.associatedCases[selectedCaseIndex].accessories?.screenFilter} readOnly />
-                                            </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* Buscar YubiKey por serial */}
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <div style={{ position: 'relative', flex: 1 }}>
+                                        <Key size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                                        <input
+                                            className="form-input"
+                                            placeholder="Serial YubiKey..."
+                                            style={{ paddingLeft: '2rem', height: '34px', fontSize: '0.85rem' }}
+                                            id="yubikey-serial-input"
+                                            onKeyPress={e => {
+                                                if (e.key === 'Enter') {
+                                                    const serial = e.target.value.trim();
+                                                    if (!serial) return;
+                                                    const found = yubikeys.find(y => y.serial?.toLowerCase() === serial.toLowerCase());
+                                                    if (found) {
+                                                        setEditedData(prev => {
+                                                            const newCases = [...prev.associatedCases];
+                                                            const currentYKs = newCases[selectedCaseIndex].yubikeys || [];
+                                                            if (!currentYKs.some(y => y.serial === found.serial)) {
+                                                                newCases[selectedCaseIndex] = { ...newCases[selectedCaseIndex], yubikeys: [...currentYKs, { serial: found.serial, type: 'Entrega' }] };
+                                                            }
+                                                            return { ...prev, associatedCases: newCases };
+                                                        });
+                                                        e.target.value = '';
+                                                    } else {
+                                                        alert('YubiKey no encontrado con ese serial.');
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                    <Button size="sm" onClick={() => {
+                                        const input = document.getElementById('yubikey-serial-input');
+                                        const serial = input?.value?.trim();
+                                        if (!serial) return;
+                                        const found = yubikeys.find(y => y.serial?.toLowerCase() === serial.toLowerCase());
+                                        if (found) {
+                                            setEditedData(prev => {
+                                                const newCases = [...prev.associatedCases];
+                                                const currentYKs = newCases[selectedCaseIndex].yubikeys || [];
+                                                if (!currentYKs.some(y => y.serial === found.serial)) {
+                                                    newCases[selectedCaseIndex] = { ...newCases[selectedCaseIndex], yubikeys: [...currentYKs, { serial: found.serial, type: 'Entrega' }] };
+                                                }
+                                                return { ...prev, associatedCases: newCases };
+                                            });
+                                            if (input) input.value = '';
+                                        } else {
+                                            alert('YubiKey no encontrado con ese serial.');
+                                        }
+                                    }}>Agregar</Button>
+                                </div>
+
+                                {/* Lista disponibles en inventario */}
+                                {yubikeys.filter(y => y.status === 'disponible' || y.status === 'Disponible' || y.status === 'stock').length > 0 && (
+                                    <div style={{ marginTop: '0.5rem' }}>
+                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>Disponibles en stock:</p>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                            {yubikeys.filter(y => y.status === 'disponible' || y.status === 'Disponible' || y.status === 'stock').map(y => (
+                                                <button key={y.id} onClick={() => {
+                                                    setEditedData(prev => {
+                                                        const newCases = [...prev.associatedCases];
+                                                        const currentYKs = newCases[selectedCaseIndex].yubikeys || [];
+                                                        if (!currentYKs.some(yk => yk.serial === y.serial)) {
+                                                            newCases[selectedCaseIndex] = { ...newCases[selectedCaseIndex], yubikeys: [...currentYKs, { serial: y.serial, type: 'Entrega' }] };
+                                                        }
+                                                        return { ...prev, associatedCases: newCases };
+                                                    });
+                                                }} style={{
+                                                    padding: '3px 8px', fontSize: '0.7rem', borderRadius: '4px',
+                                                    border: '1px solid var(--border)', background: '#f8fafc',
+                                                    cursor: 'pointer', fontWeight: 500,
+                                                    color: (editedData.associatedCases[selectedCaseIndex].yubikeys || []).some(yk => yk.serial === y.serial) ? '#22c55e' : 'var(--text-main)'
+                                                }}>
+                                                    {(editedData.associatedCases[selectedCaseIndex].yubikeys || []).some(yk => yk.serial === y.serial) ? '✓ ' : ''}{y.serial} ({y.type})
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
-                                )
-                            })()}
+                                )}
+                            </div>
+
 
                         </div>
 
