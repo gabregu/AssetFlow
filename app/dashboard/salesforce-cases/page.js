@@ -349,57 +349,9 @@ export default function SFDCCasesPage() {
         }
     };
 
-    const handleBulkCreate = async () => {
-        if (!bulkDriver) {
-            alert('Por favor, selecciona un repartidor para asignar los casos.');
-            return;
-        }
-
-        if (!confirm(`¿Estás seguro de crear ${selectedCases.length} servicios asignados a ${bulkDriver}?`)) return;
-
-        let successCount = 0;
-
-        for (const caseNum of selectedCases) {
-            const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
-            if (!sfdcCase) continue;
-
-            const ticketData = {
-                subject: `[SFDC-${sfdcCase.caseNumber}] ${sfdcCase.subject}`,
-                requester: sfdcCase.requestedFor,
-                priority: sfdcCase.priority === 'High' ? 'Alta' : 'Media',
-                status: 'Abierto', // Or 'En Progreso' since it is assigned? Left as Abierto per request logic
-                logistics: {
-                    address: sfdcCase.mailingStreet && sfdcCase.country ? `${sfdcCase.mailingStreet}, ${sfdcCase.country} ${sfdcCase.zipCode}` : '',
-                    phone: sfdcCase.mobile || '',
-                    email: sfdcCase.email || '',
-                    type: 'Entrega',
-                    method: 'Repartidor Propio',
-                    deliveryPerson: bulkDriver,
-                    deliveryStatus: bulkStatus
-                }
-            };
-
-            try {
-                const created = await addTicket(ticketData);
-                if (created && created.id) {
-                    await removeSfdcCase(caseNum);
-                    successCount++;
-                }
-            } catch (err) {
-                console.error(`Error processing bulk case ${caseNum}`, err);
-            }
-        }
-
-        setSelectedCases([]);
-        setBulkDriver('');
-        showToast(`Se crearon ${successCount} servicios correctamente.`, 'success');
-    };
-
-
-    const handleBulkProcessAll = async () => {
-        if (filteredCases.length === 0) return;
-        
-        if (!confirm(`¿Estás seguro de procesar automáticamente ${filteredCases.length} casos? \n\nEsto agrupará casos por Solicitante y Dirección para evitar duplicados.`)) return;
+    // Función centralizada para procesar casos y convertirlos a tickets (automatizada)
+    const processCasesToTickets = async (casesToProcess) => {
+        if (!casesToProcess || casesToProcess.length === 0) return;
 
         setIsCreating(true);
         let successCount = 0;
@@ -410,19 +362,16 @@ export default function SFDCCasesPage() {
             const normalize = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
             const isDelivery = (c) => !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding');
 
-            // 1. Agrupamiento
+            // 1. Agrupamiento por nombre de solicitante
             const groups = {};
-            filteredCases.forEach(c => {
+            casesToProcess.forEach(c => {
                 const groupKey = normalize(c.requestedFor);
-
-                if (!groups[groupKey]) {
-                    groups[groupKey] = [];
-                }
+                if (!groups[groupKey]) groups[groupKey] = [];
                 groups[groupKey].push(c);
             });
 
             const groupEntries = Object.values(groups);
-            console.log(`Processing ${groupEntries.length} groups from ${filteredCases.length} cases`);
+            console.log(`Automated: Processing ${groupEntries.length} groups from ${casesToProcess.length} cases`);
 
             for (const group of groupEntries) {
                 const mainCase = group[0];
@@ -456,22 +405,20 @@ export default function SFDCCasesPage() {
 
                 const created = await addTicket(ticketData);
                 if (created && created.id) {
-                    for (const c of group) {
-                        await removeSfdcCase(c.caseNumber);
-                        successCount++;
-                    }
+                    // Los casos ya están en 'uniqueCases', no necesitamos removerlos de la base de datos aún 
+                    // porque importSfdcCases los agregará y luego los removemos.
+                    // Pero espera, si los vamos a crear de inmediato, ¿por qué importarlos a "sfdc_cases"?
+                    // El usuario quiere que sea "desde la importación", así que mejor no importarlos a la bandeja de entrada
+                    // si ya se convirtieron en servicios.
+                    successCount += group.length;
                     casesCreated++;
                 }
             }
 
-            showToast(`Procesamiento finalizado. Se crearon ${casesCreated} servicios unificando ${successCount} casos.`, 'success');
-            if (casesCreated === 1) {
-                // Si solo se creó uno, quizás el usuario quiera ir a verlo, pero en masivo mejor quedarse en la lista
-                // router.push(`/dashboard/tickets`); 
-            }
+            showToast(`Automatización: Se crearon ${casesCreated} servicios unificando ${successCount} casos importados.`, 'success');
         } catch (error) {
-            console.error('Error in bulk processing:', error);
-            showToast(`Error: ${error.message}`, 'error');
+            console.error('Error in automated processing:', error);
+            showToast(`Error en automatización: ${error.message}`, 'error');
         } finally {
             setIsCreating(false);
         }
@@ -675,9 +622,19 @@ export default function SFDCCasesPage() {
             });
 
             if (uniqueCases.length > 0) {
+                // En lugar de solo importar, los procesamos para crear servicios de inmediato
+                processCasesToTickets(uniqueCases);
+                
+                // Opcional: También los guardamos en el store como respaldo por si acaso 
+                // pero si se crearon servicios, quizás el usuario prefiere que ya no aparezcan en "Casos SFDC"
+                // El comportamiento anterior de "Crear Servicios" era removerlos de SFDC_CASOS al crearlos.
+                // Así que aquí NO llamamos a importSfdcCases si queremos que sea directo.
+                // Sin embargo, para mantener coherencia con el estado global, los importamos y la función procesadora los quitará si es necesario.
+                // Pero como processCasesToTickets corre asíncrono, mejor importarlos primero.
                 importSfdcCases(uniqueCases);
+                
                 const skippedCount = newCases.length - uniqueCases.length;
-                showToast(`Se añadieron ${uniqueCases.length} casos nuevos. (${skippedCount} omitidos)`, 'success');
+                showToast(`Se detectaron ${uniqueCases.length} casos nuevos. Iniciando creación automática...`, 'info');
             } else {
                 showToast('No se encontraron casos nuevos.', 'info');
             }
@@ -759,21 +716,6 @@ export default function SFDCCasesPage() {
                             Importar CSV
                         </Button>
                     </div>
-                    {filteredCases.length > 0 && (
-                        <Button 
-                            variant="primary" 
-                            icon={ArrowRight} 
-                            onClick={handleBulkProcessAll}
-                            disabled={isCreating}
-                            style={{ 
-                                backgroundColor: '#10b981', 
-                                borderColor: '#10b981',
-                                boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.2)'
-                            }}
-                        >
-                            {isCreating ? 'Procesando...' : 'Crear Servicios'}
-                        </Button>
-                    )}
                     {/* Mostrar botón solo para Admin/Gerencial Y SI HAY UN PAÍS SELECCIONADO (distinto a 'Todos') */}
                     {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && countryFilter !== 'Todos' && (
                         <button

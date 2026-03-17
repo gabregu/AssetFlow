@@ -3,19 +3,15 @@ import React, { useState, useRef } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
 import { useStore } from '../../../lib/store';
 import { ServiceMap } from '../../components/ui/ServiceMap';
-import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload } from 'lucide-react';
+import { Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { CountryFilter } from '../../components/layout/CountryFilter';
 import { getStatusVariant } from './constants';
 
 export default function TicketsPage() {
-    const router = useRouter();
     const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter } = useStore();
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const fileInputRef = useRef(null);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -24,11 +20,10 @@ export default function TicketsPage() {
         setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
     };
 
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
+
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', requester: '' });
-    const [showStatusFilter, setShowStatusFilter] = useState(false);
     const [selectedTickets, setSelectedTickets] = useState([]);
 
     const [showMap, setShowMap] = useState(false);
@@ -267,15 +262,6 @@ export default function TicketsPage() {
         }
     };
 
-    const handleCreate = (e) => {
-        e.preventDefault();
-        const createdTicket = addTicket(newTicket);
-        setIsModalOpen(false);
-        setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
-        // Navegación automática
-        router.push(`/dashboard/tickets/${createdTicket.id}`);
-    };
-
     const handleSort = (key) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -498,7 +484,6 @@ export default function TicketsPage() {
                         <Button variant="secondary" icon={Upload} onClick={() => fileInputRef.current.click()}>
                             Importar SFDC
                         </Button>
-                        <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Ticket</Button>
                     </div>
                     {canDelete && selectedTickets.length > 0 && (
                         <Button
@@ -924,48 +909,6 @@ export default function TicketsPage() {
                     </table>
                 </div>
             </Card>
-
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Ticket">
-                <form onSubmit={handleCreate}>
-                    <div className="form-group">
-                        <label className="form-label">Asunto</label>
-                        <input
-                            required
-                            className="form-input"
-                            placeholder="Ej: Problema con monitor"
-                            value={newTicket.subject}
-                            onChange={e => setNewTicket({ ...newTicket, subject: e.target.value })}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Solicitante</label>
-                        <input
-                            required
-                            className="form-input"
-                            placeholder="Nombre del empleado"
-                            value={newTicket.requester}
-                            onChange={e => setNewTicket({ ...newTicket, requester: e.target.value })}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Prioridad</label>
-                        <select
-                            className="form-select"
-                            value={newTicket.priority}
-                            onChange={e => setNewTicket({ ...newTicket, priority: e.target.value })}
-                        >
-                            <option value="Baja">Baja</option>
-                            <option value="Media">Media</option>
-                            <option value="Alta">Alta</option>
-                            <option value="Crítica">Crítica</option>
-                        </select>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
-                        <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-                        <Button type="submit">Crear Ticket</Button>
-                    </div>
-                </form>
-            </Modal>
         </div >
     );
 }
