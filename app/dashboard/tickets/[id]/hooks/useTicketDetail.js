@@ -87,6 +87,42 @@ export function useTicketDetail() {
         }
     }, [params.id, tickets]);
 
+    // Automatización: Vincular casos hermanos automáticamente al cargar o actualizar sfdcCases
+    useEffect(() => {
+        if (!ticket || !sfdcCases || sfdcCases.length === 0) return;
+
+        const normalize = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const requesterName = normalize(ticket.requester);
+        
+        const linkedCaseNumbers = (editedData.associatedCases || []).map(c => c.caseNumber).filter(Boolean);
+        
+        const siblings = sfdcCases.filter(sc => {
+            const rf = normalize(sc.requestedFor);
+            return rf === requesterName && !linkedCaseNumbers.includes(sc.caseNumber);
+        });
+
+        if (siblings.length > 0) {
+            console.log(`Auto-linking ${siblings.length} sibling cases for ${ticket.requester}`);
+            
+            const newAssociatedCases = siblings.map(sc => ({
+                caseNumber: sc.caseNumber,
+                subject: sc.subject,
+                assets: [],
+                accessories: { backpack: false, screenFilter: false, filterSize: '14"' },
+                logistics: { method: '', deliveryDate: '', timeWindow: 'AM', status: 'Pendiente' }
+            }));
+
+            const updated = {
+                ...editedData,
+                associatedCases: [...(editedData.associatedCases || []), ...newAssociatedCases]
+            };
+
+            // Persistir cambios
+            setEditedData(updated);
+            updateTicket(ticket.id, updated);
+        }
+    }, [ticket, sfdcCases, editedData.associatedCases]);
+
     const provisioningSuggestions = useMemo(() => {
         if (!ticket || !ticket.subject) return [];
         const subject = (ticket.subject || "").toLowerCase();
