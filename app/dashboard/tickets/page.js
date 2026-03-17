@@ -14,7 +14,7 @@ import { getStatusVariant } from './constants';
 
 export default function TicketsPage() {
     const router = useRouter();
-    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, currentUser, users, countryFilter } = useStore();
+    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter } = useStore();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const fileInputRef = useRef(null);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -103,6 +103,22 @@ export default function TicketsPage() {
                         return;
                     }
 
+                    // Cálculo de Age basado en fecha de apertura (Copiado de salesforce-cases/page.js para consistencia)
+                    const openedRaw = getVal(rowValues, 'Date/Time Opened');
+                    let ageDisplay = '0 días';
+                    let openedDisplay = openedRaw;
+
+                    if (openedRaw) {
+                        const openedDate = new Date(openedRaw);
+                        if (!isNaN(openedDate.getTime())) {
+                            const now = new Date();
+                            const diffTime = Math.abs(now - openedDate);
+                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                            ageDisplay = diffDays === 1 ? '1 día' : `${diffDays} días`;
+                            openedDisplay = openedDate.toLocaleDateString(); // Solo fecha
+                        }
+                    }
+
                     newCases.push({
                         caseNumber: caseNum,
                         subject: getVal(rowValues, 'Subject') || 'Sin Asunto',
@@ -114,8 +130,19 @@ export default function TicketsPage() {
                         mobile: getVal(rowValues, 'Mobile') || '',
                         email: getVal(rowValues, 'Contact: Email') || '',
                         zipCode: getVal(rowValues, 'Mailing Zip/Postal Code') || '',
-                        dateOpened: getVal(rowValues, 'Date/Time Opened') || ''
+                        dateOpened: openedDisplay,
+                        startDate: getVal(rowValues, 'Start Date') || '',
+                        caseRecordType: getVal(rowValues, 'Case Record Type') || '',
+                        resourceType: getVal(rowValues, 'Resource Type') || '',
+                        caseOwner: getVal(rowValues, 'Case Owner Alias') || '',
+                        age: ageDisplay,
+                        description: getVal(rowValues, 'Description') || ''
                     });
+                }
+                
+                // --- INTEGRACION: Importar también como casos SFDC ---
+                if (newCases.length > 0) {
+                    await importSfdcCases(newCases);
                 }
 
                 const normalizeName = (name) => (name || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
