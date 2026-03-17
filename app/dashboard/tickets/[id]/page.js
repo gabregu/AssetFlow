@@ -552,7 +552,7 @@ export default function TicketDetailPage() {
                 </div>
             </div>
 
-            <div className="grid-mobile-single" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '2rem' }}>
+            <div className="grid-mobile-single" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
                 {/* Main Detail area */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     <Card>
@@ -1016,7 +1016,59 @@ export default function TicketDetailPage() {
                         </div>
                     </Card>
 
-                    
+                    {/* History & Internal Notes */}
+                    < Card title="Historial y Notas" action={< MessageSquare size={20} style={{ opacity: 0.6 }} />}>
+                        <div style={{ borderLeft: '2px solid var(--border)', paddingLeft: '1.5rem', marginLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {/* Static initial action */}
+                            <div style={{ position: 'relative' }}>
+                                <div style={{ position: 'absolute', left: '-1.85rem', top: '0', width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-color)' }} />
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Sistema • {ticket.date}</div>
+                                <div style={{ padding: '0.75rem', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: '0.9rem' }}>
+                                    Ticket creado: {ticket.subject}
+                                </div>
+                            </div>
+
+                            {/* Dynamic Notes */}
+                            {(editedData.internalNotes || []).map((note, idx) => (
+                                <div key={idx} style={{ position: 'relative' }}>
+                                    <div style={{ position: 'absolute', left: '-1.85rem', top: '0', width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary-color)' }} />
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
+                                        {note.user} • {new Date(note.date).toLocaleString()}
+                                    </div>
+                                    <div style={{ padding: '0.75rem', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                                        {note.content}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div style={{ marginTop: '2rem' }}>
+                            <textarea
+                                placeholder="Escribe una nota interna..."
+                                className="form-textarea"
+                                style={{ minHeight: '100px', resize: 'none' }}
+                                value={newNote}
+                                onChange={e => setNewNote(e.target.value)}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                                <Button size="sm" onClick={() => {
+                                    if (newNote.trim()) {
+                                        const noteObj = {
+                                            content: newNote,
+                                            user: currentUser?.name || 'Sistema',
+                                            date: new Date().toISOString()
+                                        };
+                                        const updatedNotes = [...(editedData.internalNotes || []), noteObj];
+                                        const updatedTicket = { ...editedData, internalNotes: updatedNotes };
+
+                                        setEditedData(updatedTicket);
+                                        updateTicket(ticket.id, updatedTicket);
+                                        setNewNote('');
+                                    }
+                                }}>Añadir Nota</Button>
+                            </div>
+                        </div>
+                    </Card >
                 </div >
 
                 {/* Sidebar area */}
@@ -1275,66 +1327,7 @@ export default function TicketDetailPage() {
                 </div >
             </div >
 
-                {/* Third Column: History & Internal Notes */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    {/* History & Internal Notes */}
-                    < Card title="Historial y Notas" action={< MessageSquare size={20} style={{ opacity: 0.6 }} />}>
-                        <div style={{ borderLeft: '2px solid var(--border)', paddingLeft: '1.5rem', marginLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            {/* Static initial action */}
-                            <div style={{ position: 'relative' }}>
-                                <div style={{ position: 'absolute', left: '-1.85rem', top: '0', width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-color)' }} />
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Sistema • {ticket.date}</div>
-                                <div style={{ padding: '0.75rem', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: '0.9rem' }}>
-                                    Ticket creado: {ticket.subject}
-                                </div>
-                            </div>
-
-                            {/* Dynamic Notes */}
-                            {(editedData.internalNotes || []).map((note, idx) => (
-                                <div key={idx} style={{ position: 'relative' }}>
-                                    <div style={{ position: 'absolute', left: '-1.85rem', top: '0', width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary-color)' }} />
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>
-                                        {note.user} • {new Date(note.date).toLocaleString()}
-                                    </div>
-                                    <div style={{ padding: '0.75rem', background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                                        {note.content}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div style={{ marginTop: '2rem' }}>
-                            <textarea
-                                placeholder="Escribe una nota interna..."
-                                className="form-textarea"
-                                style={{ minHeight: '100px', resize: 'none' }}
-                                value={newNote}
-                                onChange={e => setNewNote(e.target.value)}
-                            />
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                                <Button size="sm" onClick={() => {
-                                    if (newNote.trim()) {
-                                        const noteObj = {
-                                            content: newNote,
-                                            user: currentUser?.name || 'Sistema',
-                                            date: new Date().toISOString()
-                                        };
-                                        const updatedNotes = [...(editedData.internalNotes || []), noteObj];
-                                        const updatedTicket = { ...editedData, internalNotes: updatedNotes };
-
-                                        setEditedData(updatedTicket);
-                                        updateTicket(ticket.id, updatedTicket);
-                                        setNewNote('');
-                                    }
-                                }}>Añadir Nota</Button>
-                            </div>
-                        </div>
-                    </Card >
-                </div>
-
             
-                        </div >
-
             {/* Case Config Modal */}
             <Modal
                 isOpen={selectedCaseIndex !== null}
