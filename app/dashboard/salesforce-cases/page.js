@@ -1055,7 +1055,6 @@ export default function SFDCCasesPage() {
                                 <Th id="dateOpened">Opened</Th>
                                 <Th id="subject">Subject</Th>
                                 <Th id="requestedFor">Requested For</Th>
-                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Acción</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1100,15 +1099,6 @@ export default function SFDCCasesPage() {
                                         </div>
                                     </td>
                                     <td style={{ padding: '1rem' }}>{c.requestedFor}</td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <Button
-                                            size="sm"
-                                            icon={ArrowRight}
-                                            onClick={() => handleOpenCreateService(c)}
-                                        >
-                                            Crear Servicio
-                                        </Button>
-                                    </td>
                                 </tr>
                             ))}
                         </tbody>
