@@ -396,6 +396,90 @@ export default function SFDCCasesPage() {
     };
 
 
+    const handleBulkProcessAll = async () => {
+        if (filteredCases.length === 0) return;
+        
+        if (!confirm(`¿Estás seguro de procesar automáticamente ${filteredCases.length} casos? \n\nEsto agrupará casos por Solicitante y Dirección para evitar duplicados.`)) return;
+
+        setIsCreating(true);
+        let successCount = 0;
+        let casesCreated = 0;
+
+        try {
+            // Helper para normalizar nombres
+            const normalize = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+            const isDelivery = (c) => !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding');
+
+            // 1. Agrupamiento
+            const groups = {};
+            filteredCases.forEach(c => {
+                const reqKey = normalize(c.requestedFor);
+                const streetKey = normalize(c.mailingStreet);
+                const typeKey = isDelivery(c) ? 'DELIVERY' : 'COLLECTION';
+                const groupKey = `${reqKey}|${streetKey}|${typeKey}`;
+
+                if (!groups[groupKey]) {
+                    groups[groupKey] = [];
+                }
+                groups[groupKey].push(c);
+            });
+
+            const groupEntries = Object.values(groups);
+            console.log(`Processing ${groupEntries.length} groups from ${filteredCases.length} cases`);
+
+            for (const group of groupEntries) {
+                const mainCase = group[0];
+                const siblings = group.slice(1);
+
+                const ticketData = {
+                    subject: `[SFDC-${mainCase.caseNumber}] ${mainCase.subject}${siblings.length > 0 ? ` (+ ${siblings.length} casos agrupados)` : ''}`,
+                    requester: mainCase.requestedFor,
+                    priority: mainCase.priority === 'High' ? 'Alta' : 'Media',
+                    status: 'Abierto',
+                    logistics: {
+                        address: mainCase.mailingStreet && mainCase.country ? `${mainCase.mailingStreet}, ${mainCase.country} ${mainCase.zipCode}` : '',
+                        phone: mainCase.mobile || '',
+                        email: mainCase.email || '',
+                        type: isDelivery(mainCase) ? 'Entrega' : 'Recolección'
+                    },
+                    associatedCases: group.map(c => ({
+                        caseNumber: c.caseNumber,
+                        subject: c.subject,
+                        status: c.status,
+                        priority: c.priority,
+                        dateOpened: c.dateOpened
+                    }))
+                };
+
+                if (siblings.length > 0) {
+                    const siblingNotes = siblings.map(s => `• Caso Adicional: [SFDC-${s.caseNumber}] ${s.subject}`).join('\n');
+                    ticketData.internalNotes = [`=== AUTOMATIZACIÓN: CASOS AGRUPADOS ===\nSe han detectado y agrupado automáticamente otros casos para ${mainCase.requestedFor}:\n${siblingNotes}`];
+                    ticketData.description = (mainCase.description || '') + '\n\n' + ticketData.internalNotes[0];
+                }
+
+                const created = await addTicket(ticketData);
+                if (created && created.id) {
+                    for (const c of group) {
+                        await removeSfdcCase(c.caseNumber);
+                        successCount++;
+                    }
+                    casesCreated++;
+                }
+            }
+
+            showToast(`Procesamiento finalizado. Se crearon ${casesCreated} servicios unificando ${successCount} casos.`, 'success');
+            if (casesCreated === 1) {
+                // Si solo se creó uno, quizás el usuario quiera ir a verlo, pero en masivo mejor quedarse en la lista
+                // router.push(`/dashboard/tickets`); 
+            }
+        } catch (error) {
+            console.error('Error in bulk processing:', error);
+            showToast(`Error: ${error.message}`, 'error');
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -678,6 +762,21 @@ export default function SFDCCasesPage() {
                             Importar CSV
                         </Button>
                     </div>
+                    {filteredCases.length > 0 && (
+                        <Button 
+                            variant="primary" 
+                            icon={ArrowRight} 
+                            onClick={handleBulkProcessAll}
+                            disabled={isCreating}
+                            style={{ 
+                                backgroundColor: '#10b981', 
+                                borderColor: '#10b981',
+                                boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.2)'
+                            }}
+                        >
+                            {isCreating ? 'Procesando...' : 'Crear Servicios'}
+                        </Button>
+                    )}
                     {/* Mostrar botón solo para Admin/Gerencial Y SI HAY UN PAÍS SELECCIONADO (distinto a 'Todos') */}
                     {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && countryFilter !== 'Todos' && (
                         <button
