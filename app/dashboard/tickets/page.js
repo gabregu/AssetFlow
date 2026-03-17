@@ -10,6 +10,7 @@ import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCi
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CountryFilter } from '../../components/layout/CountryFilter';
+import { getStatusVariant } from './constants';
 
 export default function TicketsPage() {
     const router = useRouter();
@@ -422,17 +423,6 @@ export default function TicketsPage() {
         };
     }, [tickets, countryFilter, sfdcCases]);
 
-    const getStatusVariant = (status) => {
-        switch (status) {
-            case 'Abierto': return 'danger';
-            case 'En Progreso': return 'info';
-            case 'Resuelto': return 'success';
-            case 'Pendiente': return 'warning';
-            case 'Caso SFDC Cerrado': return 'success';
-            case 'Servicio Facturado': return 'info';
-            default: return 'default';
-        }
-    };
 
     const SortIcon = ({ column }) => {
         if (sortConfig.key !== column) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
