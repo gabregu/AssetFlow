@@ -38,7 +38,7 @@ export default function CaseConfigModal({
     verifyDeliveryModal,
     setVerifyDeliveryModal,
 }) {
-    const handleDownloadRemito = () => {
+    const handleGenerateRemito = (action = 'download') => {
         if (selectedCaseIndex === null) return;
         const currentCase = editedData.associatedCases[selectedCaseIndex];
         
@@ -60,7 +60,7 @@ export default function CaseConfigModal({
             caseNumber: currentCase.caseNumber
         };
 
-        generateTicketPDF(virtualTicket, assets, null, 'download');
+        generateTicketPDF(virtualTicket, assets, null, action);
     };
 
     return (
@@ -113,19 +113,33 @@ export default function CaseConfigModal({
 
                         <div style={{ 
                             marginTop: '1rem', 
-                            paddingTop: '1.5rem', 
+                            paddingTop: '1rem', 
                             borderTop: '1px solid var(--border)',
                             display: 'flex',
-                            justifyContent: 'flex-end'
+                            justifyContent: 'center',
+                            gap: '1rem',
+                            alignItems: 'center'
                         }}>
-                            <Button 
-                                variant="secondary" 
-                                icon={FileText}
-                                onClick={handleDownloadRemito}
-                                style={{ width: '100%', justifyContent: 'center', gap: '0.75rem', height: '3rem', fontSize: '1rem' }}
-                            >
-                                Descargar Remito (Comprobante)
-                            </Button>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Remito:</span>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    icon={FileText}
+                                    onClick={() => handleGenerateRemito('view')}
+                                    style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px' }}
+                                >
+                                    Ver
+                                </Button>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleGenerateRemito('download')}
+                                    style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px' }}
+                                >
+                                    Descargar
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 )}
