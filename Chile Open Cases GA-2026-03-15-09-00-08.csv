@@ -1,0 +1,22 @@
+"Case Number","Status","Priority","Date/Time Opened","Start Date","Subject","Case Record Type","Resource Type","Requested For","Contact: Email","Mailing Street","Mobile","Mailing Zip/Postal Code","Case Owner Alias","Age","Description","Mailing Country"
+"00324702","In Progress","Medium","3/9/2026, 4:02 PM","1/31/2024","ITAM Employee Offboarding","Service Request","Regular","Antonella Honnorat","ahonnorat@salesforce.com","Avenida Andrés Bello 2457 piso 34, oficina 3401","","7510689","GAbre","137.0000000000","","Chile"
+"00324703","In Progress","Medium","3/9/2026, 4:02 PM","1/31/2024","Collection - Antonella Honnorat","Service Request","Regular","Antonella Honnorat","ahonnorat@salesforce.com","Avenida Andrés Bello 2457 piso 34, oficina 3401","","7510689","GAbre","137.0000000000","","Chile"
+"00298975","In Progress","Medium","2/25/2026, 12:06 PM","10/16/2023","Collection - Oscar David Tarre","Service Request","Regular","Oscar David Tarre","otarre@salesforce.com","Avenida Andrés Bello 2457 piso 34, oficina 3401","","7510689","GAbre","428.0000000000","","Chile"
+"00310191","Approved","Medium","3/2/2026, 12:03 AM","10/16/2023","ITAM Employee Offboarding","Service Request","Regular","Oscar David Tarre","otarre@salesforce.com","Avenida Andrés Bello 2457 piso 34, oficina 3401","","7510689","GAbre","320.0000000000","","Chile"
+"00316793","In Progress","Medium","3/4/2026, 10:09 AM","7/26/2021","Collection - Luciano Diaz","Service Request","Regular","Luciano Diaz","luciano.diaz@salesforce.com","Avenida Andrés Bello 2457 piso 34, oficina 3401","+541121619717","7510689","ITAM Collection","262.0000000000","FY27 Q1 - EOL - Laptop Refresh Collection
+(Please Return Your Old Asset Within 14 Days)
+
+Asset for Collection:
+Laptop - Serial # C02FN5EEML85
+
+Collection Address:
+La Brabanzon 2717 (dept 1101)
+Providencia
+Region Metropolitana
+7511298
+Chile
+5491121619717
+
+If the above address is incorrect please provide the full correct address within 24 hours","Chile"
+"00331129","On Hold","Medium","3/12/2026, 1:22 PM","1/27/2020","ITAM Asset Swap Request Bundle","Service Request","Regular","David Mijares","dmijares@salesforce.com","Avenida Andrés Bello 2457 piso 34, oficina 3401","1126633108","7510689","GAbre","68.0000000000","","Chile"
+"00331130","On Hold","Medium","3/12/2026, 1:22 PM","1/27/2020","Collection - David Mijares","Service Request","Regular","David Mijares","dmijares@salesforce.com","Avenida Andrés Bello 2457 piso 34, oficina 3401","1126633108","7510689","GAbre","68.0000000000","Samsung battery issue","Chile"
