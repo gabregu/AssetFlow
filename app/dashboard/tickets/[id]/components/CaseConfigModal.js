@@ -5,9 +5,11 @@ import { Modal } from '@/app/components/ui/Modal';
 import AssetListSection from './AssetListSection';
 import AccessoriesSection from './AccessoriesSection';
 import YubiKeySection from './YubiKeySection';
-import CaseLogisticsSection from './CaseLogisticsSection';
 import ManualAssetModal from './ManualAssetModal';
 import DeliveryVerificationModal from './DeliveryVerificationModal';
+import { FileText } from 'lucide-react';
+import { generateTicketPDF } from '@/lib/pdf-generator';
+import { Button } from '@/app/components/ui/Button';
 
 export default function CaseConfigModal({
     ticket,
@@ -33,8 +35,33 @@ export default function CaseConfigModal({
     newAsset,
     setNewAsset,
     verifyDeliveryModal,
-    setVerifyDeliveryModal
+    setVerifyDeliveryModal,
 }) {
+    const handleDownloadRemito = () => {
+        if (selectedCaseIndex === null) return;
+        const currentCase = editedData.associatedCases[selectedCaseIndex];
+        
+        // Crear un objeto de ticket "virtual" que sea compatible con generateTicketPDF
+        const virtualTicket = {
+            ...ticket,
+            subject: currentCase.subject,
+            associatedAssets: currentCase.assets || [],
+            accessories: currentCase.accessories || {},
+            yubikeys: currentCase.yubikeys || [],
+            logistics: {
+                ...(ticket.logistics || {}),
+                ...currentCase.logistics,
+                phone: ticket.logistics?.phone || currentCase.logistics?.phone || '',
+                email: ticket.logistics?.email || currentCase.logistics?.email || '',
+                address: ticket.logistics?.address || currentCase.logistics?.address || '',
+                type: currentCase.logistics?.type || ticket.logistics?.type || 'Entrega'
+            },
+            caseNumber: currentCase.caseNumber
+        };
+
+        generateTicketPDF(virtualTicket, assets, null, 'download');
+    };
+
     return (
         <>
             {/* Case Config Modal */}
@@ -82,6 +109,23 @@ export default function CaseConfigModal({
                             selectedCaseIndex={selectedCaseIndex}
                             users={users}
                         />
+
+                        <div style={{ 
+                            marginTop: '1rem', 
+                            paddingTop: '1.5rem', 
+                            borderTop: '1px solid var(--border)',
+                            display: 'flex',
+                            justifyContent: 'flex-end'
+                        }}>
+                            <Button 
+                                variant="secondary" 
+                                icon={FileText}
+                                onClick={handleDownloadRemito}
+                                style={{ width: '100%', justifyContent: 'center', gap: '0.75rem', height: '3rem', fontSize: '1rem' }}
+                            >
+                                Descargar Remito (Comprobante)
+                            </Button>
+                        </div>
                     </div>
                 )}
             </Modal>
