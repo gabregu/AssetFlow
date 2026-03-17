@@ -929,8 +929,33 @@ export default function TicketDetailPage() {
                                                 </Badge>
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: '0.75rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)', marginLeft: '0.5rem', textAlign: 'right' }}>
-                                            {isSelected ? '▲ Configurando' : 'Clic para configurar'}
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem', marginLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
+                                            <span style={{ fontSize: '0.72rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                                                {isSelected ? '▲ Configurando' : 'Clic para configurar'}
+                                            </span>
+                                            {caso.caseNumber && caso.caseNumber !== 'Caso Principal' && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const updated = {
+                                                            ...editedData,
+                                                            associatedCases: editedData.associatedCases.filter((_, i) => i !== index)
+                                                        };
+                                                        setEditedData(updated);
+                                                        if (isSelected) setSelectedCaseIndex(null);
+                                                        updateTicket(ticket.id, updated);
+                                                    }}
+                                                    style={{
+                                                        padding: '2px 8px', fontSize: '0.7rem', borderRadius: '4px',
+                                                        border: '1px solid', cursor: 'pointer', fontWeight: 600,
+                                                        background: 'transparent', whiteSpace: 'nowrap',
+                                                        borderColor: isSelected ? 'rgba(255,255,255,0.4)' : '#ef4444',
+                                                        color: isSelected ? 'rgba(255,255,255,0.8)' : '#ef4444',
+                                                    }}
+                                                >
+                                                    — Quitar
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 );
