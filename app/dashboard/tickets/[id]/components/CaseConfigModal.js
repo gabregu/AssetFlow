@@ -5,6 +5,7 @@ import { Modal } from '@/app/components/ui/Modal';
 import AssetListSection from './AssetListSection';
 import AccessoriesSection from './AccessoriesSection';
 import YubiKeySection from './YubiKeySection';
+import CaseLogisticsSection from './CaseLogisticsSection';
 import ManualAssetModal from './ManualAssetModal';
 import DeliveryVerificationModal from './DeliveryVerificationModal';
 import { FileText } from 'lucide-react';
