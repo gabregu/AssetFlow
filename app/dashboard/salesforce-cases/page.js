@@ -413,10 +413,7 @@ export default function SFDCCasesPage() {
             // 1. Agrupamiento
             const groups = {};
             filteredCases.forEach(c => {
-                const reqKey = normalize(c.requestedFor);
-                const streetKey = normalize(c.mailingStreet);
-                const typeKey = isDelivery(c) ? 'DELIVERY' : 'COLLECTION';
-                const groupKey = `${reqKey}|${streetKey}|${typeKey}`;
+                const groupKey = normalize(c.requestedFor);
 
                 if (!groups[groupKey]) {
                     groups[groupKey] = [];
