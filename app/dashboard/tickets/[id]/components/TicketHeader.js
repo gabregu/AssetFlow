@@ -63,9 +63,18 @@ export default function TicketHeader({
                 />
             ) : (
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'var(--text-main)', lineHeight: 1.3 }}>
-                    {ticket.associatedCases && ticket.associatedCases.length > 0 && ticket.associatedCases.some(c => c.caseNumber && c.caseNumber !== 'Caso Principal') && (
+                    {ticket.associatedCases && ticket.associatedCases.length > 0 && ticket.associatedCases.some(c => {
+                        const ticketIdNum = ticket.id?.split('-').pop();
+                        return c.caseNumber && c.caseNumber !== 'Caso Principal' && c.caseNumber !== ticketIdNum;
+                    }) && (
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem', letterSpacing: '0.03em' }}>
-                            {ticket.associatedCases.filter(c => c.caseNumber && c.caseNumber !== 'Caso Principal').map(c => c.caseNumber).join(' · ')}
+                            {ticket.associatedCases
+                                .filter(c => {
+                                    const ticketIdNum = ticket.id?.split('-').pop();
+                                    return c.caseNumber && c.caseNumber !== 'Caso Principal' && c.caseNumber !== ticketIdNum;
+                                })
+                                .map(c => c.caseNumber)
+                                .join(' · ')}
                         </span>
                     )}
                     {ticket.subject}

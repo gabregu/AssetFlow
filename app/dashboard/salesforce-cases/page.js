@@ -28,8 +28,6 @@ export default function SFDCCasesPage() {
 
     // Bulk Actions State
     const [selectedCases, setSelectedCases] = useState([]);
-    const [bulkDriver, setBulkDriver] = useState('');
-    const [bulkStatus, setBulkStatus] = useState('Pendiente');
 
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
@@ -346,6 +344,22 @@ export default function SFDCCasesPage() {
             setSelectedCases(selectedCases.filter(id => id !== caseNumber));
         } else {
             setSelectedCases([...selectedCases, caseNumber]);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedCases.length === 0) return;
+        if (confirm(`¿Estás seguro de que deseas eliminar ${selectedCases.length} casos seleccionados?`)) {
+            try {
+                for (const caseNumber of selectedCases) {
+                    await removeSfdcCase(caseNumber);
+                }
+                showToast(`${selectedCases.length} casos eliminados correctamente`, 'success');
+                setSelectedCases([]);
+            } catch (error) {
+                console.error("Bulk delete error:", error);
+                showToast("Error al eliminar los casos seleccionados", "error");
+            }
         }
     };
 
@@ -919,40 +933,22 @@ export default function SFDCCasesPage() {
                             display: 'flex',
                             alignItems: 'center',
                             gap: '1rem',
-                            background: '#f0f9ff',
-                            border: '1px solid #bae6fd',
+                            background: '#fee2e2',
+                            border: '1px solid #fecaca',
                             padding: '0.5rem 1rem',
                             borderRadius: 'var(--radius-md)',
                             animation: 'fadeIn 0.3s ease-out'
                         }}>
-                            <span style={{ fontWeight: 600, color: '#0369a1' }}>{selectedCases.length} seleccionados</span>
-                            <select
-                                className="form-select"
-                                style={{ width: 'auto', padding: '0.4rem' }}
-                                value={bulkDriver}
-                                onChange={(e) => setBulkDriver(e.target.value)}
+                            <span style={{ fontWeight: 600, color: '#b91c1c' }}>{selectedCases.length} casos seleccionados</span>
+                            <Button 
+                                size="sm" 
+                                onClick={handleBulkDelete} 
+                                icon={Trash2}
+                                style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}
                             >
-                                <option value="">Asignar Repartidor...</option>
-                                {(users || []).filter(u => u.role !== 'admin').map(u => (
-                                    <option key={u.id} value={u.name}>
-                                        {u.name} {u.role === 'Conductor' ? '(Conductor)' : ''}
-                                    </option>
-                                ))}
-                            </select>
-                            <select
-                                className="form-select"
-                                style={{ width: 'auto', padding: '0.4rem' }}
-                                value={bulkStatus}
-                                onChange={(e) => setBulkStatus(e.target.value)}
-                            >
-                                <option value="Pendiente">Estado: Pendiente</option>
-                                <option value="En Transito">Estado: En Tránsito</option>
-                                <option value="Para Coordinar">Estado: Para Coordinar</option>
-                            </select>
-                            <Button size="sm" onClick={handleBulkCreate} style={{ backgroundColor: '#0369a1', borderColor: '#0369a1' }}>
-                                Crear {selectedCases.length} Servicios
+                                Borrar Seleccionados
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedCases([])} style={{ marginLeft: 'auto', color: '#64748b' }}>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedCases([])} style={{ marginLeft: 'auto', color: '#b91c1c' }}>
                                 Cancelar
                             </Button>
                         </div>

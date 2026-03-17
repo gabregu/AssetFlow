@@ -17,8 +17,13 @@ export default function AssociatedCasesCard({
     return (
         <Card title="Casos Asociados">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {/* Casos del ticket (configurados) */}
                 {(editedData.associatedCases || []).map((caso, index) => {
+                    // El caso principal suele tener 'Caso Principal' o el ID numérico del ticket (ej: '1001')
+                    const ticketIdNum = ticket?.id?.split('-').pop();
+                    const isOriginCase = String(caso.caseNumber) === 'Caso Principal' || String(caso.caseNumber) === String(ticketIdNum);
+                    
+                    if (isOriginCase) return null;
+
                     const caseAssets = caso.assets || [];
                     const hasHardware = caseAssets.length > 0;
                     const isReady = ['Entregado', 'Recuperado'].includes(caso.logistics?.status) || caso.logistics?.userContacted;
