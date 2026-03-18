@@ -59,6 +59,8 @@ export default function AssociatedCasesCard({
                                     </Badge>
                                     <Badge variant={isReady ? 'success' : 'warning'} style={{ fontSize: '0.65rem', opacity: isSelected ? 0.85 : 1 }}>
                                         {caso.logistics?.status || 'Pendiente'}: {caso.logistics?.method || 'Sin método'}
+                                        {caso.logistics?.method === 'Repartidor Propio' && caso.logistics?.deliveryPerson && ` - ${caso.logistics.deliveryPerson}`}
+                                        {(caso.logistics?.method === 'Andreani' || caso.logistics?.method === 'Correo Argentino') && caso.logistics?.trackingNumber && ` - ${caso.logistics.trackingNumber}`}
                                     </Badge>
                                 </div>
                             </div>
