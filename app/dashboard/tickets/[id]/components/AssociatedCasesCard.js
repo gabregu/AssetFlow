@@ -26,7 +26,15 @@ export default function AssociatedCasesCard({
 
                     const caseAssets = caso.assets || [];
                     const hasHardware = caseAssets.length > 0;
-                    const isReady = ['Entregado', 'Recuperado'].includes(caso.logistics?.status) || caso.logistics?.userContacted;
+                    
+                    // Lógica de colores personalizada para estados
+                    const status = caso.logistics?.status || 'Pendiente';
+                    let statusVariant = 'default'; // Gris por defecto (Pendiente)
+                    
+                    if (status === 'Para Coordinar') statusVariant = 'warning'; // Amarillo
+                    else if (status === 'En Transito') statusVariant = 'info'; // Azul
+                    else if (status === 'Entregado' || status === 'Finalizado' || status === 'Recuperado') statusVariant = 'success'; // Verde
+                    
                     const isSelected = selectedCaseIndex === index;
 
                     return (
@@ -57,11 +65,11 @@ export default function AssociatedCasesCard({
                                     <Badge variant={hasHardware ? 'info' : 'secondary'} style={{ fontSize: '0.65rem', opacity: isSelected ? 0.85 : 1 }}>
                                         {caseAssets.length} Equipos
                                     </Badge>
-                                    <Badge variant={isReady ? 'success' : 'warning'} style={{ fontSize: '0.65rem', opacity: isSelected ? 0.85 : 1 }}>
-                                        {caso.logistics?.status || 'Pendiente'}: {caso.logistics?.method || 'Sin método'}
-                                        {caso.logistics?.method === 'Repartidor Propio' && caso.logistics?.deliveryPerson && ` - ${caso.logistics.deliveryPerson}`}
-                                        {(caso.logistics?.method === 'Andreani' || caso.logistics?.method === 'Correo Argentino') && caso.logistics?.trackingNumber && ` - ${caso.logistics.trackingNumber}`}
-                                    </Badge>
+                                     <Badge variant={statusVariant} style={{ fontSize: '0.65rem', opacity: isSelected ? 0.85 : 1 }}>
+                                         {status}: {caso.logistics?.method || 'Sin método'}
+                                         {caso.logistics?.method === 'Repartidor Propio' && caso.logistics?.deliveryPerson && ` - ${caso.logistics.deliveryPerson}`}
+                                         {(caso.logistics?.method === 'Andreani' || caso.logistics?.method === 'Correo Argentino') && caso.logistics?.trackingNumber && ` - ${caso.logistics.trackingNumber}`}
+                                     </Badge>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem', marginLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
