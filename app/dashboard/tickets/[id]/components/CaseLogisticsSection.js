@@ -16,9 +16,22 @@ export default function CaseLogisticsSection({
     const updateLogistics = (field, value) => {
         setEditedData(prev => {
             const newCases = [...prev.associatedCases];
+            const currentLogistics = newCases[selectedCaseIndex].logistics || {};
+            let newStatus = currentLogistics.status || 'Pendiente';
+
+            // Automación de estados
+            if (field === 'method' && value === 'Repartidor Propio') {
+                newStatus = 'Para Coordinar';
+            } else if (field === 'deliveryDate' && value && (newStatus === 'Pendiente' || newStatus === 'Para Coordinar')) {
+                newStatus = 'En Transito';
+            } else if (field === 'status') {
+                newStatus = value;
+            }
+
             newCases[selectedCaseIndex].logistics = { 
-                ...(newCases[selectedCaseIndex].logistics || {}), 
-                [field]: value 
+                ...currentLogistics, 
+                [field]: value,
+                status: newStatus
             };
             return { ...prev, associatedCases: newCases };
         });
