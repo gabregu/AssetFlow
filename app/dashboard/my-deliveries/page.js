@@ -46,10 +46,15 @@ export default function MyDeliveriesPage() {
     // Filter deliveries assigned to me
     const myDeliveries = useMemo(() => {
         if (!currentUser) return [];
-        let filtered = tickets.filter(t =>
-            (t.logistics?.deliveryPerson === currentUser.name || t.logistics?.deliveryPerson === currentUser.username) &&
-            t.deliveryStatus === 'En Transito'
-        );
+        let filtered = tickets.filter(t => {
+            const isDirectlyAssigned = (t.logistics?.deliveryPerson === currentUser.name || t.logistics?.deliveryPerson === currentUser.username);
+            const hasAssignedCase = t.associatedCases?.some(c => c.logistics?.deliveryPerson === currentUser.name || c.logistics?.deliveryPerson === currentUser.username);
+            
+            // Un ticket aparece aquí si está asignado o tiene casos asignados Y está en tránsito
+            // Nota: El estado de tránsito puede ser general o de un caso específico. 
+            // Por simplicidad, si el ticket principal está en tránsito, se muestra.
+            return (isDirectlyAssigned || hasAssignedCase) && t.deliveryStatus === 'En Transito';
+        });
 
         // Apply optimized order if exists
         if (optimizedOrder) {
@@ -83,11 +88,14 @@ export default function MyDeliveriesPage() {
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-        const finishedThisMonth = tickets.filter(t =>
-            (t.logistics?.deliveryPerson === currentUser?.name || t.logistics?.deliveryPerson === currentUser?.username) &&
-            t.status === 'Resuelto' &&
-            new Date(t.date) >= firstDayOfMonth
-        ).length;
+        const finishedThisMonth = tickets.filter(t => {
+            const isAssigned = (t.logistics?.deliveryPerson === currentUser?.name || t.logistics?.deliveryPerson === currentUser?.username);
+            const hasAssignedCase = t.associatedCases?.some(c => c.logistics?.deliveryPerson === currentUser?.name || c.logistics?.deliveryPerson === currentUser?.username);
+            
+            return (isAssigned || hasAssignedCase) &&
+                t.status === 'Resuelto' &&
+                new Date(t.date) >= firstDayOfMonth;
+        }).length;
 
         const pendingThisWeek = myDeliveries.filter(t => t.status !== 'Resuelto').length;
 

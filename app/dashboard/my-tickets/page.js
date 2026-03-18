@@ -44,16 +44,19 @@ export default function MyTicketsPage() {
 
     const isAdmin = currentUser?.role === 'admin';
 
-    // Filtramos los tickets asignados al usuario actual que NO estén resueltos
+    // Filtramos los tickets asignados al usuario actual o que tengan casos asociados asignados a él, que NO estén resueltos
     const myTickets = useMemo(() => {
-        return tickets.filter(t =>
-            t.logistics?.deliveryPerson === currentUser?.name &&
-            t.status !== 'Cerrado' &&
-            t.status !== 'Resuelto' &&
-            t.status !== 'Caso SFDC Cerrado' &&
-            t.status !== 'Servicio Facturado' &&
-            t.deliveryStatus !== 'Entregado'
-        );
+        return tickets.filter(t => {
+            const isDirectlyAssigned = t.logistics?.deliveryPerson === currentUser?.name;
+            const hasAssignedAssociatedCase = t.associatedCases?.some(c => c.logistics?.deliveryPerson === currentUser?.name);
+
+            return (isDirectlyAssigned || hasAssignedAssociatedCase) &&
+                t.status !== 'Cerrado' &&
+                t.status !== 'Resuelto' &&
+                t.status !== 'Caso SFDC Cerrado' &&
+                t.status !== 'Servicio Facturado' &&
+                t.deliveryStatus !== 'Entregado';
+        });
     }, [tickets, currentUser]);
 
     const handleSelectAll = (e) => {
@@ -246,7 +249,11 @@ export default function MyTicketsPage() {
 
         const allMyTickets = tickets.filter(t => {
             const driver = t.logistics?.deliveryPerson;
+            const hasAssignedCase = t.associatedCases?.some(c => c.logistics?.deliveryPerson === currentUser?.name);
+            
+            if (hasAssignedCase) return true;
             if (!driver) return false;
+            
             const dLower = driver.toLowerCase();
             const uName = (currentUser?.name || '').toLowerCase();
             const uUser = (currentUser?.username || '').toLowerCase();
