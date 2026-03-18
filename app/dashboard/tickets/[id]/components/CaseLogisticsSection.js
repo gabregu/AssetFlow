@@ -11,7 +11,7 @@ export default function CaseLogisticsSection({
     if (selectedCaseIndex === null) return null;
 
     const currentCase = editedData.associatedCases[selectedCaseIndex];
-    const logistics = currentCase.logistics || { status: 'Pendiente', method: '', deliveryDate: '', timeWindow: 'AM' };
+    const logistics = currentCase.logistics || { status: 'Pendiente', method: '', date: '', timeSlot: 'AM' };
 
     const updateLogistics = (field, value) => {
         setEditedData(prev => {
@@ -23,7 +23,7 @@ export default function CaseLogisticsSection({
             // Automación de estados
             if (field === 'method' && value === 'Repartidor Propio') {
                 newStatus = 'Para Coordinar';
-            } else if (field === 'deliveryDate' && value && (newStatus === 'Pendiente' || newStatus === 'Para Coordinar')) {
+            } else if (field === 'date' && value && (newStatus === 'Pendiente' || newStatus === 'Para Coordinar')) {
                 newStatus = 'En Transito';
             } else if (field === 'status') {
                 newStatus = value;
@@ -114,38 +114,7 @@ export default function CaseLogisticsSection({
                     </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div className="form-group">
-                        <label className="form-label">Fecha Programada</label>
-                        <input
-                            type="date"
-                            className="form-input"
-                            value={logistics.deliveryDate || ''}
-                            onChange={e => updateLogistics('deliveryDate', e.target.value)}
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">Turno Cita (AM/PM)</label>
-                        <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            {['AM', 'PM'].map(slot => (
-                                <button
-                                    key={slot}
-                                    type="button"
-                                    onClick={() => updateLogistics('timeWindow', slot)}
-                                    style={{
-                                        flex: 1, padding: '0.4rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600,
-                                        border: '1px solid var(--border)', cursor: 'pointer',
-                                        background: logistics.timeWindow === slot ? 'var(--primary-color)' : 'var(--background)',
-                                        color: logistics.timeWindow === slot ? 'white' : 'var(--text-main)',
-                                    }}
-                                >
-                                    {slot}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+                {/* Fecha y Turno eliminados de aquí para manejarse globalmente */}
             </div>
         </div>
     );

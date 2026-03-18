@@ -71,8 +71,8 @@ export function useTicketDetail() {
                         accessories: foundTicket.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
                         logistics: {
                             method: foundTicket.logistics?.method || '',
-                            deliveryDate: foundTicket.logistics?.date || foundTicket.logistics?.datetime?.split('T')[0] || '',
-                            timeWindow: foundTicket.logistics?.timeSlot || 'AM',
+                            date: foundTicket.logistics?.date || foundTicket.logistics?.datetime?.split('T')[0] || '',
+                            timeSlot: foundTicket.logistics?.timeSlot || 'AM',
                             status: foundTicket.deliveryStatus || 'Pendiente'
                         }
                     }];
@@ -81,7 +81,7 @@ export function useTicketDetail() {
                         ...c,
                         assets: c.assets || [],
                         accessories: c.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
-                        logistics: c.logistics || { method: '', deliveryDate: '', timeWindow: 'AM', status: 'Pendiente' }
+                        logistics: c.logistics || { method: '', date: '', timeSlot: 'AM', status: 'Pendiente' }
                     }));
                 }
 
@@ -119,7 +119,7 @@ export function useTicketDetail() {
                 subject: sc.subject,
                 assets: [],
                 accessories: { backpack: false, screenFilter: false, filterSize: '14"' },
-                logistics: { method: '', deliveryDate: '', timeWindow: 'AM', status: 'Pendiente' }
+                logistics: { method: '', date: '', timeSlot: 'AM', status: 'Pendiente' }
             }));
 
             const updatedTicketData = {
