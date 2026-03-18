@@ -23,8 +23,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Modal } from '@/app/components/ui/Modal';
-import { useStore } from '@/app/store/StoreContext';
-import { toast } from 'react-hot-toast';
+import { useStore } from '../../../lib/store';
 
 export default function MyDeliveriesPage() {
     const { tickets, currentUser, updateTicket } = useStore();
@@ -54,6 +53,7 @@ export default function MyDeliveriesPage() {
         if (!currentUser) return [];
         
         const items = [];
+        const uName = (currentUser.name || '').toLowerCase();
         
         tickets.forEach(t => {
             // Identificar casos asociados asignados a este usuario

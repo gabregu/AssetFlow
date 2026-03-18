@@ -64,8 +64,6 @@ export default function MyTicketsPage() {
                 return (isAssignedByName || isAssignedByUid);
             });
 
-            // REGLA FUNDAMENTAL: Si el conductor tiene AL MENOS UN caso asociado asignado (incluyendo el principal si está en la lista)
-            // NO mostramos la tarjeta del ticket principal "madre".
             const hasAnyAssignedCase = assignedCases.length > 0;
 
             // 1. Verificar si el ticket principal está asignado
@@ -75,6 +73,14 @@ export default function MyTicketsPage() {
                                      (tDriverUid === currentUser.uid || tDriverUid === currentUser.id);
             
             const isResolved = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || t.deliveryStatus === 'Entregado';
+
+            // DEBUG: Loguear info de cada ticket relevante
+            if (isTicketAssigned || hasAnyAssignedCase) {
+                console.log(`[DEBUG] ${t.id}: isTicketAssigned=${isTicketAssigned}, hasAnyAssignedCase=${hasAnyAssignedCase}, assocCases=${t.associatedCases?.length || 0}, tDriverName="${tDriverName}", uName="${uName}"`);
+                (t.associatedCases || []).forEach((c, i) => {
+                    console.log(`  Case[${i}] num="${c.caseNumber}" driver="${c.logistics?.deliveryPerson}" uid="${c.logistics?.assignedTo}" status="${c.logistics?.status}"`);
+                });
+            }
 
             // Solo agregamos el ticket principal si NO tiene sub-casos asignados a este chofer
             if (isTicketAssigned && !isResolved && !hasAnyAssignedCase) {
@@ -89,7 +95,7 @@ export default function MyTicketsPage() {
                 });
             }
 
-            // 2. Agregar los casos asociados asignados (filtrando el virtual Caso Principal para no duplicar si es necesario)
+            // 2. Agregar los casos asociados asignados
             assignedCases.forEach(c => {
                 const ticketIdNum = String(t.id || '').split('-').pop();
                 const isVirtualOrigin = String(c.caseNumber) === 'Caso Principal' || String(c.caseNumber) === ticketIdNum;
@@ -99,7 +105,7 @@ export default function MyTicketsPage() {
                 if (!isCaseResolved) {
                     items.push({
                         ...t,
-                        isMainTicket: isVirtualOrigin, // Si es el principal virtual, lo tratamos como tal pero con la data del caso
+                        isMainTicket: isVirtualOrigin,
                         caseData: c,
                         displaySubject: c.subject || t.subject,
                         displayId: c.caseNumber || t.id,
@@ -111,6 +117,7 @@ export default function MyTicketsPage() {
             });
         });
 
+        console.log('[DEBUG] myAssignedItems total:', items.length, items.map(i => `${i.displayId}(${i.displayStatus})`));
         return items;
     }, [tickets, currentUser]);
 
