@@ -55,7 +55,8 @@ export default function CaseConfigModal({
                 phone: ticket.logistics?.phone || currentCase.logistics?.phone || '',
                 email: ticket.logistics?.email || currentCase.logistics?.email || '',
                 address: ticket.logistics?.address || currentCase.logistics?.address || '',
-                type: currentCase.logistics?.type || ticket.logistics?.type || 'Entrega'
+                type: currentCase.logistics?.type || ticket.logistics?.type || 'Entrega',
+                deliveryInfo: currentCase.logistics?.deliveryInfo || ticket.logistics?.deliveryInfo || null
             },
             caseNumber: currentCase.caseNumber
         };
@@ -112,33 +113,50 @@ export default function CaseConfigModal({
                         />
 
                         <div style={{ 
-                            marginTop: '1rem', 
-                            paddingTop: '1rem', 
-                            borderTop: '1px solid var(--border)',
+                            marginTop: '0.5rem',
                             display: 'flex',
-                            justifyContent: 'center',
-                            gap: '1rem',
-                            alignItems: 'center'
+                            flexDirection: 'column',
+                            gap: '1rem'
                         }}>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Remito:</span>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    icon={FileText}
-                                    onClick={() => handleGenerateRemito('view')}
-                                    style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px' }}
-                                >
-                                    Ver
-                                </Button>
-                                <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => handleGenerateRemito('download')}
-                                    style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px' }}
-                                >
-                                    Descargar
-                                </Button>
+                             <Button 
+                                variant="primary" 
+                                style={{ width: '100%', padding: '0.75rem', fontWeight: 700, fontSize: '0.95rem' }}
+                                onClick={() => {
+                                    handleUpdate();
+                                    setSelectedCaseIndex(null);
+                                }}
+                            >
+                                Guardar y Cerrar Configuración
+                            </Button>
+
+                            <div style={{ 
+                                display: 'flex',
+                                justifyContent: 'center',
+                                gap: '1rem',
+                                alignItems: 'center',
+                                paddingTop: '1rem',
+                                borderTop: '1px solid var(--border)'
+                            }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Remito:</span>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        icon={FileText}
+                                        onClick={() => handleGenerateRemito('view')}
+                                        style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px' }}
+                                    >
+                                        Ver
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        onClick={() => handleGenerateRemito('download')}
+                                        style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px' }}
+                                    >
+                                        Descargar
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>

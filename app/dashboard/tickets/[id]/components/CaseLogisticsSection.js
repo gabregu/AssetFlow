@@ -114,7 +114,46 @@ export default function CaseLogisticsSection({
                     </div>
                 )}
 
-                {/* Fecha y Turno eliminados de aquí para manejarse globalmente */}
+                {(logistics.status === 'Entregado' || logistics.status === 'Finalizado') && (
+                    <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(34, 197, 94, 0.05)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                        <h5 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534', marginBottom: '0.75rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ width: '6px', height: '6px', background: '#22c55e', borderRadius: '50%' }}></div>
+                            Información de Entrega
+                        </h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.75rem', opacity: 0.8 }}>Recibido por</label>
+                                <input
+                                    className="form-input"
+                                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                                    value={logistics.deliveryInfo?.receivedBy || ''}
+                                    onChange={e => updateLogistics('deliveryInfo', { ...(logistics.deliveryInfo || {}), receivedBy: e.target.value })}
+                                    placeholder="Nombre completo"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.75rem', opacity: 0.8 }}>DNI</label>
+                                <input
+                                    className="form-input"
+                                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                                    value={logistics.deliveryInfo?.dni || ''}
+                                    onChange={e => updateLogistics('deliveryInfo', { ...(logistics.deliveryInfo || {}), dni: e.target.value })}
+                                    placeholder="DNI"
+                                />
+                            </div>
+                        </div>
+                        <div className="form-group" style={{ marginTop: '0.75rem' }}>
+                            <label className="form-label" style={{ fontSize: '0.75rem', opacity: 0.8 }}>Notas de Entrega</label>
+                            <textarea
+                                className="form-input"
+                                style={{ padding: '0.4rem 0.75rem', minHeight: '60px', resize: 'vertical', fontSize: '0.85rem' }}
+                                value={logistics.deliveryInfo?.notes || ''}
+                                onChange={e => updateLogistics('deliveryInfo', { ...(logistics.deliveryInfo || {}), notes: e.target.value })}
+                                placeholder="Observaciones del repartidor..."
+                            />
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
