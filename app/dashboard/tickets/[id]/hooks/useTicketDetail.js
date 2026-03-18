@@ -55,46 +55,56 @@ export function useTicketDetail() {
         if (foundTicket) {
             setTicket(foundTicket);
 
-            let normalizedCases = foundTicket.associatedCases || [];
-            if (normalizedCases.length === 0) {
-                const oldAssets = foundTicket.associatedAssets || (foundTicket.associatedAssetSerial ? [{ serial: foundTicket.associatedAssetSerial, type: foundTicket.logistics?.type || 'Entrega' }] : []);
-                normalizedCases = [{
-                    caseNumber: foundTicket.logistics?.additionalCase || foundTicket.id.split('-').pop(),
-                    subject: foundTicket.subject || 'Gestion de Servicio',
-                    assets: oldAssets.map(item => typeof item === 'string' ? { serial: item, type: foundTicket.logistics?.type || 'Entrega' } : item),
-                    accessories: foundTicket.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
-                    logistics: {
-                        method: foundTicket.logistics?.method || '',
-                        deliveryDate: foundTicket.logistics?.date || foundTicket.logistics?.datetime?.split('T')[0] || '',
-                        timeWindow: foundTicket.logistics?.timeSlot || 'AM',
-                        status: foundTicket.deliveryStatus || 'Pendiente'
-                    }
-                }];
-            } else {
-                normalizedCases = normalizedCases.map(c => ({
-                    ...c,
-                    assets: c.assets || [],
-                    accessories: c.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
-                    logistics: c.logistics || { method: '', deliveryDate: '', timeWindow: 'AM', status: 'Pendiente' }
-                }));
-            }
+            // Solo inicializar editedData si es la primera vez o si NO estamos editando activamente.
+            // Esto evita que actualizaciones de fondo (como la vinculación automática) 
+            // pisen los cambios que el usuario está escribiendo en los inputs.
+            const isUserEditing = editMode || editContact || selectedCaseIndex !== null;
+            
+            if (!isUserEditing || Object.keys(editedData).length === 0) {
+                let normalizedCases = foundTicket.associatedCases || [];
+                if (normalizedCases.length === 0) {
+                    const oldAssets = foundTicket.associatedAssets || (foundTicket.associatedAssetSerial ? [{ serial: foundTicket.associatedAssetSerial, type: foundTicket.logistics?.type || 'Entrega' }] : []);
+                    normalizedCases = [{
+                        caseNumber: foundTicket.logistics?.additionalCase || foundTicket.id.split('-').pop(),
+                        subject: foundTicket.subject || 'Gestion de Servicio',
+                        assets: oldAssets.map(item => typeof item === 'string' ? { serial: item, type: foundTicket.logistics?.type || 'Entrega' } : item),
+                        accessories: foundTicket.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
+                        logistics: {
+                            method: foundTicket.logistics?.method || '',
+                            deliveryDate: foundTicket.logistics?.date || foundTicket.logistics?.datetime?.split('T')[0] || '',
+                            timeWindow: foundTicket.logistics?.timeSlot || 'AM',
+                            status: foundTicket.deliveryStatus || 'Pendiente'
+                        }
+                    }];
+                } else {
+                    normalizedCases = normalizedCases.map(c => ({
+                        ...c,
+                        assets: c.assets || [],
+                        accessories: c.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
+                        logistics: c.logistics || { method: '', deliveryDate: '', timeWindow: 'AM', status: 'Pendiente' }
+                    }));
+                }
 
-            setEditedData({
-                ...foundTicket,
-                associatedCases: normalizedCases,
-                internalNotes: foundTicket.internalNotes || []
-            });
+                setEditedData({
+                    ...foundTicket,
+                    associatedCases: normalizedCases,
+                    internalNotes: foundTicket.internalNotes || []
+                });
+            }
         }
-    }, [params.id, tickets]);
+    }, [params.id, tickets]); // Solo depende del ID o cambios externos en el store
 
     // Automatización: Vincular casos hermanos automáticamente al cargar o actualizar sfdcCases
     useEffect(() => {
+        // Solo ejecutamos la vinculación automática si tenemos el ticket base y casos SFDC cargados
         if (!ticket || !sfdcCases || sfdcCases.length === 0) return;
 
         const normalize = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         const requesterName = normalize(ticket.requester);
         
-        const linkedCaseNumbers = (editedData.associatedCases || []).map(c => c.caseNumber).filter(Boolean);
+        // Usamos el ticket original del store para ver qué está ya vinculado, 
+        // evitando depender de editedData que causaría bucle infinito
+        const linkedCaseNumbers = (ticket.associatedCases || []).map(c => c.caseNumber).filter(Boolean);
         
         const siblings = sfdcCases.filter(sc => {
             const rf = normalize(sc.requestedFor);
@@ -112,16 +122,16 @@ export function useTicketDetail() {
                 logistics: { method: '', deliveryDate: '', timeWindow: 'AM', status: 'Pendiente' }
             }));
 
-            const updated = {
-                ...editedData,
-                associatedCases: [...(editedData.associatedCases || []), ...newAssociatedCases]
+            const updatedTicketData = {
+                ...ticket,
+                associatedCases: [...(ticket.associatedCases || []), ...newAssociatedCases]
             };
 
-            // Persistir cambios
-            setEditedData(updated);
-            updateTicket(ticket.id, updated);
+            // Notar que NO llamamos a setEditedData aquí directamente para no interrumpir al usuario.
+            // El primer useEffect sincronizará editedData si el usuario NO está editando.
+            updateTicket(ticket.id, updatedTicketData);
         }
-    }, [ticket, sfdcCases, editedData.associatedCases]);
+    }, [ticket?.id, ticket?.requester, sfdcCases]); // Dependencias estables
 
     const provisioningSuggestions = useMemo(() => {
         if (!ticket || !ticket.subject) return [];
