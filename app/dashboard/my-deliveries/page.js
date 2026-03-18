@@ -56,9 +56,21 @@ export default function MyDeliveriesPage() {
         const items = [];
         
         tickets.forEach(t => {
+            // Identificar casos asociados asignados a este usuario
+            const assignedCases = (t.associatedCases || []).filter(c => {
+                const isCaseAssigned = c.logistics?.assignedTo === currentUser.uid;
+                const isCaseInTransit = c.logistics?.status === 'En Transito';
+                return isCaseAssigned && isCaseInTransit;
+            });
+
+            const hasAssignedSubCases = assignedCases.length > 0;
+
             // Verificar si el ticket principal está asignado y en tránsito
             const isMainAssigned = t.logistics?.assignedTo === currentUser.uid;
-            if (isMainAssigned && t.logistics?.status === 'En Transito') {
+            const isMainInTransit = t.logistics?.status === 'En Transito';
+
+            // REGLA: Si el ticket tiene sub-casos asignados a MÍ, NO mostrar el ticket principal (evitar duplicado visual)
+            if (isMainAssigned && isMainInTransit && !hasAssignedSubCases) {
                 items.push({
                     ...t,
                     isMainTicket: true,
@@ -70,24 +82,19 @@ export default function MyDeliveriesPage() {
                 });
             }
 
-            // Verificar casos asociados asignados y en tránsito
-            if (t.associatedCases && Array.isArray(t.associatedCases)) {
-                t.associatedCases.forEach(c => {
-                    const isCaseAssigned = c.logistics?.assignedTo === currentUser.uid;
-                    if (isCaseAssigned && c.logistics?.status === 'En Transito') {
-                        items.push({
-                            ...t, // Datos base del ticket
-                            isMainTicket: false,
-                            caseData: c, // Referencia al caso específico
-                            displayId: c.caseNumber || t.id,
-                            displaySubject: c.subject || t.subject,
-                            displayAddress: c.logistics?.address || t.logistics?.address,
-                            displayStatus: c.logistics?.status || 'Pendiente',
-                            displayDate: c.logistics?.date || t.logistics?.date || t.logistics?.datetime?.split('T')[0]
-                        });
-                    }
+            // Agregar casos asociados asignados
+            assignedCases.forEach(c => {
+                items.push({
+                    ...t, // Datos base del ticket
+                    isMainTicket: false,
+                    caseData: c, // Referencia al caso específico
+                    displayId: c.caseNumber || t.id,
+                    displaySubject: c.subject || t.subject,
+                    displayAddress: c.logistics?.address || t.logistics?.address,
+                    displayStatus: c.logistics?.status || 'Pendiente',
+                    displayDate: c.logistics?.date || t.logistics?.date || t.logistics?.datetime?.split('T')[0]
                 });
-            }
+            });
         });
 
         // Aplicar orden optimizado si existe

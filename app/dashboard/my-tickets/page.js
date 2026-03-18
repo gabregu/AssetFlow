@@ -46,14 +46,36 @@ export default function MyTicketsPage() {
 
     // Generamos la lista "aplanada" de items de trabajo (Tickets o Casos Asociados) asignados al usuario
     const myAssignedItems = useMemo(() => {
+        if (!currentUser) return [];
         const items = [];
+        const uName = (currentUser.name || '').toLowerCase();
         
         tickets.forEach(t => {
+            // Identificar casos asociados asignados a este usuario (excluyendo el "Caso Principal" virtual)
+            const assignedCases = (t.associatedCases || []).filter(c => {
+                const driver = c.logistics?.deliveryPerson;
+                if (!driver) return false;
+                const dLower = driver.toLowerCase();
+                
+                // El ID numérico del ticket (ej: '1001') para identificar el caso principal
+                const ticketIdNum = t.id?.split('-').pop();
+                const isOriginCase = String(c.caseNumber) === 'Caso Principal' || String(c.caseNumber) === String(ticketIdNum);
+                
+                const isAssigned = dLower === uName || (uName && uName.includes(dLower)) || (dLower && dLower.includes(uName));
+                return isAssigned && !isOriginCase;
+            });
+
+            const hasAssignedSubCases = assignedCases.length > 0;
+
             // 1. Verificar si el ticket principal está asignado
-            const isTicketAssigned = t.logistics?.deliveryPerson === currentUser?.name;
+            const ticketDriver = t.logistics?.deliveryPerson;
+            const tDriverLower = (ticketDriver || '').toLowerCase();
+            const isTicketAssigned = tDriverLower === uName || (uName && uName.includes(tDriverLower)) || (tDriverLower && tDriverLower.includes(uName));
+            
             const isResolved = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || t.deliveryStatus === 'Entregado';
 
-            if (isTicketAssigned && !isResolved) {
+            // REGLA: Si el ticket tiene sub-casos asignados a MÍ, NO mostrar el ticket principal (evitar duplicado visual)
+            if (isTicketAssigned && !isResolved && !hasAssignedSubCases) {
                 items.push({
                     ...t,
                     isMainTicket: true,
@@ -65,16 +87,10 @@ export default function MyTicketsPage() {
                 });
             }
 
-            // 2. Verificar casos asociados (excluyendo el principal si ya se agregó arriba para evitar duplicados en la visualización)
-            t.associatedCases?.forEach(c => {
-                const isCaseAssigned = c.logistics?.deliveryPerson === currentUser?.name;
+            // 2. Agregar los casos asociados asignados
+            assignedCases.forEach(c => {
                 const isCaseResolved = ['Entregado', 'Recuperado', 'Finalizado'].includes(c.logistics?.status);
-                
-                // El ID numérico del ticket (ej: '1001')
-                const ticketIdNum = t.id?.split('-').pop();
-                const isOriginCase = String(c.caseNumber) === 'Caso Principal' || String(c.caseNumber) === String(ticketIdNum);
-
-                if (isCaseAssigned && !isCaseResolved && !isOriginCase) {
+                if (!isCaseResolved) {
                     items.push({
                         ...t,
                         isMainTicket: false,
