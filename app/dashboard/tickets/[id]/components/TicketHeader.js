@@ -28,9 +28,24 @@ export default function TicketHeader({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Badge variant="outline">{ticket.id}</Badge>
-                    <Badge variant={getStatusVariant(editedData.status || ticket.status)}>
-                        {editedData.status || ticket.status}
-                    </Badge>
+                    {editMode || editContact ? (
+                        <select 
+                            className="form-select"
+                            style={{ height: '24px', fontSize: '0.75rem', padding: '0 4px' }}
+                            value={editedData.status || ticket.status}
+                            onChange={e => setEditedData({ ...editedData, status: e.target.value })}
+                        >
+                            <option value="Abierto">Abierto</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Progreso">En Progreso</option>
+                            <option value="Resuelto">Resuelto</option>
+                            <option value="Cerrado">Cerrado</option>
+                        </select>
+                    ) : (
+                        <Badge variant={getStatusVariant(editedData.status || ticket.status)}>
+                            {editedData.status || ticket.status}
+                        </Badge>
+                    )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     {!editMode && !editContact ? (
@@ -44,7 +59,7 @@ export default function TicketHeader({
                 </div>
             </div>
 
-            {editMode ? (
+            {editMode || editContact ? (
                 <input
                     style={{
                         fontSize: '1.75rem',
@@ -85,7 +100,7 @@ export default function TicketHeader({
                 ticket={ticket}
                 editedData={editedData}
                 setEditedData={setEditedData}
-                editMode={editMode}
+                editMode={editMode || editContact}
                 setEditMode={setEditMode}
             />
 

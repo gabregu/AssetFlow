@@ -32,7 +32,7 @@ export default function ContactInfoSection({
                             <Hash size={12} /> Casos Asociados ({ticket.associatedCases.length})
                         </label>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            {ticket.associatedCases.map((ac, idx) => (
+                            {editedData.associatedCases?.map((ac, idx) => (
                                 <div key={idx} style={{
                                     display: 'flex',
                                     alignItems: 'center',

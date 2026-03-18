@@ -43,7 +43,17 @@ export default function TicketInfoGrid({
                 <div style={{ color: 'var(--text-secondary)' }}><Calendar size={18} /></div>
                 <div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>Fecha de creación</p>
-                    <p style={{ fontWeight: 500, margin: 0 }}>{ticket.date}</p>
+                    {editMode ? (
+                        <input
+                            type="date"
+                            className="form-input"
+                            style={{ padding: '0.2rem', marginTop: '2px', fontSize: '0.9rem', width: '100%' }}
+                            value={editedData.date || ''}
+                            onChange={e => setEditedData({ ...editedData, date: e.target.value })}
+                        />
+                    ) : (
+                        <p style={{ fontWeight: 500, margin: 0 }}>{ticket.date}</p>
+                    )}
                 </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
