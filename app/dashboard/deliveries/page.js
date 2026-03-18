@@ -129,39 +129,60 @@ export default function DeliveriesPage() {
 
     // Unimos los datos de envíos
     const combinedDeliveries = React.useMemo(() => {
-        const ticketDeliveries = tickets.filter(t => {
+        const items = [];
+
+        tickets.forEach(t => {
             const isCompleted = t.status === 'Resuelto' || t.status === 'Cerrado' || t.status === 'Servicio Facturado' || t.status === 'Caso SFDC Cerrado' || t.deliveryStatus === 'Entregado';
-            return t.logistics && !isCompleted;
-        })
-            .map(t => {
-                const assetsList = t.associatedAssets || [];
-                const deliveryCount = assetsList.filter(a => typeof a === 'string' ? t.logistics.type !== 'Recupero' : a.type !== 'Recupero').length;
-                const pickupCount = assetsList.filter(a => typeof a === 'string' ? t.logistics.type === 'Recupero' : a.type === 'Recupero').length;
+            if (isCompleted) return;
 
-                let summaryItems = [];
-                if (deliveryCount > 0) summaryItems.push(`${deliveryCount} Entr.`);
-                if (pickupCount > 0) summaryItems.push(`${pickupCount} Rec.`);
+            // 1. Procesar casos asociados individuales (Arquitectura Nueva)
+            const associatedCases = t.associatedCases || [];
+            associatedCases.forEach(c => {
+                const cLogistics = c.logistics || {};
+                // FILTRO CRÍTICO: Solo si tiene fecha coordinada
+                if (!cLogistics.date) return;
 
-                const logisticsDate = t.logistics.date;
-                const displayDate = logisticsDate || (t.logistics.datetime ? t.logistics.datetime.split('T')[0] : t.date);
-                const timeSlot = t.logistics.timeSlot || 'AM';
+                const hasDriver = !!cLogistics.deliveryPerson && cLogistics.deliveryPerson !== 'No definido';
+                
+                items.push({
+                    id: c.caseNumber || t.id,
+                    parentTicketId: t.id,
+                    recipient: t.requester, // El destinatario es el requester del ticket
+                    address: cLogistics.address || t.logistics?.address || 'Sin dirección',
+                    items: c.subject || t.subject || 'Equipo IT',
+                    courier: cLogistics.method || 'No definido',
+                    deliveryPerson: cLogistics.deliveryPerson,
+                    status: hasDriver ? 'En Tránsito' : 'Pendiente',
+                    ticketStatus: t.status,
+                    deliveryStatusOriginal: cLogistics.status || 'Pendiente',
+                    date: `${cLogistics.date} [${cLogistics.timeSlot || 'AM'}]`,
+                    source: 'Ticket',
+                    isSubCase: true
+                });
+            });
 
+            // 2. Procesar ticket raíz como envío solo si tiene fecha Y NO tiene sub-casos coordinados (Compatibilidad Legacy)
+            const rootHasDate = t.logistics?.date;
+            const hasAssignedCases = items.some(item => item.parentTicketId === t.id);
+
+            if (rootHasDate && !hasAssignedCases) {
                 const hasDriver = !!t.logistics.deliveryPerson && t.logistics.deliveryPerson !== 'No definido';
-
-                return {
+                items.push({
                     id: t.id,
                     recipient: t.requester,
                     address: t.logistics.address || 'Sin dirección',
-                    items: summaryItems.length > 0 ? summaryItems.join(" / ") : 'Equipo IT',
+                    items: t.subject || 'Equipo IT',
                     courier: t.logistics.method || 'No definido',
                     deliveryPerson: t.logistics.deliveryPerson,
                     status: hasDriver ? 'En Tránsito' : 'Pendiente',
                     ticketStatus: t.status,
                     deliveryStatusOriginal: t.deliveryStatus,
-                    date: logisticsDate ? `${displayDate} [${timeSlot}]` : 'A Confirmar',
-                    source: 'Ticket'
-                };
-            });
+                    date: `${t.logistics.date} [${t.logistics.timeSlot || 'AM'}]`,
+                    source: 'Ticket',
+                    isSubCase: false
+                });
+            }
+        });
 
         const activeManualDeliveries = deliveries.filter(d => d.status !== 'Entregado').map(d => ({
             ...d,
@@ -170,7 +191,7 @@ export default function DeliveriesPage() {
             deliveryStatusOriginal: d.status
         }));
 
-        return [...activeManualDeliveries, ...ticketDeliveries];
+        return [...activeManualDeliveries, ...items];
     }, [deliveries, tickets]);
 
     // Colores vibrantes para los diferentes días (Consistente con Mis Envíos)
