@@ -18,6 +18,7 @@ export default function CaseLogisticsSection({
             const newCases = [...prev.associatedCases];
             const currentLogistics = newCases[selectedCaseIndex].logistics || {};
             let newStatus = currentLogistics.status || 'Pendiente';
+            let assignedTo = currentLogistics.assignedTo || null;
 
             // Automación de estados
             if (field === 'method' && value === 'Repartidor Propio') {
@@ -28,10 +29,21 @@ export default function CaseLogisticsSection({
                 newStatus = value;
             }
 
+            // Si cambiamos el repartidor, buscamos su UID (assignedTo)
+            if (field === 'deliveryPerson' && value) {
+                const matchedUser = [...users].find(u => u.name === value);
+                if (matchedUser) {
+                    assignedTo = matchedUser.id || matchedUser.uid;
+                }
+            } else if (field === 'deliveryPerson' && !value) {
+                assignedTo = null;
+            }
+
             newCases[selectedCaseIndex].logistics = { 
                 ...currentLogistics, 
                 [field]: value,
-                status: newStatus
+                status: newStatus,
+                assignedTo: assignedTo
             };
             return { ...prev, associatedCases: newCases };
         });

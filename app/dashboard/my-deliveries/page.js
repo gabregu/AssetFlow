@@ -58,7 +58,13 @@ export default function MyDeliveriesPage() {
         tickets.forEach(t => {
             // Identificar casos asociados asignados a este usuario
             const assignedCases = (t.associatedCases || []).filter(c => {
-                const isCaseAssigned = c.logistics?.assignedTo === currentUser.uid;
+                const driverName = (c.logistics?.deliveryPerson || '').toLowerCase();
+                const driverUid = c.logistics?.assignedTo;
+                
+                const isAssignedByName = driverName === uName || (uName && uName.includes(driverName)) || (driverName && driverName.includes(uName));
+                const isAssignedByUid = driverUid === currentUser.uid || driverUid === currentUser.id;
+                
+                const isCaseAssigned = isAssignedByName || isAssignedByUid;
                 const isCaseInTransit = c.logistics?.status === 'En Transito';
                 return isCaseAssigned && isCaseInTransit;
             });
@@ -66,10 +72,16 @@ export default function MyDeliveriesPage() {
             const hasAssignedSubCases = assignedCases.length > 0;
 
             // Verificar si el ticket principal está asignado y en tránsito
-            const isMainAssigned = t.logistics?.assignedTo === currentUser.uid;
+            const tDriverName = (t.logistics?.deliveryPerson || '').toLowerCase();
+            const tDriverUid = t.logistics?.assignedTo;
+            
+            const isTicketAssignedByName = tDriverName === uName || (uName && uName.includes(tDriverName)) || (tDriverName && tDriverName.includes(uName));
+            const isTicketAssignedByUid = tDriverUid === currentUser.uid || tDriverUid === currentUser.id;
+            const isMainAssigned = isTicketAssignedByName || isTicketAssignedByUid;
+            
             const isMainInTransit = t.logistics?.status === 'En Transito';
 
-            // REGLA: Si el ticket tiene sub-casos asignados a MÍ, NO mostrar el ticket principal (evitar duplicado visual)
+            // REGLA: Si el ticket tiene sub-casos asignados a MÍ, NO mostrar el ticket principal
             if (isMainAssigned && isMainInTransit && !hasAssignedSubCases) {
                 items.push({
                     ...t,

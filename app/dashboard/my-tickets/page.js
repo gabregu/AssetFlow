@@ -51,43 +51,33 @@ export default function MyTicketsPage() {
         const uName = (currentUser.name || '').toLowerCase();
         
         tickets.forEach(t => {
-            // DIAGNOSTIC LOG
-            if (t.id === 'CAS-1001') {
-                console.log('DEBUG: Analyzing CAS-1001 for user:', uName);
-                console.log('DEBUG: Ticket logistics:', t.logistics);
-                console.log('DEBUG: Associated cases count:', t.associatedCases?.length);
-            }
-
             // Identificar casos asociados asignados a este usuario (excluyendo el "Caso Principal" virtual)
             const assignedCases = (t.associatedCases || []).filter(c => {
-                const driver = c.logistics?.deliveryPerson;
-                if (!driver) return false;
-                const dLower = driver.toLowerCase();
+                const driverName = (c.logistics?.deliveryPerson || '').toLowerCase();
+                const driverUid = c.logistics?.assignedTo;
+                
+                if (!driverName && !driverUid) return false;
                 
                 // El ID numérico del ticket (ej: '1001') para identificar el caso principal
-                const ticketIdNum = t.id?.split('-').pop();
-                const isOriginCase = String(c.caseNumber) === 'Caso Principal' || String(c.caseNumber) === String(ticketIdNum);
+                const ticketIdNum = String(t.id || '').split('-').pop();
+                const isOriginCase = String(c.caseNumber) === 'Caso Principal' || String(c.caseNumber) === ticketIdNum;
                 
-                const isAssigned = dLower === uName || (uName && uName.includes(dLower)) || (dLower && dLower.includes(uName));
+                const isAssignedByName = driverName === uName || (uName && uName.includes(driverName)) || (driverName && driverName.includes(uName));
+                const isAssignedByUid = driverUid === currentUser.uid || driverUid === currentUser.id;
                 
-                if (t.id === 'CAS-1001' && isAssigned) {
-                    console.log('DEBUG: Found assigned case for Lucas in CAS-1001:', c.caseNumber, 'isOrigin:', isOriginCase);
-                }
-                
-                return isAssigned && !isOriginCase;
+                return (isAssignedByName || isAssignedByUid) && !isOriginCase;
             });
 
             const hasAssignedSubCases = assignedCases.length > 0;
 
             // 1. Verificar si el ticket principal está asignado
-            const ticketDriver = t.logistics?.deliveryPerson;
-            const tDriverLower = (ticketDriver || '').toLowerCase();
-            const isTicketAssigned = tDriverLower === uName || (uName && uName.includes(tDriverLower)) || (tDriverLower && tDriverLower.includes(uName));
+            const tDriverName = (t.logistics?.deliveryPerson || '').toLowerCase();
+            const tDriverUid = t.logistics?.assignedTo;
             
-            if (t.id === 'CAS-1001') {
-                console.log('DEBUG: isTicketAssigned:', isTicketAssigned, 'hasAssignedSubCases:', hasAssignedSubCases);
-            }
-
+            const isTicketAssignedByName = tDriverName === uName || (uName && uName.includes(tDriverName)) || (tDriverName && tDriverName.includes(uName));
+            const isTicketAssignedByUid = tDriverUid === currentUser.uid || tDriverUid === currentUser.id;
+            const isTicketAssigned = isTicketAssignedByName || isTicketAssignedByUid;
+            
             const isResolved = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || t.deliveryStatus === 'Entregado';
 
             // REGLA: Si el ticket tiene sub-casos asignados a MÍ, NO mostrar el ticket principal (evitar duplicado visual)
@@ -306,7 +296,7 @@ export default function MyTicketsPage() {
         });
 
         return result;
-    }, [myTickets, filter, sortConfig, columnFilters, optimizedOrder]);
+    }, [myAssignedItems, filter, sortConfig, columnFilters, optimizedOrder]);
 
     // Estadísticas para las tarjetas KPI basándose solo en mis tickets
     const stats = useMemo(() => {
