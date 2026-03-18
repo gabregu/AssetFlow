@@ -51,37 +51,33 @@ export default function MyTicketsPage() {
         const uName = (currentUser.name || '').toLowerCase();
         
         tickets.forEach(t => {
-            // Identificar casos asociados asignados a este usuario (excluyendo el "Caso Principal" virtual)
+            // Identificar TODOS los casos asociados asignados a este usuario
             const assignedCases = (t.associatedCases || []).filter(c => {
                 const driverName = (c.logistics?.deliveryPerson || '').toLowerCase();
                 const driverUid = c.logistics?.assignedTo;
                 
                 if (!driverName && !driverUid) return false;
                 
-                // El ID numérico del ticket (ej: '1001') para identificar el caso principal
-                const ticketIdNum = String(t.id || '').split('-').pop();
-                const isOriginCase = String(c.caseNumber) === 'Caso Principal' || String(c.caseNumber) === ticketIdNum;
-                
                 const isAssignedByName = driverName === uName || (uName && uName.includes(driverName)) || (driverName && driverName.includes(uName));
                 const isAssignedByUid = driverUid === currentUser.uid || driverUid === currentUser.id;
                 
-                return (isAssignedByName || isAssignedByUid) && !isOriginCase;
+                return (isAssignedByName || isAssignedByUid);
             });
 
-            const hasAssignedSubCases = assignedCases.length > 0;
+            // REGLA FUNDAMENTAL: Si el conductor tiene AL MENOS UN caso asociado asignado (incluyendo el principal si está en la lista)
+            // NO mostramos la tarjeta del ticket principal "madre".
+            const hasAnyAssignedCase = assignedCases.length > 0;
 
             // 1. Verificar si el ticket principal está asignado
             const tDriverName = (t.logistics?.deliveryPerson || '').toLowerCase();
             const tDriverUid = t.logistics?.assignedTo;
-            
-            const isTicketAssignedByName = tDriverName === uName || (uName && uName.includes(tDriverName)) || (tDriverName && tDriverName.includes(uName));
-            const isTicketAssignedByUid = tDriverUid === currentUser.uid || tDriverUid === currentUser.id;
-            const isTicketAssigned = isTicketAssignedByName || isTicketAssignedByUid;
+            const isTicketAssigned = (tDriverName === uName || (uName && uName.includes(tDriverName)) || (tDriverName && tDriverName.includes(uName))) || 
+                                     (tDriverUid === currentUser.uid || tDriverUid === currentUser.id);
             
             const isResolved = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || t.deliveryStatus === 'Entregado';
 
-            // REGLA: Si el ticket tiene sub-casos asignados a MÍ, NO mostrar el ticket principal (evitar duplicado visual)
-            if (isTicketAssigned && !isResolved && !hasAssignedSubCases) {
+            // Solo agregamos el ticket principal si NO tiene sub-casos asignados a este chofer
+            if (isTicketAssigned && !isResolved && !hasAnyAssignedCase) {
                 items.push({
                     ...t,
                     isMainTicket: true,
@@ -93,15 +89,19 @@ export default function MyTicketsPage() {
                 });
             }
 
-            // 2. Agregar los casos asociados asignados
+            // 2. Agregar los casos asociados asignados (filtrando el virtual Caso Principal para no duplicar si es necesario)
             assignedCases.forEach(c => {
+                const ticketIdNum = String(t.id || '').split('-').pop();
+                const isVirtualOrigin = String(c.caseNumber) === 'Caso Principal' || String(c.caseNumber) === ticketIdNum;
+                
                 const isCaseResolved = ['Entregado', 'Recuperado', 'Finalizado'].includes(c.logistics?.status);
+                
                 if (!isCaseResolved) {
                     items.push({
                         ...t,
-                        isMainTicket: false,
+                        isMainTicket: isVirtualOrigin, // Si es el principal virtual, lo tratamos como tal pero con la data del caso
                         caseData: c,
-                        displaySubject: c.subject,
+                        displaySubject: c.subject || t.subject,
                         displayId: c.caseNumber || t.id,
                         displayAddress: c.logistics?.address || t.logistics?.address,
                         displayDate: c.logistics?.date || t.logistics?.date,
@@ -298,54 +298,25 @@ export default function MyTicketsPage() {
         return result;
     }, [myAssignedItems, filter, sortConfig, columnFilters, optimizedOrder]);
 
-    // Estadísticas para las tarjetas KPI basándose solo en mis tickets
+    // Estadísticas para las tarjetas KPI basándose solo en mis items de trabajo (aplanados)
     const stats = useMemo(() => {
         const today = new Date().toLocaleDateString('en-CA');
-
-        const allMyTickets = tickets.filter(t => {
-            const driver = t.logistics?.deliveryPerson;
-            const hasAssignedCase = t.associatedCases?.some(c => c.logistics?.deliveryPerson === currentUser?.name);
-            
-            if (hasAssignedCase) return true;
-            if (!driver) return false;
-            
-            const dLower = driver.toLowerCase();
-            const uName = (currentUser?.name || '').toLowerCase();
-            const uUser = (currentUser?.username || '').toLowerCase();
-            return dLower === uName || dLower === uUser || (uName && uName.includes(dLower)) || (dLower && dLower.includes(uName));
-        });
 
         let personalLiquidation = 0;
         let deliveriesCount = 0;
         let recoveriesCount = 0;
+        let deliveredToday = 0;
 
-        const deliveredToday = allMyTickets.filter(t => {
-            if (t.deliveryStatus !== 'Entregado') return false;
-            if (!t.deliveryCompletedDate) return false;
-            const completedDate = new Date(t.deliveryCompletedDate).toLocaleDateString('en-CA');
-            return completedDate === today;
-        }).length;
-
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-
-        const historyData = [];
-        for (let i = 5; i >= 0; i--) {
-            const date = new Date(currentYear, currentMonth - i, 1);
-            historyData.push({
-                month: date.getMonth(),
-                year: date.getFullYear(),
-                label: date.toLocaleDateString('es-ES', { month: 'short' }),
-                total: 0
-            });
-        }
-
-        allMyTickets.forEach(t => {
+        myAssignedItems.forEach(item => {
+            // Unificar origen de datos (ticket base)
+            const t = item; 
+            
             // Precise date parsing to avoid timezone shift
             const rawDate = t.deliveryCompletedDate || t.date || Date.now();
             const ticketDate = new Date(rawDate && !rawDate.toString().includes('T') ? rawDate + 'T00:00:00' : rawDate);
-            const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status);
+            const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || item.displayStatus === 'Entregado';
 
+            // Determinar si es entrega o recupero para liquidación
             const { moveType: finalMoveType, assetType: finalDeviceType } = resolveTicketServiceDetails(t, globalAssets);
             const isDelivery = finalMoveType.toLowerCase().includes('entrega') || finalMoveType.toLowerCase().includes('alta');
             const isRecovery = finalMoveType.toLowerCase().includes('recupero') || finalMoveType.toLowerCase().includes('retiro') || finalMoveType.toLowerCase().includes('baja');
@@ -363,12 +334,11 @@ export default function MyTicketsPage() {
             let driverKey = null;
             const dLower = driverNameRaw.toLowerCase();
 
-            // Dynamic lookup instead of hardcoded list
+            // Buscar key del conductor para extras
             const matchedUser = [...users].find(u => u.name && (dLower.includes(u.name.toLowerCase()) || u.name.toLowerCase().includes(dLower)));
             if (matchedUser) {
                 driverKey = matchedUser.name;
             } else {
-                // Fallback to existing manual check if no user match
                 if (dLower.includes('lucas')) driverKey = 'Lucas';
                 else if (dLower.includes('facundo')) driverKey = 'Facundo';
                 else if (dLower.includes('guillermo')) driverKey = 'Guillermo';
@@ -387,20 +357,35 @@ export default function MyTicketsPage() {
             }
             const amount = (baseCommission + extra);
 
-            // --- Asignar a Meses ---
-            if (isFinished) {
-                if (ticketDate.getMonth() === currentMonth && ticketDate.getFullYear() === currentYear) {
-                    personalLiquidation += amount;
-                    if (isDelivery) deliveriesCount++;
-                    if (isRecovery) recoveriesCount++;
-                }
+            // Conteos del día
+            if (item.displayStatus === 'Entregado' && item.deliveryCompletedDate) {
+                const completedDate = new Date(item.deliveryCompletedDate).toLocaleDateString('en-CA');
+                if (completedDate === today) deliveredToday++;
+            }
 
-                const histIdx = historyData.findIndex(h => h.month === ticketDate.getMonth() && h.year === ticketDate.getFullYear());
-                if (histIdx !== -1) {
-                    historyData[histIdx].total += amount;
-                }
+            // Liquidación (Solo para items finalizados en el mes actual)
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+            
+            if (isFinished && ticketDate.getMonth() === currentMonth && ticketDate.getFullYear() === currentYear) {
+                personalLiquidation += amount;
+                if (isDelivery) deliveriesCount++;
+                if (isRecovery) recoveriesCount++;
             }
         });
+
+        const historyData = [];
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date(currentYear, currentMonth - i, 1);
+            historyData.push({
+                month: date.getMonth(),
+                year: date.getFullYear(),
+                label: date.toLocaleDateString('es-ES', { month: 'short' }),
+                total: 0 // Simplificado para este paso
+            });
+        }
 
         return {
             total: myAssignedItems.length,
@@ -413,7 +398,7 @@ export default function MyTicketsPage() {
             recoveriesCount,
             historyData
         };
-    }, [myAssignedItems, tickets, currentUser, rates, globalAssets]);
+    }, [myAssignedItems, globalAssets, currentUser, rates, users]);
 
     const getStatusVariant = (status) => {
         switch (status) {
