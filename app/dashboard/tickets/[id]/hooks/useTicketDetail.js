@@ -65,7 +65,7 @@ export function useTicketDetail() {
                 if (normalizedCases.length === 0) {
                     const oldAssets = foundTicket.associatedAssets || (foundTicket.associatedAssetSerial ? [{ serial: foundTicket.associatedAssetSerial, type: foundTicket.logistics?.type || 'Entrega' }] : []);
                     normalizedCases = [{
-                        caseNumber: foundTicket.logistics?.additionalCase || foundTicket.id.split('-').pop(),
+                        caseNumber: 'Caso Principal',
                         subject: foundTicket.subject || 'Gestion de Servicio',
                         assets: oldAssets.map(item => typeof item === 'string' ? { serial: item, type: foundTicket.logistics?.type || 'Entrega' } : item),
                         accessories: foundTicket.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },

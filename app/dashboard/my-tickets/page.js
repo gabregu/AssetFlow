@@ -74,13 +74,8 @@ export default function MyTicketsPage() {
             
             const isResolved = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || t.deliveryStatus === 'Entregado';
 
-            // DEBUG: Loguear info de cada ticket relevante
-            if (isTicketAssigned || hasAnyAssignedCase) {
-                console.log(`[DEBUG] ${t.id}: isTicketAssigned=${isTicketAssigned}, hasAnyAssignedCase=${hasAnyAssignedCase}, assocCases=${t.associatedCases?.length || 0}, tDriverName="${tDriverName}", uName="${uName}"`);
-                (t.associatedCases || []).forEach((c, i) => {
-                    console.log(`  Case[${i}] num="${c.caseNumber}" driver="${c.logistics?.deliveryPerson}" uid="${c.logistics?.assignedTo}" status="${c.logistics?.status}"`);
-                });
-            }
+            // El ticket raíz se oculta si el conductor tiene AL MENOS UN caso asociado asignado
+            const hasAnyAssignedCase = assignedCases.length > 0;
 
             // Solo agregamos el ticket principal si NO tiene sub-casos asignados a este chofer
             if (isTicketAssigned && !isResolved && !hasAnyAssignedCase) {
@@ -97,9 +92,7 @@ export default function MyTicketsPage() {
 
             // 2. Agregar los casos asociados asignados
             assignedCases.forEach(c => {
-                const ticketIdNum = String(t.id || '').split('-').pop();
-                const isVirtualOrigin = String(c.caseNumber) === 'Caso Principal' || String(c.caseNumber) === ticketIdNum;
-                
+                const isVirtualOrigin = String(c.caseNumber) === 'Caso Principal';
                 const isCaseResolved = ['Entregado', 'Recuperado', 'Finalizado'].includes(c.logistics?.status);
                 
                 if (!isCaseResolved) {
@@ -117,7 +110,6 @@ export default function MyTicketsPage() {
             });
         });
 
-        console.log('[DEBUG] myAssignedItems total:', items.length, items.map(i => `${i.displayId}(${i.displayStatus})`));
         return items;
     }, [tickets, currentUser]);
 

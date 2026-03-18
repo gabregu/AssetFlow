@@ -20,7 +20,7 @@ export default function AssociatedCasesCard({
                 {(editedData.associatedCases || []).map((caso, index) => {
                     // El caso principal suele tener 'Caso Principal' o el ID numérico del ticket (ej: '1001')
                     const ticketIdNum = ticket?.id?.split('-').pop();
-                    const isOriginCase = String(caso.caseNumber) === 'Caso Principal' || String(caso.caseNumber) === String(ticketIdNum);
+                    const isOriginCase = String(caso.caseNumber) === 'Caso Principal';
                     
                     if (isOriginCase) return null;
 

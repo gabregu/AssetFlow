@@ -244,7 +244,14 @@ export default function SFDCCasesPage() {
                 subject: selectedCase.subject,
                 status: selectedCase.status || 'Abierto',
                 priority: selectedCase.priority,
-                dateOpened: selectedCase.dateOpened
+                dateOpened: selectedCase.dateOpened,
+                logistics: {
+                    address: finalTicket.logistics?.address || '',
+                    phone: finalTicket.logistics?.phone || '',
+                    email: finalTicket.logistics?.email || '',
+                    method: '',
+                    status: 'Pendiente'
+                }
             }];
 
             // Solo aplicar si el caso actual ES una entrega
@@ -407,7 +414,14 @@ export default function SFDCCasesPage() {
                         subject: c.subject,
                         status: c.status,
                         priority: c.priority,
-                        dateOpened: c.dateOpened
+                        dateOpened: c.dateOpened,
+                        logistics: {
+                            address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : '',
+                            phone: c.mobile || '',
+                            email: c.email || '',
+                            method: '',
+                            status: 'Pendiente'
+                        }
                     }))
                 };
 
