@@ -56,12 +56,12 @@ export default function MyTicketsPage() {
                 const driverName = (c.logistics?.deliveryPerson || '').toLowerCase();
                 const driverUid = c.logistics?.assignedTo;
                 
-                if (!driverName && !driverUid) return false;
+                if (!driverName?.trim() && !driverUid) return false;
                 
-                const isAssignedByName = driverName === uName || (uName && uName.includes(driverName)) || (driverName && driverName.includes(uName));
-                const isAssignedByUid = driverUid === currentUser.uid || driverUid === currentUser.id;
+                const isAssignedByName = driverName && (driverName === uName || uName.includes(driverName) || driverName.includes(uName));
+                const isAssignedByUid = driverUid && (driverUid === currentUser.uid || driverUid === currentUser.id);
                 
-                return (isAssignedByName || isAssignedByUid);
+                return !!(isAssignedByName || isAssignedByUid);
             });
 
             const hasAnyAssignedCase = assignedCases.length > 0;
@@ -69,15 +69,13 @@ export default function MyTicketsPage() {
             // 1. Verificar si el ticket principal está asignado
             const tDriverName = (t.logistics?.deliveryPerson || '').toLowerCase();
             const tDriverUid = t.logistics?.assignedTo;
-            const isTicketAssigned = (tDriverName === uName || (uName && uName.includes(tDriverName)) || (tDriverName && tDriverName.includes(uName))) || 
-                                     (tDriverUid === currentUser.uid || tDriverUid === currentUser.id);
+            const isTicketAssigned = tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName)) || 
+                                     (tDriverUid && (tDriverUid === currentUser.uid || tDriverUid === currentUser.id));
             
             const isResolved = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || t.deliveryStatus === 'Entregado';
 
-            // El ticket raíz se oculta si el conductor tiene AL MENOS UN caso asociado asignado
-            const hasAnyAssignedCase = assignedCases.length > 0;
-
             // Solo agregamos el ticket principal si NO tiene sub-casos asignados a este chofer
+            // Y SI el ticket principal mismo está asignado explícitamente
             if (isTicketAssigned && !isResolved && !hasAnyAssignedCase) {
                 items.push({
                     ...t,

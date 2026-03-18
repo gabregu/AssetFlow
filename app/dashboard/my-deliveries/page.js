@@ -60,11 +60,12 @@ export default function MyDeliveriesPage() {
             const assignedCases = (t.associatedCases || []).filter(c => {
                 const driverName = (c.logistics?.deliveryPerson || '').toLowerCase();
                 const driverUid = c.logistics?.assignedTo;
+                if (!driverName?.trim() && !driverUid) return false;
                 
-                const isAssignedByName = driverName === uName || (uName && uName.includes(driverName)) || (driverName && driverName.includes(uName));
-                const isAssignedByUid = driverUid === currentUser.uid || driverUid === currentUser.id;
+                const isAssignedByName = driverName && (driverName === uName || uName.includes(driverName) || driverName.includes(uName));
+                const isAssignedByUid = driverUid && (driverUid === currentUser.uid || driverUid === currentUser.id);
                 
-                const isCaseAssigned = isAssignedByName || isAssignedByUid;
+                const isCaseAssigned = !!(isAssignedByName || isAssignedByUid);
                 const isCaseInTransit = c.logistics?.status === 'En Transito';
                 return isCaseAssigned && isCaseInTransit;
             });
@@ -74,10 +75,9 @@ export default function MyDeliveriesPage() {
             // Verificar si el ticket principal está asignado y en tránsito
             const tDriverName = (t.logistics?.deliveryPerson || '').toLowerCase();
             const tDriverUid = t.logistics?.assignedTo;
-            
-            const isTicketAssignedByName = tDriverName === uName || (uName && uName.includes(tDriverName)) || (tDriverName && tDriverName.includes(uName));
-            const isTicketAssignedByUid = tDriverUid === currentUser.uid || tDriverUid === currentUser.id;
-            const isMainAssigned = isTicketAssignedByName || isTicketAssignedByUid;
+            const isTicketAssigned = tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName)) || 
+                                     (tDriverUid && (tDriverUid === currentUser.uid || tDriverUid === currentUser.id));
+            const isMainAssigned = isTicketAssigned; // Simplified based on the new logic
             
             const isMainInTransit = t.logistics?.status === 'En Transito';
 
