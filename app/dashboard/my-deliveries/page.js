@@ -1,361 +1,328 @@
 "use client";
-import React, { useState, useMemo, useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
-import { Modal } from '../../components/ui/Modal';
-import { QRScannerModal } from '../../components/ui/QRScannerModal';
-import { useStore } from '../../../lib/store';
-import { Truck, MapPin, Calendar, Clock, CheckCircle2, Navigation, FileText, BarChart3, TrendingUp, Archive, QrCode, Route, Loader2 } from 'lucide-react';
-import { generateTicketPDF } from '../../../lib/pdf-generator';
-import { useJsApiLoader } from '@react-google-maps/api';
 
-const GOOGLE_MAPS_LIBRARIES = ['geometry'];
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+    Truck, 
+    Calendar, 
+    Clock, 
+    MapPin, 
+    CheckCircle2, 
+    ChevronRight, 
+    Search,
+    Filter,
+    Navigation,
+    Package,
+    AlertCircle,
+    User,
+    ClipboardList,
+    TrendingUp,
+    BarChart3,
+    ArrowUpRight
+} from 'lucide-react';
+import { Card } from '@/app/components/ui/Card';
+import { Badge } from '@/app/components/ui/Badge';
+import { Button } from '@/app/components/ui/Button';
+import { Modal } from '@/app/components/ui/Modal';
+import { useStore } from '@/app/store/StoreContext';
+import { toast } from 'react-hot-toast';
 
 export default function MyDeliveriesPage() {
-    const { tickets, assets, currentUser, updateTicket } = useStore();
+    const { tickets, currentUser, updateTicket } = useStore();
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState('En Transito'); // Solo activos por defecto
     const [selectedDelivery, setSelectedDelivery] = useState(null);
-    const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(false);
-    const [isScannerOpen, setIsScannerOpen] = useState(false);
-    const [deliveryForm, setDeliveryForm] = useState({
-        receivedBy: '',
-        dni: '',
-        actualTime: '',
-        notes: '',
-        photoUrl: ''
-    });
-
-    // Route Optimization State
-    const [isOptimizationModalOpen, setIsOptimizationModalOpen] = useState(false);
-    const [optimizationOrigin, setOptimizationOrigin] = useState('deposito'); // deposito, oficina, custom
-    const [customOriginAddress, setCustomOriginAddress] = useState('');
-    const [originAddressStatus, setOriginAddressStatus] = useState('idle'); // idle, validating, valid, invalid
-    const [isOptimizing, setIsOptimizing] = useState(false);
-    const [optimizedOrder, setOptimizedOrder] = useState(null); // Array of ticket IDs in order
-
-    // Maps Loader
-    const { isLoaded: isMapsLoaded } = useJsApiLoader({
-        id: 'google-map-script',
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-        libraries: GOOGLE_MAPS_LIBRARIES
-    });
-
-    const [scanAlert, setScanAlert] = useState(null);
-
-    // Filter deliveries assigned to me
-    const myDeliveries = useMemo(() => {
-        if (!currentUser) return [];
-        let filtered = tickets.filter(t => {
-            const isDirectlyAssigned = (t.logistics?.deliveryPerson === currentUser.name || t.logistics?.deliveryPerson === currentUser.username);
-            const hasAssignedCase = t.associatedCases?.some(c => c.logistics?.deliveryPerson === currentUser.name || c.logistics?.deliveryPerson === currentUser.username);
-            
-            // Un ticket aparece aquí si está asignado o tiene casos asignados Y está en tránsito
-            // Nota: El estado de tránsito puede ser general o de un caso específico. 
-            // Por simplicidad, si el ticket principal está en tránsito, se muestra.
-            return (isDirectlyAssigned || hasAssignedCase) && t.deliveryStatus === 'En Transito';
-        });
-
-        // Apply optimized order if exists
-        if (optimizedOrder) {
-            return [...filtered].sort((a, b) => {
-                const idxA = optimizedOrder.indexOf(a.id);
-                const idxB = optimizedOrder.indexOf(b.id);
-                if (idxA === -1 && idxB === -1) return 0;
-                if (idxA === -1) return 1;
-                if (idxB === -1) return -1;
-                return idxA - idxB;
-            });
-        }
-
-        // Default sort by date
-        return filtered.sort((a, b) => {
-            const dateA = a.logistics?.date || a.logistics?.datetime || '';
-            const dateB = b.logistics?.date || b.logistics?.datetime || '';
-            return dateA.localeCompare(dateB);
-        });
-    }, [tickets, currentUser, optimizedOrder]);
-
+    const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(null);
+    const [optimizedOrder, setOptimizedOrder] = useState([]);
+    
+    // Stats state
     const [stats, setStats] = useState({
         finishedThisMonth: 0,
         pendingThisWeek: 0,
         last6Months: []
     });
 
+    const [deliveryForm, setDeliveryForm] = useState({
+        receivedBy: '',
+        dni: '',
+        notes: '',
+        actualTime: '',
+        photoUrl: null
+    });
+
+    // 1. APLANAR DATOS: Convertir tickets/casos en una lista de Entregas individuales
+    const myAssignedDeliveries = useMemo(() => {
+        if (!currentUser) return [];
+        
+        const items = [];
+        
+        tickets.forEach(t => {
+            // Verificar si el ticket principal está asignado y en tránsito
+            const isMainAssigned = t.logistics?.assignedTo === currentUser.uid;
+            if (isMainAssigned && t.logistics?.status === 'En Transito') {
+                items.push({
+                    ...t,
+                    isMainTicket: true,
+                    displayId: t.id,
+                    displaySubject: t.subject,
+                    displayAddress: t.logistics?.address,
+                    displayStatus: t.logistics?.status || 'Pendiente',
+                    displayDate: t.logistics?.date || t.logistics?.datetime?.split('T')[0]
+                });
+            }
+
+            // Verificar casos asociados asignados y en tránsito
+            if (t.associatedCases && Array.isArray(t.associatedCases)) {
+                t.associatedCases.forEach(c => {
+                    const isCaseAssigned = c.logistics?.assignedTo === currentUser.uid;
+                    if (isCaseAssigned && c.logistics?.status === 'En Transito') {
+                        items.push({
+                            ...t, // Datos base del ticket
+                            isMainTicket: false,
+                            caseData: c, // Referencia al caso específico
+                            displayId: c.caseNumber || t.id,
+                            displaySubject: c.subject || t.subject,
+                            displayAddress: c.logistics?.address || t.logistics?.address,
+                            displayStatus: c.logistics?.status || 'Pendiente',
+                            displayDate: c.logistics?.date || t.logistics?.date || t.logistics?.datetime?.split('T')[0]
+                        });
+                    }
+                });
+            }
+        });
+
+        // Aplicar orden optimizado si existe
+        if (optimizedOrder.length > 0) {
+            return [...items].sort((a, b) => {
+                const idxA = optimizedOrder.indexOf(a.displayId);
+                const idxB = optimizedOrder.indexOf(b.displayId);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                return 0;
+            });
+        }
+
+        return items;
+    }, [tickets, currentUser, optimizedOrder]);
+
+    // 2. CALCULAR ESTADÍSTICAS (Basadas en los datos aplanados)
     useEffect(() => {
         if (!currentUser) return;
 
+        // Contar completados este mes
         const now = new Date();
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        // Pendientes esta semana
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(endOfWeek.getDate() + 6);
 
-        const finishedThisMonth = tickets.filter(t => {
-            const isAssigned = (t.logistics?.deliveryPerson === currentUser?.name || t.logistics?.deliveryPerson === currentUser?.username);
-            const hasAssignedCase = t.associatedCases?.some(c => c.logistics?.deliveryPerson === currentUser?.name || c.logistics?.deliveryPerson === currentUser?.username);
-            
-            return (isAssigned || hasAssignedCase) &&
-                t.status === 'Resuelto' &&
-                new Date(t.date) >= firstDayOfMonth;
-        }).length;
+        let finishedThisMonthCount = 0;
+        let pendingThisWeekCount = 0;
 
-        const pendingThisWeek = myDeliveries.filter(t => t.status !== 'Resuelto').length;
+        // Recorrer tickets buscando lo asignado a mí
+        tickets.forEach(t => {
+            // Ticket principal
+            if (t.logistics?.assignedTo === currentUser.uid) {
+                if (t.logistics?.status === 'Entregado' || t.logistics?.status === 'Finalizado') {
+                    const updatedAt = t.updatedAt?.toDate() || new Date();
+                    if (updatedAt >= startOfMonth) finishedThisMonthCount++;
+                } else if (t.logistics?.status === 'En Transito' || t.logistics?.status === 'Para Coordinar') {
+                    const deliveryDate = t.logistics?.date ? new Date(t.logistics.date + 'T00:00:00') : null;
+                    if (deliveryDate && deliveryDate >= startOfWeek && deliveryDate <= endOfWeek) {
+                        pendingThisWeekCount++;
+                    }
+                }
+            }
 
-        const last6Months = Array.from({ length: 6 }, (_, i) => {
-            const date = new Date();
-            date.setMonth(date.getMonth() - (5 - i));
-            return {
-                label: date.toLocaleString('es-ES', { month: 'short' }),
-                count: Math.floor(Math.random() * 10) + 5
-            };
+            // Casos asociados
+            if (t.associatedCases) {
+                t.associatedCases.forEach(c => {
+                    if (c.logistics?.assignedTo === currentUser.uid) {
+                        if (c.logistics?.status === 'Entregado' || c.logistics?.status === 'Finalizado') {
+                            const updatedAt = c.updatedAt?.toDate() || new Date(); // Si no hay updatedAt usamos hoy
+                            if (updatedAt >= startOfMonth) finishedThisMonthCount++;
+                        } else if (c.logistics?.status === 'En Transito' || c.logistics?.status === 'Para Coordinar') {
+                            const deliveryDate = c.logistics?.date ? new Date(c.logistics.date + 'T00:00:00') : null;
+                            if (deliveryDate && deliveryDate >= startOfWeek && deliveryDate <= endOfWeek) {
+                                pendingThisWeekCount++;
+                            }
+                        }
+                    }
+                });
+            }
         });
 
-        setStats({ finishedThisMonth, pendingThisWeek, last6Months });
-    }, [tickets, currentUser, myDeliveries]);
+        // Simular historial de los últimos 6 meses (idealmente vendría de DB)
+        const last6 = [];
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            last6.push({
+                label: date.toLocaleString('default', { month: 'short' }),
+                count: Math.floor(Math.random() * 20) + 10 // Placeholder
+            });
+        }
 
+        setStats({
+            finishedThisMonth: finishedThisMonthCount,
+            pendingThisWeek: pendingThisWeekCount,
+            last6Months: last6
+        });
+    }, [tickets, currentUser, myAssignedDeliveries]);
+
+    // 3. AGRUPAR POR FECHA
     const groupedDeliveries = useMemo(() => {
         const groups = {};
-        myDeliveries.forEach(delivery => {
-            const date = delivery.logistics?.date || delivery.logistics?.datetime?.split('T')[0] || 'Sin Fecha';
+        
+        myAssignedDeliveries.forEach(delivery => {
+            const date = delivery.displayDate || 'Sin Fecha';
             if (!groups[date]) groups[date] = [];
             groups[date].push(delivery);
         });
-        return groups;
-    }, [myDeliveries]);
 
-    const validateOriginAddress = () => {
-        if (!isMapsLoaded) return;
-        if (!customOriginAddress) return;
-
-        setOriginAddressStatus('validating');
-        const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ address: customOriginAddress }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-                setOriginAddressStatus('valid');
-                setCustomOriginAddress(results[0].formatted_address);
-            } else {
-                setOriginAddressStatus('invalid');
-            }
-        });
-    };
-
-    const [successData, setSuccessData] = useState(null);
+        // Ordenar fechas cronológicamente
+        return Object.keys(groups)
+            .sort((a, b) => {
+                if (a === 'Sin Fecha') return 1;
+                if (b === 'Sin Fecha') return -1;
+                return new Date(a) - new Date(b);
+            })
+            .reduce((acc, key) => {
+                acc[key] = groups[key];
+                return acc;
+            }, {});
+    }, [myAssignedDeliveries]);
 
     const handleDeliverySubmit = async (e) => {
         e.preventDefault();
-        if (!selectedDelivery) return;
+        
+        if (!deliveryForm.receivedBy || !deliveryForm.dni) {
+            toast.error('Nombre y DNI son obligatorios');
+            return;
+        }
 
-        const updatedData = {
-            ...selectedDelivery,
-            status: 'Resuelto',
-            deliveryStatus: 'Entregado',
-            logistics: {
-                ...selectedDelivery.logistics,
-                receivedBy: deliveryForm.receivedBy,
-                receivedDni: deliveryForm.dni,
-                deliveredAt: new Date().toISOString(),
-                notes: deliveryForm.notes
+        try {
+            // Lógica para actualizar el ticket principal o el caso asociado
+            if (selectedDelivery.isMainTicket) {
+                const updatedLogistics = {
+                    ...selectedDelivery.logistics,
+                    status: 'Entregado',
+                    deliveryInfo: {
+                        receivedBy: deliveryForm.receivedBy,
+                        dni: deliveryForm.dni,
+                        notes: deliveryForm.notes,
+                        deliveredAt: new Date(),
+                        actualTime: deliveryForm.actualTime
+                    }
+                };
+                await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
+            } else {
+                // Actualizar caso específico dentro del array associatedCases
+                const updatedCases = selectedDelivery.associatedCases.map(c => {
+                    if (c.caseNumber === selectedDelivery.caseData.caseNumber || (c.id && c.id === selectedDelivery.caseData.id)) {
+                        return {
+                            ...c,
+                            logistics: {
+                                ...c.logistics,
+                                status: 'Entregado',
+                                deliveryInfo: {
+                                    receivedBy: deliveryForm.receivedBy,
+                                    dni: deliveryForm.dni,
+                                    notes: deliveryForm.notes,
+                                    deliveredAt: new Date(),
+                                    actualTime: deliveryForm.actualTime
+                                }
+                            }
+                        };
+                    }
+                    return c;
+                });
+                await updateTicket(selectedDelivery.id, { associatedCases: updatedCases });
             }
-        };
-
-        updateTicket(selectedDelivery.id, updatedData);
-        setIsDeliveryModalOpen(false);
-        setSuccessData({ clientName: deliveryForm.receivedBy, id: selectedDelivery.id });
-    };
-
-    const handleScanSuccess = (qrData) => {
-        const delivery = myDeliveries.find(d => d.id === qrData || d.logistics?.qrCode === qrData);
-        if (delivery) {
-            setSelectedDelivery(delivery);
-            setIsDeliveryModalOpen(true);
-            setIsScannerOpen(false);
-        } else {
-            setScanAlert('No se encontró un envío asignado con ese código.');
+            
+            toast.success('Entrega registrada correctamente');
+            setIsDeliveryModalOpen(false);
+            setDeliveryForm({ receivedBy: '', dni: '', notes: '', actualTime: '' });
+        } catch (error) {
+            console.error('Error al registrar entrega:', error);
+            toast.error('Error al guardar los datos');
         }
     };
 
-    const sendWhatsApp = () => {
-        const text = `Hola! Soy ${currentUser.name} de IT. Te informo que tu equipo ha sido entregado.\nRecibió: ${deliveryForm.receivedBy}\nTicket: #${selectedDelivery.id}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
-    };
-
-    const sendEmail = () => {
-        const subject = `Comprobante de Entrega - Ticket #${selectedDelivery.id}`;
-        const body = `Hola,\n\nSe ha registrado la entrega de tu equipo.\nRecibió: ${deliveryForm.receivedBy}\nDNI: ${deliveryForm.dni}\nFecha: ${new Date().toLocaleDateString()}`;
-        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    };
-
-    const getDevicesList = (ticket) => {
-        if (!ticket.associatedAssets) return [];
-        return ticket.associatedAssets.map(a => typeof a === 'string' ? a : a.serial);
-    };
-
     const openGoogleMaps = (address) => {
-        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`);
+        if (!address) return;
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
     };
 
     const getColorByDate = (dateStr) => {
         if (dateStr === 'Sin Fecha') return '#94a3b8';
-        const date = new Date(dateStr + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        if (date < today) return '#ef4444'; // Masado
-        if (date.getTime() === today.getTime()) return '#3b82f6'; // Hoy
-        return '#10b981'; // Futuro
+        const today = new Date().toISOString().split('T')[0];
+        if (dateStr === today) return '#3b82f6'; // Azul hoy
+        if (dateStr < today) return '#ef4444'; // Rojo retrasado
+        return '#10b981'; // Verde futuro
     };
 
-    const handleOptimizeRoute = async () => {
-        if (!isMapsLoaded) {
-            alert('El mapa aún se está cargando, por favor intenta nuevamente en unos segundos.');
-            return;
-        }
-
-        if (optimizationOrigin === 'custom' && originAddressStatus !== 'valid') {
-            alert('Por favor valida la dirección personalizada antes de optimizar.');
-            return;
-        }
-
-        setIsOptimizing(true);
-        try {
-            const geocoder = new window.google.maps.Geocoder();
-
-            let originAddress = '';
-            if (optimizationOrigin === 'deposito') originAddress = 'Fraga 1312, CABA, Argentina';
-            else if (optimizationOrigin === 'oficina') originAddress = 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina';
-            else if (optimizationOrigin === 'custom') originAddress = customOriginAddress;
-
-            const originResult = await new Promise((resolve, reject) => {
-                geocoder.geocode({ address: originAddress }, (results, status) => {
-                    if (status === 'OK') resolve(results[0]);
-                    else reject(status);
-                });
-            });
-            const originLoc = originResult.geometry.location;
-
-            const deliveriesToRoute = myDeliveries.filter(t => t.logistics?.address && t.logistics.address.length > 5);
-
-            const ticketsWithLoc = [];
-            for (const ticket of deliveriesToRoute) {
-                try {
-                    const res = await new Promise((resolve) => {
-                        geocoder.geocode({ address: ticket.logistics.address }, (results, status) => {
-                            if (status === 'OK') resolve(results[0]);
-                            else resolve(null);
-                        });
-                    });
-
-                    if (res) {
-                        ticketsWithLoc.push({
-                            id: ticket.id,
-                            loc: res.geometry.location,
-                            ticket: ticket
-                        });
-                    }
-                    await new Promise(r => setTimeout(r, 200));
-                } catch (e) { console.error(e); }
-            }
-
-            let currentLoc = originLoc;
-            const orderedIds = [];
-            const pool = [...ticketsWithLoc];
-
-            while (pool.length > 0) {
-                let nearestIdx = -1;
-                let minDist = Infinity;
-
-                for (let i = 0; i < pool.length; i++) {
-                    const d = window.google.maps.geometry.spherical.computeDistanceBetween(currentLoc, pool[i].loc);
-                    if (d < minDist) {
-                        minDist = d;
-                        nearestIdx = i;
-                    }
-                }
-
-                if (nearestIdx !== -1) {
-                    const nearest = pool[nearestIdx];
-                    orderedIds.push(nearest.id);
-                    currentLoc = nearest.loc;
-                    pool.splice(nearestIdx, 1);
-                } else {
-                    break;
-                }
-            }
-
-            const unmappedIds = myDeliveries
-                .filter(t => !orderedIds.includes(t.id))
-                .map(t => t.id);
-
-            setOptimizedOrder([...orderedIds, ...unmappedIds]);
-            setIsOptimizationModalOpen(false);
-            alert('¡Ruta optimizada correctamente!');
-
-        } catch (error) {
-            console.error(error);
-            alert('Error al optimizar ruta: ' + error.message);
-        } finally {
-            setIsOptimizing(false);
+    // Ayudante para resumir contenido
+    const getDevicesList = (delivery) => {
+        if (delivery.isMainTicket) {
+            const list = [];
+            if (delivery.assetInfo?.serial) list.push(`${delivery.assetInfo.model || 'Equipo'} - ${delivery.assetInfo.serial}`);
+            if (delivery.accessoriesCount) list.push(`${delivery.accessoriesCount} Accesorios`);
+            if (delivery.yubikeysCount) list.push(`${delivery.yubikeysCount} YubiKeys`);
+            return list.length > 0 ? list : ['Sin items definidos'];
+        } else {
+            const c = delivery.caseData;
+            const list = [];
+            if (c.assets && c.assets.length > 0) list.push(`${c.assets.length} Equipos`);
+            if (c.accessories && c.accessories.length > 0) list.push(`${c.accessories.length} Accesorios`);
+            if (c.yubikeys && c.yubikeys.length > 0) list.push(`${c.yubikeys.length} YubiKeys`);
+            return list.length > 0 ? list : ['Configuración genérica'];
         }
     };
 
     return (
-        <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="flex-mobile-column" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Envíos Asignados</h1>
-                        {currentUser?.tracking_enabled && (
-                            <Badge variant="success" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}>
-                                <span style={{ position: 'relative', display: 'flex', height: '8px', width: '8px' }}>
-                                    <span style={{ position: 'absolute', display: 'inline-flex', height: '100%', width: '100%', borderRadius: '9999px', backgroundColor: '#22c55e', opacity: 0.75, animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite' }}></span>
-                                    <span style={{ position: 'relative', display: 'inline-flex', height: '8px', width: '8px', borderRadius: '9999px', backgroundColor: '#15803d' }}></span>
-                                </span>
-                                GPS ACTIVO
-                            </Badge>
-                        )}
-                    </div>
-                    <p style={{ color: 'var(--text-secondary)' }}>Gestiona tus entregas programadas y registra el estado en tiempo real.</p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <Button
-                        variant="secondary"
-                        icon={Route}
-                        onClick={() => setIsOptimizationModalOpen(true)}
-                        style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
-                    >
-                        OPTIMIZAR
-                    </Button>
-                    <Button
-                        onClick={() => setIsScannerOpen(true)}
-                        icon={QrCode}
-                        style={{ backgroundColor: 'var(--text-main)', color: 'white' }}
-                    >
-                        ESCANEAR
-                    </Button>
-                </div>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem' }}>
+            {/* Header Mobile-friendly */}
+            <div style={{ marginBottom: '2rem' }}>
+                <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em' }}>
+                    Mis <span style={{ color: 'var(--primary-color)' }}>Envíos</span>
+                </h1>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem' }}>
+                    Logística y ruta de entregas asignada
+                </p>
             </div>
 
-            {/* Resumen de Productividad - Estética Cuidada y Alto Contraste */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: '0.75rem',
-                marginBottom: '2rem'
+            {/* Stats Bar */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+                gap: '1.25rem', 
+                marginBottom: '2.5rem' 
             }}>
-                <Card style={{ background: '#1e293b', color: 'white', border: 'none', padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Mis Viajes del Mes</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <TrendingUp size={20} style={{ color: '#22c55e' }} />
-                            <span style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.finishedThisMonth}</span>
+                <Card style={{ padding: '1.25rem', borderLeft: '5px solid var(--primary-color)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Rendimiento</span>
+                            <span style={{ fontSize: '1.75rem', fontWeight: 900 }}>{stats.finishedThisMonth}</span>
+                            <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
+                                <ArrowUpRight size={14} /> Entregados este mes
+                            </span>
+                        </div>
+                        <div style={{ padding: '0.6rem', backgroundColor: 'var(--primary-light)', borderRadius: '12px', color: 'var(--primary-color)' }}>
+                            <TrendingUp size={20} />
                         </div>
                     </div>
                 </Card>
 
-                <Card style={{ background: 'var(--primary-color)', color: 'white', border: 'none', padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.05em' }}>PENDIENTES SEMANA</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Clock size={20} style={{ color: 'rgba(255,255,255,0.8)' }} />
-                            <span style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats.pendingThisWeek}</span>
+                <Card style={{ padding: '1.25rem', borderLeft: '5px solid #f59e0b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Carga Semanal</span>
+                            <span style={{ fontSize: '1.75rem', fontWeight: 900 }}>{stats.pendingThisWeek}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Servicios para esta semana</span>
+                        </div>
+                        <div style={{ padding: '0.6rem', backgroundColor: '#fef3c7', borderRadius: '12px', color: '#f59e0b' }}>
+                            <ClipboardList size={20} />
                         </div>
                     </div>
                 </Card>
@@ -371,18 +338,16 @@ export default function MyDeliveriesPage() {
                     {/* Mini Gráfico Sparkline */}
                     <div style={{ display: 'flex', alignItems: 'flex-end', height: '35px', gap: '4px', marginTop: '0.75rem', width: '100%' }}>
                         {stats.last6Months.map((m, i) => {
-                            // Encontrar el maximo valor para escalar, evitar division por cero
                             const max = Math.max(...stats.last6Months.map(h => h.count), 1);
-                            // Calcular altura porcentaje, minimo 10% para que siempre se vea algo
                             const heightPercentage = (m.count / max) * 100;
                             const height = Math.max(heightPercentage, 10);
 
                             return (
                                 <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
-                                    <div style={{
-                                        width: '100%',
-                                        height: `${height}%`,
-                                        backgroundColor: i === 5 ? 'var(--primary-color)' : '#cbd5e1', // Fallback color more visible than text-secondary
+                                    <div style={{ 
+                                        width: '100%', 
+                                        height: `${height}%`, 
+                                        backgroundColor: i === 5 ? 'var(--primary-color)' : '#cbd5e1',
                                         borderRadius: '2px',
                                         opacity: i === 5 ? 1 : 0.7,
                                         transition: 'all 0.3s ease'
@@ -421,33 +386,34 @@ export default function MyDeliveriesPage() {
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                                     {deliveries.map(delivery => (
-                                        <Card key={delivery.id} style={{ borderLeft: `5px solid ${delivery.status === 'Resuelto' ? '#22c55e' : dayColor}` }}>
+                                        <Card key={`${delivery.id}-${delivery.displayId}`} style={{ borderLeft: `5px solid ${delivery.status === 'Resuelto' ? '#22c55e' : dayColor}` }}>
                                             <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                                                 <div style={{ flex: 1, width: '100%' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                                                        <span style={{ fontWeight: 800, color: dayColor, fontSize: '1.1rem' }}>#{delivery.id}</span>
+                                                        <span style={{ fontWeight: 800, color: dayColor, fontSize: '1.1rem' }}>#{delivery.displayId}</span>
+                                                        {!delivery.isMainTicket && <span style={{ fontSize: '0.66rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Caso SFDC</span>}
                                                         <Badge variant={
-                                                            delivery.deliveryStatus === 'Entregado' ? 'success' :
-                                                                delivery.deliveryStatus === 'En Transito' ? 'info' :
-                                                                    delivery.deliveryStatus === 'Para Coordinar' ? 'warning' :
-                                                                        'default' // Pendiente
+                                                            delivery.displayStatus === 'Entregado' ? 'success' :
+                                                            delivery.displayStatus === 'En Transito' ? 'info' :
+                                                            delivery.displayStatus === 'Para Coordinar' ? 'warning' :
+                                                            'default' // Pendiente
                                                         }>
-                                                            {delivery.deliveryStatus || 'Pendiente'}
+                                                            {delivery.displayStatus || 'Pendiente'}
                                                         </Badge>
                                                     </div>
                                                     <div style={{ marginBottom: '0.5rem' }}>
-                                                        <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.2' }}>{delivery.subject}</p>
+                                                        <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.2' }}>{delivery.displaySubject}</p>
                                                         <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{delivery.requester}</h3>
                                                     </div>
 
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                                                        <div
-                                                            onClick={() => openGoogleMaps(delivery.logistics.address)}
-                                                            style={{
-                                                                display: 'flex',
-                                                                alignItems: 'flex-start',
-                                                                gap: '0.5rem',
-                                                                color: dayColor,
+                                                        <div 
+                                                            onClick={() => openGoogleMaps(delivery.displayAddress)}
+                                                            style={{ 
+                                                                display: 'flex', 
+                                                                alignItems: 'flex-start', 
+                                                                gap: '0.5rem', 
+                                                                color: dayColor, 
                                                                 cursor: 'pointer',
                                                                 fontSize: '0.9rem',
                                                                 fontWeight: 500,
@@ -456,24 +422,24 @@ export default function MyDeliveriesPage() {
                                                             className="hover-underline"
                                                         >
                                                             <MapPin size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-                                                            <span>{delivery.logistics.address} <Navigation size={12} style={{ opacity: 0.7, marginLeft: '4px' }} /></span>
+                                                            <span>{delivery.displayAddress} <Navigation size={12} style={{ opacity: 0.7, marginLeft: '4px' }} /></span>
                                                         </div>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-main)', fontSize: '0.95rem', fontWeight: 600, marginTop: '0.2rem', flexWrap: 'wrap' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                                 <Calendar size={16} />
-                                                                {delivery.logistics.date || delivery.logistics.datetime?.split('T')[0] || 'No definida'}
+                                                                {delivery.displayDate || 'No definida'}
                                                             </div>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                                 <Clock size={16} />
-                                                                Turno: {delivery.logistics.timeSlot || 'AM'}
+                                                                Turno: {delivery.caseData?.logistics?.timeSlot || delivery.logistics?.timeSlot || 'AM'}
                                                             </div>
                                                         </div>
 
                                                         {/* Listado de Items en la Tarjeta */}
-                                                        <div style={{
-                                                            marginTop: '0.75rem',
-                                                            padding: '0.6rem',
-                                                            background: 'rgba(0,0,0,0.03)',
+                                                        <div style={{ 
+                                                            marginTop: '0.75rem', 
+                                                            padding: '0.6rem', 
+                                                            background: 'rgba(0,0,0,0.03)', 
                                                             borderRadius: '8px',
                                                             borderLeft: `3px solid ${dayColor}`
                                                         }}>
@@ -493,8 +459,8 @@ export default function MyDeliveriesPage() {
                                                 </div>
 
                                                 <div className="flex-mobile-column" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-end', width: '100%', maxWidth: '200px' }}>
-                                                    {delivery.status !== 'Resuelto' && (
-                                                        <Button
+                                                    {delivery.displayStatus !== 'Entregado' && (
+                                                        <Button 
                                                             icon={CheckCircle2}
                                                             onClick={() => {
                                                                 setSelectedDelivery(delivery);
@@ -517,22 +483,22 @@ export default function MyDeliveriesPage() {
                                                         <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
                                                             Orden de Visita:
                                                         </label>
-                                                        <div
-                                                            style={{
-                                                                width: '45px',
-                                                                height: '45px',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                backgroundColor: dayColor,
-                                                                borderRadius: '50%',
-                                                                color: 'white',
+                                                        <div 
+                                                            style={{ 
+                                                                width: '45px', 
+                                                                height: '45px', 
+                                                                display: 'flex', 
+                                                                alignItems: 'center', 
+                                                                justifyContent: 'center', 
+                                                                backgroundColor: dayColor, 
+                                                                borderRadius: '50%', 
+                                                                color: 'white', 
                                                                 fontWeight: 800,
                                                                 fontSize: '1.2rem',
                                                                 boxShadow: `0 4px 10px ${dayColor}44`
                                                             }}
                                                         >
-                                                            {delivery.logistics?.deliveryOrder || 0}
+                                                            {delivery.caseData?.logistics?.deliveryOrder || delivery.logistics?.deliveryOrder || 0}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -546,286 +512,127 @@ export default function MyDeliveriesPage() {
                 </div>
             )}
 
+            {/* Modal de Registro de Entrega */}
             <Modal
                 isOpen={isDeliveryModalOpen}
                 onClose={() => setIsDeliveryModalOpen(false)}
-                title={`Registro de Entrega/Recupero: #${selectedDelivery?.id}`}
+                title={`Registro de Entrega/Recupero: #${selectedDelivery?.displayId}`}
             >
                 <form onSubmit={handleDeliverySubmit}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {/* Fecha y Hora Auto-detectada */}
-                        <div style={{
-                            background: 'var(--surface-active)',
-                            borderRadius: 'var(--radius-md)',
+                        <div style={{ 
+                            background: 'var(--surface-active)', 
+                            borderRadius: 'var(--radius-md)', 
                             padding: '0.75rem',
                             border: '1px solid var(--border)',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center'
                         }}>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Horario de Entrega</label>
-                                <span style={{ fontSize: '1.1rem', fontWeight: 800 }}>{deliveryForm.actualTime}</span>
+                            <div>
+                                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-secondary)', display: 'block' }}>Día de Operación</span>
+                                <span style={{ fontWeight: 700 }}>{new Date().toLocaleDateString()}</span>
                             </div>
-                            <Button
-                                type="button"
-                                size="sm"
-                                onClick={() => setDeliveryForm({ ...deliveryForm, actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })}
-                                variant="ghost"
-                                style={{ height: '32px' }}
-                            >
-                                <Clock size={14} style={{ marginRight: '4px' }} /> Actualizar
-                            </Button>
-                        </div>
-
-                        {/* Datos del Receptor */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '0.75rem' }}>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: '0.75rem' }}>Recibe (Nombre)</label>
-                                <input
-                                    required
-                                    className="form-input"
-                                    placeholder="Nombre Apellido"
-                                    value={deliveryForm.receivedBy}
-                                    onChange={e => setDeliveryForm({ ...deliveryForm, receivedBy: e.target.value })}
-                                    style={{ padding: '0.5rem' }}
-                                />
-                            </div>
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label" style={{ fontSize: '0.75rem' }}>DNI</label>
-                                <input
-                                    required
-                                    className="form-input"
-                                    placeholder="Sin puntos"
-                                    value={deliveryForm.dni}
-                                    onChange={e => setDeliveryForm({ ...deliveryForm, dni: e.target.value })}
-                                    style={{ padding: '0.5rem' }}
-                                />
+                            <div style={{ textAlign: 'right' }}>
+                                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-secondary)', display: 'block' }}>Hora de Registro</span>
+                                <span style={{ fontWeight: 700 }}>{deliveryForm.actualTime}</span>
                             </div>
                         </div>
 
-                        {/* Assets - Compacto */}
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Equipos Entregados</label>
-                            <div style={{
-                                padding: '0.5rem',
-                                background: 'rgba(0,0,0,0.03)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--border)',
-                                maxHeight: '100px',
-                                overflowY: 'auto'
-                            }}>
-                                {selectedDelivery && getDevicesList(selectedDelivery).length > 0 ? (
-                                    getDevicesList(selectedDelivery).map((item, idx) => (
-                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', padding: '2px 0' }}>
-                                            <CheckCircle2 size={12} style={{ color: 'var(--primary-color)' }} />
-                                            {item}
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div style={{ opacity: 0.5, fontSize: '0.8rem' }}>Sin equipos vinculados</div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Notas */}
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label" style={{ fontSize: '0.75rem' }}>Observaciones</label>
-                            <textarea
-                                className="form-textarea"
-                                placeholder="Nota rápida..."
-                                style={{ minHeight: '50px', padding: '0.5rem', fontSize: '0.9rem' }}
-                                value={deliveryForm.notes}
-                                onChange={e => setDeliveryForm({ ...deliveryForm, notes: e.target.value })}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>Recibido por (Nombre Completo)</label>
+                            <input
+                                type="text"
+                                value={deliveryForm.receivedBy}
+                                onChange={(e) => setDeliveryForm({ ...deliveryForm, receivedBy: e.target.value })}
+                                style={{
+                                    padding: '0.75rem',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--surface-main)',
+                                    color: 'var(--text-main)',
+                                    fontSize: '0.95rem'
+                                }}
+                                placeholder="Ej: Juan Pérez"
+                                required
                             />
                         </div>
 
-                        {/* Acciones Rápidas */}
-                        <div style={{
-                            marginTop: '0.5rem',
-                            padding: '0.75rem',
-                            background: 'rgba(37, 99, 235, 0.05)',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px dashed var(--primary-color)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.5rem'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-color)' }}>Enviar Comprobante</span>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={sendWhatsApp}
-                                    style={{ borderColor: '#25D366', color: '#25D366', fontSize: '0.75rem', padding: '0.3rem' }}
-                                >
-                                    WhatsApp
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={sendEmail}
-                                    style={{ fontSize: '0.75rem', padding: '0.3rem' }}
-                                >
-                                    Email
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => generateTicketPDF(selectedDelivery, assets, deliveryForm)}
-                                    style={{ borderColor: 'var(--primary-color)', color: 'var(--primary-color)', fontSize: '0.75rem', padding: '0.3rem' }}
-                                >
-                                    PDF
-                                </Button>
-                            </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>DNI / Identificación</label>
+                            <input
+                                type="text"
+                                value={deliveryForm.dni}
+                                onChange={(e) => setDeliveryForm({ ...deliveryForm, dni: e.target.value })}
+                                style={{
+                                    padding: '0.75rem',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--surface-main)',
+                                    color: 'var(--text-main)',
+                                    fontSize: '0.95rem'
+                                }}
+                                placeholder="Ej: 12.345.678"
+                                required
+                            />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem', marginTop: '0.5rem' }}>
-                            <Button type="button" variant="ghost" onClick={() => setIsDeliveryModalOpen(false)}>Cancelar</Button>
-                            <Button type="submit" disabled={!deliveryForm.receivedBy || !deliveryForm.dni}>Confirmar Entrega</Button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>Notas adicionales</label>
+                            <textarea
+                                value={deliveryForm.notes}
+                                onChange={(e) => setDeliveryForm({ ...deliveryForm, notes: e.target.value })}
+                                style={{
+                                    padding: '0.75rem',
+                                    borderRadius: 'var(--radius-sm)',
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--surface-main)',
+                                    color: 'var(--text-main)',
+                                    fontSize: '0.95rem',
+                                    minHeight: '80px',
+                                    resize: 'vertical'
+                                }}
+                                placeholder="Cualquier observación relevante sobre la entrega..."
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                            <Button 
+                                type="button" 
+                                variant="secondary" 
+                                onClick={() => setIsDeliveryModalOpen(false)} 
+                                style={{ flex: 1 }}
+                            >
+                                CANCELAR
+                            </Button>
+                            <Button 
+                                type="submit" 
+                                icon={CheckCircle2} 
+                                style={{ flex: 1 }}
+                            >
+                                CONFIRMAR ENTREGA
+                            </Button>
                         </div>
                     </div>
                 </form>
             </Modal>
-            <QRScannerModal
-                isOpen={isScannerOpen}
-                onClose={() => setIsScannerOpen(false)}
-                onScanSuccess={handleScanSuccess}
-                validationError={scanAlert}
-                resetValidationError={() => setScanAlert(null)}
-            />
 
-            {/* Optimization Modal */}
-            <Modal isOpen={isOptimizationModalOpen} onClose={() => setIsOptimizationModalOpen(false)} title="Optimizar Recorrido">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <p style={{ color: 'var(--text-secondary)' }}>
-                        Selecciona el punto de partida. El sistema ordenará tus entregas automáticamente calculando la ruta más corta.
-                    </p>
-
-                    <div className="form-group">
-                        <label className="form-label">Punto de Partida</label>
-                        <select
-                            className="form-select"
-                            value={optimizationOrigin}
-                            onChange={(e) => setOptimizationOrigin(e.target.value)}
-                        >
-                            <option value="deposito">Depósito (Fraga 1312, CABA)</option>
-                            <option value="oficina">Oficina (Padre Castiglia 1638, Boulogne)</option>
-                            <option value="custom">Otro (Personalizado)</option>
-                        </select>
-                    </div>
-
-                    {optimizationOrigin === 'custom' && (
-                        <div className="form-group" style={{ animation: 'fadeIn 0.3s ease-out' }}>
-                            <label className="form-label" style={{ fontSize: '0.8rem' }}>Dirección de Inicio</label>
-                            <div style={{ position: 'relative' }}>
-                                <MapPin size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
-                                <input
-                                    className="form-input"
-                                    style={{
-                                        paddingLeft: '2.2rem',
-                                        paddingRight: '80px',
-                                        borderColor: originAddressStatus === 'valid' ? '#22c55e' : (originAddressStatus === 'invalid' ? '#ef4444' : 'var(--border)')
-                                    }}
-                                    placeholder="Ej: Av. Libertador 1000, CABA"
-                                    value={customOriginAddress}
-                                    onChange={(e) => {
-                                        setCustomOriginAddress(e.target.value);
-                                        setOriginAddressStatus('idle');
-                                    }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={validateOriginAddress}
-                                    style={{
-                                        position: 'absolute',
-                                        right: '4px',
-                                        top: '4px',
-                                        bottom: '4px',
-                                        border: 'none',
-                                        background: originAddressStatus === 'valid' ? '#dcfce7' : '#eff6ff',
-                                        color: originAddressStatus === 'valid' ? '#166534' : '#1d4ed8',
-                                        borderRadius: '4px',
-                                        padding: '0 8px',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px'
-                                    }}
-                                >
-                                    {originAddressStatus === 'validating' ? (
-                                        <Loader2 size={12} className="animate-spin" />
-                                    ) : originAddressStatus === 'valid' ? (
-                                        <><CheckCircle2 size={12} /> OK</>
-                                    ) : (
-                                        'Validar'
-                                    )}
-                                </button>
-                            </div>
-                            {originAddressStatus === 'invalid' && (
-                                <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '4px' }}>
-                                    ⚠️ No encontramos esa dirección. Intenta ser más específico.
-                                </p>
-                            )}
-                        </div>
-                    )}
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-                        <Button variant="secondary" onClick={() => setIsOptimizationModalOpen(false)} disabled={isOptimizing}>Cancelar</Button>
-                        <Button
-                            onClick={handleOptimizeRoute}
-                            disabled={isOptimizing}
-                            icon={isOptimizing ? Loader2 : Route}
-                        >
-                            {isOptimizing ? 'Calculando...' : 'Optimizar Ahora'}
-                        </Button>
-                    </div>
-                </div>
-            </Modal>
-
-            {/* Success Popup */}
-            {successData && (
-                <Modal
-                    isOpen={!!successData}
-                    onClose={() => setSuccessData(null)}
-                    title="¡Entrega Completada!"
-                >
-                    <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                        <div style={{
-                            width: '70px',
-                            height: '70px',
-                            background: '#dcfce7',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 1.5rem auto',
-                            animation: 'bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                        }}>
-                            <CheckCircle2 size={40} style={{ color: '#15803d' }} />
-                        </div>
-                        <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-                            ¡Genial!
-                        </h3>
-                        <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '2rem', lineHeight: '1.5' }}>
-                            La entrega a <strong style={{ color: 'var(--text-main)' }}>{successData.clientName}</strong> ha sido registrada exitosamente.
-                        </p>
-                        <Button
-                            onClick={() => setSuccessData(null)}
-                            style={{ width: '100%', backgroundColor: '#22c55e', border: 'none', padding: '1rem', fontSize: '1.1rem' }}
-                        >
-                            Entendido
-                        </Button>
-                    </div>
-                </Modal>
-            )}
+            <style jsx>{`
+                .hover-underline:hover span {
+                    text-decoration: underline;
+                }
+                @media (max-width: 768px) {
+                    .hide-mobile {
+                        display: none !important;
+                    }
+                    .flex-mobile-column {
+                        flex-direction: column !important;
+                        align-items: stretch !important;
+                        max-width: none !important;
+                    }
+                }
+            `}</style>
         </div>
     );
 }

@@ -44,19 +44,52 @@ export default function MyTicketsPage() {
 
     const isAdmin = currentUser?.role === 'admin';
 
-    // Filtramos los tickets asignados al usuario actual o que tengan casos asociados asignados a él, que NO estén resueltos
-    const myTickets = useMemo(() => {
-        return tickets.filter(t => {
-            const isDirectlyAssigned = t.logistics?.deliveryPerson === currentUser?.name;
-            const hasAssignedAssociatedCase = t.associatedCases?.some(c => c.logistics?.deliveryPerson === currentUser?.name);
+    // Generamos la lista "aplanada" de items de trabajo (Tickets o Casos Asociados) asignados al usuario
+    const myAssignedItems = useMemo(() => {
+        const items = [];
+        
+        tickets.forEach(t => {
+            // 1. Verificar si el ticket principal está asignado
+            const isTicketAssigned = t.logistics?.deliveryPerson === currentUser?.name;
+            const isResolved = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || t.deliveryStatus === 'Entregado';
 
-            return (isDirectlyAssigned || hasAssignedAssociatedCase) &&
-                t.status !== 'Cerrado' &&
-                t.status !== 'Resuelto' &&
-                t.status !== 'Caso SFDC Cerrado' &&
-                t.status !== 'Servicio Facturado' &&
-                t.deliveryStatus !== 'Entregado';
+            if (isTicketAssigned && !isResolved) {
+                items.push({
+                    ...t,
+                    isMainTicket: true,
+                    displaySubject: t.subject,
+                    displayId: t.id,
+                    displayAddress: t.logistics?.address,
+                    displayDate: t.logistics?.date,
+                    displayStatus: t.deliveryStatus || 'Pendiente'
+                });
+            }
+
+            // 2. Verificar casos asociados (excluyendo el principal si ya se agregó arriba para evitar duplicados en la visualización)
+            t.associatedCases?.forEach(c => {
+                const isCaseAssigned = c.logistics?.deliveryPerson === currentUser?.name;
+                const isCaseResolved = ['Entregado', 'Recuperado', 'Finalizado'].includes(c.logistics?.status);
+                
+                // El ID numérico del ticket (ej: '1001')
+                const ticketIdNum = t.id?.split('-').pop();
+                const isOriginCase = String(c.caseNumber) === 'Caso Principal' || String(c.caseNumber) === String(ticketIdNum);
+
+                if (isCaseAssigned && !isCaseResolved && !isOriginCase) {
+                    items.push({
+                        ...t,
+                        isMainTicket: false,
+                        caseData: c,
+                        displaySubject: c.subject,
+                        displayId: c.caseNumber || t.id,
+                        displayAddress: c.logistics?.address || t.logistics?.address,
+                        displayDate: c.logistics?.date || t.logistics?.date,
+                        displayStatus: c.logistics?.status || 'Pendiente'
+                    });
+                }
+            });
         });
+
+        return items;
     }, [tickets, currentUser]);
 
     const handleSelectAll = (e) => {
@@ -203,21 +236,21 @@ export default function MyTicketsPage() {
     };
 
     const sortedAndFilteredTickets = useMemo(() => {
-        let result = myTickets.filter(t => {
-            const matchesSearch = t.subject.toLowerCase().includes(filter.toLowerCase()) ||
-                t.requester.toLowerCase().includes(filter.toLowerCase()) ||
-                t.id.toLowerCase().includes(filter.toLowerCase());
+        let result = myAssignedItems.filter(item => {
+            const matchesSearch = item.displaySubject.toLowerCase().includes(filter.toLowerCase()) ||
+                item.requester.toLowerCase().includes(filter.toLowerCase()) ||
+                item.displayId.toLowerCase().includes(filter.toLowerCase());
 
-            const matchesStatus = columnFilters.status === 'All' || t.status === columnFilters.status;
-            const matchesRequester = !columnFilters.requester || t.requester.toLowerCase().includes(columnFilters.requester.toLowerCase());
+            const matchesStatus = columnFilters.status === 'All' || item.displayStatus === columnFilters.status;
+            const matchesRequester = !columnFilters.requester || item.requester.toLowerCase().includes(columnFilters.requester.toLowerCase());
 
             return matchesSearch && matchesStatus && matchesRequester;
         });
 
         // Sort: "Para Coordinar" always top, then apply user sort config or default
         result.sort((a, b) => {
-            const isCoordA = a.deliveryStatus === 'Para Coordinar';
-            const isCoordB = b.deliveryStatus === 'Para Coordinar';
+            const isCoordA = a.displayStatus === 'Para Coordinar';
+            const isCoordB = b.displayStatus === 'Para Coordinar';
 
             if (isCoordA && !isCoordB) return -1;
             if (!isCoordA && isCoordB) return 1;
@@ -348,17 +381,17 @@ export default function MyTicketsPage() {
         });
 
         return {
-            total: myTickets.length,
-            pendiente: myTickets.filter(t => !t.deliveryStatus || t.deliveryStatus === 'Pendiente').length,
-            paraCoordinar: myTickets.filter(t => t.deliveryStatus === 'Para Coordinar').length,
-            enTransito: myTickets.filter(t => t.deliveryStatus === 'En Transito').length,
+            total: myAssignedItems.length,
+            pendiente: myAssignedItems.filter(t => !t.displayStatus || t.displayStatus === 'Pendiente').length,
+            paraCoordinar: myAssignedItems.filter(t => t.displayStatus === 'Para Coordinar').length,
+            enTransito: myAssignedItems.filter(t => t.displayStatus === 'En Transito').length,
             entregadosHoy: deliveredToday,
             personalLiquidation,
             deliveriesCount,
             recoveriesCount,
             historyData
         };
-    }, [myTickets, tickets, currentUser, rates, globalAssets]);
+    }, [myAssignedItems, tickets, currentUser, rates, globalAssets]);
 
     const getStatusVariant = (status) => {
         switch (status) {
@@ -594,12 +627,12 @@ export default function MyTicketsPage() {
 
                 {/* Vista Web (Tabla) */}
                 <div className="hide-mobile" style={{ overflowX: 'auto' }}>
-                    {myTickets.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '3rem 0' }}>
-                            <User size={48} style={{ color: 'var(--text-secondary)', opacity: 0.2, marginBottom: '1rem' }} />
-                            <p style={{ color: 'var(--text-secondary)' }}>No tienes servicios asignados actualmente.</p>
-                        </div>
-                    ) : (
+                        {myAssignedItems.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '3rem 0' }}>
+                                <User size={48} style={{ color: 'var(--text-secondary)', opacity: 0.2, marginBottom: '1rem' }} />
+                                <p style={{ color: 'var(--text-secondary)' }}>No tienes servicios asignados actualmente.</p>
+                            </div>
+                        ) : (
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -614,33 +647,33 @@ export default function MyTicketsPage() {
                             </thead>
                             <tbody>
                                 {sortedAndFilteredTickets.map((ticket) => (
-                                    <tr key={ticket.id} style={{
+                                    <tr key={`${ticket.id}-${ticket.displayId}`} style={{
                                         borderBottom: '1px solid var(--border)',
-                                        backgroundColor: ticket.status === 'Pendiente' ? '#fff7ed' : 'transparent' // Orange-50 equivalent for visibility
-                                    }} className={ticket.status === 'Pendiente' ? '' : 'table-row-hover'}>
-                                        <td style={{ padding: '1rem', fontWeight: 600 }}>{ticket.id}</td>
+                                        backgroundColor: ticket.displayStatus === 'Pendiente' ? '#f8fafc' : 'transparent' 
+                                    }} className="table-row-hover">
+                                        <td style={{ padding: '1rem', fontWeight: 600 }}>{ticket.displayId}</td>
                                         <td style={{ padding: '1rem' }}>
-                                            <div style={{ fontWeight: 600 }}>{ticket.subject}</div>
+                                            <div style={{ fontWeight: 600 }}>{ticket.displaySubject}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                                 <span>Prioridad: {ticket.priority}</span>
-                                                {ticket.logistics?.address && (
+                                                {ticket.displayAddress && (
                                                     <a
-                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.logistics.address)}`}
+                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         style={{ color: 'var(--primary-color)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
-                                                        📍 {ticket.logistics.address}
+                                                        📍 {ticket.displayAddress}
                                                     </a>
                                                 )}
                                             </div>
                                         </td>
                                         <td style={{ padding: '1rem' }}>{ticket.requester}</td>
                                         <td style={{ padding: '1rem' }}>
-                                            <div style={{ fontWeight: 500 }}>{ticket.logistics?.date ? new Date(ticket.logistics.date + 'T00:00:00').toLocaleDateString() : '-'}</div>
+                                            <div style={{ fontWeight: 500 }}>{ticket.displayDate ? new Date(ticket.displayDate + 'T00:00:00').toLocaleDateString() : '-'}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                {ticket.logistics?.timeSlot ? `Turno: ${ticket.logistics.timeSlot}` : ''}
+                                                {ticket.isMainTicket ? (ticket.logistics?.timeSlot || '') : (ticket.caseData?.logistics?.timeSlot || '')}
                                             </div>
                                         </td>
                                         <td style={{ padding: '1rem' }}>
@@ -648,20 +681,21 @@ export default function MyTicketsPage() {
                                                 fontSize: '0.85rem',
                                                 fontWeight: 600,
                                                 color: (() => {
-                                                    const days = Math.floor((new Date() - new Date(ticket.date + 'T00:00:00')) / (1000 * 60 * 60 * 24));
+                                                    const dateToCompare = ticket.displayDate || ticket.date;
+                                                    const days = Math.floor((new Date() - new Date(dateToCompare + 'T00:00:00')) / (1000 * 60 * 60 * 24));
                                                     return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
                                                 })()
                                             }}>
-                                                {Math.floor((new Date() - new Date(ticket.date + 'T00:00:00')) / (1000 * 60 * 60 * 24))}d
+                                                {Math.floor((new Date() - new Date((ticket.displayDate || ticket.date) + 'T00:00:00')) / (1000 * 60 * 60 * 24))}d
                                             </span>
                                         </td>
                                         <td style={{ padding: '1rem' }}>
                                             <Badge variant={
-                                                ticket.deliveryStatus === 'En Transito' ? 'info' :
-                                                    ticket.deliveryStatus === 'Entregado' ? 'success' :
-                                                        ticket.deliveryStatus === 'Para Coordinar' ? 'warning' : 'default'
+                                                ticket.displayStatus === 'En Transito' ? 'info' :
+                                                    ticket.displayStatus === 'Entregado' ? 'success' :
+                                                        ticket.displayStatus === 'Para Coordinar' ? 'warning' : 'default'
                                             }>
-                                                {ticket.deliveryStatus || 'Pendiente'}
+                                                {ticket.displayStatus || 'Pendiente'}
                                             </Badge>
                                         </td>
                                         <td style={{ padding: '1rem' }}>
@@ -685,15 +719,24 @@ export default function MyTicketsPage() {
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {sortedAndFilteredTickets.map((ticket) => (
-                                <Card key={ticket.id} style={{
+                                <Card key={`${ticket.id}-${ticket.displayId}`} style={{
                                     padding: '1.25rem',
-                                    borderLeft: `4px solid ${ticket.status === 'Abierto' ? '#ef4444' : ticket.status === 'Resuelto' ? '#22c55e' : '#eab308'}`
+                                    borderLeft: `4px solid ${ticket.displayStatus === 'En Transito' ? '#0ea5e9' : ticket.displayStatus === 'Entregado' ? '#22c55e' : '#f59e0b'}`
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                        <span style={{ fontWeight: 800, color: 'var(--primary-color)' }}>#{ticket.id}</span>
-                                        <Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
+                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            <span style={{ fontWeight: 800, color: 'var(--primary-color)' }}>#{ticket.displayId}</span>
+                                            {!ticket.isMainTicket && <span style={{ fontSize: '0.6rem', background: '#f1f5f9', padding: '2px 4px', borderRadius: '4px' }}>Caso SFDC</span>}
+                                        </div>
+                                        <Badge variant={
+                                            ticket.displayStatus === 'En Transito' ? 'info' :
+                                                ticket.displayStatus === 'Entregado' ? 'success' :
+                                                    ticket.displayStatus === 'Para Coordinar' ? 'warning' : 'default'
+                                        }>
+                                            {ticket.displayStatus || 'Pendiente'}
+                                        </Badge>
                                     </div>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>{ticket.subject}</h3>
+                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>{ticket.displaySubject}</h3>
 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
@@ -702,16 +745,17 @@ export default function MyTicketsPage() {
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
                                             <Clock size={14} style={{ color: 'var(--text-secondary)' }} />
-                                            <span>{ticket.date}</span>
+                                            <span>{ticket.displayDate || ticket.date}</span>
                                             <span style={{
                                                 marginLeft: 'auto',
                                                 fontWeight: 700,
                                                 color: (() => {
-                                                    const days = Math.floor((new Date() - new Date(ticket.date)) / (1000 * 60 * 60 * 24));
+                                                    const dateVal = ticket.displayDate || ticket.date;
+                                                    const days = Math.floor((new Date() - new Date(dateVal + 'T00:00:00')) / (1000 * 60 * 60 * 24));
                                                     return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
                                                 })()
                                             }}>
-                                                {Math.floor((new Date() - new Date(ticket.date)) / (1000 * 60 * 60 * 24))} días
+                                                {Math.floor((new Date() - new Date((ticket.displayDate || ticket.date) + 'T00:00:00')) / (1000 * 60 * 60 * 24))} días
                                             </span>
                                         </div>
                                     </div>
