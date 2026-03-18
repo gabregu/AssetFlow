@@ -51,6 +51,13 @@ export default function MyTicketsPage() {
         const uName = (currentUser.name || '').toLowerCase();
         
         tickets.forEach(t => {
+            // DIAGNOSTIC LOG
+            if (t.id === 'CAS-1001') {
+                console.log('DEBUG: Analyzing CAS-1001 for user:', uName);
+                console.log('DEBUG: Ticket logistics:', t.logistics);
+                console.log('DEBUG: Associated cases count:', t.associatedCases?.length);
+            }
+
             // Identificar casos asociados asignados a este usuario (excluyendo el "Caso Principal" virtual)
             const assignedCases = (t.associatedCases || []).filter(c => {
                 const driver = c.logistics?.deliveryPerson;
@@ -62,6 +69,11 @@ export default function MyTicketsPage() {
                 const isOriginCase = String(c.caseNumber) === 'Caso Principal' || String(c.caseNumber) === String(ticketIdNum);
                 
                 const isAssigned = dLower === uName || (uName && uName.includes(dLower)) || (dLower && dLower.includes(uName));
+                
+                if (t.id === 'CAS-1001' && isAssigned) {
+                    console.log('DEBUG: Found assigned case for Lucas in CAS-1001:', c.caseNumber, 'isOrigin:', isOriginCase);
+                }
+                
                 return isAssigned && !isOriginCase;
             });
 
@@ -72,6 +84,10 @@ export default function MyTicketsPage() {
             const tDriverLower = (ticketDriver || '').toLowerCase();
             const isTicketAssigned = tDriverLower === uName || (uName && uName.includes(tDriverLower)) || (tDriverLower && tDriverLower.includes(uName));
             
+            if (t.id === 'CAS-1001') {
+                console.log('DEBUG: isTicketAssigned:', isTicketAssigned, 'hasAssignedSubCases:', hasAssignedSubCases);
+            }
+
             const isResolved = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || t.deliveryStatus === 'Entregado';
 
             // REGLA: Si el ticket tiene sub-casos asignados a MÍ, NO mostrar el ticket principal (evitar duplicado visual)
