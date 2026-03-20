@@ -109,7 +109,7 @@ export default function CaseLogisticsSection({
                         <label className="form-label">Nombre del Repartidor</label>
                         <select
                             className="form-select"
-                            value={task.deliveryPerson || task.logistics?.deliveryPerson || task.logistics?.delivery_person || ''}
+                            value={task.delivery_person || task.deliveryPerson || task.logistics?.deliveryPerson || task.logistics?.delivery_person || ''}
                             onChange={e => updateLogistics('deliveryPerson', e.target.value)}
                         >
                             <option value="">Seleccionar repartidor...</option>
@@ -121,6 +121,67 @@ export default function CaseLogisticsSection({
                         </select>
                     </div>
                 )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div className="form-group">
+                        <label className="form-label">Fecha de Entrega/Retiro</label>
+                        <input
+                            type="date"
+                            className="form-input"
+                            value={task.date || task.logistics?.date || ''}
+                            onChange={e => {
+                                const newDate = e.target.value;
+                                const currentSlot = task.timeSlot || task.logistics?.timeSlot;
+                                if (newDate && currentSlot && (task.status === 'Para Coordinar' || task.logistics?.status === 'Para Coordinar')) {
+                                    updateLogistics('status', 'En Transito');
+                                }
+                                updateLogistics('date', newDate);
+                            }}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Turno (AM / PM)</label>
+                        <div style={{ display: 'flex', gap: '0.4rem', height: '42px' }}>
+                            {['AM', 'PM'].map(slot => {
+                                const activeSlot = task.timeSlot || task.logistics?.timeSlot || 'AM';
+                                return (
+                                    <button
+                                        key={slot}
+                                        type="button"
+                                        onClick={() => {
+                                            const currentDate = task.date || task.logistics?.date;
+                                            if (currentDate && (task.status === 'Para Coordinar' || task.logistics?.status === 'Para Coordinar')) {
+                                                updateLogistics('status', 'En Transito');
+                                            }
+                                            updateLogistics('timeSlot', slot);
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border)',
+                                            background: activeSlot === slot ? 'var(--primary-color)' : 'white',
+                                            color: activeSlot === slot ? 'white' : 'var(--text-main)',
+                                            fontWeight: 600,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {slot}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Coordinado por</label>
+                    <input
+                        className="form-input"
+                        placeholder="Ej: Administrador, Soporte, etc."
+                        value={task.coordinatedBy || task.logistics?.coordinatedBy || ''}
+                        onChange={e => updateLogistics('coordinatedBy', e.target.value)}
+                    />
+                </div>
 
                 {(task.status === 'Entregado' || task.status === 'Finalizado') && (
                     <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(34, 197, 94, 0.05)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>

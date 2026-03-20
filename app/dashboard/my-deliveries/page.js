@@ -71,8 +71,8 @@ export default function MyDeliveriesPage() {
         
         // 1. Procesar tareas de la nueva tabla relacional
         logisticsTasks.forEach(task => {
-            const driverName = (task.deliveryPerson || '').toLowerCase();
-            const driverUid = task.assignedTo;
+            const driverName = (task.delivery_person || task.deliveryPerson || '').toLowerCase();
+            const driverUid = task.assigned_to || task.assignedTo;
             
             // FILTRO: Solo si está asignado a MÍ
             const isAssignedByName = driverName && (driverName === uName || uName.includes(driverName) || driverName.includes(uName));
@@ -96,7 +96,7 @@ export default function MyDeliveriesPage() {
                         displayStatus: task.status || 'Pendiente',
                         displayDate: task.date,
                         requester: parentTicket?.requester || 'Destinatario',
-                        timeSlot: task.time_slot,
+                        timeSlot: task.time_slot || task.timeSlot,
                         deliveryOrder: task.deliveryOrder || 0,
                         taskAssets: task.assets || [],
                         taskAccessories: task.accessories || [],
@@ -163,9 +163,9 @@ export default function MyDeliveriesPage() {
 
         // Recorrer las tareas asignadas
         logisticsTasks.forEach(task => {
-            const isMine = task.assignedTo === currentUser.id || 
-                           task.assignedTo === currentUser.uuid ||
-                           (task.deliveryPerson?.toLowerCase() === uName);
+            const isMine = (task.assigned_to || task.assignedTo) === currentUser.id || 
+                           (task.assigned_to || task.assignedTo) === currentUser.uuid ||
+                           ((task.delivery_person || task.deliveryPerson)?.toLowerCase() === uName);
             
             if (!isMine) return;
 

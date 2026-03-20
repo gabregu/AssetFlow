@@ -87,8 +87,44 @@ export function DeliveryNotificationListener() {
             )
             .subscribe();
 
+        const taskChannel = supabase
+            .channel('task-notifications')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'logistics_tasks',
+                },
+                (payload) => {
+                    const newTask = payload.new;
+                    const oldTask = payload.old;
+
+                    if (currentUser.role === 'Conductor') {
+                        const uName = (currentUser.name || '').toLowerCase();
+                        const uId = currentUser.id || currentUser.uid;
+
+                        const isAssignedToMe = (newTask.assigned_to === uId) || (newTask.delivery_person?.toLowerCase().includes(uName));
+                        const wasAssignedToMe = (oldTask.assigned_to === uId) || (oldTask.delivery_person?.toLowerCase().includes(uName));
+
+                        if (isAssignedToMe && !wasAssignedToMe) {
+                            setNotification({
+                                type: 'assignment',
+                                title: '¡Nueva Tarea Asignada!',
+                                message: `Se te ha asignado un nuevo caso individual (#${newTask.case_number || newTask.id.substring(0,8)}):`,
+                                subMessage: newTask.subject || 'Entrega/Recupero de Equipo',
+                                timestamp: new Date().toLocaleTimeString(),
+                                forceReload: true
+                            });
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
         return () => {
             supabase.removeChannel(channel);
+            supabase.removeChannel(taskChannel);
         };
     }, [currentUser]);
 

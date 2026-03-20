@@ -126,19 +126,6 @@ export default function TicketDetailPage() {
                         updateTicket={updateTicket}
                     />
 
-                    <ScheduleCoordinationCard
-                        editedData={editedData}
-                        setEditedData={setEditedData}
-                        editMode={editMode}
-                        editLogistics={editLogistics}
-                        editSchedule={editSchedule}
-                        setEditSchedule={setEditSchedule}
-                        handleUpdate={handleUpdate}
-                        currentUser={currentUser}
-                        updateTicket={updateTicket}
-                        ticket={ticket}
-                    />
-
                     <ProcessChecklistCard
                         editedData={editedData}
                         ticket={ticket}
