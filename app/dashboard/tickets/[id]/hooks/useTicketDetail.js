@@ -52,53 +52,58 @@ export function useTicketDetail() {
 
     // Sincronizar editedData con el ticket del store cuando cambia externamente
     useEffect(() => {
-        if (ticket) {
-            // Solo sincronizamos si el usuario NO está editando activamente campos críticos
-            // o si editedData está vacío (primer carga).
-            const isUserEditing = editMode || editContact || selectedCaseIndex !== null;
+        if (!ticket) return;
+
+        // Si editedData está vacío, o hay una sincronización pendiente (nuevos casos asociados en el store),
+        // o el ticketID cambió, procedemos a actualizar/sincronizar.
+        const storeCases = ticket.associatedCases || [];
+        const localCases = (editedData && editedData.associatedCases) || [];
+        const needsInitialSync = !editedData || Object.keys(editedData).length === 0 || editedData.id !== ticket.id;
+        const needsBackgroundSync = storeCases.length > localCases.length;
+
+        // Solo bloqueamos la sincronización si el usuario está editando activamente campos de texto 
+        // (editMode o editContact). El simple hecho de tener un caso seleccionado para ver 
+        // (selectedCaseIndex !== null) no debería bloquear la carga inicial de los casos.
+        const isActivelyEditing = editMode || editContact;
+
+        if (needsInitialSync || (needsBackgroundSync && !isActivelyEditing)) {
+            console.log("Synchronizing editedData with store ticket:", ticket.id);
             
-            // Especialmente importante: si el número de casos asociados en el store es mayor 
-            // que el que tenemos en editedData, significa que hubo una vinculación en segundo plano.
-            const storeCasesCount = (ticket.associatedCases || []).length;
-            const localCasesCount = (editedData.associatedCases || []).length;
-            const backgroundSyncNeeded = storeCasesCount > localCasesCount;
-
-            if (!isUserEditing || Object.keys(editedData).length === 0 || backgroundSyncNeeded) {
-                let normalizedCases = ticket.associatedCases || [];
-                
-                if (normalizedCases.length === 0) {
-                    const oldAssets = ticket.associatedAssets || (ticket.associatedAssetSerial ? [{ serial: ticket.associatedAssetSerial, type: ticket.logistics?.type || 'Entrega' }] : []);
-                    normalizedCases = [{
-                        caseNumber: 'Caso Principal',
-                        subject: ticket.subject || 'Gestion de Servicio',
-                        assets: oldAssets.map(item => typeof item === 'string' ? { serial: item, type: ticket.logistics?.type || 'Entrega' } : item),
-                        accessories: ticket.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
-                        logistics: {
-                            method: ticket.logistics?.method || '',
-                            date: ticket.logistics?.date || ticket.logistics?.datetime?.split('T')[0] || '',
-                            timeSlot: ticket.logistics?.timeSlot || 'AM',
-                            status: ticket.deliveryStatus || 'Pendiente',
-                            deliveryInfo: ticket.logistics?.deliveryInfo || null
-                        }
-                    }];
-                } else {
-                    normalizedCases = normalizedCases.map(c => ({
-                        ...c,
-                        assets: c.assets || [],
-                        accessories: c.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
-                        logistics: c.logistics || { method: '', date: '', timeSlot: 'AM', status: 'Pendiente' }
-                    }));
-                }
-
-                setEditedData(prev => ({
-                    ...prev,
-                    ...ticket,
-                    associatedCases: normalizedCases,
-                    internalNotes: ticket.internalNotes || []
+            let normalizedCases = [...storeCases];
+            
+            if (normalizedCases.length === 0) {
+                const oldAssets = ticket.associatedAssets || (ticket.associatedAssetSerial ? [{ serial: ticket.associatedAssetSerial, type: ticket.logistics?.type || 'Entrega' }] : []);
+                normalizedCases = [{
+                    caseNumber: 'Caso Principal',
+                    subject: ticket.subject || 'Gestion de Servicio',
+                    assets: oldAssets.map(item => typeof item === 'string' ? { serial: item, type: ticket.logistics?.type || 'Entrega' } : item),
+                    accessories: ticket.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
+                    logistics: {
+                        method: ticket.logistics?.method || '',
+                        date: ticket.logistics?.date || ticket.logistics?.datetime?.split('T')[0] || '',
+                        timeSlot: ticket.logistics?.timeSlot || 'AM',
+                        status: ticket.deliveryStatus || 'Pendiente',
+                        deliveryInfo: ticket.logistics?.deliveryInfo || null,
+                        lastUpdated: ticket.logistics?.lastUpdated || new Date().toISOString()
+                    }
+                }];
+            } else {
+                normalizedCases = normalizedCases.map(c => ({
+                    ...c,
+                    assets: c.assets || [],
+                    accessories: c.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
+                    logistics: c.logistics || { method: '', date: '', timeSlot: 'AM', status: 'Pendiente' }
                 }));
             }
+
+            setEditedData(prev => ({
+                ...prev,
+                ...ticket,
+                associatedCases: normalizedCases,
+                internalNotes: ticket.internalNotes || []
+            }));
         }
-    }, [ticket, editMode, editContact, selectedCaseIndex]); 
+    }, [ticket, editMode, editContact]); // Quitamos selectedCaseIndex de las dependencias
 
     // Automatización: Vincular casos hermanos automáticamente al cargar o actualizar sfdcCases
     useEffect(() => {
