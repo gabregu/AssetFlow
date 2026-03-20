@@ -12,9 +12,10 @@ export default function InventorySelectorModal({
     inventorySearchQuery,
     setInventorySearchQuery,
     assets,
-    selectedCaseIndex,
-    setEditedData
+    task,
+    onUpdateTask
 }) {
+    if (!task && isOpen) return null;
     return (
         <Modal
             isOpen={isOpen}
@@ -92,34 +93,19 @@ export default function InventorySelectorModal({
                                             </Badge>
                                         </td>
                                         <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                                            <Button size="sm" onClick={() => {
-                                                setEditedData(prev => {
-                                                    if (selectedCaseIndex === null) return prev;
-                                                    const newCases = [...(prev.associatedCases || [])];
-                                                    const currentCase = newCases[selectedCaseIndex];
-                                                    if (!currentCase) return prev;
-                                                    const currentAssets = currentCase.assets || [];
-                                                    if (!currentAssets.some(a => a.serial === asset.serial)) {
-                                                        const updatedAssets = [...currentAssets, { serial: asset.serial, type: 'Entrega' }];
-                                                        
-                                                        // Automación: Si agregamos hardware, el estado pasa a "Para Coordinar" si estaba Pendiente
-                                                        let updatedLogistics = currentCase.logistics || { status: 'Pendiente', method: '', date: '', timeSlot: 'AM' };
-                                                        if (updatedLogistics.status === 'Pendiente') {
-                                                            updatedLogistics = {
-                                                                ...updatedLogistics,
-                                                                status: 'Para Coordinar',
-                                                                lastUpdated: new Date().toISOString()
-                                                            };
-                                                        }
-
-                                                        newCases[selectedCaseIndex] = {
-                                                            ...currentCase,
-                                                            assets: updatedAssets,
-                                                            logistics: updatedLogistics
-                                                        };
+                                            <Button size="sm" onClick={async () => {
+                                                const currentAssets = task.assets || [];
+                                                if (!currentAssets.some(a => a.serial === asset.serial)) {
+                                                    const updatedAssets = [...currentAssets, { serial: asset.serial, type: 'Entrega' }];
+                                                    const updates = { assets: updatedAssets };
+                                                    
+                                                    // Automación: Si agregamos hardware, el estado pasa a "Para Coordinar" si estaba Pendiente
+                                                    if (task.status === 'Pendiente') {
+                                                        updates.status = 'Para Coordinar';
                                                     }
-                                                    return { ...prev, associatedCases: newCases };
-                                                });
+                                                    
+                                                    await onUpdateTask(updates);
+                                                }
                                                 onClose();
                                             }}>
                                                 Seleccionar

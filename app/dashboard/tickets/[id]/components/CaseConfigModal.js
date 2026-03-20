@@ -40,41 +40,13 @@ export default function CaseConfigModal({
     ticketTasks,
     updateLogisticsTask,
     addLogisticsTask,
-    deleteLogisticsTask
+    deleteLogisticsTask,
+    handleUpdateTask // <--- Use from props now
 }) {
     const currentTasks = (ticketTasks && ticketTasks.length > 0) ? ticketTasks : (editedData?.associatedCases || []);
     const currentTask = (selectedCaseIndex !== null && currentTasks) ? currentTasks[selectedCaseIndex] : null;
 
-    const handleUpdateTask = async (partialData) => {
-        if (!currentTask) return;
-        
-        if (currentTask.id) {
-            // Nueva arquitectura: actualización directa en DB
-            await updateLogisticsTask(currentTask.id, partialData);
-        } else {
-            // Arquitectura legacy: actualización en el estado local coincidiendo con la estructura JSON anidada
-            const updatedCases = editedData.associatedCases.map((c, idx) => {
-                if (idx === selectedCaseIndex) {
-                    // Mapear campos planos de la tarea a la estructura anidada de logística si es necesario
-                    const logisticsFields = ['status', 'method', 'date', 'timeSlot', 'address', 'deliveryPerson', 'assignedTo', 'trackingNumber', 'deliveryInfo'];
-                    const newLogistics = { ...(c.logistics || {}) };
-                    const otherFields = {};
-
-                    Object.keys(partialData).forEach(key => {
-                        if (logisticsFields.includes(key)) {
-                            newLogistics[key] = partialData[key];
-                        } else {
-                            otherFields[key] = partialData[key];
-                        }
-                    });
-
-                    return { ...c, ...otherFields, logistics: newLogistics };
-                }
-                return c;
-            });
-            setEditedData({ ...editedData, associatedCases: updatedCases });
-        }
-    };
+    // handleUpdateTask was moved to hook for centralization
     const handleGenerateRemito = (action = 'download') => {
         if (!currentTask) return;
         

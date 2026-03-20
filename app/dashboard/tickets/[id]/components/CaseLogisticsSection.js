@@ -9,10 +9,11 @@ export default function CaseLogisticsSection({
 }) {
     if (!task) return null;
 
+    const isRelational = !!task.id;
+
     const updateLogistics = (field, value) => {
         const updates = {};
         let newStatus = task.status || 'Pendiente';
-        let assignedTo = task.assignedTo || null;
 
         // Automación de estados: Al asignar método o repartidor -> "Para Coordinar"
         if ((field === 'method' && value) || (field === 'deliveryPerson' && value)) {
@@ -23,19 +24,35 @@ export default function CaseLogisticsSection({
             newStatus = value;
         }
 
-        // Si cambiamos el repartidor, buscamos su UID (assignedTo)
-        if (field === 'deliveryPerson' && value) {
-            const matchedUser = [...users].find(u => u.name === value);
-            if (matchedUser) {
-                assignedTo = matchedUser.id || matchedUser.uid;
-            }
-        } else if (field === 'deliveryPerson' && !value) {
-            assignedTo = null;
+        // Mapeo de campos según el modelo
+        const propMap = isRelational ? {
+            status: 'status',
+            method: 'method',
+            deliveryPerson: 'delivery_person',
+            assignedTo: 'assigned_to',
+            trackingNumber: 'tracking_number',
+            deliveryInfo: 'delivery_info'
+        } : {
+            status: 'status',
+            method: 'method',
+            deliveryPerson: 'deliveryPerson',
+            assignedTo: 'assignedTo',
+            trackingNumber: 'trackingNumber',
+            deliveryInfo: 'deliveryInfo'
+        };
+
+        // Si cambiamos el repartidor, buscamos su UID (assignedTo/assigned_to)
+        if (field === 'deliveryPerson') {
+            const matchedUser = users.find(u => u.name === value);
+            updates[propMap.assignedTo] = matchedUser ? (matchedUser.id || matchedUser.uid) : null;
         }
 
-        updates[field] = value;
-        updates.status = newStatus;
-        updates.assignedTo = assignedTo;
+        // Aplicamos el cambio solicitado
+        const targetField = propMap[field] || field;
+        updates[targetField] = value;
+        
+        // Aplicamos el estado automatizado
+        updates[propMap.status] = newStatus;
 
         onUpdateTask(updates);
     };

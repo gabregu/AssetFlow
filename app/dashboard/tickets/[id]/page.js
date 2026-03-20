@@ -34,6 +34,7 @@ export default function TicketDetailPage() {
         isSmartSearchOpen, setIsSmartSearchOpen,
         validateAddress,
         handleUpdate,
+        handleUpdateTask,
         handleDelete,
         handleAssetSearch,
         handleCreateAsset,
@@ -177,9 +178,8 @@ export default function TicketDetailPage() {
                 verifyDeliveryModal={verifyDeliveryModal}
                 setVerifyDeliveryModal={setVerifyDeliveryModal}
                 ticketTasks={ticketTasks}
-                updateLogisticsTask={updateLogisticsTask}
-                addLogisticsTask={addLogisticsTask}
                 deleteLogisticsTask={deleteLogisticsTask}
+                handleUpdateTask={handleUpdateTask}
             />
             
             <InventorySelectorModal
@@ -191,8 +191,8 @@ export default function TicketDetailPage() {
                 inventorySearchQuery={inventorySearchQuery}
                 setInventorySearchQuery={setInventorySearchQuery}
                 assets={assets}
-                selectedCaseIndex={selectedCaseIndex}
-                setEditedData={setEditedData}
+                task={(selectedCaseIndex !== null && (ticketTasks && ticketTasks.length > 0 ? ticketTasks : (editedData?.associatedCases || []))[selectedCaseIndex]) || null}
+                onUpdateTask={handleUpdateTask}
             />
         </div>
     );
