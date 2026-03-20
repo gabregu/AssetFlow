@@ -4,35 +4,27 @@ import React from 'react';
 import { Package, Monitor } from 'lucide-react';
 
 export default function AccessoriesSection({
-    editedData,
-    setEditedData,
-    selectedCaseIndex
+    task,
+    onUpdateTask
 }) {
-    if (selectedCaseIndex === null) return null;
+    if (!task) return null;
 
-    const currentCase = editedData.associatedCases[selectedCaseIndex];
-    const accessories = currentCase.accessories || { backpack: false, screenFilter: false, filterSize: '14"' };
+    const accessories = task.accessories || { backpack: false, screenFilter: false, filterSize: '14"' };
 
     const toggleAccessory = (type) => {
-        setEditedData(prev => {
-            const newCases = [...prev.associatedCases];
-            newCases[selectedCaseIndex].accessories = { 
-                ...accessories, 
-                [type]: !accessories[type] 
-            };
-            return { ...prev, associatedCases: newCases };
-        });
+        const newAccessories = { 
+            ...accessories, 
+            [type]: !accessories[type] 
+        };
+        onUpdateTask({ accessories: newAccessories });
     };
 
     const updateFilterSize = (size) => {
-        setEditedData(prev => {
-            const newCases = [...prev.associatedCases];
-            newCases[selectedCaseIndex].accessories = { 
-                ...accessories, 
-                filterSize: size 
-            };
-            return { ...prev, associatedCases: newCases };
-        });
+        const newAccessories = { 
+            ...accessories, 
+            filterSize: size 
+        };
+        onUpdateTask({ accessories: newAccessories });
     };
 
     return (

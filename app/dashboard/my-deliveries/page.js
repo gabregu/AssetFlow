@@ -26,7 +26,13 @@ import { Modal } from '@/app/components/ui/Modal';
 import { useStore } from '../../../lib/store';
 
 export default function MyDeliveriesPage() {
-    const { tickets, currentUser, updateTicket } = useStore();
+    const { 
+        tickets, 
+        currentUser, 
+        updateTicket, 
+        logisticsTasks, 
+        updateLogisticsTask 
+    } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('En Transito'); // Solo activos por defecto
     const [selectedDelivery, setSelectedDelivery] = useState(null);
@@ -48,41 +54,62 @@ export default function MyDeliveriesPage() {
         photoUrl: null
     });
 
-    // 1. APLANAR DATOS: Convertir tickets/casos en una lista de Entregas individuales
+    // 1. APLANAR DATOS: Convertir las tareas relacionales en una lista de Entregas individuales
     const myAssignedDeliveries = useMemo(() => {
         if (!currentUser) return [];
         
         const items = [];
         const uName = (currentUser.name || '').toLowerCase();
+        const uUid = currentUser.id || currentUser.uid;
         
+        // 1. Procesar tareas de la nueva tabla relacional
+        logisticsTasks.forEach(task => {
+            const driverName = (task.deliveryPerson || '').toLowerCase();
+            const driverUid = task.assignedTo;
+            
+            // FILTRO: Solo si está asignado a MÍ
+            const isAssignedByName = driverName && (driverName === uName || uName.includes(driverName) || driverName.includes(uName));
+            const isAssignedByUid = driverUid && (driverUid === uUid);
+            
+            if (isAssignedByName || isAssignedByUid) {
+                // Solo mostrar los activos (En Tránsito o Para Coordinar) o los recientemente entregados si se filtran
+                const isRelevant = task.status === 'En Transito' || task.status === 'Para Coordinar' || task.status === 'Entregado';
+                
+                if (isRelevant) {
+                    const parentTicket = tickets.find(t => t.id === task.ticket_id);
+                    
+                    items.push({
+                        ...parentTicket, // Datos base del ticket
+                        id: parentTicket?.id,
+                        taskId: task.id,
+                        isMainTicket: false, // Ahora todo se trata como tarea individual
+                        displayId: task.case_number || (parentTicket?.id?.substring(0, 8)),
+                        displaySubject: task.subject || parentTicket?.subject,
+                        displayAddress: task.address || parentTicket?.logistics?.address,
+                        displayStatus: task.status || 'Pendiente',
+                        displayDate: task.date,
+                        requester: parentTicket?.requester || 'Destinatario',
+                        timeSlot: task.time_slot,
+                        deliveryOrder: task.deliveryOrder || 0,
+                        taskAssets: task.assets || [],
+                        taskAccessories: task.accessories || [],
+                        taskYubikeys: task.yubikeys || []
+                    });
+                }
+            }
+        });
+
+        // 2. Compatibilidad Legacy: Buscar en tickets que no tengan tareas pero sí asignación directa (rápido fallback)
         tickets.forEach(t => {
-            // Identificar casos asociados asignados a este usuario
-            const assignedCases = (t.associatedCases || []).filter(c => {
-                const driverName = (c.logistics?.deliveryPerson || '').toLowerCase();
-                const driverUid = c.logistics?.assignedTo;
-                if (!driverName?.trim() && !driverUid) return false;
-                
-                const isAssignedByName = driverName && (driverName === uName || uName.includes(driverName) || driverName.includes(uName));
-                const isAssignedByUid = driverUid && (driverUid === currentUser.uid || driverUid === currentUser.id);
-                
-                const isCaseAssigned = !!(isAssignedByName || isAssignedByUid);
-                const isCaseInTransit = c.logistics?.status === 'En Transito';
-                return isCaseAssigned && isCaseInTransit;
-            });
+            const hasNewTasks = logisticsTasks.some(tk => tk.ticket_id === t.id);
+            if (hasNewTasks) return; // Si ya tiene tareas nuevas, ignoramos el root
 
-            const hasAssignedSubCases = assignedCases.length > 0;
-
-            // Verificar si el ticket principal está asignado y en tránsito
             const tDriverName = (t.logistics?.deliveryPerson || '').toLowerCase();
             const tDriverUid = t.logistics?.assignedTo;
-            const isTicketAssigned = tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName)) || 
-                                     (tDriverUid && (tDriverUid === currentUser.uid || tDriverUid === currentUser.id));
-            const isMainAssigned = isTicketAssigned; // Simplified based on the new logic
+            const isTicketAssigned = (tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName))) || 
+                                     (tDriverUid && (tDriverUid === uUid));
             
-            const isMainInTransit = t.logistics?.status === 'En Transito';
-
-            // REGLA: Si el ticket tiene sub-casos asignados a MÍ, NO mostrar el ticket principal
-            if (isMainAssigned && isMainInTransit && !hasAssignedSubCases) {
+            if (isTicketAssigned && t.logistics?.status === 'En Transito') {
                 items.push({
                     ...t,
                     isMainTicket: true,
@@ -90,23 +117,9 @@ export default function MyDeliveriesPage() {
                     displaySubject: t.subject,
                     displayAddress: t.logistics?.address,
                     displayStatus: t.logistics?.status || 'Pendiente',
-                    displayDate: t.logistics?.date || t.logistics?.datetime?.split('T')[0]
+                    displayDate: t.logistics?.date
                 });
             }
-
-            // Agregar casos asociados asignados
-            assignedCases.forEach(c => {
-                items.push({
-                    ...t, // Datos base del ticket
-                    isMainTicket: false,
-                    caseData: c, // Referencia al caso específico
-                    displayId: c.caseNumber || t.id,
-                    displaySubject: c.subject || t.subject,
-                    displayAddress: c.logistics?.address || t.logistics?.address,
-                    displayStatus: c.logistics?.status || 'Pendiente',
-                    displayDate: c.logistics?.date || t.logistics?.date || t.logistics?.datetime?.split('T')[0]
-                });
-            });
         });
 
         // Aplicar orden optimizado si existe
@@ -120,7 +133,7 @@ export default function MyDeliveriesPage() {
         }
 
         return items;
-    }, [tickets, currentUser, optimizedOrder]);
+    }, [tickets, currentUser, optimizedOrder, logisticsTasks]);
 
     // 2. CALCULAR ESTADÍSTICAS (Basadas en los datos aplanados)
     useEffect(() => {
@@ -139,36 +152,19 @@ export default function MyDeliveriesPage() {
         let finishedThisMonthCount = 0;
         let pendingThisWeekCount = 0;
 
-        // Recorrer tickets buscando lo asignado a mí
-        tickets.forEach(t => {
-            // Ticket principal
-            if (t.logistics?.assignedTo === currentUser.uid) {
-                if (t.logistics?.status === 'Entregado' || t.logistics?.status === 'Finalizado') {
-                    const updatedAt = t.updatedAt?.toDate() || new Date();
-                    if (updatedAt >= startOfMonth) finishedThisMonthCount++;
-                } else if (t.logistics?.status === 'En Transito' || t.logistics?.status === 'Para Coordinar') {
-                    const deliveryDate = t.logistics?.date ? new Date(t.logistics.date + 'T00:00:00') : null;
-                    if (deliveryDate && deliveryDate >= startOfWeek && deliveryDate <= endOfWeek) {
-                        pendingThisWeekCount++;
-                    }
-                }
-            }
+        // Recorrer las tareas asignadas
+        logisticsTasks.forEach(task => {
+            const isMine = task.assignedTo === currentUser.id || (task.deliveryPerson?.toLowerCase() === uName);
+            if (!isMine) return;
 
-            // Casos asociados
-            if (t.associatedCases) {
-                t.associatedCases.forEach(c => {
-                    if (c.logistics?.assignedTo === currentUser.uid) {
-                        if (c.logistics?.status === 'Entregado' || c.logistics?.status === 'Finalizado') {
-                            const updatedAt = c.updatedAt?.toDate() || new Date(); // Si no hay updatedAt usamos hoy
-                            if (updatedAt >= startOfMonth) finishedThisMonthCount++;
-                        } else if (c.logistics?.status === 'En Transito' || c.logistics?.status === 'Para Coordinar') {
-                            const deliveryDate = c.logistics?.date ? new Date(c.logistics.date + 'T00:00:00') : null;
-                            if (deliveryDate && deliveryDate >= startOfWeek && deliveryDate <= endOfWeek) {
-                                pendingThisWeekCount++;
-                            }
-                        }
-                    }
-                });
+            if (task.status === 'Entregado' || task.status === 'Finalizado') {
+                const updatedAt = task.updated_at ? new Date(task.updated_at) : new Date();
+                if (updatedAt >= startOfMonth) finishedThisMonthCount++;
+            } else if (task.status === 'En Transito' || task.status === 'Para Coordinar') {
+                const deliveryDate = task.date ? new Date(task.date + 'T00:00:00') : null;
+                if (deliveryDate && deliveryDate >= startOfWeek && deliveryDate <= endOfWeek) {
+                    pendingThisWeekCount++;
+                }
             }
         });
 
@@ -221,8 +217,21 @@ export default function MyDeliveriesPage() {
         }
 
         try {
-            // Lógica para actualizar el ticket principal o el caso asociado
-            if (selectedDelivery.isMainTicket) {
+            // Lógica para actualizar usando la nueva tabla de tareas
+            if (selectedDelivery.taskId) {
+                // Actualizar la tarea relacional directamente
+                await updateLogisticsTask(selectedDelivery.taskId, {
+                    status: 'Entregado',
+                    deliveryInfo: {
+                        receivedBy: deliveryForm.receivedBy,
+                        dni: deliveryForm.dni,
+                        notes: deliveryForm.notes,
+                        deliveredAt: new Date().toISOString(),
+                        actualTime: deliveryForm.actualTime
+                    }
+                });
+            } else if (selectedDelivery.isMainTicket) {
+                // Caso legacy: Ticket principal sin tareas asignadas
                 const updatedLogistics = {
                     ...selectedDelivery.logistics,
                     status: 'Entregado',
@@ -235,28 +244,6 @@ export default function MyDeliveriesPage() {
                     }
                 };
                 await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
-            } else {
-                // Actualizar caso específico dentro del array associatedCases
-                const updatedCases = selectedDelivery.associatedCases.map(c => {
-                    if (c.caseNumber === selectedDelivery.caseData.caseNumber || (c.id && c.id === selectedDelivery.caseData.id)) {
-                        return {
-                            ...c,
-                            logistics: {
-                                ...c.logistics,
-                                status: 'Entregado',
-                                deliveryInfo: {
-                                    receivedBy: deliveryForm.receivedBy,
-                                    dni: deliveryForm.dni,
-                                    notes: deliveryForm.notes,
-                                    deliveredAt: new Date(),
-                                    actualTime: deliveryForm.actualTime
-                                }
-                            }
-                        };
-                    }
-                    return c;
-                });
-                await updateTicket(selectedDelivery.id, { associatedCases: updatedCases });
             }
             
             toast.success('Entrega registrada correctamente');
@@ -283,20 +270,18 @@ export default function MyDeliveriesPage() {
 
     // Ayudante para resumir contenido
     const getDevicesList = (delivery) => {
-        if (delivery.isMainTicket) {
-            const list = [];
+        const list = [];
+        if (delivery.taskId) {
+            // Nueva arquitectura: usar datos de la tarea
+            if (delivery.taskAssets?.length > 0) list.push(`${delivery.taskAssets.length} Equipos`);
+            if (delivery.taskAccessories?.length > 0) list.push(`${delivery.taskAccessories.length} Accesorios`);
+            if (delivery.taskYubikeys?.length > 0) list.push(`${delivery.taskYubikeys.length} YubiKeys`);
+        } else if (delivery.isMainTicket) {
             if (delivery.assetInfo?.serial) list.push(`${delivery.assetInfo.model || 'Equipo'} - ${delivery.assetInfo.serial}`);
             if (delivery.accessoriesCount) list.push(`${delivery.accessoriesCount} Accesorios`);
             if (delivery.yubikeysCount) list.push(`${delivery.yubikeysCount} YubiKeys`);
-            return list.length > 0 ? list : ['Sin items definidos'];
-        } else {
-            const c = delivery.caseData;
-            const list = [];
-            if (c.assets && c.assets.length > 0) list.push(`${c.assets.length} Equipos`);
-            if (c.accessories && c.accessories.length > 0) list.push(`${c.accessories.length} Accesorios`);
-            if (c.yubikeys && c.yubikeys.length > 0) list.push(`${c.yubikeys.length} YubiKeys`);
-            return list.length > 0 ? list : ['Configuración genérica'];
         }
+        return list.length > 0 ? list : ['Sin items definidos'];
     };
 
     return (
@@ -450,7 +435,7 @@ export default function MyDeliveriesPage() {
                                                             </div>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                                 <Clock size={16} />
-                                                                Turno: {delivery.caseData?.logistics?.timeSlot || delivery.logistics?.timeSlot || 'AM'}
+                                                                Turno: {delivery.timeSlot || 'AM'}
                                                             </div>
                                                         </div>
 
@@ -517,7 +502,7 @@ export default function MyDeliveriesPage() {
                                                                 boxShadow: `0 4px 10px ${dayColor}44`
                                                             }}
                                                         >
-                                                            {delivery.caseData?.logistics?.deliveryOrder || delivery.logistics?.deliveryOrder || 0}
+                                                            {delivery.deliveryOrder || 0}
                                                         </div>
                                                     </div>
                                                 </div>

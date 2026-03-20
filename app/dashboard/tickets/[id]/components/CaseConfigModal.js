@@ -37,28 +37,40 @@ export default function CaseConfigModal({
     setNewAsset,
     verifyDeliveryModal,
     setVerifyDeliveryModal,
+    ticketTasks,
+    updateLogisticsTask,
+    addLogisticsTask,
+    deleteLogisticsTask
 }) {
+    const currentTask = selectedCaseIndex !== null ? ticketTasks[selectedCaseIndex] : null;
+
+    const handleUpdateTask = async (partialData) => {
+        if (!currentTask?.id) return;
+        await updateLogisticsTask(currentTask.id, partialData);
+    };
     const handleGenerateRemito = (action = 'download') => {
-        if (selectedCaseIndex === null) return;
-        const currentCase = editedData.associatedCases[selectedCaseIndex];
+        if (!currentTask) return;
         
         // Crear un objeto de ticket "virtual" que sea compatible con generateTicketPDF
         const virtualTicket = {
             ...ticket,
-            subject: currentCase.subject,
-            associatedAssets: currentCase.assets || [],
-            accessories: currentCase.accessories || {},
-            yubikeys: currentCase.yubikeys || [],
+            subject: currentTask.subject,
+            associatedAssets: currentTask.assets || [],
+            accessories: currentTask.accessories || {},
+            yubikeys: currentTask.yubikeys || [],
             logistics: {
                 ...(ticket.logistics || {}),
-                ...currentCase.logistics,
-                phone: ticket.logistics?.phone || currentCase.logistics?.phone || '',
-                email: ticket.logistics?.email || currentCase.logistics?.email || '',
-                address: ticket.logistics?.address || currentCase.logistics?.address || '',
-                type: currentCase.logistics?.type || ticket.logistics?.type || 'Entrega',
-                deliveryInfo: currentCase.logistics?.deliveryInfo || ticket.logistics?.deliveryInfo || null
+                method: currentTask.method,
+                date: currentTask.date,
+                timeSlot: currentTask.timeSlot,
+                status: currentTask.status,
+                phone: ticket.logistics?.phone || '',
+                email: ticket.logistics?.email || '',
+                address: currentTask.address || ticket.logistics?.address || '',
+                type: currentTask.method === 'Recupero' ? 'Recupero' : 'Entrega',
+                deliveryInfo: currentTask.deliveryInfo || null
             },
-            caseNumber: currentCase.caseNumber
+            caseNumber: currentTask.caseNumber
         };
 
         generateTicketPDF(virtualTicket, assets, null, action);
@@ -71,17 +83,14 @@ export default function CaseConfigModal({
                 isOpen={selectedCaseIndex !== null}
                 onClose={() => {
                     setSelectedCaseIndex(null);
-                    // Automatic save on close
-                    handleUpdate();
                 }}
-                title={selectedCaseIndex !== null ? `Configuración: ${editedData.associatedCases[selectedCaseIndex]?.subject}` : 'Configurar Caso'}
+                title={currentTask ? `Configuración: ${currentTask.subject}` : 'Configurar Caso'}
             >
                 {selectedCaseIndex !== null && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                         <AssetListSection
-                            editedData={editedData}
-                            setEditedData={setEditedData}
-                            selectedCaseIndex={selectedCaseIndex}
+                            task={currentTask}
+                            onUpdateTask={handleUpdateTask}
                             assets={assets}
                             serialQuery={serialQuery}
                             setSerialQuery={setSerialQuery}
@@ -93,22 +102,19 @@ export default function CaseConfigModal({
                         />
 
                         <AccessoriesSection
-                            editedData={editedData}
-                            setEditedData={setEditedData}
-                            selectedCaseIndex={selectedCaseIndex}
+                            task={currentTask}
+                            onUpdateTask={handleUpdateTask}
                         />
 
                         <YubiKeySection
-                            editedData={editedData}
-                            setEditedData={setEditedData}
-                            selectedCaseIndex={selectedCaseIndex}
+                            task={currentTask}
+                            onUpdateTask={handleUpdateTask}
                             yubikeys={yubikeys}
                         />
 
                         <CaseLogisticsSection
-                            editedData={editedData}
-                            setEditedData={setEditedData}
-                            selectedCaseIndex={selectedCaseIndex}
+                            task={currentTask}
+                            onUpdateTask={handleUpdateTask}
                             users={users}
                         />
 
@@ -122,11 +128,10 @@ export default function CaseConfigModal({
                                 variant="primary" 
                                 style={{ width: '100%', padding: '0.75rem', fontWeight: 700, fontSize: '0.95rem' }}
                                 onClick={() => {
-                                    handleUpdate();
                                     setSelectedCaseIndex(null);
                                 }}
                             >
-                                Guardar y Cerrar Configuración
+                                Cerrar Ventana de Configuración
                             </Button>
 
                             <div style={{ 

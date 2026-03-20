@@ -11,7 +11,18 @@ import { Plus, Search, Truck, MapPin, Calendar, CheckCircle, Clock, Loader2, Tra
 import { CountryFilter } from '../../components/layout/CountryFilter';
 
 export default function DeliveriesPage() {
-    const { deliveries, addDelivery, deleteDelivery, deleteDeliveries, tickets, deleteTickets, users, currentUser, countryFilter } = useStore();
+    const { 
+        deliveries, 
+        addDelivery, 
+        deleteDelivery, 
+        deleteDeliveries, 
+        tickets, 
+        deleteTickets, 
+        users, 
+        currentUser, 
+        countryFilter,
+        logisticsTasks 
+    } = useStore();
     const router = useRouter();
     const mapRef = useRef(null);
     const googleMap = useRef(null);
@@ -127,47 +138,47 @@ export default function DeliveriesPage() {
         }
     };
 
-    // Unimos los datos de envíos
+    // Unimos los datos de envíos usando la nueva tabla relacional de tareas
     const combinedDeliveries = React.useMemo(() => {
         const items = [];
 
+        // 1. Procesar tareas de logística relacionales
+        logisticsTasks.forEach(task => {
+            // Solo procesamos si tiene fecha coordinada y no está entregado (para esta vista activa)
+            if (!task.date || task.status === 'Entregado') return;
+
+            const parentTicket = tickets.find(t => t.id === task.ticket_id);
+            
+            items.push({
+                id: task.case_number || `TASK-${task.id?.substring(0, 4)}`,
+                taskId: task.id,
+                parentTicketId: task.ticket_id,
+                recipient: parentTicket?.requester || 'Destinatario Desconocido',
+                address: task.address || parentTicket?.logistics?.address || 'Sin dirección',
+                items: task.subject || parentTicket?.subject || 'Equipo IT',
+                courier: task.method || 'No definido',
+                deliveryPerson: task.deliveryPerson,
+                trackingNumber: task.tracking_number || '',
+                status: task.status || 'Pendiente',
+                ticketStatus: parentTicket?.status || 'N/A',
+                deliveryStatusOriginal: task.status || 'Pendiente',
+                date: `${task.date} [${task.time_slot || 'AM'}]`,
+                source: 'Ticket',
+                isSubCase: true,
+                assets: task.assets || []
+            });
+        });
+
+        // 2. Procesar ticket raíz (Compatibilidad con tickets que aún no tienen tasks)
         tickets.forEach(t => {
             const isCompleted = t.status === 'Resuelto' || t.status === 'Cerrado' || t.status === 'Servicio Facturado' || t.status === 'Caso SFDC Cerrado' || t.deliveryStatus === 'Entregado';
             if (isCompleted) return;
 
-            // 1. Procesar casos asociados individuales (Arquitectura Nueva)
-            const associatedCases = t.associatedCases || [];
-            associatedCases.forEach(c => {
-                const cLogistics = c.logistics || {};
-                // FILTRO CRÍTICO: Solo si tiene fecha coordinada
-                if (!cLogistics.date) return;
-
-                const hasDriver = !!cLogistics.deliveryPerson && cLogistics.deliveryPerson !== 'No definido';
-                
-                items.push({
-                    id: c.caseNumber || t.id,
-                    parentTicketId: t.id,
-                    recipient: t.requester, // El destinatario es el requester del ticket
-                    address: cLogistics.address || t.logistics?.address || 'Sin dirección',
-                    items: c.subject || t.subject || 'Equipo IT',
-                    courier: cLogistics.method || 'No definido',
-                    deliveryPerson: cLogistics.deliveryPerson,
-                    trackingNumber: cLogistics.trackingNumber || '',
-                    status: cLogistics.status || 'Pendiente',
-                    ticketStatus: t.status,
-                    deliveryStatusOriginal: cLogistics.status || 'Pendiente',
-                    date: `${cLogistics.date} [${cLogistics.timeSlot || 'AM'}]`,
-                    source: 'Ticket',
-                    isSubCase: true
-                });
-            });
-
-            // 2. Procesar ticket raíz como envío solo si tiene fecha Y NO tiene sub-casos coordinados (Compatibilidad Legacy)
             const rootHasDate = t.logistics?.date;
-            const hasAssignedCases = items.some(item => item.parentTicketId === t.id);
+            // Solo si no tiene tareas en la nueva tabla (evitar duplicados)
+            const hasNewTasks = logisticsTasks.some(task => task.ticket_id === t.id);
 
-            if (rootHasDate && !hasAssignedCases) {
-                const hasDriver = !!t.logistics.deliveryPerson && t.logistics.deliveryPerson !== 'No definido';
+            if (rootHasDate && !hasNewTasks) {
                 items.push({
                     id: t.id,
                     recipient: t.requester,
@@ -179,7 +190,7 @@ export default function DeliveriesPage() {
                     status: t.deliveryStatus || 'Pendiente',
                     ticketStatus: t.status,
                     deliveryStatusOriginal: t.deliveryStatus,
-                    date: `${t.logistics.date} [${t.logistics.timeSlot || 'AM'}]`,
+                    date: `${t.logistics.date} [${t.logistics.time_slot || 'AM'}]`,
                     source: 'Ticket',
                     isSubCase: false
                 });

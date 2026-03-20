@@ -12,33 +12,27 @@ export default function AssociatedCasesCard({
     sfdcCases,
     selectedCaseIndex,
     setSelectedCaseIndex,
-    resetSearchStates
+    resetSearchStates,
+    ticketTasks
 }) {
     return (
         <Card title="Casos Asociados">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {(editedData.associatedCases || []).map((caso, index) => {
-                    // El caso principal suele tener 'Caso Principal' o el ID numérico del ticket (ej: '1001')
-                    const ticketIdNum = ticket?.id?.split('-').pop();
-                    const isOriginCase = String(caso.caseNumber) === 'Caso Principal';
-                    
-                    if (isOriginCase) return null;
-
-                    const caseAssets = caso.assets || [];
+                {(ticketTasks || []).map((task, index) => {
+                    const caseAssets = task.assets || [];
                     const hasHardware = caseAssets.length > 0;
                     
-                    // Lógica de colores personalizada para estados
-                    const status = caso.logistics?.status || 'Pendiente';
-                    let statusVariant = 'default'; // Gris por defecto (Pendiente)
+                    const status = task.status || 'Pendiente';
+                    let statusVariant = 'default';
                     
-                    if (status === 'Para Coordinar') statusVariant = 'warning'; // Amarillo
-                    else if (status === 'En Transito') statusVariant = 'info'; // Azul
-                    else if (status === 'Entregado' || status === 'Finalizado' || status === 'Recuperado') statusVariant = 'success'; // Verde
+                    if (status === 'Para Coordinar') statusVariant = 'warning';
+                    else if (status === 'En Transito') statusVariant = 'info';
+                    else if (status === 'Entregado' || status === 'Finalizado' || status === 'Recuperado') statusVariant = 'success';
                     
                     const isSelected = selectedCaseIndex === index;
 
                     return (
-                        <div key={index} onClick={() => {
+                        <div key={task.id || index} onClick={() => {
                             setSelectedCaseIndex(isSelected ? null : index);
                             if (resetSearchStates) resetSearchStates();
                         }} style={{
@@ -52,13 +46,13 @@ export default function AssociatedCasesCard({
                         }}>
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                                    {caso.caseNumber && caso.caseNumber !== 'Caso Principal' && (
+                                    {task.caseNumber && (
                                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: isSelected ? 'rgba(255,255,255,0.8)' : '#0369a1', background: isSelected ? 'rgba(255,255,255,0.15)' : '#e0f2fe', padding: '1px 6px', borderRadius: '4px' }}>
-                                            {caso.caseNumber}
+                                            {task.caseNumber}
                                         </span>
                                     )}
                                     <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: isSelected ? 'white' : 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '250px' }}>
-                                        {caso.subject}
+                                        {task.subject}
                                     </h4>
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -66,9 +60,9 @@ export default function AssociatedCasesCard({
                                         {caseAssets.length} Equipos
                                     </Badge>
                                      <Badge variant={statusVariant} style={{ fontSize: '0.65rem', opacity: isSelected ? 0.85 : 1 }}>
-                                         {status}: {caso.logistics?.method || 'Sin método'}
-                                         {caso.logistics?.method === 'Repartidor Propio' && caso.logistics?.deliveryPerson && ` - ${caso.logistics.deliveryPerson}`}
-                                         {(caso.logistics?.method === 'Andreani' || caso.logistics?.method === 'Correo Argentino') && caso.logistics?.trackingNumber && ` - ${caso.logistics.trackingNumber}`}
+                                         {status}: {task.method || 'Sin método'}
+                                         {task.method === 'Repartidor Propio' && task.deliveryPerson && ` - ${task.deliveryPerson}`}
+                                         {(task.method === 'Andreani' || task.method === 'Correo Argentino') && task.trackingNumber && ` - ${task.trackingNumber}`}
                                      </Badge>
                                 </div>
                             </div>
@@ -80,6 +74,11 @@ export default function AssociatedCasesCard({
                         </div>
                     );
                 })}
+                {ticketTasks.length === 0 && (
+                    <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-secondary)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)' }}>
+                        <p style={{ fontSize: '0.85rem' }}>No hay otros casos asociados individualmente.</p>
+                    </div>
+                )}
 
                 {/* La sección de "Otros casos" ha sido eliminada ya que ahora se vinculan automáticamente en el hook useTicketDetail */}
             </div>

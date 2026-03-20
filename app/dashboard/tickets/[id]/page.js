@@ -42,7 +42,11 @@ export default function TicketDetailPage() {
         yubikeys,
         users,
         currentUser,
-        sfdcCases
+        sfdcCases,
+        ticketTasks,
+        addLogisticsTask,
+        updateLogisticsTask,
+        deleteLogisticsTask
     } = useTicketDetail();
 
     const resetSearchStates = () => {
@@ -97,6 +101,7 @@ export default function TicketDetailPage() {
                         selectedCaseIndex={selectedCaseIndex}
                         setSelectedCaseIndex={setSelectedCaseIndex}
                         resetSearchStates={resetSearchStates}
+                        ticketTasks={ticketTasks}
                     />
 
                     <HistoryPanel 
@@ -169,6 +174,10 @@ export default function TicketDetailPage() {
                 setNewAsset={setNewAsset}
                 verifyDeliveryModal={verifyDeliveryModal}
                 setVerifyDeliveryModal={setVerifyDeliveryModal}
+                ticketTasks={ticketTasks}
+                updateLogisticsTask={updateLogisticsTask}
+                addLogisticsTask={addLogisticsTask}
+                deleteLogisticsTask={deleteLogisticsTask}
             />
             
             <InventorySelectorModal

@@ -3,55 +3,41 @@
 import React from 'react';
 
 export default function CaseLogisticsSection({
-    editedData,
-    setEditedData,
-    selectedCaseIndex,
+    task,
+    onUpdateTask,
     users
 }) {
-    if (selectedCaseIndex === null) return null;
-
-    const currentCase = editedData.associatedCases[selectedCaseIndex];
-    const logistics = currentCase.logistics || { status: 'Pendiente', method: '', date: '', timeSlot: 'AM' };
+    if (!task) return null;
 
     const updateLogistics = (field, value) => {
-        setEditedData(prev => {
-            const newCases = [...prev.associatedCases];
-            const currentLogistics = newCases[selectedCaseIndex].logistics || {};
-            let newStatus = currentLogistics.status || 'Pendiente';
-            let assignedTo = currentLogistics.assignedTo || null;
+        const updates = {};
+        let newStatus = task.status || 'Pendiente';
+        let assignedTo = task.assignedTo || null;
 
-            // Automación de estados: Al asignar método o repartidor -> "Para Coordinar"
-            if ((field === 'method' && value) || (field === 'deliveryPerson' && value)) {
-                if (newStatus === 'Pendiente') {
-                    newStatus = 'Para Coordinar';
-                }
-            } else if (field === 'status') {
-                newStatus = value;
+        // Automación de estados: Al asignar método o repartidor -> "Para Coordinar"
+        if ((field === 'method' && value) || (field === 'deliveryPerson' && value)) {
+            if (newStatus === 'Pendiente') {
+                newStatus = 'Para Coordinar';
             }
+        } else if (field === 'status') {
+            newStatus = value;
+        }
 
-            // Si cambiamos el repartidor, buscamos su UID (assignedTo)
-            if (field === 'deliveryPerson' && value) {
-                const matchedUser = [...users].find(u => u.name === value);
-                if (matchedUser) {
-                    assignedTo = matchedUser.id || matchedUser.uid;
-                }
-            } else if (field === 'deliveryPerson' && !value) {
-                assignedTo = null;
+        // Si cambiamos el repartidor, buscamos su UID (assignedTo)
+        if (field === 'deliveryPerson' && value) {
+            const matchedUser = [...users].find(u => u.name === value);
+            if (matchedUser) {
+                assignedTo = matchedUser.id || matchedUser.uid;
             }
+        } else if (field === 'deliveryPerson' && !value) {
+            assignedTo = null;
+        }
 
-            newCases[selectedCaseIndex].logistics = { 
-                ...currentLogistics, 
-                [field]: field === 'deliveryInfo' ? value : value, // Keep value as is, but we add lastUpdated
-                status: newStatus,
-                assignedTo: assignedTo,
-                lastUpdated: new Date().toISOString()
-            };
-            if (field === 'deliveryInfo') {
-                newCases[selectedCaseIndex].logistics.deliveryInfo = value;
-            }
+        updates[field] = value;
+        updates.status = newStatus;
+        updates.assignedTo = assignedTo;
 
-            return { ...prev, associatedCases: newCases };
-        });
+        onUpdateTask(updates);
     };
 
     return (
@@ -65,7 +51,7 @@ export default function CaseLogisticsSection({
                     <label className="form-label">Estado de la Logística / Envío</label>
                     <select
                         className="form-select"
-                        value={logistics.status || 'Pendiente'}
+                        value={task.status || 'Pendiente'}
                         onChange={e => updateLogistics('status', e.target.value)}
                     >
                         <option value="Pendiente">Pendiente</option>
@@ -79,7 +65,7 @@ export default function CaseLogisticsSection({
                     <label className="form-label">Medio Proveedor</label>
                     <select
                         className="form-select"
-                        value={logistics.method || ''}
+                        value={task.method || ''}
                         onChange={e => updateLogistics('method', e.target.value)}
                     >
                         <option value="">Seleccionar...</option>
@@ -89,24 +75,24 @@ export default function CaseLogisticsSection({
                     </select>
                 </div>
 
-                {(logistics.method === 'Andreani' || logistics.method === 'Correo Argentino') && (
+                {(task.method === 'Andreani' || task.method === 'Correo Argentino') && (
                     <div className="form-group">
                         <label className="form-label">Número de Seguimiento</label>
                         <input
                             className="form-input"
                             placeholder="Ej: AR123456789"
-                            value={logistics.trackingNumber || ''}
+                            value={task.trackingNumber || ''}
                             onChange={e => updateLogistics('trackingNumber', e.target.value)}
                         />
                     </div>
                 )}
 
-                {logistics.method === 'Repartidor Propio' && (
+                {task.method === 'Repartidor Propio' && (
                     <div className="form-group">
                         <label className="form-label">Nombre del Repartidor</label>
                         <select
                             className="form-select"
-                            value={logistics.deliveryPerson || ''}
+                            value={task.deliveryPerson || ''}
                             onChange={e => updateLogistics('deliveryPerson', e.target.value)}
                         >
                             <option value="">Seleccionar repartidor...</option>
@@ -119,7 +105,7 @@ export default function CaseLogisticsSection({
                     </div>
                 )}
 
-                {(logistics.status === 'Entregado' || logistics.status === 'Finalizado') && (
+                {(task.status === 'Entregado' || task.status === 'Finalizado') && (
                     <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(34, 197, 94, 0.05)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
                         <h5 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534', marginBottom: '0.75rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <div style={{ width: '6px', height: '6px', background: '#22c55e', borderRadius: '50%' }}></div>
@@ -131,8 +117,8 @@ export default function CaseLogisticsSection({
                                 <input
                                     className="form-input"
                                     style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-                                    value={logistics.deliveryInfo?.receivedBy || ''}
-                                    onChange={e => updateLogistics('deliveryInfo', { ...(logistics.deliveryInfo || {}), receivedBy: e.target.value })}
+                                    value={task.deliveryInfo?.receivedBy || ''}
+                                    onChange={e => updateLogistics('deliveryInfo', { ...(task.deliveryInfo || {}), receivedBy: e.target.value })}
                                     placeholder="Nombre completo"
                                 />
                             </div>
@@ -141,8 +127,8 @@ export default function CaseLogisticsSection({
                                 <input
                                     className="form-input"
                                     style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-                                    value={logistics.deliveryInfo?.dni || ''}
-                                    onChange={e => updateLogistics('deliveryInfo', { ...(logistics.deliveryInfo || {}), dni: e.target.value })}
+                                    value={task.deliveryInfo?.dni || ''}
+                                    onChange={e => updateLogistics('deliveryInfo', { ...(task.deliveryInfo || {}), dni: e.target.value })}
                                     placeholder="DNI"
                                 />
                             </div>
@@ -152,8 +138,8 @@ export default function CaseLogisticsSection({
                             <textarea
                                 className="form-input"
                                 style={{ padding: '0.4rem 0.75rem', minHeight: '60px', resize: 'vertical', fontSize: '0.85rem' }}
-                                value={logistics.deliveryInfo?.notes || ''}
-                                onChange={e => updateLogistics('deliveryInfo', { ...(logistics.deliveryInfo || {}), notes: e.target.value })}
+                                value={task.deliveryInfo?.notes || ''}
+                                onChange={e => updateLogistics('deliveryInfo', { ...(task.deliveryInfo || {}), notes: e.target.value })}
                                 placeholder="Observaciones del repartidor..."
                             />
                         </div>

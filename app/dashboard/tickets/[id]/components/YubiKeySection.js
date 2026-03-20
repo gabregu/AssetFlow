@@ -5,28 +5,22 @@ import { Key, Trash2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 
 export default function YubiKeySection({
-    editedData,
-    setEditedData,
-    selectedCaseIndex,
+    task,
+    onUpdateTask,
     yubikeys
 }) {
-    if (selectedCaseIndex === null) return null;
+    if (!task) return null;
     
-    const currentCase = editedData.associatedCases[selectedCaseIndex];
-    const caseYubikeys = currentCase.yubikeys || [];
+    const caseYubikeys = task.yubikeys || [];
 
-    const handleAddYubiKey = (serial) => {
+    const handleAddYubiKey = async (serial) => {
         if (!serial) return;
         const found = yubikeys.find(y => y.serial?.toLowerCase() === serial.toLowerCase());
         if (found) {
-            setEditedData(prev => {
-                const newCases = [...prev.associatedCases];
-                const currentYKs = newCases[selectedCaseIndex].yubikeys || [];
-                if (!currentYKs.some(y => y.serial === found.serial)) {
-                    newCases[selectedCaseIndex] = { ...newCases[selectedCaseIndex], yubikeys: [...currentYKs, { serial: found.serial, type: 'Entrega' }] };
-                }
-                return { ...prev, associatedCases: newCases };
-            });
+            if (!caseYubikeys.some(y => y.serial === found.serial)) {
+                const newYKs = [...caseYubikeys, { serial: found.serial, type: 'Entrega' }];
+                await onUpdateTask({ yubikeys: newYKs });
+            }
             return true;
         } else {
             alert('YubiKey no encontrado con ese serial.');
@@ -34,22 +28,15 @@ export default function YubiKeySection({
         }
     };
 
-    const handleRemoveYubiKey = (idx) => {
-        setEditedData(prev => {
-            const newCases = [...prev.associatedCases];
-            newCases[selectedCaseIndex].yubikeys = (newCases[selectedCaseIndex].yubikeys || []).filter((_, i) => i !== idx);
-            return { ...prev, associatedCases: newCases };
-        });
+    const handleRemoveYubiKey = async (idx) => {
+        const newYKs = caseYubikeys.filter((_, i) => i !== idx);
+        await onUpdateTask({ yubikeys: newYKs });
     };
 
-    const handleUpdateYubiKeyType = (idx, type) => {
-        setEditedData(prev => {
-            const newCases = [...prev.associatedCases];
-            const newYKs = [...(newCases[selectedCaseIndex].yubikeys || [])];
-            newYKs[idx] = { ...newYKs[idx], type };
-            newCases[selectedCaseIndex] = { ...newCases[selectedCaseIndex], yubikeys: newYKs };
-            return { ...prev, associatedCases: newCases };
-        });
+    const handleUpdateYubiKeyType = async (idx, type) => {
+        const newYKs = [...caseYubikeys];
+        newYKs[idx] = { ...newYKs[idx], type };
+        await onUpdateTask({ yubikeys: newYKs });
     };
 
     return (

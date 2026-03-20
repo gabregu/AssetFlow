@@ -5,9 +5,8 @@ import { Search, Package, Trash2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 
 export default function AssetListSection({
-    editedData,
-    setEditedData,
-    selectedCaseIndex,
+    task,
+    onUpdateTask,
     assets,
     serialQuery,
     setSerialQuery,
@@ -17,48 +16,32 @@ export default function AssetListSection({
     setAssetSearchResult,
     setIsAssetModalOpen
 }) {
-    if (selectedCaseIndex === null) return null;
+    if (!task) return null;
 
-    const currentCase = editedData.associatedCases[selectedCaseIndex];
-    const caseAssets = currentCase.assets || [];
+    const caseAssets = task.assets || [];
 
-    const handleUnlink = (idx) => {
-        setEditedData(prev => {
-            const newCases = [...prev.associatedCases];
-            newCases[selectedCaseIndex].assets = newCases[selectedCaseIndex].assets.filter((_, i) => i !== idx);
-            return { ...prev, associatedCases: newCases };
-        });
+    const handleUnlink = async (idx) => {
+        const newAssets = caseAssets.filter((_, i) => i !== idx);
+        await onUpdateTask({ assets: newAssets });
     };
 
-    const handleUpdateType = (idx, type) => {
-        setEditedData(prev => {
-            const newCases = [...prev.associatedCases];
-            const newAssets = [...newCases[selectedCaseIndex].assets];
-            newAssets[idx] = { ...newAssets[idx], type };
-            newCases[selectedCaseIndex] = { ...newCases[selectedCaseIndex], assets: newAssets };
-            return { ...prev, associatedCases: newCases };
-        });
+    const handleUpdateType = async (idx, type) => {
+        const newAssets = [...caseAssets];
+        newAssets[idx] = { ...newAssets[idx], type };
+        await onUpdateTask({ assets: newAssets });
     };
 
-    const handleLinkToCase = (serial) => {
-        setEditedData(prev => {
-            const newCases = [...prev.associatedCases];
-            const currentAssets = newCases[selectedCaseIndex].assets || [];
-            if (!currentAssets.some(a => a.serial === serial)) {
-                newCases[selectedCaseIndex].assets = [...currentAssets, { serial: serial, type: '' }];
-                
-                // Automación: Si agregamos hardware, el estado pasa a "Para Coordinar" si estaba Pendiente
-                const currentStatus = newCases[selectedCaseIndex].logistics?.status || 'Pendiente';
-                if (currentStatus === 'Pendiente') {
-                    newCases[selectedCaseIndex].logistics = {
-                        ...(newCases[selectedCaseIndex].logistics || {}),
-                        status: 'Para Coordinar',
-                        lastUpdated: new Date().toISOString()
-                    };
-                }
+    const handleLinkToCase = async (serial) => {
+        if (!caseAssets.some(a => a.serial === serial)) {
+            const newAssets = [...caseAssets, { serial: serial, type: '' }];
+            const updates = { assets: newAssets };
+            
+            // Automación: Si agregamos hardware, el estado pasa a "Para Coordinar" si estaba Pendiente
+            if (task.status === 'Pendiente') {
+                updates.status = 'Para Coordinar';
             }
-            return { ...prev, associatedCases: newCases };
-        });
+            await onUpdateTask(updates);
+        }
         setAssetSearchResult(null);
         setSerialQuery('');
     };

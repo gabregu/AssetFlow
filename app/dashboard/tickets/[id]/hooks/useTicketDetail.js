@@ -13,10 +13,12 @@ export function useTicketDetail() {
     const { 
         tickets, assets, consumables, users, sfdcCases, yubikeys, 
         updateTicket, deleteTicket, addAsset, updateAsset, 
-        updateConsumableStock, currentUser 
+        updateConsumableStock, currentUser,
+        logisticsTasks, addLogisticsTask, updateLogisticsTask, deleteLogisticsTask
     } = useStore();
 
     const ticket = useMemo(() => tickets.find(t => t.id === params.id), [tickets, params.id]);
+    const ticketTasks = useMemo(() => logisticsTasks.filter(t => t.ticket_id === params.id), [logisticsTasks, params.id]);
     const [editMode, setEditMode] = useState(false);
     const [editLogistics, setEditLogistics] = useState(false);
     const [editAssets, setEditAssets] = useState(false);
@@ -408,6 +410,11 @@ export function useTicketDetail() {
         yubikeys,
         users,
         currentUser,
-        sfdcCases
+        sfdcCases,
+        logisticsTasks,
+        ticketTasks,
+        addLogisticsTask,
+        updateLogisticsTask,
+        deleteLogisticsTask
     };
 }
