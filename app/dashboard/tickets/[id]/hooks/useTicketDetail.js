@@ -19,6 +19,12 @@ export function useTicketDetail() {
 
     const ticket = useMemo(() => tickets.find(t => t.id === params.id), [tickets, params.id]);
     const ticketTasks = useMemo(() => logisticsTasks.filter(t => t.ticket_id === params.id), [logisticsTasks, params.id]);
+    
+    // Lista unificada: Si hay tareas reales en DB las usamos, si no usamos los casos sintetizados
+    const unifiedTasks = useMemo(() => {
+        if (ticketTasks.length > 0) return ticketTasks;
+        return (editedData && editedData.associatedCases) || [];
+    }, [ticketTasks, editedData]);
     const [editMode, setEditMode] = useState(false);
     const [editLogistics, setEditLogistics] = useState(false);
     const [editAssets, setEditAssets] = useState(false);
@@ -413,6 +419,7 @@ export function useTicketDetail() {
         sfdcCases,
         logisticsTasks,
         ticketTasks,
+        unifiedTasks,
         addLogisticsTask,
         updateLogisticsTask,
         deleteLogisticsTask

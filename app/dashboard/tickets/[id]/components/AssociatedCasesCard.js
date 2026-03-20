@@ -18,7 +18,7 @@ export default function AssociatedCasesCard({
     return (
         <Card title="Casos Asociados">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {(ticketTasks || []).map((task, index) => {
+                {(ticketTasks && ticketTasks.length > 0 ? ticketTasks : (editedData && editedData.associatedCases) || []).map((task, index) => {
                     const caseAssets = task.assets || [];
                     const hasHardware = caseAssets.length > 0;
                     
@@ -74,7 +74,7 @@ export default function AssociatedCasesCard({
                         </div>
                     );
                 })}
-                {ticketTasks.length === 0 && (
+                {(!ticketTasks || ticketTasks.length === 0) && (!editedData || !editedData.associatedCases || editedData.associatedCases.length === 0) && (
                     <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-secondary)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)' }}>
                         <p style={{ fontSize: '0.85rem' }}>No hay otros casos asociados individualmente.</p>
                     </div>
