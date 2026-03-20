@@ -20,7 +20,7 @@ export default function DeliveriesPage() {
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [newDelivery, setNewDelivery] = useState({ recipient: '', address: '', items: '', status: 'Pendiente', courier: 'Interno' });
     const [filter, setFilter] = useState('');
-    const [statusFilter, setStatusFilter] = useState('En Tránsito');
+    const [statusFilter, setStatusFilter] = useState('En Transito');
     const [geocodedPoints, setGeocodedPoints] = useState([]);
     const [isGeocoding, setIsGeocoding] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
@@ -266,7 +266,7 @@ export default function DeliveriesPage() {
         return result;
     }, [combinedDeliveries, filter, statusFilter, sortConfig]);
 
-    const inTransitCount = combinedDeliveries.filter(d => d.status === 'En Tránsito').length;
+    const inTransitCount = combinedDeliveries.filter(d => d.status === 'En Transito').length;
     const deliveredCount = combinedDeliveries.filter(d => d.status === 'Entregado').length;
     const pendingCount = combinedDeliveries.filter(d => d.status === 'Pendiente').length;
 
@@ -493,11 +493,11 @@ export default function DeliveriesPage() {
                     style={{
                         borderLeft: '4px solid #2563eb',
                         cursor: 'pointer',
-                        backgroundColor: statusFilter === 'En Tránsito' ? 'rgba(37, 99, 235, 0.1)' : 'var(--surface)',
+                        backgroundColor: statusFilter === 'En Transito' ? 'rgba(37, 99, 235, 0.1)' : 'var(--surface)',
                         transition: 'all 0.2s ease',
-                        boxShadow: statusFilter === 'En Tránsito' ? 'inset 0 0 0 1px #2563eb, var(--shadow-sm)' : 'var(--shadow-sm)'
+                        boxShadow: statusFilter === 'En Transito' ? 'inset 0 0 0 1px #2563eb, var(--shadow-sm)' : 'var(--shadow-sm)'
                     }}
-                    onClick={() => setStatusFilter('En Tránsito')}
+                    onClick={() => setStatusFilter('En Transito')}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{ padding: '0.75rem', backgroundColor: '#eff6ff', borderRadius: '50%', color: '#2563eb' }}>
@@ -698,7 +698,7 @@ export default function DeliveriesPage() {
                                         >
                                             <option value="All">Todos</option>
                                             <option value="Pendiente">Pendiente</option>
-                                            <option value="En Tránsito">En Tránsito</option>
+                                            <option value="En Transito">En Tránsito</option>
                                             <option value="Entregado">Entregado</option>
                                         </select>
                                     </div>
