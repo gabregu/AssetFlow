@@ -20,19 +20,6 @@ export default function TimeSlotSelector({
             // Si hay fecha y turno, pasar a En Tránsito
             if (hasAllInfo) {
                 newData.deliveryStatus = 'En Transito';
-                // Propagar a todos los casos asociados
-                if (newData.associatedCases) {
-                    newData.associatedCases = newData.associatedCases.map(c => ({
-                        ...c,
-                        logistics: {
-                            ...(c.logistics || {}),
-                            status: 'En Transito',
-                            date: currentLog.date,
-                            timeSlot: slot,
-                            lastUpdated: new Date().toISOString()
-                        }
-                    }));
-                }
             }
             return newData;
         });
