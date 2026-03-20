@@ -9,8 +9,8 @@ export function DeliveryNotificationListener() {
     const [notification, setNotification] = useState(null);
 
     useEffect(() => {
-        // Solo para usuarios Administrativos o Admins
-        const allowRole = currentUser?.role === 'admin' || currentUser?.role === 'Administrativo';
+        // Permitir a Admins, Administrativos y Conductores
+        const allowRole = currentUser?.role === 'admin' || currentUser?.role === 'Administrativo' || currentUser?.role === 'Conductor';
         if (!currentUser || !allowRole) return;
 
         console.log("Iniciando escucha de entregas para:", currentUser.role);
@@ -28,25 +28,60 @@ export function DeliveryNotificationListener() {
                     const newData = payload.new;
                     const oldData = payload.old;
 
-                    // Verificar si el estado de entrega cambió a 'Entregado'
-                    if (newData.deliveryStatus === 'Entregado' && oldData.deliveryStatus !== 'Entregado') {
-                        console.log("¡Nueva entrega detectada!", newData);
-
-                        // Extraer el nombre del cliente de logistics
-                        // Nota: logistics es un JSONB, Supabase lo entrega como objeto JS
+                    // 1. NOTIFICACIÓN PARA ADMINS: Entrega realizada
+                    if ((currentUser.role === 'admin' || currentUser.role === 'Administrativo') && 
+                        newData.deliveryStatus === 'Entregado' && oldData.deliveryStatus !== 'Entregado') {
+                        
                         const clientName = newData.logistics?.receivedBy || 'Un Cliente';
-                        const ticketId = newData.id;
-
+                        
                         setNotification({
-                            clientName,
-                            ticketId,
+                            type: 'delivery',
+                            title: '¡Entrega Realizada!',
+                            message: `Se ha completado la entrega del ticket #${newData.id} a:`,
+                            subMessage: clientName,
                             timestamp: new Date().toLocaleTimeString()
                         });
 
-                        // Auto-ocultar después de 10 segundos
-                        setTimeout(() => {
-                            setNotification(null);
-                        }, 10000);
+                        setTimeout(() => setNotification(null), 10000);
+                        return;
+                    }
+
+                    // 2. NOTIFICACIÓN PARA CONDUCTORES: Nueva Asignación
+                    if (currentUser.role === 'Conductor') {
+                        const uName = (currentUser.name || '').toLowerCase();
+                        const uId = currentUser.id || currentUser.uid;
+
+                        // Verificar si el ticket principal fue asignado a mí
+                        const isMainAssignedToMe = (newData.logistics?.assignedTo === uId) || 
+                                                 (newData.logistics?.deliveryPerson?.toLowerCase().includes(uName));
+                        
+                        const wasMainAssignedToMe = (oldData.logistics?.assignedTo === uId) || 
+                                                  (oldData.logistics?.deliveryPerson?.toLowerCase().includes(uName));
+
+                        // Verificar si ALGÚN caso asociado fue asignado a mí
+                        const newCases = newData.associated_assets || [];
+                        const oldCases = oldData.associated_assets || [];
+                        
+                        const myNewCase = newCases.find((c, idx) => {
+                            const isAssigned = c.logistics?.assignedTo === uId || c.logistics?.deliveryPerson?.toLowerCase().includes(uName);
+                            if (!isAssigned) return false;
+                            
+                            // Verificar si YA estaba asignado en el estado anterior
+                            const wasAssigned = oldCases[idx] && (oldCases[idx].logistics?.assignedTo === uId || oldCases[idx].logistics?.deliveryPerson?.toLowerCase().includes(uName));
+                            return !wasAssigned;
+                        });
+
+                        if ((isMainAssignedToMe && !wasMainAssignedToMe) || myNewCase) {
+                            setNotification({
+                                type: 'assignment',
+                                title: '¡Nueva Asignación!',
+                                message: `Se te ha asignado un nuevo servicio:`,
+                                subMessage: myNewCase ? (myNewCase.subject || myNewCase.caseNumber) : newData.subject,
+                                timestamp: new Date().toLocaleTimeString(),
+                                forceReload: true
+                            });
+                            // No auto-ocultar para que el conductor vea el aviso sí o sí
+                        }
                     }
                 }
             )
@@ -81,28 +116,49 @@ export function DeliveryNotificationListener() {
             `}</style>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                 <div style={{
-                    backgroundColor: '#dcfce7',
+                    backgroundColor: notification.type === 'assignment' ? '#eff6ff' : '#dcfce7',
                     padding: '8px',
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
                 }}>
-                    <CheckCircle2 size={24} color="#15803d" />
+                    <CheckCircle2 size={24} color={notification.type === 'assignment' ? '#3b82f6' : '#15803d'} />
                 </div>
                 <div style={{ flex: 1 }}>
                     <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 700, color: '#111' }}>
-                        ¡Entrega Realizada!
+                        {notification.title}
                     </h4>
                     <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.4' }}>
-                        Se ha completado la entrega del ticket <strong>#{notification.ticketId}</strong> a:
+                        {notification.message}
                     </p>
-                    <p style={{ margin: '0', fontSize: '1rem', fontWeight: 600, color: '#15803d' }}>
-                        {notification.clientName}
+                    <p style={{ margin: '0', fontSize: '1rem', fontWeight: 600, color: notification.type === 'assignment' ? '#3b82f6' : '#15803d' }}>
+                        {notification.subMessage}
                     </p>
                     <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '8px', display: 'block' }}>
                         {notification.timestamp}
                     </span>
+                    
+                    {notification.forceReload && (
+                        <button
+                            onClick={() => window.location.reload()}
+                            style={{
+                                marginTop: '12px',
+                                width: '100%',
+                                padding: '8px',
+                                backgroundColor: '#3b82f6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontWeight: 700,
+                                fontSize: '0.85rem',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.5)'
+                            }}
+                        >
+                            Refrescar Lista
+                        </button>
+                    )}
                 </div>
                 <button
                     onClick={() => setNotification(null)}
