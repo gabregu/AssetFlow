@@ -46,6 +46,13 @@ export default function MyDeliveriesPage() {
         last6Months: []
     });
 
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
+    };
+
     const [deliveryForm, setDeliveryForm] = useState({
         receivedBy: '',
         dni: '',
@@ -152,9 +159,14 @@ export default function MyDeliveriesPage() {
         let finishedThisMonthCount = 0;
         let pendingThisWeekCount = 0;
 
+        const uName = (currentUser.name || '').toLowerCase();
+
         // Recorrer las tareas asignadas
         logisticsTasks.forEach(task => {
-            const isMine = task.assignedTo === currentUser.id || (task.deliveryPerson?.toLowerCase() === uName);
+            const isMine = task.assignedTo === currentUser.id || 
+                           task.assignedTo === currentUser.uuid ||
+                           (task.deliveryPerson?.toLowerCase() === uName);
+            
             if (!isMine) return;
 
             if (task.status === 'Entregado' || task.status === 'Finalizado') {
@@ -212,7 +224,7 @@ export default function MyDeliveriesPage() {
         e.preventDefault();
         
         if (!deliveryForm.receivedBy || !deliveryForm.dni) {
-            toast.error('Nombre y DNI son obligatorios');
+            showToast('Nombre y DNI son obligatorios', 'error');
             return;
         }
 
@@ -246,12 +258,13 @@ export default function MyDeliveriesPage() {
                 await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
             }
             
-            toast.success('Entrega registrada correctamente');
+            
+            showToast('Entrega registrada correctamente', 'success');
             setIsDeliveryModalOpen(false);
             setDeliveryForm({ receivedBy: '', dni: '', notes: '', actualTime: '' });
         } catch (error) {
             console.error('Error al registrar entrega:', error);
-            toast.error('Error al guardar los datos');
+            showToast('Error al guardar los datos', 'error');
         }
     };
 
@@ -622,9 +635,37 @@ export default function MyDeliveriesPage() {
                 </form>
             </Modal>
 
+            {/* Toast Notification */}
+            {toast.show && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '2rem',
+                    right: '2rem',
+                    backgroundColor: toast.type === 'success' ? '#10b981' : '#ef4444',
+                    color: 'white',
+                    padding: '1rem 1.5rem',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                    zIndex: 2000,
+                    animation: 'fadeIn 0.3s ease-out',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontWeight: 600,
+                    fontSize: '0.9rem'
+                }}>
+                    {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                    {toast.message}
+                </div>
+            )}
+
             <style jsx>{`
                 .hover-underline:hover span {
                     text-decoration: underline;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
                 @media (max-width: 768px) {
                     .hide-mobile {

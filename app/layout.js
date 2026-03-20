@@ -6,6 +6,9 @@ import { ThemeProvider } from './components/theme-provider';
 export const metadata = {
     title: 'AssetFlow - IT Case Management',
     description: 'Gestión integral de Casos, Inventario y Entregas',
+    icons: {
+        icon: '/favicon.png', // Conectamos el nuevo icono generado
+    },
 };
 
 import { InactivityMonitor } from './components/ui/InactivityMonitor';
