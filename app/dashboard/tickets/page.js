@@ -917,11 +917,18 @@ export default function TicketsPage() {
                                                 }
 
                                                 const log = latestCase.logistics;
-                                                let sender = '';
-                                                if (log.method === 'Repartidor Propio' && log.deliveryPerson) {
-                                                    sender = log.deliveryPerson;
-                                                } else if (log.method) {
-                                                    sender = log.method + (log.trackingNumber ? ` (${log.trackingNumber})` : '');
+                                                const senderName = log.deliveryPerson || '';
+                                                const methodName = log.method || '';
+                                                const tracking = (log.method && log.method !== 'Repartidor Propio' && log.trackingNumber) ? ` (${log.trackingNumber})` : '';
+                                                
+                                                let displaySender = '';
+                                                if (methodName === 'Repartidor Propio') {
+                                                    displaySender = senderName || 'Repartidor Propio';
+                                                } else if (methodName) {
+                                                    displaySender = methodName + tracking;
+                                                } else {
+                                                    // Fallback: if there's a deliveryPerson but no method or weird combo
+                                                    displaySender = senderName;
                                                 }
                                                 
                                                 const dateStr = log.date ? new Date(log.date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '';
@@ -939,7 +946,7 @@ export default function TicketsPage() {
                                                         >
                                                             {log.status}
                                                         </Badge>
-                                                        {(sender || dateStr) && (
+                                                        {(displaySender || dateStr) && (
                                                             <div style={{ 
                                                                 fontSize: '0.65rem', 
                                                                 color: 'var(--text-secondary)', 
@@ -952,7 +959,7 @@ export default function TicketsPage() {
                                                                 gap: '2px',
                                                                 marginTop: '2px'
                                                             }}>
-                                                                {sender && <div style={{ fontWeight: 700, color: 'var(--primary-color)', fontSize: '0.7rem' }}>{sender}</div>}
+                                                                {displaySender && <div style={{ fontWeight: 700, color: 'var(--primary-color)', fontSize: '0.7rem' }}>{displaySender}</div>}
                                                                 {dateStr && <div style={{ opacity: 0.8, fontSize: '0.65rem' }}>Acordado: {dateStr}</div>}
                                                             </div>
                                                         )}
