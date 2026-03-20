@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AssetFlow - Diagrama de Entidades y Relaciones</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 40px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .diagram-container {
+            background: #fafafa;
+            padding: 30px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 40px;
+            overflow-x: auto;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+        h2 {
+            color: #2c3e50;
+            margin: 30px 0 15px 0;
+            font-size: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 13px;
+        }
+        th {
+            background: #3498db;
+            color: white;
+            padding: 12px 10px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        tr:hover {
+            background: #f0f7ff;
+        }
+        .pk { color: #e74c3c; font-weight: bold; }
+        .fk { color: #27ae60; }
+        .uk { color: #9b59b6; }
+        .jsonb { color: #f39c12; }
+        .summary {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .summary-item {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .summary-item .count {
+            font-size: 28px;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .summary-item .label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+        }
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; padding: 20px; }
+            .diagram-container { border: 1px solid #ccc; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AssetFlow - Base de Datos</h1>
+        <p class="subtitle">Diagrama de Entidades y Relaciones | PostgreSQL (Supabase)</p>
+        
+        <div class="legend">
+            <div class="legend-item"><span class="legend-color pk" style="background:#e74c3c"></span> PK = Primary Key</div>
+            <div class="legend-item"><span class="legend-color" style="background:#27ae60"></span> FK = Foreign Key</div>
+            <div class="legend-item"><span class="legend-color" style="background:#9b59b6"></span> UK = Unique</div>
+            <div class="legend-item"><span class="legend-color" style="background:#f39c12"></span> JSONB = JSON</div>
+        </div>
+
+        <h2>1. Diagrama de Relaciones (ER)</h2>
+        <div class="diagram-container">
+            <pre class="mermaid">
+erDiagram
+    users {
+        text id PK
+        text email UK
+        text name
+        text username
+        text role
+        text country
+        float location_latitude
+        float location_longitude
+        timestamptz last_location_update
+        boolean tracking_enabled
+    }
+
+    assets {
+        text id PK
+        text date
+        text name
+        text type
+        text status
+        text assignee
+        text vendor
+        text purchase_order
+        text sfdc_case FK
+        text oem
+        text model_number
+        text hardware_spec
+        text part_number
+        text serial
+        text imei
+        text imei_2
+        text eol_date
+        text notes
+        text country
+        text updated_by
+        timestamptz date_last_update
+        text add_by_user
+    }
+
+    tickets {
+        text id PK
+        text subject
+        text requester
+        text priority
+        text status
+        text delivery_status
+        jsonb logistics
+        jsonb associated_assets
+        jsonb accessories
+        text internal_notes
+        jsonb delivery_details
+        timestamptz delivery_completed_date
+        text date
+    }
+
+    sfdc_cases {
+        text case_number PK
+        text subject
+        text description
+        text status
+        text priority
+        text requester
+        text date_opened
+        text country
+        jsonb raw_data
+    }
+
+    consumables {
+        text id PK
+        text name
+        text category
+        int stock
+        text country
+        text description
+    }
+
+    yubikeys {
+        uuid id PK
+        text serial UK
+        text type
+        text status
+        text assignee
+        text country
+        timestamptz created_at
+        timestamptz last_updated
+    }
+
+    logistics_tasks {
+        uuid id PK
+        text ticket_id FK
+        text case_number
+        text subject
+        text status
+        text method
+        text delivery_person
+        text assigned_to
+        date date
+        text time_slot
+        text address
+        text tracking_number
+        jsonb assets
+        jsonb accessories
+        jsonb yubikeys
+        jsonb delivery_info
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    deliveries {
+        text id PK
+        text date
+    }
+
+    expenses {
+        text id PK
+        text date
+    }
+
+    app_config {
+        text key PK
+        jsonb value
+    }
+
+    security_audit_log {
+        uuid id PK
+        timestamptz event_time
+        text user_email
+        text action
+        text resource
+        jsonb details
+    }
+
+    users ||--o{ assets : "assigned/updated/created"
+    users ||--o{ tickets : "requester"
+    users ||--o{ yubikeys : "assignee"
+    users ||--o{ logistics_tasks : "driver/assigned"
+    tickets ||--o{ logistics_tasks : "subtasks"
+    tickets }o--|| sfdc_cases : "linked case"
+    assets }o--|| sfdc_cases : "linked case"
+            </pre>
+        </div>
+
+        <h2>2. Resumen de Tablas</h2>
+        <div class="summary">
+            <strong>Base de datos:</strong> PostgreSQL (Supabase) | <strong>Seguridad:</strong> Row Level Security (RLS) habilitado
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="count">11</div>
+                    <div class="label">Tablas</div>
+                </div>
+                <div class="summary-item">
+                    <div class="count">6</div>
+                    <div class="label">Entidades</div>
+                </div>
+                <div class="summary-item">
+                    <div class="count">5</div>
+                    <div class="label">Niveles de Acceso</div>
+                </div>
+                <div class="summary-item">
+                    <div class="count">Multi</div>
+                    <div class="label">Países</div>
+                </div>
+            </div>
+        </div>
+
+        <h2>3. Tablas Detalladas</h2>
+
+        <h3>3.1 users (Perfiles de Usuario)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">id</td><td>text</td><td>Clave primaria (formato: USR-timestamp)</td></tr>
+            <tr><td class="uk">email</td><td>text</td><td>Email único - vínculo con Supabase Auth</td></tr>
+            <tr><td>name</td><td>text</td><td>Nombre completo</td></tr>
+            <tr><td>username</td><td>text</td><td>Nombre de usuario</td></tr>
+            <tr><td>role</td><td>text</td><td>admin, staff, user, pending, Conductor, Gerencial, Administrativo</td></tr>
+            <tr><td>country</td><td>text</td><td>País para filtrado RLS (default: 'Argentina')</td></tr>
+            <tr><td>location_latitude</td><td>double precision</td><td>Latitud GPS</td></tr>
+            <tr><td>location_longitude</td><td>double precision</td><td>Longitud GPS</td></tr>
+            <tr><td>last_location_update</td><td>timestamptz</td><td>Última actualización GPS</td></tr>
+            <tr><td>tracking_enabled</td><td>boolean</td><td>Seguimiento de ubicación activado</td></tr>
+        </table>
+
+        <h3>3.2 assets (Inventario)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">id</td><td>text</td><td>Clave primaria (formato: AST-XXXX)</td></tr>
+            <tr><td>date</td><td>text</td><td>Fecha</td></tr>
+            <tr><td>name</td><td>text</td><td>Nombre del activo</td></tr>
+            <tr><td>type</td><td>text</td><td>Tipo de activo</td></tr>
+            <tr><td>status</td><td>text</td><td>Estado</td></tr>
+            <tr><td>assignee</td><td>text</td><td>Asignado a</td></tr>
+            <tr><td>vendor</td><td>text</td><td>Proveedor</td></tr>
+            <tr><td>purchase_order</td><td>text</td><td>Número de orden de compra</td></tr>
+            <tr><td class="fk">sfdc_case</td><td>text</td><td>Caso SFDC vinculado</td></tr>
+            <tr><td>oem</td><td>text</td><td>OEM</td></tr>
+            <tr><td>model_number</td><td>text</td><td>Número de modelo</td></tr>
+            <tr><td>hardware_spec</td><td>text</td><td>Especificaciones de hardware</td></tr>
+            <tr><td>part_number</td><td>text</td><td>Número de parte</td></tr>
+            <tr><td>serial</td><td>text</td><td>Número de serie</td></tr>
+            <tr><td>imei</td><td>text</td><td>IMEI</td></tr>
+            <tr><td>imei_2</td><td>text</td><td>IMEI secundario</td></tr>
+            <tr><td>eol_date</td><td>text</td><td>Fecha de fin de vida útil</td></tr>
+            <tr><td>notes</td><td>text</td><td>Notas</td></tr>
+            <tr><td>country</td><td>text</td><td>País</td></tr>
+            <tr><td>updated_by</td><td>text</td><td>Último actualizador</td></tr>
+            <tr><td>date_last_update</td><td>timestamptz</td><td>Fecha de última actualización</td></tr>
+            <tr><td>add_by_user</td><td>text</td><td>Usuario creador</td></tr>
+        </table>
+
+        <h3>3.3 tickets (Solicitudes de Servicio)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">id</td><td>text</td><td>Clave primaria</td></tr>
+            <tr><td>subject</td><td>text</td><td>Asunto del ticket</td></tr>
+            <tr><td>requester</td><td>text</td><td>Solicitante</td></tr>
+            <tr><td>priority</td><td>text</td><td>Baja, Media, Alta, Crítica</td></tr>
+            <tr><td>status</td><td>text</td><td>Estado del ticket</td></tr>
+            <tr><td>delivery_status</td><td>text</td><td>Estado de entrega</td></tr>
+            <tr><td class="jsonb">logistics</td><td class="jsonb">jsonb</td><td>Datos de logística</td></tr>
+            <tr><td class="jsonb">associated_assets</td><td class="jsonb">jsonb</td><td>Assets asociados</td></tr>
+            <tr><td class="jsonb">accessories</td><td class="jsonb">jsonb</td><td>Accesorios</td></tr>
+            <tr><td>internal_notes</td><td>text</td><td>Notas internas</td></tr>
+            <tr><td class="jsonb">delivery_details</td><td class="jsonb">jsonb</td><td>Detalles de entrega</td></tr>
+            <tr><td>delivery_completed_date</td><td>timestamptz</td><td>Fecha de entrega completada</td></tr>
+            <tr><td>date</td><td>text</td><td>Fecha</td></tr>
+        </table>
+
+        <h3>3.4 sfdc_cases (Casos de Salesforce)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">case_number</td><td>text</td><td>Clave primaria (único)</td></tr>
+            <tr><td>subject</td><td>text</td><td>Asunto del caso</td></tr>
+            <tr><td>description</td><td>text</td><td>Descripción</td></tr>
+            <tr><td>status</td><td>text</td><td>Estado del caso</td></tr>
+            <tr><td>priority</td><td>text</td><td>Prioridad</td></tr>
+            <tr><td>requester</td><td>text</td><td>Solicitante</td></tr>
+            <tr><td>date_opened</td><td>text</td><td>Fecha de apertura</td></tr>
+            <tr><td>country</td><td>text</td><td>País</td></tr>
+            <tr><td class="jsonb">raw_data</td><td class="jsonb">jsonb</td><td>Datos crudos de SFDC</td></tr>
+        </table>
+
+        <h3>3.5 consumables (Items Consumibles)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">id</td><td>text</td><td>Clave primaria (formato: CON-XXX)</td></tr>
+            <tr><td>name</td><td>text</td><td>Nombre del item</td></tr>
+            <tr><td>category</td><td>text</td><td>Categoría</td></tr>
+            <tr><td>stock</td><td>integer</td><td>Stock actual</td></tr>
+            <tr><td>country</td><td>text</td><td>País</td></tr>
+            <tr><td>description</td><td>text</td><td>Descripción</td></tr>
+        </table>
+
+        <h3>3.6 yubikeys (Dispositivos YubiKey)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">id</td><td>uuid</td><td>Clave primaria</td></tr>
+            <tr><td class="uk">serial</td><td>text</td><td>Número de serie único</td></tr>
+            <tr><td>type</td><td>text</td><td>Tipo de YubiKey</td></tr>
+            <tr><td>status</td><td>text</td><td>Estado</td></tr>
+            <tr><td>assignee</td><td>text</td><td>Asignado a</td></tr>
+            <tr><td>country</td><td>text</td><td>País</td></tr>
+            <tr><td>created_at</td><td>timestamptz</td><td>Fecha de creación</td></tr>
+            <tr><td>last_updated</td><td>timestamptz</td><td>Última actualización</td></tr>
+        </table>
+
+        <h3>3.7 logistics_tasks (Tareas de Logística)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">id</td><td>uuid</td><td>Clave primaria</td></tr>
+            <tr><td class="fk">ticket_id</td><td>text</td><td>FK → tickets(id) ON DELETE CASCADE</td></tr>
+            <tr><td>case_number</td><td>text</td><td>Número de caso SFDC</td></tr>
+            <tr><td>subject</td><td>text</td><td>Asunto</td></tr>
+            <tr><td>status</td><td>text</td><td>Estado (default: 'Pendiente')</td></tr>
+            <tr><td>method</td><td>text</td><td>Courier/Interno</td></tr>
+            <tr><td>delivery_person</td><td>text</td><td>Nombre del conductor</td></tr>
+            <tr><td>assigned_to</td><td>text</td><td>UID del conductor</td></tr>
+            <tr><td>date</td><td>date</td><td>Fecha de entrega</td></tr>
+            <tr><td>time_slot</td><td>text</td><td>AM/PM (default: 'AM')</td></tr>
+            <tr><td>address</td><td>text</td><td>Dirección de entrega</td></tr>
+            <tr><td>tracking_number</td><td>text</td><td>Número de seguimiento</td></tr>
+            <tr><td class="jsonb">assets</td><td class="jsonb">jsonb</td><td>Array de assets</td></tr>
+            <tr><td class="jsonb">accessories</td><td class="jsonb">jsonb</td><td>Objeto de accesorios</td></tr>
+            <tr><td class="jsonb">yubikeys</td><td class="jsonb">jsonb</td><td>Array de yubikeys</td></tr>
+            <tr><td class="jsonb">delivery_info</td><td class="jsonb">jsonb</td><td>Info capturada por el conductor</td></tr>
+            <tr><td>created_at</td><td>timestamptz</td><td>Fecha de creación</td></tr>
+            <tr><td>updated_at</td><td>timestamptz</td><td>Fecha de actualización</td></tr>
+        </table>
+
+        <h3>3.8 deliveries (Registros de Entrega)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">id</td><td>text</td><td>Clave primaria (formato: ENV-YYYY)</td></tr>
+            <tr><td>date</td><td>text</td><td>Fecha</td></tr>
+        </table>
+
+        <h3>3.9 expenses (Gastos)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">id</td><td>text</td><td>Clave primaria</td></tr>
+            <tr><td>date</td><td>text</td><td>Fecha</td></tr>
+        </table>
+
+        <h3>3.10 app_config (Configuración)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">key</td><td>text</td><td>Clave primaria (ej: 'rates')</td></tr>
+            <tr><td class="jsonb">value</td><td class="jsonb">jsonb</td><td>Valor de configuración</td></tr>
+        </table>
+
+        <h3>3.11 security_audit_log (Log de Auditoría)</h3>
+        <table>
+            <tr><th>Columna</th><th>Tipo</th><th>Descripción</th></tr>
+            <tr><td class="pk">id</td><td>uuid</td><td>Clave primaria</td></tr>
+            <tr><td>event_time</td><td>timestamptz</td><td>Marca de tiempo del evento</td></tr>
+            <tr><td>user_email</td><td>text</td><td>Email del usuario</td></tr>
+            <tr><td>action</td><td>text</td><td>Acción realizada</td></tr>
+            <tr><td>resource</td><td>text</td><td>Recurso afectado</td></tr>
+            <tr><td class="jsonb">details</td><td class="jsonb">jsonb</td><td>Detalles adicionales</td></tr>
+        </table>
+
+        <h2>4. Roles de Acceso</h2>
+        <table>
+            <tr><th>Rol</th><th>Descripción</th><th>Acceso</th></tr>
+            <tr><td><strong>admin</strong></td><td>Administrador</td><td>Acceso total a todos los datos</td></tr>
+            <tr><td><strong>Gerencial</strong></td><td>Gerente</td><td>Acceso total a datos de su país</td></tr>
+            <tr><td><strong>Administrativo</strong></td><td>Personal administrativo</td><td>Gestión de tickets y activos</td></tr>
+            <tr><td><strong>staff</strong></td><td>Personal</td><td>Datos de su país</td></tr>
+            <tr><td><strong>Conductor</strong></td><td>Conductor/Repartidor</td><td>Tareas de logística asignadas</td></tr>
+            <tr><td><strong>user</strong></td><td>Usuario estándar</td><td>Datos básicos de su país</td></tr>
+            <tr><td><strong>pending</strong></td><td>Usuario pendiente</td><td>Sin acceso hasta aprobación</td></tr>
+        </table>
+
+        <h2>5. Triggers y Validaciones</h2>
+        <table>
+            <tr><th>Trigger</th><th>Función</th><th>Descripción</th></tr>
+            <tr><td>handle_new_user()</td><td>Auto-creación</td><td>Crea perfil en users al registrar en Supabase Auth</td></tr>
+            <tr><td>check_ticket_content()</td><td>Validación</td><td>Valida datos del ticket antes de insertar</td></tr>
+            <tr><td>validate_ticket_update()</td><td>Validación</td><td>Valida transiciones de estado</td></tr>
+            <tr><td>prevent_ticket_deletion()</td><td>Protección</td><td>Restringe eliminación solo a admins</td></tr>
+        </table>
+
+        <p style="margin-top: 40px; color: #7f8c8d; font-size: 12px; text-align: center;">
+            AssetFlow Database Schema | Generado el 2026-03-20 | Tech: Next.js + Supabase (PostgreSQL)
+        </p>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            er: {
+                diagramPadding: 20,
+                nodeAlignment: 'UL',
+                minEntityWidth: 120,
+                minEntityHeight: 40,
+                entityPadding: 15,
+                stroke: '#2c3e50',
+                fill: '#ecf0f1',
+                fontSize: 12
+            }
+        });
+    </script>
+</body>
+</html>
