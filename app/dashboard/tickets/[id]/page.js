@@ -44,6 +44,7 @@ export default function TicketDetailPage() {
         currentUser,
         sfdcCases,
         ticketTasks,
+        unifiedTasks,
         addLogisticsTask,
         updateLogisticsTask,
         deleteLogisticsTask
@@ -102,6 +103,7 @@ export default function TicketDetailPage() {
                         setSelectedCaseIndex={setSelectedCaseIndex}
                         resetSearchStates={resetSearchStates}
                         ticketTasks={ticketTasks}
+                        unifiedTasks={unifiedTasks}
                     />
 
                     <HistoryPanel 

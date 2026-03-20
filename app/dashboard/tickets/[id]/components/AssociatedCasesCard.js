@@ -13,12 +13,13 @@ export default function AssociatedCasesCard({
     selectedCaseIndex,
     setSelectedCaseIndex,
     resetSearchStates,
-    ticketTasks
+    ticketTasks,
+    unifiedTasks
 }) {
     return (
         <Card title="Casos Asociados">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {(ticketTasks && ticketTasks.length > 0 ? ticketTasks : (editedData && editedData.associatedCases) || []).map((task, index) => {
+                {(unifiedTasks || ticketTasks || (editedData && editedData.associatedCases) || []).map((task, index) => {
                     const caseAssets = task.assets || [];
                     const hasHardware = caseAssets.length > 0;
                     

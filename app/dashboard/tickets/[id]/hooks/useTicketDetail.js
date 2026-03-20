@@ -17,24 +17,25 @@ export function useTicketDetail() {
         logisticsTasks, addLogisticsTask, updateLogisticsTask, deleteLogisticsTask
     } = useStore();
 
-    const ticket = useMemo(() => tickets.find(t => t.id === params.id), [tickets, params.id]);
-    const ticketTasks = useMemo(() => logisticsTasks.filter(t => t.ticket_id === params.id), [logisticsTasks, params.id]);
+    const [editedData, setEditedData] = useState({});
+    const [selectedCaseIndex, setSelectedCaseIndex] = useState(null);
     
     // Lista unificada: Si hay tareas reales en DB las usamos, si no usamos los casos sintetizados
     const unifiedTasks = useMemo(() => {
         if (ticketTasks.length > 0) return ticketTasks;
         return (editedData && editedData.associatedCases) || [];
     }, [ticketTasks, editedData]);
+    const ticket = useMemo(() => tickets.find(t => t.id === params.id), [tickets, params.id]);
+    const ticketTasks = useMemo(() => logisticsTasks.filter(t => t.ticket_id === params.id), [logisticsTasks, params.id]);
+
     const [editMode, setEditMode] = useState(false);
     const [editLogistics, setEditLogistics] = useState(false);
     const [editAssets, setEditAssets] = useState(false);
     const [editAccessories, setEditAccessories] = useState(false);
     const [editSchedule, setEditSchedule] = useState(false);
     const [editContact, setEditContact] = useState(false);
-    const [editedData, setEditedData] = useState({});
     const [newNote, setNewNote] = useState('');
     const [addressStatus, setAddressStatus] = useState('idle');
-    const [selectedCaseIndex, setSelectedCaseIndex] = useState(null);
 
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
