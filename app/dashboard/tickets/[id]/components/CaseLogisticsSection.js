@@ -41,10 +41,15 @@ export default function CaseLogisticsSection({
 
             newCases[selectedCaseIndex].logistics = { 
                 ...currentLogistics, 
-                [field]: value,
+                [field]: field === 'deliveryInfo' ? value : value, // Keep value as is, but we add lastUpdated
                 status: newStatus,
-                assignedTo: assignedTo
+                assignedTo: assignedTo,
+                lastUpdated: new Date().toISOString()
             };
+            if (field === 'deliveryInfo') {
+                newCases[selectedCaseIndex].logistics.deliveryInfo = value;
+            }
+
             return { ...prev, associatedCases: newCases };
         });
     };

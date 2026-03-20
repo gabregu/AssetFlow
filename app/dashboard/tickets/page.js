@@ -880,22 +880,78 @@ export default function TicketsPage() {
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{ticket.date}</td>
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                            <Badge variant={getStatusVariant(ticket.status)} style={{ fontSize: '0.75rem', padding: '2px 6px' }}>
-                                                S: {ticket.status}
-                                            </Badge>
-                                            {ticket.deliveryStatus && (
-                                                <Badge
-                                                    variant={
-                                                        ticket.deliveryStatus === 'Entregado' ? 'success' :
-                                                            ticket.deliveryStatus === 'En Transito' ? 'info' :
-                                                                ticket.deliveryStatus === 'Para Coordinar' ? 'warning' :
-                                                                    'default'
-                                                    }
-                                                    style={{ fontSize: '0.75rem', padding: '2px 6px' }}
-                                                >
-                                                    E: {ticket.deliveryStatus}
-                                                </Badge>
-                                            )}
+                                            {(() => {
+                                                // 1. Get current sub-cases
+                                                const cases = ticket.associatedCases || [];
+                                                
+                                                // 2. Identify the "latest" modified case
+                                                // Sort by lastUpdated, and fall back to anything that has status/method info
+                                                let latestCase = [...cases].sort((a,b) => {
+                                                    const dateA = a.logistics?.lastUpdated || '0';
+                                                    const dateB = b.logistics?.lastUpdated || '0';
+                                                    return dateB.localeCompare(dateA);
+                                                })[0];
+
+                                                // If no sub-cases with logistics exist or the above failed, fall back to main ticket logistics
+                                                if (!latestCase || !latestCase.logistics) {
+                                                    return (
+                                                        <>
+                                                            <Badge variant={getStatusVariant(ticket.status)} style={{ fontSize: '0.75rem', padding: '2px 6px' }}>
+                                                                S: {ticket.status}
+                                                            </Badge>
+                                                            {ticket.deliveryStatus && (
+                                                                <Badge
+                                                                    variant={
+                                                                        ticket.deliveryStatus === 'Entregado' ? 'success' :
+                                                                        ticket.deliveryStatus === 'En Transito' ? 'info' :
+                                                                        ticket.deliveryStatus === 'Para Coordinar' ? 'warning' :
+                                                                        'default'
+                                                                    }
+                                                                    style={{ fontSize: '0.75rem', padding: '2px 6px' }}
+                                                                >
+                                                                    E: {ticket.deliveryStatus}
+                                                                </Badge>
+                                                            )}
+                                                        </>
+                                                    );
+                                                }
+
+                                                const log = latestCase.logistics;
+                                                const sender = log.method === 'Repartidor Propio' ? log.deliveryPerson : log.method;
+                                                const dateStr = log.date ? new Date(log.date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '';
+
+                                                return (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                        <Badge
+                                                            variant={
+                                                                log.status === 'Entregado' ? 'success' :
+                                                                log.status === 'En Transito' ? 'info' :
+                                                                log.status === 'Para Coordinar' ? 'warning' :
+                                                                'default'
+                                                            }
+                                                            style={{ fontSize: '0.75rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                                                        >
+                                                            {log.status}
+                                                        </Badge>
+                                                        {(sender || dateStr) && (
+                                                            <div style={{ 
+                                                                fontSize: '0.65rem', 
+                                                                color: 'var(--text-secondary)', 
+                                                                background: 'var(--surface-color)', 
+                                                                padding: '2px 6px', 
+                                                                borderRadius: '4px',
+                                                                border: '1px solid var(--border)',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                gap: '1px'
+                                                            }}>
+                                                                {sender && <div style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{sender}</div>}
+                                                                {dateStr && <div style={{ opacity: 0.8 }}>Acordado: {dateStr}</div>}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     </td>
                                     <td style={{ padding: '1rem' }}>
