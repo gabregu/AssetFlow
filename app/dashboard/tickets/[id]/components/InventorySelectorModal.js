@@ -100,9 +100,22 @@ export default function InventorySelectorModal({
                                                     if (!currentCase) return prev;
                                                     const currentAssets = currentCase.assets || [];
                                                     if (!currentAssets.some(a => a.serial === asset.serial)) {
+                                                        const updatedAssets = [...currentAssets, { serial: asset.serial, type: 'Entrega' }];
+                                                        
+                                                        // Automación: Si agregamos hardware, el estado pasa a "Para Coordinar" si estaba Pendiente
+                                                        let updatedLogistics = currentCase.logistics || { status: 'Pendiente', method: '', date: '', timeSlot: 'AM' };
+                                                        if (updatedLogistics.status === 'Pendiente') {
+                                                            updatedLogistics = {
+                                                                ...updatedLogistics,
+                                                                status: 'Para Coordinar',
+                                                                lastUpdated: new Date().toISOString()
+                                                            };
+                                                        }
+
                                                         newCases[selectedCaseIndex] = {
                                                             ...currentCase,
-                                                            assets: [...currentAssets, { serial: asset.serial, type: 'Entrega' }]
+                                                            assets: updatedAssets,
+                                                            logistics: updatedLogistics
                                                         };
                                                     }
                                                     return { ...prev, associatedCases: newCases };

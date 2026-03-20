@@ -46,6 +46,16 @@ export default function AssetListSection({
             const currentAssets = newCases[selectedCaseIndex].assets || [];
             if (!currentAssets.some(a => a.serial === serial)) {
                 newCases[selectedCaseIndex].assets = [...currentAssets, { serial: serial, type: '' }];
+                
+                // Automación: Si agregamos hardware, el estado pasa a "Para Coordinar" si estaba Pendiente
+                const currentStatus = newCases[selectedCaseIndex].logistics?.status || 'Pendiente';
+                if (currentStatus === 'Pendiente') {
+                    newCases[selectedCaseIndex].logistics = {
+                        ...(newCases[selectedCaseIndex].logistics || {}),
+                        status: 'Para Coordinar',
+                        lastUpdated: new Date().toISOString()
+                    };
+                }
             }
             return { ...prev, associatedCases: newCases };
         });

@@ -8,9 +8,33 @@ export default function TimeSlotSelector({
     disabled
 }) {
     const setTimeSlot = (slot) => {
-        setEditedData({
-            ...editedData,
-            logistics: { ...(editedData.logistics || {}), timeSlot: slot }
+        setEditedData(prev => {
+            const currentLog = prev.logistics || {};
+            const hasAllInfo = currentLog.date && slot;
+            
+            const newData = {
+                ...prev,
+                logistics: { ...currentLog, timeSlot: slot }
+            };
+
+            // Si hay fecha y turno, pasar a En Tránsito
+            if (hasAllInfo) {
+                newData.deliveryStatus = 'En Transito';
+                // Propagar a todos los casos asociados
+                if (newData.associatedCases) {
+                    newData.associatedCases = newData.associatedCases.map(c => ({
+                        ...c,
+                        logistics: {
+                            ...(c.logistics || {}),
+                            status: 'En Transito',
+                            date: currentLog.date,
+                            timeSlot: slot,
+                            lastUpdated: new Date().toISOString()
+                        }
+                    }));
+                }
+            }
+            return newData;
         });
     };
 

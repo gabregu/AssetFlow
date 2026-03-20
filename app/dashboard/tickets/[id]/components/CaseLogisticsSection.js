@@ -20,11 +20,11 @@ export default function CaseLogisticsSection({
             let newStatus = currentLogistics.status || 'Pendiente';
             let assignedTo = currentLogistics.assignedTo || null;
 
-            // Automación de estados
-            if (field === 'method' && value === 'Repartidor Propio') {
-                newStatus = 'Para Coordinar';
-            } else if (field === 'date' && value && (newStatus === 'Pendiente' || newStatus === 'Para Coordinar')) {
-                newStatus = 'En Transito';
+            // Automación de estados: Al asignar método o repartidor -> "Para Coordinar"
+            if ((field === 'method' && value) || (field === 'deliveryPerson' && value)) {
+                if (newStatus === 'Pendiente') {
+                    newStatus = 'Para Coordinar';
+                }
             } else if (field === 'status') {
                 newStatus = value;
             }

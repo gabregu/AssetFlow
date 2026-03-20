@@ -63,10 +63,37 @@ export default function ScheduleCoordinationCard({
                             style={{ paddingLeft: '2.5rem' }}
                             disabled={!isEditing}
                             value={editedData.logistics?.date || editedData.logistics?.datetime?.split('T')[0] || ''}
-                            onChange={e => setEditedData({
-                                ...editedData,
-                                logistics: { ...(editedData.logistics || {}), date: e.target.value }
-                            })}
+                            onChange={e => {
+                                const newDate = e.target.value;
+                                const currentLog = editedData.logistics || {};
+                                const hasAllInfo = newDate && currentLog.timeSlot;
+
+                                setEditedData(prev => {
+                                    const newData = {
+                                        ...prev,
+                                        logistics: { ...currentLog, date: newDate }
+                                    };
+
+                                    // Si hay fecha y turno, pasar a En Tránsito
+                                    if (hasAllInfo) {
+                                        newData.deliveryStatus = 'En Transito';
+                                        // Propagar a todos los casos asociados
+                                        if (newData.associatedCases) {
+                                            newData.associatedCases = newData.associatedCases.map(c => ({
+                                                ...c,
+                                                logistics: {
+                                                    ...(c.logistics || {}),
+                                                    status: 'En Transito',
+                                                    date: newDate,
+                                                    timeSlot: currentLog.timeSlot || (c.logistics?.timeSlot || 'AM'),
+                                                    lastUpdated: new Date().toISOString()
+                                                }
+                                            }));
+                                        }
+                                    }
+                                    return newData;
+                                });
+                            }}
                         />
                     </div>
                 </div>
