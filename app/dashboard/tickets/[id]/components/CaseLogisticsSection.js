@@ -68,7 +68,7 @@ export default function CaseLogisticsSection({
                     <label className="form-label">Estado de la Logística / Envío</label>
                     <select
                         className="form-select"
-                        value={task.status || 'Pendiente'}
+                        value={task.status || task.logistics?.status || 'Pendiente'}
                         onChange={e => updateLogistics('status', e.target.value)}
                     >
                         <option value="Pendiente">Pendiente</option>
@@ -82,7 +82,7 @@ export default function CaseLogisticsSection({
                     <label className="form-label">Medio Proveedor</label>
                     <select
                         className="form-select"
-                        value={task.method || ''}
+                        value={task.method || task.logistics?.method || ''}
                         onChange={e => updateLogistics('method', e.target.value)}
                     >
                         <option value="">Seleccionar...</option>
@@ -92,24 +92,24 @@ export default function CaseLogisticsSection({
                     </select>
                 </div>
 
-                {(task.method === 'Andreani' || task.method === 'Correo Argentino') && (
+                {( (task.method === 'Andreani' || task.method === 'Correo Argentino') || (task.logistics?.method === 'Andreani' || task.logistics?.method === 'Correo Argentino') ) && (
                     <div className="form-group">
                         <label className="form-label">Número de Seguimiento</label>
                         <input
                             className="form-input"
                             placeholder="Ej: AR123456789"
-                            value={task.trackingNumber || ''}
+                            value={task.trackingNumber || task.logistics?.trackingNumber || task.logistics?.tracking_number || ''}
                             onChange={e => updateLogistics('trackingNumber', e.target.value)}
                         />
                     </div>
                 )}
 
-                {task.method === 'Repartidor Propio' && (
+                {(task.method === 'Repartidor Propio' || task.logistics?.method === 'Repartidor Propio') && (
                     <div className="form-group">
                         <label className="form-label">Nombre del Repartidor</label>
                         <select
                             className="form-select"
-                            value={task.deliveryPerson || ''}
+                            value={task.deliveryPerson || task.logistics?.deliveryPerson || task.logistics?.delivery_person || ''}
                             onChange={e => updateLogistics('deliveryPerson', e.target.value)}
                         >
                             <option value="">Seleccionar repartidor...</option>
