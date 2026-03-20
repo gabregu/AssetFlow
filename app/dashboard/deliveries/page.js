@@ -20,7 +20,7 @@ export default function DeliveriesPage() {
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [newDelivery, setNewDelivery] = useState({ recipient: '', address: '', items: '', status: 'Pendiente', courier: 'Interno' });
     const [filter, setFilter] = useState('');
-    const [statusFilter, setStatusFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('En Tránsito');
     const [geocodedPoints, setGeocodedPoints] = useState([]);
     const [isGeocoding, setIsGeocoding] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
@@ -152,7 +152,8 @@ export default function DeliveriesPage() {
                     items: c.subject || t.subject || 'Equipo IT',
                     courier: cLogistics.method || 'No definido',
                     deliveryPerson: cLogistics.deliveryPerson,
-                    status: hasDriver ? 'En Tránsito' : 'Pendiente',
+                    trackingNumber: cLogistics.trackingNumber || '',
+                    status: cLogistics.status || 'Pendiente',
                     ticketStatus: t.status,
                     deliveryStatusOriginal: cLogistics.status || 'Pendiente',
                     date: `${cLogistics.date} [${cLogistics.timeSlot || 'AM'}]`,
@@ -174,7 +175,8 @@ export default function DeliveriesPage() {
                     items: t.subject || 'Equipo IT',
                     courier: t.logistics.method || 'No definido',
                     deliveryPerson: t.logistics.deliveryPerson,
-                    status: hasDriver ? 'En Tránsito' : 'Pendiente',
+                    trackingNumber: t.logistics.trackingNumber || '',
+                    status: t.deliveryStatus || 'Pendiente',
                     ticketStatus: t.status,
                     deliveryStatusOriginal: t.deliveryStatus,
                     date: `${t.logistics.date} [${t.logistics.timeSlot || 'AM'}]`,
@@ -754,9 +756,26 @@ export default function DeliveriesPage() {
                                                 <td style={{ padding: '1rem' }}>
                                                     <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{delivery.recipient}</div>
                                                     <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic', opacity: 0.8 }}>{delivery.address}</div>
-                                                    {delivery.deliveryPerson && (
-                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Repartidor: {delivery.deliveryPerson}</div>
-                                                    )}
+                                                    {(() => {
+                                                        const hasPerson = !!delivery.deliveryPerson && delivery.deliveryPerson !== 'No definido';
+                                                        const hasMethod = !!delivery.courier && delivery.courier !== 'No definido';
+                                                        const hasTracking = !!delivery.trackingNumber;
+
+                                                        if (hasPerson) {
+                                                            return (
+                                                                <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', marginTop: '4px', fontWeight: 700 }}>
+                                                                    Repartidor: {delivery.deliveryPerson}
+                                                                </div>
+                                                            );
+                                                        } else if (hasMethod) {
+                                                            return (
+                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', fontWeight: 600 }}>
+                                                                    {delivery.courier}{hasTracking ? ` / ${delivery.trackingNumber}` : ''}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
                                                 </td>
                                                 <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
