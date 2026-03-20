@@ -202,13 +202,43 @@ export function Sidebar({ isOpen, onClose }) {
                                 animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                             }}></div>
                         </div>
-                        <div>
+                        <div style={{ flex: 1 }}>
                             <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
                                 Usuarios Online
                             </p>
                             <p style={{ fontSize: '0.7rem', color: '#15803d', margin: 0, fontWeight: 600 }}>
                                 {onlineUsers.length} conectados
                             </p>
+                            
+                            {/* Lista de nombres */}
+                            {onlineUsers.length > 0 && (
+                                <div style={{ 
+                                    marginTop: '0.5rem', 
+                                    maxHeight: '100px', 
+                                    overflowY: 'auto',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '4px',
+                                    paddingLeft: '2px'
+                                }}>
+                                    {onlineUsers.map((user, i) => (
+                                        <div key={i} style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px',
+                                            fontSize: '0.65rem',
+                                            color: 'var(--text-main)',
+                                            fontWeight: 500
+                                        }}>
+                                            <div style={{ width: '4px', height: '4px', backgroundColor: '#22c55e', borderRadius: '50%' }}></div>
+                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {user.name || user.email}
+                                            </span>
+                                            <span style={{ fontSize: '0.6rem', opacity: 0.6 }}>({user.role})</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

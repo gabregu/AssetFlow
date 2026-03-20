@@ -917,7 +917,13 @@ export default function TicketsPage() {
                                                 }
 
                                                 const log = latestCase.logistics;
-                                                const sender = log.method === 'Repartidor Propio' ? log.deliveryPerson : log.method;
+                                                let sender = '';
+                                                if (log.method === 'Repartidor Propio' && log.deliveryPerson) {
+                                                    sender = log.deliveryPerson;
+                                                } else if (log.method) {
+                                                    sender = log.method + (log.trackingNumber ? ` (${log.trackingNumber})` : '');
+                                                }
+                                                
                                                 const dateStr = log.date ? new Date(log.date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '';
 
                                                 return (
@@ -938,15 +944,16 @@ export default function TicketsPage() {
                                                                 fontSize: '0.65rem', 
                                                                 color: 'var(--text-secondary)', 
                                                                 background: 'var(--surface-color)', 
-                                                                padding: '2px 6px', 
+                                                                padding: '4px 8px', 
                                                                 borderRadius: '4px',
                                                                 border: '1px solid var(--border)',
                                                                 display: 'flex',
                                                                 flexDirection: 'column',
-                                                                gap: '1px'
+                                                                gap: '2px',
+                                                                marginTop: '2px'
                                                             }}>
-                                                                {sender && <div style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{sender}</div>}
-                                                                {dateStr && <div style={{ opacity: 0.8 }}>Acordado: {dateStr}</div>}
+                                                                {sender && <div style={{ fontWeight: 700, color: 'var(--primary-color)', fontSize: '0.7rem' }}>{sender}</div>}
+                                                                {dateStr && <div style={{ opacity: 0.8, fontSize: '0.65rem' }}>Acordado: {dateStr}</div>}
                                                             </div>
                                                         )}
                                                     </div>
