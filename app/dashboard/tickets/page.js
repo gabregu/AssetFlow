@@ -221,7 +221,21 @@ export default function TicketsPage() {
                                 phone: mainCase.mobile || '',
                                 email: mainCase.email || '',
                                 type: 'Entrega'
-                            }
+                            },
+                            associatedCases: group.map(c => ({
+                                caseNumber: c.caseNumber,
+                                subject: c.subject,
+                                status: c.status,
+                                priority: c.priority,
+                                dateOpened: c.dateOpened,
+                                logistics: {
+                                    address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : mainCase.country,
+                                    phone: c.mobile || '',
+                                    email: c.email || '',
+                                    method: 'Por definir',
+                                    status: 'Para Coordinar'
+                                }
+                            }))
                         };
 
                         await addTicket(newTicketData);
