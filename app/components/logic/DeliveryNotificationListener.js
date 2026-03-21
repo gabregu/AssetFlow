@@ -11,7 +11,7 @@ export function DeliveryNotificationListener() {
     useEffect(() => {
         // Permitir a Admins, Administrativos y Conductores (incluye alias)
         const role = (currentUser?.role || '').toLowerCase();
-        const allowRole = role === 'admin' || role === 'administrativo' || role === 'conductor' || role === 'driver' || role === 'employee';
+        const allowRole = ['admin', 'administrativo', 'conductor', 'driver', 'employee', 'staff', 'gerencial'].includes(role);
         
         if (!currentUser || !allowRole) return;
 
@@ -27,14 +27,16 @@ export function DeliveryNotificationListener() {
                     table: 'tickets',
                 },
                 (payload) => {
+                    console.log("RECV Notification Payload (tickets):", payload);
                     const newData = payload.new;
                     const oldData = payload.old;
+                    const role = (currentUser?.role || '').toLowerCase();
 
-                    // 1. NOTIFICACIÓN PARA ADMINS: Entrega realizada
-                    if ((currentUser.role === 'admin' || currentUser.role === 'Administrativo') && 
-                        newData.deliveryStatus === 'Entregado' && oldData.deliveryStatus !== 'Entregado') {
+                    // 1. NOTIFICACIÓN PARA ADMINS/STAFF: Entrega realizada
+                    if ((role === 'admin' || role === 'administrativo' || role === 'staff' || role === 'gerencial') && 
+                        newData.delivery_status === 'Entregado' && oldData.delivery_status !== 'Entregado') {
                         
-                        const clientName = newData.logistics?.receivedBy || 'Un Cliente';
+                        const clientName = newData.logistics?.receivedBy || newData.logistics?.received_by || 'Un Cliente';
                         
                         setNotification({
                             type: 'delivery',
@@ -49,13 +51,20 @@ export function DeliveryNotificationListener() {
                     }
 
                     // 2. NOTIFICACIÓN PARA CONDUCTORES: Nueva Asignación
-                    if (currentUser && (currentUser.role === 'Conductor' || currentUser.role === 'driver' || currentUser.role === 'employee')) {
-                        const uName = (currentUser.name || '').toLowerCase();
-                        const uId = String(currentUser.id || currentUser.uid || currentUser.uuid);
+                    if (currentUser && (role === 'conductor' || role === 'driver' || role === 'employee')) {
+                        const uName = (currentUser.name || '').trim().toLowerCase();
+                        const uId = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
 
                         // Verificar si EL TICKET PRINCIPAL fue asignado a mí
-                        const isMainAssignedToMe = String(newData.assigned_to) === uId || (newData.delivery_person || '').toLowerCase().includes(uName);
-                        const wasMainAssignedToMe = oldData && (String(oldData.assigned_to) === uId || (oldData.delivery_person || '').toLowerCase().includes(uName));
+                        // Buscamos en columna top-level (si existe) o dentro del JSONB de logistics
+                        const newAssignedTo = newData.assigned_to || newData.logistics?.assigned_to || newData.logistics?.assignedTo;
+                        const newDeliveryPerson = (newData.delivery_person || newData.logistics?.delivery_person || newData.logistics?.deliveryPerson || '').toLowerCase();
+                        
+                        const oldAssignedTo = oldData?.assigned_to || oldData?.logistics?.assigned_to || oldData?.logistics?.assignedTo;
+                        const oldDeliveryPerson = (oldData?.delivery_person || oldData?.logistics?.delivery_person || oldData?.logistics?.deliveryPerson || '').toLowerCase();
+
+                        const isMainAssignedToMe = String(newAssignedTo || '') === uId || newDeliveryPerson.includes(uName);
+                        const wasMainAssignedToMe = String(oldAssignedTo || '') === uId || oldDeliveryPerson.includes(uName);
 
                         // Verificar si ALGÚN CASO ASOCIADO fue asignado a mí (Estructura Legacy)
                         // IMPORTANTE: En el payload RAW de Postgres, la columna es associated_assets
@@ -106,12 +115,14 @@ export function DeliveryNotificationListener() {
                     table: 'logistics_tasks',
                 },
                 (payload) => {
+                    console.log("RECV Notification Payload (logistics_tasks):", payload);
                     const newTask = payload.new;
                     const oldTask = payload.old;
 
-                    if (currentUser && (currentUser.role === 'Conductor' || currentUser.role === 'driver' || currentUser.role === 'employee')) {
-                        const uName = (currentUser.name || '').toLowerCase();
-                        const uId = String(currentUser.id || currentUser.uid || currentUser.uuid);
+                    const role = (currentUser?.role || '').toLowerCase();
+                    if (currentUser && (role === 'conductor' || role === 'driver' || role === 'employee')) {
+                        const uName = (currentUser.name || '').trim().toLowerCase();
+                        const uId = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
 
                         const taskAssignedTo = String(newTask.assigned_to || '');
                         const taskDriverName = (newTask.delivery_person || '').toLowerCase();
@@ -158,12 +169,13 @@ export function DeliveryNotificationListener() {
             top: '20px',
             right: '20px',
             zIndex: 9999,
-            backgroundColor: 'white',
-            borderLeft: '5px solid #22c55e',
-            borderRadius: '8px',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            backgroundColor: 'var(--surface)',
+            borderLeft: `5px solid ${notification.type === 'assignment' ? '#3b82f6' : '#22c55e'}`,
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-md)',
             padding: '16px',
             maxWidth: '350px',
+            border: '1px solid var(--border)',
             animation: 'slideIn 0.5s ease-out'
         }}>
             <style jsx>{`
@@ -184,10 +196,10 @@ export function DeliveryNotificationListener() {
                     <CheckCircle2 size={24} color={notification.type === 'assignment' ? '#3b82f6' : '#15803d'} />
                 </div>
                 <div style={{ flex: 1 }}>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 700, color: '#111' }}>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>
                         {notification.title}
                     </h4>
-                    <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.4' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
                         {notification.message}
                     </p>
                     <p style={{ margin: '0', fontSize: '1rem', fontWeight: 600, color: notification.type === 'assignment' ? '#3b82f6' : '#15803d' }}>
@@ -225,7 +237,7 @@ export function DeliveryNotificationListener() {
                         border: 'none',
                         cursor: 'pointer',
                         padding: '4px',
-                        color: '#9ca3af'
+                        color: 'var(--text-secondary)'
                     }}
                 >
                     <X size={16} />
