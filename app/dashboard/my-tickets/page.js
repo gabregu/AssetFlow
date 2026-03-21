@@ -51,7 +51,8 @@ export default function MyTicketsPage() {
         const uName = (currentUser.name || '').trim().toLowerCase();
         const uId = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
         
-        // 1. PROCESAR NUEVA TABLA RELACIONAL (logistics_tasks)
+        // --- 1. PROCESAR SUB-CASOS (logistics_tasks) ---
+        // Fuente principal de verdad para asignaciones individuales
         logisticsTasks.forEach(task => {
             const drvName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
             const drvId = String(task.assigned_to || task.assignedTo || '');
@@ -60,47 +61,51 @@ export default function MyTicketsPage() {
             const isMeById = drvId && (drvId === uId);
             
             if (isMeByName || isMeById) {
-                // Comparar IDs como strings para evitar fallos de tipo (UUID vs Int/etc)
                 const pTicket = tickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
-                if (pTicket) {
-                    const isAlreadyIn = items.some(it => String(it.id) === String(pTicket.id) && it.taskId === task.id);
-                    if (!isAlreadyIn) {
-                        items.push({
-                            ...pTicket,
-                            taskId: task.id,
-                            isMainTicket: false,
-                            displaySubject: task.subject || pTicket.subject,
-                            displayId: task.case_number || task.caseNumber || (String(pTicket.id).substring(0, 8)),
-                            displayAddress: task.address || pTicket.logistics?.address || pTicket.logistics?.displayAddress,
-                            displayDate: task.date,
-                            displayStatus: task.status || 'Pendiente',
-                            taskTimeSlot: task.time_slot || task.timeSlot,
-                            caseData: task
-                        });
-                    }
-                }
+                
+                // Agregamos la tarea aunque no encontremos el ticket padre (Resiliencia total)
+                items.push({
+                    id: pTicket?.id || task.ticket_id || 'N/A',
+                    taskId: task.id,
+                    isMainTicket: false,
+                    displaySubject: task.subject || task.items || pTicket?.subject || 'Gestión de Activos',
+                    displayId: task.case_number || task.caseNumber || (pTicket?.id ? String(pTicket.id).substring(0, 8) : 'SUB-CASE'),
+                    displayAddress: task.address || pTicket?.logistics?.address || 'Dirección no especificada',
+                    displayDate: task.date || 'Pendiente',
+                    displayStatus: task.status || 'Pendiente',
+                    taskTimeSlot: task.time_slot || task.timeSlot || 'Por definir',
+                    requester: task.requester || pTicket?.requester || 'Destinatario',
+                    parentTicket: pTicket,
+                    caseData: task
+                });
             }
         });
 
-        // 2. PROCESAR TICKETS LEGACY
+        // --- 2. PROCESAR TICKETS LEGACY (Solo si no tienen sub-casos asociados) ---
         tickets.forEach(ticket => {
-            const tDName = (ticket.delivery_person || ticket.deliveryPerson || '').toLowerCase();
-            const tDUid = String(ticket.assigned_to || ticket.assignedTo || '');
-            const isTMe = (tDName && (tDName === uName || uName.includes(tDName) || tDName.includes(uName))) || 
-                                     (tDUid && (tDUid === uId));
-            
-            const isTRes = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
-            const isTAdded = items.some(it => it.id === ticket.id); // Si ya incluimos sub-casos de este ticket, no agregarlo como main.
+            // Si el ticket ya tiene tareas en la nueva tabla, las tareas mandan (evitamos duplicados)
+            const hasNewTasks = logisticsTasks.some(tk => String(tk.ticket_id) === String(ticket.id));
+            if (hasNewTasks) return;
 
-            if (isTMe && !isTRes && !isTAdded) {
+            const tDriverName = (ticket.logistics?.delivery_person || ticket.logistics?.deliveryPerson || '').trim().toLowerCase();
+            const tDriverUid = String(ticket.logistics?.assigned_to || ticket.logistics?.assignedTo || '');
+            
+            const isMeLegacy = (tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName))) || 
+                               (tDriverUid && (tDriverUid === uId));
+            
+            if (isMeLegacy) {
+                const isTRes = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
+                if (isTRes) return; // No mostrar finalizados en Mis Servicios
+
                 items.push({
                     ...ticket,
-                    isMainTicket: true,
                     displaySubject: ticket.subject,
-                    displayId: String(ticket.id).substring(0, 8),
-                    displayAddress: ticket.logistics?.address,
-                    displayDate: ticket.logistics?.date,
-                    displayStatus: ticket.deliveryStatus || 'Pendiente'
+                    displayId: ticket.id,
+                    displayAddress: ticket.logistics?.address || 'Sin dirección',
+                    displayDate: ticket.logistics?.date || 'Sin fecha',
+                    displayStatus: ticket.logistics?.status || 'Pendiente',
+                    isMainTicket: true,
+                    taskId: null
                 });
             }
         });
