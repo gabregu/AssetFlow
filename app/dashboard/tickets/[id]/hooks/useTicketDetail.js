@@ -394,9 +394,17 @@ export function useTicketDetail() {
         
         if (currentTask.id) {
             // Nueva arquitectura: actualización directa en DB
+            // 2. Automación: Si se edita un caso asociado, el ticket general pasa a "En Progreso"
+            if (ticket.status === 'Abierto' || ticket.status === 'Pendiente') {
+                await updateTicket(ticket.id, { status: 'En Progreso' });
+            }
             await updateLogisticsTask(currentTask.id, partialData);
         } else {
-            // Arquitectura legacy: actualización en el estado local coincidiendo con la estructura JSON anidada
+            // 2. Automación: Si se edita un caso asociado, el ticket general pasa a "En Progreso"
+            if (ticket.status === 'Abierto' || ticket.status === 'Pendiente') {
+                await updateTicket(ticket.id, { status: 'En Progreso' });
+            }
+
             const updatedCases = editedData.associatedCases.map((c, idx) => {
                 if (idx === selectedCaseIndex) {
                     // Mantener estructura legacy para tickets viejos (pero unificada)
