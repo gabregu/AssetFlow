@@ -13,11 +13,13 @@ export default function CaseLogisticsSection({
 
     React.useEffect(() => {
         setLocalValues({
-            status: task.status || task.logistics?.status || 'Pendiente',
-            method: task.method || task.logistics?.method || '',
-            deliveryPerson: task.delivery_person || task.deliveryPerson || task.logistics?.deliveryPerson || task.logistics?.delivery_person || '',
-            coordinatedBy: task.coordinatedBy || task.coordinated_by || '',
-            trackingNumber: task.trackingNumber || task.logistics?.trackingNumber || task.logistics?.tracking_number || ''
+            status: task.status || 'Pendiente',
+            method: task.method || '',
+            delivery_person: task.delivery_person || '',
+            coordinated_by: task.coordinated_by || '',
+            tracking_number: task.tracking_number || '',
+            date: task.date || '',
+            time_slot: task.time_slot || 'AM'
         });
     }, [task]);
 
@@ -31,7 +33,7 @@ export default function CaseLogisticsSection({
         let newStatus = localValues.status || 'Pendiente';
 
         // Automación de estados: Al asignar método o repartidor -> "Para Coordinar"
-        if ((field === 'method' && value) || (field === 'deliveryPerson' && value)) {
+        if ((field === 'method' && value) || (field === 'delivery_person' && value)) {
             if (newStatus === 'Pendiente') {
                 newStatus = 'Para Coordinar';
                 setLocalValues(prev => ({ ...prev, status: 'Para Coordinar' }));
@@ -40,37 +42,15 @@ export default function CaseLogisticsSection({
             newStatus = value;
         }
 
-        // Mapeo de campos según el modelo
-        const propMap = isRelational ? {
-            status: 'status',
-            method: 'method',
-            deliveryPerson: 'delivery_person',
-            assignedTo: 'assigned_to',
-            trackingNumber: 'tracking_number',
-            deliveryInfo: 'delivery_info',
-            coordinatedBy: 'coordinated_by',
-        } : {
-            status: 'status',
-            method: 'method',
-            deliveryPerson: 'deliveryPerson',
-            assignedTo: 'assignedTo',
-            trackingNumber: 'trackingNumber',
-            deliveryInfo: 'deliveryInfo',
-            coordinatedBy: 'coordinatedBy'
-        };
-
-        // Si cambiamos el repartidor, buscamos su UID (assignedTo/assigned_to)
-        if (field === 'deliveryPerson') {
+        // Si cambiamos el repartidor, buscamos su UID (assigned_to)
+        if (field === 'delivery_person') {
             const matchedUser = users.find(u => u.name === value);
-            updates[propMap.assignedTo] = matchedUser ? (matchedUser.id || matchedUser.uid) : null;
+            updates.assigned_to = matchedUser ? (matchedUser.id || matchedUser.uid) : null;
         }
 
-        // Aplicamos el cambio solicitado
-        const targetField = propMap[field] || field;
-        updates[targetField] = value;
-        
-        // Aplicamos el estado automatizado
-        updates[propMap.status] = newStatus;
+        // Aplicamos el cambio solicitado y el estado automatizado (TODO en snake_case)
+        updates[field] = value;
+        updates.status = newStatus;
 
         await onUpdateTask(updates);
     };
@@ -116,8 +96,8 @@ export default function CaseLogisticsSection({
                         <input
                             className="form-input"
                             placeholder="Ej: AR123456789"
-                            value={localValues.trackingNumber || ''}
-                            onChange={e => updateLogistics('trackingNumber', e.target.value)}
+                            value={localValues.tracking_number || ''}
+                            onChange={e => updateLogistics('tracking_number', e.target.value)}
                         />
                     </div>
                 )}
@@ -127,8 +107,8 @@ export default function CaseLogisticsSection({
                         <label className="form-label">Nombre del Repartidor</label>
                         <select
                             className="form-select"
-                            value={localValues.deliveryPerson || ''}
-                            onChange={e => updateLogistics('deliveryPerson', e.target.value)}
+                            value={localValues.delivery_person || ''}
+                            onChange={e => updateLogistics('delivery_person', e.target.value)}
                         >
                             <option value="">Seleccionar repartidor...</option>
                             {users.filter(u => u.role !== 'admin').map(u => (
@@ -149,7 +129,7 @@ export default function CaseLogisticsSection({
                             value={localValues.date || ''}
                             onChange={e => {
                                 const newDate = e.target.value;
-                                if (newDate && localValues.timeSlot && (localValues.status === 'Para Coordinar')) {
+                                if (newDate && localValues.time_slot && (localValues.status === 'Para Coordinar')) {
                                     updateLogistics('status', 'En Transito');
                                 }
                                 updateLogistics('date', newDate);
@@ -160,7 +140,6 @@ export default function CaseLogisticsSection({
                         <label className="form-label">Turno (AM / PM)</label>
                         <div style={{ display: 'flex', gap: '0.4rem', height: '42px' }}>
                             {['AM', 'PM'].map(slot => {
-                                const activeSlot = task.timeSlot || task.logistics?.timeSlot || 'AM';
                                 return (
                                     <button
                                         key={slot}
@@ -169,14 +148,14 @@ export default function CaseLogisticsSection({
                                             if (localValues.date && (localValues.status === 'Para Coordinar')) {
                                                 updateLogistics('status', 'En Transito');
                                             }
-                                            updateLogistics('timeSlot', slot);
+                                            updateLogistics('time_slot', slot);
                                         }}
                                         style={{
                                             flex: 1,
                                             borderRadius: '6px',
                                             border: '1px solid var(--border)',
-                                            background: activeSlot === slot ? 'var(--primary-color)' : 'white',
-                                            color: activeSlot === slot ? 'white' : 'var(--text-main)',
+                                            background: (localValues.time_slot || 'AM') === slot ? 'var(--primary-color)' : 'white',
+                                            color: (localValues.time_slot || 'AM') === slot ? 'white' : 'var(--text-main)',
                                             fontWeight: 600,
                                             cursor: 'pointer'
                                         }}
@@ -193,8 +172,8 @@ export default function CaseLogisticsSection({
                     <label className="form-label">Coordinado por</label>
                     <select
                         className="form-select"
-                        value={localValues.coordinatedBy || ''}
-                        onChange={e => updateLogistics('coordinatedBy', e.target.value)}
+                        value={localValues.coordinated_by || ''}
+                        onChange={e => updateLogistics('coordinated_by', e.target.value)}
                     >
                         <option value="">Seleccionar responsable...</option>
                         {users.map(u => (

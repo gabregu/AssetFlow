@@ -62,8 +62,8 @@ export default function AssociatedCasesCard({
                                     </Badge>
                                      <Badge variant={statusVariant} style={{ fontSize: '0.65rem', opacity: isSelected ? 0.85 : 1 }}>
                                          {status}: {task.method || 'Sin método'}
-                                         {task.method === 'Repartidor Propio' && task.deliveryPerson && ` - ${task.deliveryPerson}`}
-                                         {(task.method === 'Andreani' || task.method === 'Correo Argentino') && task.trackingNumber && ` - ${task.trackingNumber}`}
+                                         {task.method === 'Repartidor Propio' && task.delivery_person && ` - ${task.delivery_person}`}
+                                         {(task.method === 'Andreani' || task.method === 'Correo Argentino') && task.tracking_number && ` - ${task.tracking_number}`}
                                      </Badge>
                                 </div>
                             </div>

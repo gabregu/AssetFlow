@@ -71,8 +71,8 @@ export default function MyDeliveriesPage() {
         
         // 1. Procesar tareas de la nueva tabla relacional
         logisticsTasks.forEach(task => {
-            const driverName = (task.delivery_person || task.deliveryPerson || '').toLowerCase();
-            const driverUid = task.assigned_to || task.assignedTo;
+            const driverName = (task.delivery_person || '').toLowerCase();
+            const driverUid = task.assigned_to;
             
             // FILTRO: Solo si está asignado a MÍ
             const isAssignedByName = driverName && (driverName === uName || uName.includes(driverName) || driverName.includes(uName));
@@ -129,11 +129,11 @@ export default function MyDeliveriesPage() {
                 });
             }
 
-            // B. REVISAR CASOS ASOCIADOS LEGACY (El punto faltante)
+            // B. REVISAR CASOS ASOCIADOS LEGACY (Unificado por normalizador ahora)
             if (t.associatedCases && Array.isArray(t.associatedCases)) {
                 t.associatedCases.forEach((c, idx) => {
-                    const cDriverName = (c.logistics?.delivery_person || c.logistics?.deliveryPerson || '').toLowerCase();
-                    const cDriverUid = c.logistics?.assigned_to || c.logistics?.assignedTo;
+                    const cDriverName = (c.delivery_person || '').toLowerCase();
+                    const cDriverUid = c.assigned_to;
                     const isCaseAssigned = (cDriverName && (cDriverName === uName || uName.includes(cDriverName) || cDriverName.includes(uName))) || 
                                            (cDriverUid && (cDriverUid === uUid));
                     

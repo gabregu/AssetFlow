@@ -101,10 +101,16 @@ export function useTicketDetail() {
                     ...c,
                     assets: c.assets || [],
                     accessories: c.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
+                    // Unificación total a snake_case
+                    status: c.status || c.logistics?.status || 'Pendiente',
+                    method: c.method || c.logistics?.method || '',
+                    delivery_person: c.delivery_person || c.deliveryPerson || c.logistics?.deliveryPerson || c.logistics?.delivery_person || '',
+                    assigned_to: c.assigned_to || c.assignedTo || c.logistics?.assigned_to || c.logistics?.assignedTo || '',
                     date: c.date || c.logistics?.date || '',
-                    timeSlot: c.time_slot || c.timeSlot || c.logistics?.timeSlot || 'AM',
-                    coordinatedBy: c.coordinated_by || c.coordinatedBy || c.logistics?.coordinatedBy || '',
-                    logistics: c.logistics || { method: '', date: '', timeSlot: 'AM', status: 'Pendiente' }
+                    time_slot: c.time_slot || c.timeSlot || c.logistics?.timeSlot || 'AM',
+                    coordinated_by: c.coordinated_by || c.coordinatedBy || c.logistics?.coordinatedBy || '',
+                    tracking_number: c.tracking_number || c.trackingNumber || c.logistics?.trackingNumber || c.logistics?.tracking_number || '',
+                    logistics: c.logistics || { status: 'Pendiente' } // Mantener logistics solo para retrocompatibilidad profunda si es necesario
                 }));
             }
 
@@ -393,22 +399,15 @@ export function useTicketDetail() {
             // Arquitectura legacy: actualización en el estado local coincidiendo con la estructura JSON anidada
             const updatedCases = editedData.associatedCases.map((c, idx) => {
                 if (idx === selectedCaseIndex) {
-                    // Mapear campos planos de la tarea a la estructura anidada de logística si es necesario
-                    const logisticsFields = ['status', 'method', 'date', 'timeSlot', 'address', 'deliveryPerson', 'assignedTo', 'trackingNumber', 'deliveryInfo', 'coordinatedBy'];
+                    // Mantener estructura legacy para tickets viejos (pero unificada)
                     const newLogistics = { ...(c.logistics || {}) };
-                    const otherFields = {};
+                    const updatedCase = { ...c, ...partialData };
 
                     Object.keys(partialData).forEach(key => {
-                        if (logisticsFields.includes(key)) {
-                            // Mapeo automático de nombres de campos legado si es necesario
-                            const legacyKey = key === 'coordinatedBy' ? 'coordinatedBy' : key;
-                            newLogistics[legacyKey] = partialData[key];
-                        } else {
-                            otherFields[key] = partialData[key];
-                        }
+                        newLogistics[key] = partialData[key];
                     });
 
-                    return { ...c, ...otherFields, logistics: newLogistics };
+                    return { ...updatedCase, logistics: newLogistics };
                 }
                 return c;
             });
