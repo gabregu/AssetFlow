@@ -66,16 +66,16 @@ export default function MyDeliveriesPage() {
         if (!currentUser) return [];
         
         const items = [];
-        const uName = (currentUser?.name || '').toLowerCase();
-        const uUid = String(currentUser?.id || currentUser?.uid || currentUser?.uuid);
+        const uName = (currentUser.name || '').trim().toLowerCase();
+        const uUid = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
 
         // Permitir a cualquier usuario asignado ver sus entregas en esta vista
         if (!currentUser) return [];
         
         // 1. Procesar tareas de la nueva tabla relacional
         logisticsTasks.forEach(task => {
-            const driverName = (task.delivery_person || '').toLowerCase();
-            const driverUid = String(task.assigned_to || '');
+            const driverName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
+            const driverUid = String(task.assigned_to || task.assignedTo || '');
             
             // FILTRO: Solo si está asignado a MÍ
             const isAssignedByName = driverName && (driverName === uName || uName.includes(driverName) || driverName.includes(uName));
@@ -198,9 +198,11 @@ export default function MyDeliveriesPage() {
 
         // Recorrer las tareas asignadas
         logisticsTasks.forEach(task => {
-            const isMine = (task.assigned_to || task.assignedTo) === currentUser.id || 
-                           (task.assigned_to || task.assignedTo) === currentUser.uuid ||
-                           ((task.delivery_person || task.deliveryPerson)?.toLowerCase() === uName);
+            const tDriverName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
+            const tDriverUid = String(task.assigned_to || task.assignedTo || '');
+            
+            const isMine = (tDriverUid === uUid) || 
+                           (tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName)));
             
             if (!isMine) return;
 

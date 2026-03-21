@@ -48,32 +48,33 @@ export default function MyTicketsPage() {
     const myAssignedItems = useMemo(() => {
         if (!currentUser) return [];
         const items = [];
-        const uName = (currentUser.name || '').toLowerCase();
+        const uName = (currentUser.name || '').trim().toLowerCase();
         const uId = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
         
         // 1. PROCESAR NUEVA TABLA RELACIONAL (logistics_tasks)
         logisticsTasks.forEach(task => {
-            const drvName = (task.delivery_person || '').toLowerCase();
-            const drvId = String(task.assigned_to || '');
+            const drvName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
+            const drvId = String(task.assigned_to || task.assignedTo || '');
             
             const isMeByName = drvName && (drvName === uName || uName.includes(drvName) || drvName.includes(uName));
             const isMeById = drvId && (drvId === uId);
             
             if (isMeByName || isMeById) {
-                const pTicket = tickets.find(t => t.id === task.ticket_id);
+                // Comparar IDs como strings para evitar fallos de tipo (UUID vs Int/etc)
+                const pTicket = tickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
                 if (pTicket) {
-                    const isAlreadyIn = items.some(it => it.id === pTicket.id && it.taskId === task.id);
+                    const isAlreadyIn = items.some(it => String(it.id) === String(pTicket.id) && it.taskId === task.id);
                     if (!isAlreadyIn) {
                         items.push({
                             ...pTicket,
                             taskId: task.id,
                             isMainTicket: false,
                             displaySubject: task.subject || pTicket.subject,
-                            displayId: task.case_number || (String(pTicket.id).substring(0, 8)),
+                            displayId: task.case_number || task.caseNumber || (String(pTicket.id).substring(0, 8)),
                             displayAddress: task.address || pTicket.logistics?.address || pTicket.logistics?.displayAddress,
-                            displayDate: task.date || pTicket.logistics?.date,
+                            displayDate: task.date,
                             displayStatus: task.status || 'Pendiente',
-                            taskTimeSlot: task.time_slot,
+                            taskTimeSlot: task.time_slot || task.timeSlot,
                             caseData: task
                         });
                     }
