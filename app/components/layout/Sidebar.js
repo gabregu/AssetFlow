@@ -2,7 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Ticket, Package, Truck, Settings, LogOut, FileText, X, DollarSign, History } from 'lucide-react';
+import { LayoutDashboard, Ticket, Package, Truck, Settings, LogOut, FileText, X, DollarSign, History, Activity } from 'lucide-react';
 import { useStore } from '../../../lib/store';
 
 import { Logo } from '../ui/Logo';
@@ -17,6 +17,7 @@ export function Sidebar({ isOpen, onClose }) {
         { name: 'Servicios', icon: Ticket, path: '/dashboard/tickets', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Inventario', icon: Package, path: '/dashboard/inventory', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Envíos', icon: Truck, path: '/dashboard/deliveries', roles: ['admin', 'Administrativo', 'Gerencial'] },
+        { name: 'Tráfico Logística', icon: Activity, path: '/dashboard/logistics', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Facturación', icon: DollarSign, path: '/dashboard/billing', roles: ['admin', 'Gerencial'] },
         { name: 'Histórico', icon: History, path: '/dashboard/history', roles: ['admin', 'Administrativo', 'Gerencial'] },
     ];
