@@ -25,34 +25,40 @@ export default function CaseLogisticsSection({
 
     const isRelational = !!task.id;
 
-    const updateLogistics = async (field, value) => {
-        // Actualización visual inmediata
-        setLocalValues(prev => ({ ...prev, [field]: value }));
+    const updateLogistics = async (updatesOrField, valueIfSingle) => {
+        let incomingUpdates = {};
+        if (typeof updatesOrField === 'string') {
+            incomingUpdates[updatesOrField] = valueIfSingle;
+        } else {
+            incomingUpdates = { ...updatesOrField };
+        }
 
-        const updates = {};
-        let newStatus = localValues.status || 'Pendiente';
+        // 1. Actualización visual inmediata (Optimista)
+        setLocalValues(prev => ({ ...prev, ...incomingUpdates }));
 
-        // Automación de estados: Al asignar método o repartidor -> "Para Coordinar"
-        if ((field === 'method' && value) || (field === 'delivery_person' && value)) {
-            if (newStatus === 'Pendiente') {
-                newStatus = 'Para Coordinar';
+        // 2. Lógica de Negocio y Automación
+        const finalUpdates = { ...incomingUpdates };
+        let currentStatus = incomingUpdates.status || localValues.status || 'Pendiente';
+
+        // Automación: Asignar método o repartidor -> "Para Coordinar"
+        if (incomingUpdates.method || incomingUpdates.delivery_person) {
+            if (currentStatus === 'Pendiente') {
+                currentStatus = 'Para Coordinar';
+                finalUpdates.status = 'Para Coordinar';
                 setLocalValues(prev => ({ ...prev, status: 'Para Coordinar' }));
             }
-        } else if (field === 'status') {
-            newStatus = value;
         }
 
         // Si cambiamos el repartidor, buscamos su UID (assigned_to)
-        if (field === 'delivery_person') {
-            const matchedUser = users.find(u => u.name === value);
-            updates.assigned_to = matchedUser ? (matchedUser.id || matchedUser.uid) : null;
+        if (incomingUpdates.delivery_person) {
+            const matchedUser = users.find(u => u.name === incomingUpdates.delivery_person);
+            finalUpdates.assigned_to = matchedUser ? (matchedUser.id || matchedUser.uid) : null;
         }
 
-        // Aplicamos el cambio solicitado y el estado automatizado (TODO en snake_case)
-        updates[field] = value;
-        updates.status = newStatus;
+        // Siempre enviamos el status actual para asegurar integridad en DB
+        if (!finalUpdates.status) finalUpdates.status = currentStatus;
 
-        await onUpdateTask(updates);
+        await onUpdateTask(finalUpdates);
     };
 
     return (
@@ -129,10 +135,11 @@ export default function CaseLogisticsSection({
                             value={localValues.date || ''}
                             onChange={e => {
                                 const newDate = e.target.value;
+                                const updates = { date: newDate };
                                 if (newDate && localValues.time_slot && (localValues.status === 'Para Coordinar')) {
-                                    updateLogistics('status', 'En Transito');
+                                    updates.status = 'En Transito';
                                 }
-                                updateLogistics('date', newDate);
+                                updateLogistics(updates);
                             }}
                         />
                     </div>
@@ -145,10 +152,11 @@ export default function CaseLogisticsSection({
                                         key={slot}
                                         type="button"
                                         onClick={() => {
+                                            const updates = { time_slot: slot };
                                             if (localValues.date && (localValues.status === 'Para Coordinar')) {
-                                                updateLogistics('status', 'En Transito');
+                                                updates.status = 'En Transito';
                                             }
-                                            updateLogistics('time_slot', slot);
+                                            updateLogistics(updates);
                                         }}
                                         style={{
                                             flex: 1,
