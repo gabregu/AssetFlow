@@ -33,6 +33,11 @@ export default function MyDeliveriesPage() {
         logisticsTasks, 
         updateLogisticsTask 
     } = useStore();
+    
+    // Identidad del usuario para filtrado (Definida a nivel de componente para evitar ReferenceErrors)
+    const uName = (currentUser?.name || '').trim().toLowerCase();
+    const uId = String(currentUser?.id || currentUser?.uid || currentUser?.uuid || '');
+
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('En Transito'); // Solo activos por defecto
     const [selectedDelivery, setSelectedDelivery] = useState(null);
@@ -66,8 +71,6 @@ export default function MyDeliveriesPage() {
         if (!currentUser) return [];
         
         const items = [];
-        const uName = (currentUser.name || '').trim().toLowerCase();
-        const uUid = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
 
         // Permitir a cualquier usuario asignado ver sus entregas en esta vista
         if (!currentUser) return [];
@@ -118,7 +121,7 @@ export default function MyDeliveriesPage() {
             const tDriverName = (t.logistics?.delivery_person || t.logistics?.deliveryPerson || '').toLowerCase();
             const tDriverUid = t.logistics?.assigned_to || t.logistics?.assignedTo;
             const isTicketAssigned = (tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName))) || 
-                                     (tDriverUid && (tDriverUid === uUid));
+                                     (tDriverUid && (String(tDriverUid) === uId));
             
             if (isTicketAssigned && t.logistics?.status === 'En Transito') {
                 items.push({
@@ -138,7 +141,7 @@ export default function MyDeliveriesPage() {
                     const cDriverName = (c.delivery_person || '').toLowerCase();
                     const cDriverUid = String(c.assigned_to || '');
                     const isCaseAssigned = (cDriverName && (cDriverName === uName || uName.includes(cDriverName) || cDriverName.includes(uName))) || 
-                                           (cDriverUid && (cDriverUid === uUid));
+                                           (cDriverUid && (cDriverUid === uId));
                     
                     if (isCaseAssigned) {
                         const cStatus = c.logistics?.status || 'Pendiente';
@@ -194,14 +197,11 @@ export default function MyDeliveriesPage() {
         let finishedThisMonthCount = 0;
         let pendingThisWeekCount = 0;
 
-        const uName = (currentUser.name || '').toLowerCase();
-
-        // Recorrer las tareas asignadas
         logisticsTasks.forEach(task => {
             const tDriverName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
             const tDriverUid = String(task.assigned_to || task.assignedTo || '');
             
-            const isMine = (tDriverUid === uUid) || 
+            const isMine = (tDriverUid === uId) || 
                            (tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName)));
             
             if (!isMine) return;
