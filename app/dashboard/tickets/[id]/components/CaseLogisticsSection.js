@@ -116,7 +116,7 @@ export default function CaseLogisticsSection({
                         <input
                             className="form-input"
                             placeholder="Ej: AR123456789"
-                            value={task.trackingNumber || task.logistics?.trackingNumber || task.logistics?.tracking_number || ''}
+                            value={localValues.trackingNumber || ''}
                             onChange={e => updateLogistics('trackingNumber', e.target.value)}
                         />
                     </div>
@@ -146,11 +146,10 @@ export default function CaseLogisticsSection({
                         <input
                             type="date"
                             className="form-input"
-                            value={task.date || task.logistics?.date || ''}
+                            value={localValues.date || ''}
                             onChange={e => {
                                 const newDate = e.target.value;
-                                const currentSlot = task.timeSlot || task.logistics?.timeSlot;
-                                if (newDate && currentSlot && (task.status === 'Para Coordinar' || task.logistics?.status === 'Para Coordinar')) {
+                                if (newDate && localValues.timeSlot && (localValues.status === 'Para Coordinar')) {
                                     updateLogistics('status', 'En Transito');
                                 }
                                 updateLogistics('date', newDate);
@@ -167,8 +166,7 @@ export default function CaseLogisticsSection({
                                         key={slot}
                                         type="button"
                                         onClick={() => {
-                                            const currentDate = task.date || task.logistics?.date;
-                                            if (currentDate && (task.status === 'Para Coordinar' || task.logistics?.status === 'Para Coordinar')) {
+                                            if (localValues.date && (localValues.status === 'Para Coordinar')) {
                                                 updateLogistics('status', 'En Transito');
                                             }
                                             updateLogistics('timeSlot', slot);
