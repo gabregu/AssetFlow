@@ -47,24 +47,24 @@ export function DeliveryNotificationListener() {
                     }
 
                     // 2. NOTIFICACIÓN PARA CONDUCTORES: Nueva Asignación
-                    if (currentUser.role === 'Conductor') {
+                    if (currentUser && (currentUser.role === 'Conductor' || currentUser.role === 'driver' || currentUser.role === 'employee')) {
                         const uName = (currentUser.name || '').toLowerCase();
-                        const uId = currentUser.id || currentUser.uid;
+                        const uId = String(currentUser.id || currentUser.uid || currentUser.uuid);
 
                         // Verificar si EL TICKET PRINCIPAL fue asignado a mí
-                        const isMainAssignedToMe = (newData.assigned_to === uId) || (newData.delivery_person?.toLowerCase().includes(uName));
-                        const wasMainAssignedToMe = (oldData.assigned_to === uId) || (oldData.delivery_person?.toLowerCase().includes(uName));
+                        const isMainAssignedToMe = (String(newData.assigned_to) === uId) || (newData.delivery_person?.toLowerCase().includes(uName));
+                        const wasMainAssignedToMe = (String(oldData.assigned_to) === uId) || (oldData.delivery_person?.toLowerCase().includes(uName));
 
                         // Verificar si ALGÚN CASO ASOCIADO fue asignado a mí (Estructura Legacy)
                         const newCases = newData.associatedCases || [];
                         const oldCases = oldData.associatedCases || [];
                         
                         const myNewCase = newCases.find((c, idx) => {
-                            const isAssigned = c.assigned_to === uId || c.delivery_person?.toLowerCase().includes(uName);
+                            const isAssigned = (String(c.assigned_to) === uId) || (c.delivery_person?.toLowerCase().includes(uName));
                             if (!isAssigned) return false;
                             
                             // Verificar si YA estaba asignado en el estado anterior
-                            const wasAssigned = oldCases[idx] && (oldCases[idx].assigned_to === uId || oldCases[idx].delivery_person?.toLowerCase().includes(uName));
+                            const wasAssigned = oldCases[idx] && ((String(oldCases[idx].assigned_to) === uId) || (oldCases[idx].delivery_person?.toLowerCase().includes(uName)));
                             return !wasAssigned;
                         });
 
@@ -97,12 +97,16 @@ export function DeliveryNotificationListener() {
                     const newTask = payload.new;
                     const oldTask = payload.old;
 
-                    if (currentUser.role === 'Conductor') {
+                    if (currentUser && (currentUser.role === 'Conductor' || currentUser.role === 'driver' || currentUser.role === 'employee')) {
                         const uName = (currentUser.name || '').toLowerCase();
-                        const uId = currentUser.id || currentUser.uid;
+                        const uId = String(currentUser.id || currentUser.uid || currentUser.uuid);
 
-                        const isAssignedToMe = (newTask.assigned_to === uId) || (newTask.delivery_person?.toLowerCase().includes(uName));
-                        const wasAssignedToMe = (oldTask.assigned_to === uId) || (oldTask.delivery_person?.toLowerCase().includes(uName));
+                        const taskAssignedTo = String(newTask.assigned_to || '');
+                        const taskDriverName = (newTask.delivery_person || '').toLowerCase();
+
+                        const isAssignedToMe = (taskAssignedTo === uId) || (taskDriverName && (taskDriverName === uName || taskDriverName.includes(uName) || uName.includes(taskDriverName)));
+                        
+                        const wasAssignedToMe = oldTask && ((String(oldTask.assigned_to) === uId) || (oldTask.delivery_person?.toLowerCase().includes(uName)));
 
                         if (isAssignedToMe && !wasAssignedToMe) {
                             setNotification({

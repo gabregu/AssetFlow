@@ -66,8 +66,12 @@ export default function MyDeliveriesPage() {
         if (!currentUser) return [];
         
         const items = [];
-        const uName = (currentUser.name || '').toLowerCase();
-        const uUid = currentUser.id || currentUser.uid;
+        const uName = (currentUser?.name || '').toLowerCase();
+        const uUid = String(currentUser?.id || currentUser?.uid || currentUser?.uuid);
+
+        if (!currentUser || (currentUser.role !== 'driver' && currentUser.role !== 'Conductor' && currentUser.role !== 'employee')) {
+            return [];
+        }
         
         // 1. Procesar tareas de la nueva tabla relacional
         logisticsTasks.forEach(task => {
@@ -133,7 +137,7 @@ export default function MyDeliveriesPage() {
             if (t.associatedCases && Array.isArray(t.associatedCases)) {
                 t.associatedCases.forEach((c, idx) => {
                     const cDriverName = (c.delivery_person || '').toLowerCase();
-                    const cDriverUid = c.assigned_to;
+                    const cDriverUid = String(c.assigned_to || '');
                     const isCaseAssigned = (cDriverName && (cDriverName === uName || uName.includes(cDriverName) || cDriverName.includes(uName))) || 
                                            (cDriverUid && (cDriverUid === uUid));
                     
