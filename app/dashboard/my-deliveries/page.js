@@ -69,9 +69,8 @@ export default function MyDeliveriesPage() {
         const uName = (currentUser?.name || '').toLowerCase();
         const uUid = String(currentUser?.id || currentUser?.uid || currentUser?.uuid);
 
-        if (!currentUser || (currentUser.role !== 'driver' && currentUser.role !== 'Conductor' && currentUser.role !== 'employee')) {
-            return [];
-        }
+        // Permitir a cualquier usuario asignado ver sus entregas en esta vista
+        if (!currentUser) return [];
         
         // 1. Procesar tareas de la nueva tabla relacional
         logisticsTasks.forEach(task => {

@@ -9,8 +9,10 @@ export function DeliveryNotificationListener() {
     const [notification, setNotification] = useState(null);
 
     useEffect(() => {
-        // Permitir a Admins, Administrativos y Conductores
-        const allowRole = currentUser?.role === 'admin' || currentUser?.role === 'Administrativo' || currentUser?.role === 'Conductor';
+        // Permitir a Admins, Administrativos y Conductores (incluye alias)
+        const role = (currentUser?.role || '').toLowerCase();
+        const allowRole = role === 'admin' || role === 'administrativo' || role === 'conductor' || role === 'driver' || role === 'employee';
+        
         if (!currentUser || !allowRole) return;
 
         console.log("Iniciando escucha de entregas para:", currentUser.role);
@@ -89,7 +91,7 @@ export function DeliveryNotificationListener() {
             .on(
                 'postgres_changes',
                 {
-                    event: 'UPDATE',
+                    event: '*', // Escuchar INSERT y UPDATE
                     schema: 'public',
                     table: 'logistics_tasks',
                 },
@@ -106,9 +108,18 @@ export function DeliveryNotificationListener() {
 
                         const isAssignedToMe = (taskAssignedTo === uId) || (taskDriverName && (taskDriverName === uName || taskDriverName.includes(uName) || uName.includes(taskDriverName)));
                         
-                        const wasAssignedToMe = oldTask && ((String(oldTask.assigned_to) === uId) || (oldTask.delivery_person?.toLowerCase().includes(uName)));
+                        let shouldNotify = false;
 
-                        if (isAssignedToMe && !wasAssignedToMe) {
+                        if (payload.eventType === 'INSERT' && isAssignedToMe) {
+                            shouldNotify = true;
+                        } else if (payload.eventType === 'UPDATE') {
+                            const wasAssignedToMe = oldTask && ((String(oldTask.assigned_to) === uId) || (oldTask.delivery_person?.toLowerCase().includes(uName)));
+                            if (isAssignedToMe && !wasAssignedToMe) {
+                                shouldNotify = true;
+                            }
+                        }
+
+                        if (shouldNotify) {
                             setNotification({
                                 type: 'assignment',
                                 title: '¡Nueva Tarea Asignada!',

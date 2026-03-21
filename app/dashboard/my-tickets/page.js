@@ -70,9 +70,11 @@ export default function MyTicketsPage() {
                             isMainTicket: false,
                             displaySubject: task.subject || pTicket.subject,
                             displayId: task.case_number || (String(pTicket.id).substring(0, 8)),
-                            displayAddress: task.address || pTicket.logistics?.address,
+                            displayAddress: task.address || pTicket.logistics?.address || pTicket.logistics?.displayAddress,
                             displayDate: task.date || pTicket.logistics?.date,
-                            displayStatus: task.status || 'Pendiente'
+                            displayStatus: task.status || 'Pendiente',
+                            taskTimeSlot: task.time_slot,
+                            caseData: task
                         });
                     }
                 }
@@ -87,7 +89,7 @@ export default function MyTicketsPage() {
                                      (tDUid && (tDUid === uId));
             
             const isTRes = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
-            const isTAdded = items.some(it => it.id === ticket.id && it.isMainTicket);
+            const isTAdded = items.some(it => it.id === ticket.id); // Si ya incluimos sub-casos de este ticket, no agregarlo como main.
 
             if (isTMe && !isTRes && !isTAdded) {
                 items.push({
@@ -671,7 +673,9 @@ export default function MyTicketsPage() {
                                         <td style={{ padding: '1rem' }}>
                                             <div style={{ fontWeight: 500 }}>{ticket.displayDate ? new Date(ticket.displayDate + 'T00:00:00').toLocaleDateString() : '-'}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                {ticket.isMainTicket ? (ticket.logistics?.timeSlot || '') : (ticket.caseData?.logistics?.timeSlot || '')}
+                                                {ticket.isMainTicket 
+                                                    ? (ticket.logistics?.timeSlot || ticket.logistics?.time_slot || '') 
+                                                    : (ticket.taskTimeSlot || ticket.caseData?.time_slot || '')}
                                             </div>
                                         </td>
                                         <td style={{ padding: '1rem' }}>
