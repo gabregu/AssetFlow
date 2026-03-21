@@ -420,6 +420,10 @@ export function useTicketDetail() {
                 return c;
             });
             setEditedData(prev => ({ ...prev, associatedCases: updatedCases }));
+            
+            // AUTO GUARDAR EN DB (Incluso para arquitectura Legacy si se edita individualmente)
+            // Esto asegura que si el usuario sale y vuelve a entrar, los cambios persistan.
+            await updateTicket(ticket.id, { associatedCases: updatedCases });
         }
     };
 
