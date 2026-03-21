@@ -9,16 +9,32 @@ export default function CaseLogisticsSection({
 }) {
     if (!task) return null;
 
+    const [localValues, setLocalValues] = React.useState({});
+
+    React.useEffect(() => {
+        setLocalValues({
+            status: task.status || task.logistics?.status || 'Pendiente',
+            method: task.method || task.logistics?.method || '',
+            deliveryPerson: task.delivery_person || task.deliveryPerson || task.logistics?.deliveryPerson || task.logistics?.delivery_person || '',
+            coordinatedBy: task.coordinatedBy || task.coordinated_by || '',
+            trackingNumber: task.trackingNumber || task.logistics?.trackingNumber || task.logistics?.tracking_number || ''
+        });
+    }, [task]);
+
     const isRelational = !!task.id;
 
-    const updateLogistics = (field, value) => {
+    const updateLogistics = async (field, value) => {
+        // Actualización visual inmediata
+        setLocalValues(prev => ({ ...prev, [field]: value }));
+
         const updates = {};
-        let newStatus = task.status || 'Pendiente';
+        let newStatus = localValues.status || 'Pendiente';
 
         // Automación de estados: Al asignar método o repartidor -> "Para Coordinar"
         if ((field === 'method' && value) || (field === 'deliveryPerson' && value)) {
             if (newStatus === 'Pendiente') {
                 newStatus = 'Para Coordinar';
+                setLocalValues(prev => ({ ...prev, status: 'Para Coordinar' }));
             }
         } else if (field === 'status') {
             newStatus = value;
@@ -39,7 +55,8 @@ export default function CaseLogisticsSection({
             deliveryPerson: 'deliveryPerson',
             assignedTo: 'assignedTo',
             trackingNumber: 'trackingNumber',
-            deliveryInfo: 'deliveryInfo'
+            deliveryInfo: 'deliveryInfo',
+            coordinatedBy: 'coordinatedBy'
         };
 
         // Si cambiamos el repartidor, buscamos su UID (assignedTo/assigned_to)
@@ -55,7 +72,7 @@ export default function CaseLogisticsSection({
         // Aplicamos el estado automatizado
         updates[propMap.status] = newStatus;
 
-        onUpdateTask(updates);
+        await onUpdateTask(updates);
     };
 
     return (
@@ -69,7 +86,7 @@ export default function CaseLogisticsSection({
                     <label className="form-label">Estado de la Logística / Envío</label>
                     <select
                         className="form-select"
-                        value={task.status || task.logistics?.status || 'Pendiente'}
+                        value={localValues.status || 'Pendiente'}
                         onChange={e => updateLogistics('status', e.target.value)}
                     >
                         <option value="Pendiente">Pendiente</option>
@@ -83,7 +100,7 @@ export default function CaseLogisticsSection({
                     <label className="form-label">Medio Proveedor</label>
                     <select
                         className="form-select"
-                        value={task.method || task.logistics?.method || ''}
+                        value={localValues.method || ''}
                         onChange={e => updateLogistics('method', e.target.value)}
                     >
                         <option value="">Seleccionar...</option>
@@ -110,7 +127,7 @@ export default function CaseLogisticsSection({
                         <label className="form-label">Nombre del Repartidor</label>
                         <select
                             className="form-select"
-                            value={task.delivery_person || task.deliveryPerson || task.logistics?.deliveryPerson || task.logistics?.delivery_person || ''}
+                            value={localValues.deliveryPerson || ''}
                             onChange={e => updateLogistics('deliveryPerson', e.target.value)}
                         >
                             <option value="">Seleccionar repartidor...</option>
@@ -178,7 +195,7 @@ export default function CaseLogisticsSection({
                     <label className="form-label">Coordinado por</label>
                     <select
                         className="form-select"
-                        value={task.coordinatedBy || task.coordinated_by || ''}
+                        value={localValues.coordinatedBy || ''}
                         onChange={e => updateLogistics('coordinatedBy', e.target.value)}
                     >
                         <option value="">Seleccionar responsable...</option>
