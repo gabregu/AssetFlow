@@ -82,8 +82,8 @@ export default function MyDeliveriesPage() {
             const isAssignedByUid = driverUid && (driverUid === uUid);
             
             if (isAssignedByName || isAssignedByUid) {
-                // Solo mostrar los activos (En Tránsito o Para Coordinar) o los recientemente entregados si se filtran
-                const isRelevant = task.status === 'En Transito' || task.status === 'Para Coordinar' || task.status === 'Entregado';
+                // Solo mostrar los activos (En Tránsito) o los recientemente entregados si se filtran
+                const isRelevant = task.status === 'En Transito' || task.status === 'Entregado';
                 
                 if (isRelevant) {
                     const parentTicket = tickets.find(t => t.id === task.ticket_id);
@@ -142,7 +142,7 @@ export default function MyDeliveriesPage() {
                     
                     if (isCaseAssigned) {
                         const cStatus = c.logistics?.status || 'Pendiente';
-                        if (cStatus === 'En Transito' || cStatus === 'Para Coordinar' || cStatus === 'Entregado') {
+                        if (cStatus === 'En Transito' || cStatus === 'Entregado') {
                             items.push({
                                 ...t, // Datos del ticket padre
                                 id: t.id,
