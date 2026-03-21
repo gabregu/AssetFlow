@@ -49,67 +49,61 @@ export default function MyTicketsPage() {
         if (!currentUser) return [];
         const items = [];
         const uName = (currentUser.name || '').toLowerCase();
+        const uId = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
         
-        tickets.forEach(t => {
-            // Identificar TODOS los casos asociados asignados a este usuario
-            const assignedCases = (t.associatedCases || []).filter(c => {
-                const driverName = (c.logistics?.deliveryPerson || '').toLowerCase();
-                const driverUid = c.logistics?.assignedTo;
-                
-                if (!driverName?.trim() && !driverUid) return false;
-                
-                const isAssignedByName = driverName && (driverName === uName || uName.includes(driverName) || driverName.includes(uName));
-                const isAssignedByUid = driverUid && (driverUid === currentUser.uid || driverUid === currentUser.id);
-                
-                return !!(isAssignedByName || isAssignedByUid);
-            });
-
-            const hasAnyAssignedCase = assignedCases.length > 0;
-
-            // 1. Verificar si el ticket principal está asignado
-            const tDriverName = (t.logistics?.deliveryPerson || '').toLowerCase();
-            const tDriverUid = t.logistics?.assignedTo;
-            const isTicketAssigned = tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName)) || 
-                                     (tDriverUid && (tDriverUid === currentUser.uid || tDriverUid === currentUser.id));
+        // 1. PROCESAR NUEVA TABLA RELACIONAL (logistics_tasks)
+        logisticsTasks.forEach(task => {
+            const drvName = (task.delivery_person || '').toLowerCase();
+            const drvId = String(task.assigned_to || '');
             
-            const isResolved = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || t.deliveryStatus === 'Entregado';
+            const isMeByName = drvName && (drvName === uName || uName.includes(drvName) || drvName.includes(uName));
+            const isMeById = drvId && (drvId === uId);
+            
+            if (isMeByName || isMeById) {
+                const pTicket = tickets.find(t => t.id === task.ticket_id);
+                if (pTicket) {
+                    const isAlreadyIn = items.some(it => it.id === pTicket.id && it.taskId === task.id);
+                    if (!isAlreadyIn) {
+                        items.push({
+                            ...pTicket,
+                            taskId: task.id,
+                            isMainTicket: false,
+                            displaySubject: task.subject || pTicket.subject,
+                            displayId: task.case_number || (String(pTicket.id).substring(0, 8)),
+                            displayAddress: task.address || pTicket.logistics?.address,
+                            displayDate: task.date || pTicket.logistics?.date,
+                            displayStatus: task.status || 'Pendiente'
+                        });
+                    }
+                }
+            }
+        });
 
-            // Solo agregamos el ticket principal si NO tiene sub-casos asignados a este chofer
-            // Y SI el ticket principal mismo está asignado explícitamente
-            if (isTicketAssigned && !isResolved && !hasAnyAssignedCase) {
+        // 2. PROCESAR TICKETS LEGACY
+        tickets.forEach(ticket => {
+            const tDName = (ticket.delivery_person || ticket.deliveryPerson || '').toLowerCase();
+            const tDUid = String(ticket.assigned_to || ticket.assignedTo || '');
+            const isTMe = (tDName && (tDName === uName || uName.includes(tDName) || tDName.includes(uName))) || 
+                                     (tDUid && (tDUid === uId));
+            
+            const isTRes = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
+            const isTAdded = items.some(it => it.id === ticket.id && it.isMainTicket);
+
+            if (isTMe && !isTRes && !isTAdded) {
                 items.push({
-                    ...t,
+                    ...ticket,
                     isMainTicket: true,
-                    displaySubject: t.subject,
-                    displayId: t.id,
-                    displayAddress: t.logistics?.address,
-                    displayDate: t.logistics?.date,
-                    displayStatus: t.deliveryStatus || 'Pendiente'
+                    displaySubject: ticket.subject,
+                    displayId: String(ticket.id).substring(0, 8),
+                    displayAddress: ticket.logistics?.address,
+                    displayDate: ticket.logistics?.date,
+                    displayStatus: ticket.deliveryStatus || 'Pendiente'
                 });
             }
-
-            // 2. Agregar los casos asociados asignados
-            assignedCases.forEach(c => {
-                const isVirtualOrigin = String(c.caseNumber) === 'Caso Principal';
-                const isCaseResolved = ['Entregado', 'Recuperado', 'Finalizado'].includes(c.logistics?.status);
-                
-                if (!isCaseResolved) {
-                    items.push({
-                        ...t,
-                        isMainTicket: isVirtualOrigin,
-                        caseData: c,
-                        displaySubject: c.subject || t.subject,
-                        displayId: c.caseNumber || t.id,
-                        displayAddress: c.logistics?.address || t.logistics?.address,
-                        displayDate: c.logistics?.date || t.logistics?.date,
-                        displayStatus: c.logistics?.status || 'Pendiente'
-                    });
-                }
-            });
         });
 
         return items;
-    }, [tickets, currentUser]);
+    }, [tickets, logisticsTasks, currentUser]);
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
