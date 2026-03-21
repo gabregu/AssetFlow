@@ -106,13 +106,14 @@ export default function MyDeliveriesPage() {
             }
         });
 
-        // 2. Compatibilidad Legacy: Buscar en tickets que no tengan tareas pero sí asignación directa (rápido fallback)
+        // 2. Compatibilidad Legacy: Buscar en tickets y sus casos asociados anidados
         tickets.forEach(t => {
             const hasNewTasks = logisticsTasks.some(tk => tk.ticket_id === t.id);
-            if (hasNewTasks) return; // Si ya tiene tareas nuevas, ignoramos el root
+            if (hasNewTasks) return; // Si ya tiene tareas nuevas, ignoramos el modo legacy
 
-            const tDriverName = (t.logistics?.deliveryPerson || '').toLowerCase();
-            const tDriverUid = t.logistics?.assignedTo;
+            // A. Revisar el ticket principal
+            const tDriverName = (t.logistics?.delivery_person || t.logistics?.deliveryPerson || '').toLowerCase();
+            const tDriverUid = t.logistics?.assigned_to || t.logistics?.assignedTo;
             const isTicketAssigned = (tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName))) || 
                                      (tDriverUid && (tDriverUid === uUid));
             
@@ -125,6 +126,37 @@ export default function MyDeliveriesPage() {
                     displayAddress: t.logistics?.address,
                     displayStatus: t.logistics?.status || 'Pendiente',
                     displayDate: t.logistics?.date
+                });
+            }
+
+            // B. REVISAR CASOS ASOCIADOS LEGACY (El punto faltante)
+            if (t.associatedCases && Array.isArray(t.associatedCases)) {
+                t.associatedCases.forEach((c, idx) => {
+                    const cDriverName = (c.logistics?.delivery_person || c.logistics?.deliveryPerson || '').toLowerCase();
+                    const cDriverUid = c.logistics?.assigned_to || c.logistics?.assignedTo;
+                    const isCaseAssigned = (cDriverName && (cDriverName === uName || uName.includes(cDriverName) || cDriverName.includes(uName))) || 
+                                           (cDriverUid && (cDriverUid === uUid));
+                    
+                    if (isCaseAssigned) {
+                        const cStatus = c.logistics?.status || 'Pendiente';
+                        if (cStatus === 'En Transito' || cStatus === 'Para Coordinar' || cStatus === 'Entregado') {
+                            items.push({
+                                ...t, // Datos del ticket padre
+                                id: t.id,
+                                legacyCaseIndex: idx,
+                                isMainTicket: false,
+                                displayId: c.caseNumber || c.case_number || `${t.id.substring(0,8)}-${idx}`,
+                                displaySubject: c.subject || t.subject,
+                                displayAddress: c.logistics?.address || t.logistics?.address,
+                                displayStatus: cStatus,
+                                displayDate: c.logistics?.date,
+                                requester: c.requester || t.requester,
+                                timeSlot: c.logistics?.timeSlot || 'AM',
+                                taskAssets: c.assets || [],
+                                taskAccessories: c.accessories || []
+                            });
+                        }
+                    }
                 });
             }
         });

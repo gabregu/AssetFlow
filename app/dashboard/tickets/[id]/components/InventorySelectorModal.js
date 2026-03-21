@@ -100,7 +100,8 @@ export default function InventorySelectorModal({
                                                     const updates = { assets: updatedAssets };
                                                     
                                                     // Automación: Si agregamos hardware, el estado pasa a "Para Coordinar" si estaba Pendiente
-                                                    if (task.status === 'Pendiente') {
+                                                    const currentStatus = task.status || task.logistics?.status || 'Pendiente';
+                                                    if (currentStatus === 'Pendiente') {
                                                         updates.status = 'Para Coordinar';
                                                     }
                                                     

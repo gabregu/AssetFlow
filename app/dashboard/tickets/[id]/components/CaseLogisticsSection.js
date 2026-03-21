@@ -31,7 +31,8 @@ export default function CaseLogisticsSection({
             deliveryPerson: 'delivery_person',
             assignedTo: 'assigned_to',
             trackingNumber: 'tracking_number',
-            deliveryInfo: 'delivery_info'
+            deliveryInfo: 'delivery_info',
+            coordinatedBy: 'coordinated_by',
         } : {
             status: 'status',
             method: 'method',
@@ -175,12 +176,18 @@ export default function CaseLogisticsSection({
 
                 <div className="form-group">
                     <label className="form-label">Coordinado por</label>
-                    <input
-                        className="form-input"
-                        placeholder="Ej: Administrador, Soporte, etc."
-                        value={task.coordinatedBy || task.logistics?.coordinatedBy || ''}
+                    <select
+                        className="form-select"
+                        value={task.coordinatedBy || task.coordinated_by || ''}
                         onChange={e => updateLogistics('coordinatedBy', e.target.value)}
-                    />
+                    >
+                        <option value="">Seleccionar responsable...</option>
+                        {users.map(u => (
+                            <option key={u.id} value={u.name}>
+                                {u.name} {u.role ? `(${u.role})` : ''}
+                            </option>
+                        ))}
+                    </select>
                 </div>
 
                 {(task.status === 'Entregado' || task.status === 'Finalizado') && (
