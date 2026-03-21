@@ -54,19 +54,29 @@ export function DeliveryNotificationListener() {
                         const uId = String(currentUser.id || currentUser.uid || currentUser.uuid);
 
                         // Verificar si EL TICKET PRINCIPAL fue asignado a mí
-                        const isMainAssignedToMe = (String(newData.assigned_to) === uId) || (newData.delivery_person?.toLowerCase().includes(uName));
-                        const wasMainAssignedToMe = (String(oldData.assigned_to) === uId) || (oldData.delivery_person?.toLowerCase().includes(uName));
+                        const isMainAssignedToMe = String(newData.assigned_to) === uId || (newData.delivery_person || '').toLowerCase().includes(uName);
+                        const wasMainAssignedToMe = oldData && (String(oldData.assigned_to) === uId || (oldData.delivery_person || '').toLowerCase().includes(uName));
 
                         // Verificar si ALGÚN CASO ASOCIADO fue asignado a mí (Estructura Legacy)
-                        const newCases = newData.associatedCases || [];
-                        const oldCases = oldData.associatedCases || [];
+                        // IMPORTANTE: En el payload RAW de Postgres, la columna es associated_assets
+                        const newCases = newData.associated_assets || [];
+                        const oldCases = oldData ? (oldData.associated_assets || []) : [];
                         
                         const myNewCase = newCases.find((c, idx) => {
-                            const isAssigned = (String(c.assigned_to) === uId) || (c.delivery_person?.toLowerCase().includes(uName));
+                            const cAssignedTo = c.assigned_to || c.assignedTo;
+                            const cDeliveryPerson = (c.delivery_person || c.deliveryPerson || '').toLowerCase();
+                            
+                            const isAssigned = (String(cAssignedTo) === uId) || (cDeliveryPerson.includes(uName));
                             if (!isAssigned) return false;
                             
                             // Verificar si YA estaba asignado en el estado anterior
-                            const wasAssigned = oldCases[idx] && ((String(oldCases[idx].assigned_to) === uId) || (oldCases[idx].delivery_person?.toLowerCase().includes(uName)));
+                            if (!oldData || !oldData.associated_assets || !oldData.associated_assets[idx]) return true;
+                            
+                            const oldCase = oldData.associated_assets[idx];
+                            const oldAssignedTo = oldCase.assigned_to || oldCase.assignedTo;
+                            const oldDeliveryPerson = (oldCase.delivery_person || oldCase.deliveryPerson || '').toLowerCase();
+                            
+                            const wasAssigned = (String(oldAssignedTo) === uId) || (oldDeliveryPerson.includes(uName));
                             return !wasAssigned;
                         });
 
