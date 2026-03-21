@@ -134,7 +134,7 @@ export default function MyTicketsPage() {
         }
     };
 
-    const handleCreate = (e) => {
+    const handleCreate = async (e) => {
         e.preventDefault();
         // Al crear desde "Mis Servicios", auto-asignar al usuario actual
         const ticketData = {
@@ -142,13 +142,15 @@ export default function MyTicketsPage() {
             logistics: {
                 ...newTicket.logistics,
                 method: 'Repartidor Propio',
-                deliveryPerson: currentUser.name
+                deliveryPerson: currentUser?.name || ''
             }
         };
-        const createdTicket = addTicket(ticketData);
+        const createdTicket = await addTicket(ticketData);
         setIsModalOpen(false);
         setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
-        router.push(`/dashboard/tickets/${createdTicket.id}`);
+        if (createdTicket?.id) {
+            router.push(`/dashboard/tickets/${createdTicket.id}`);
+        }
     };
 
     const handleSort = (key) => {
@@ -258,12 +260,17 @@ export default function MyTicketsPage() {
 
     const sortedAndFilteredTickets = useMemo(() => {
         let result = myAssignedItems.filter(item => {
-            const matchesSearch = item.displaySubject.toLowerCase().includes(filter.toLowerCase()) ||
-                item.requester.toLowerCase().includes(filter.toLowerCase()) ||
-                item.displayId.toLowerCase().includes(filter.toLowerCase());
+            const subject = String(item.displaySubject || '').toLowerCase();
+            const requester = String(item.requester || '').toLowerCase();
+            const displayId = String(item.displayId || '').toLowerCase();
+            const searchTerm = filter.toLowerCase();
+
+            const matchesSearch = subject.includes(searchTerm) ||
+                requester.includes(searchTerm) ||
+                displayId.includes(searchTerm);
 
             const matchesStatus = columnFilters.status === 'All' || item.displayStatus === columnFilters.status;
-            const matchesRequester = !columnFilters.requester || item.requester.toLowerCase().includes(columnFilters.requester.toLowerCase());
+            const matchesRequester = !columnFilters.requester || requester.includes(columnFilters.requester.toLowerCase());
 
             return matchesSearch && matchesStatus && matchesRequester;
         });
@@ -308,17 +315,19 @@ export default function MyTicketsPage() {
 
         myAssignedItems.forEach(item => {
             // Unificar origen de datos (ticket base)
-            const t = item; 
+            const t = item.isMainTicket ? item : (item.parentTicket || item); 
             
             // Precise date parsing to avoid timezone shift
-            const rawDate = t.deliveryCompletedDate || t.date || Date.now();
-            const ticketDate = new Date(rawDate && !rawDate.toString().includes('T') ? rawDate + 'T00:00:00' : rawDate);
-            const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status) || item.displayStatus === 'Entregado';
+            const rawDate = item.deliveryCompletedDate || item.date || item.displayDate;
+            const isValidDate = rawDate && !['Pendiente', 'Sin fecha', 'Por definir'].includes(rawDate);
+            const ticketDate = isValidDate ? new Date(rawDate.toString().includes('T') ? rawDate : rawDate + 'T00:00:00') : new Date();
+            const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status || '') || item.displayStatus === 'Entregado';
 
             // Determinar si es entrega o recupero para liquidación
             const { moveType: finalMoveType, assetType: finalDeviceType } = resolveTicketServiceDetails(t, globalAssets);
-            const isDelivery = finalMoveType.toLowerCase().includes('entrega') || finalMoveType.toLowerCase().includes('alta');
-            const isRecovery = finalMoveType.toLowerCase().includes('recupero') || finalMoveType.toLowerCase().includes('retiro') || finalMoveType.toLowerCase().includes('baja');
+            const moveLower = (finalMoveType || '').toLowerCase();
+            const isDelivery = moveLower.includes('entrega') || moveLower.includes('alta');
+            const isRecovery = moveLower.includes('recupero') || moveLower.includes('retiro') || moveLower.includes('baja') || moveLower.includes('collection');
 
             // --- Calcular Monto ---
             const lowerDevice = (finalDeviceType || '').toLowerCase();

@@ -143,9 +143,9 @@ export default function DeliveriesPage() {
         const items = [];
 
         // 1. Procesar tareas de logística relacionales
-        logisticsTasks.forEach(task => {
+        (logisticsTasks || []).forEach(task => {
             // Solo procesamos si tiene fecha coordinada y no está entregado (para esta vista activa)
-            if (!task.date || task.status === 'Entregado') return;
+            if (!task || !task.date || task.status === 'Entregado') return;
 
             const parentTicket = tickets.find(t => t.id === task.ticket_id);
             
@@ -197,7 +197,7 @@ export default function DeliveriesPage() {
             }
         });
 
-        const activeManualDeliveries = deliveries.filter(d => d.status !== 'Entregado').map(d => ({
+        const activeManualDeliveries = (deliveries || []).filter(d => d.status !== 'Entregado').map(d => ({
             ...d,
             source: 'Manual',
             ticketStatus: d.status,
@@ -205,7 +205,7 @@ export default function DeliveriesPage() {
         }));
 
         return [...activeManualDeliveries, ...items];
-    }, [deliveries, tickets]);
+    }, [deliveries, tickets, logisticsTasks]);
 
     // Colores vibrantes para los diferentes días (Consistente con Mis Envíos)
     const dayColors = [
@@ -233,19 +233,23 @@ export default function DeliveriesPage() {
     };
 
     const sortedAndFilteredDeliveries = React.useMemo(() => {
-        let result = combinedDeliveries.filter(d => {
-            const matchesText = d.recipient.toLowerCase().includes(filter.toLowerCase()) ||
-                d.id.toLowerCase().includes(filter.toLowerCase()) ||
-                d.address.toLowerCase().includes(filter.toLowerCase());
+        let result = (combinedDeliveries || []).filter(d => {
+            const recipient = String(d.recipient || '').toLowerCase();
+            const displayId = String(d.id || '').toLowerCase();
+            const address = String(d.address || '').toLowerCase();
+            const searchTerm = filter.toLowerCase();
+
+            const matchesText = recipient.includes(searchTerm) ||
+                displayId.includes(searchTerm) ||
+                address.includes(searchTerm);
             const matchesStatus = statusFilter === 'All' || d.status === statusFilter;
 
             // Simple country filter based on address or hardcoded logic
             let matchesCountry = true;
             if (countryFilter !== 'Todos') {
                 // Heuristic: check if address contains country name or specific cities
-                const addressLower = d.address.toLowerCase();
                 const countryLower = countryFilter.toLowerCase();
-                matchesCountry = addressLower.includes(countryLower);
+                matchesCountry = address.includes(countryLower);
 
                 // Specific logic for 'Argentina' as default if no country specified? 
                 // For now, let's keep it simple: strict text match in address.
