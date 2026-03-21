@@ -76,7 +76,7 @@ export default function MyDeliveriesPage() {
         // 1. Procesar tareas de la nueva tabla relacional
         logisticsTasks.forEach(task => {
             const driverName = (task.delivery_person || '').toLowerCase();
-            const driverUid = task.assigned_to;
+            const driverUid = String(task.assigned_to || '');
             
             // FILTRO: Solo si está asignado a MÍ
             const isAssignedByName = driverName && (driverName === uName || uName.includes(driverName) || driverName.includes(uName));
