@@ -5,7 +5,8 @@ import React from 'react';
 export default function CaseLogisticsSection({
     task,
     onUpdateTask,
-    users
+    users,
+    currentUser
 }) {
     if (!task) return null;
 
@@ -134,8 +135,15 @@ export default function CaseLogisticsSection({
                             className="form-input"
                             value={localValues.date || ''}
                             onChange={e => {
+                                e.preventDefault();
                                 const newDate = e.target.value;
                                 const updates = { date: newDate };
+                                
+                                // Autocompletar "Coordinado por" si hay una fecha
+                                if (newDate && currentUser?.name) {
+                                    updates.coordinated_by = currentUser.name;
+                                }
+
                                 if (newDate && localValues.time_slot && (localValues.status === 'Para Coordinar')) {
                                     updates.status = 'En Transito';
                                 }
@@ -153,6 +161,12 @@ export default function CaseLogisticsSection({
                                         type="button"
                                         onClick={() => {
                                             const updates = { time_slot: slot };
+                                            
+                                            // Autocompletar "Coordinado por" también al elegir turno
+                                            if (currentUser?.name) {
+                                                updates.coordinated_by = currentUser.name;
+                                            }
+
                                             if (localValues.date && (localValues.status === 'Para Coordinar')) {
                                                 updates.status = 'En Transito';
                                             }

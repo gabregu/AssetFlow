@@ -167,6 +167,7 @@ export default function TicketDetailPage() {
                 ticketTasks={ticketTasks}
                 deleteLogisticsTask={deleteLogisticsTask}
                 handleUpdateTask={handleUpdateTask}
+                currentUser={currentUser}
             />
             
             <InventorySelectorModal

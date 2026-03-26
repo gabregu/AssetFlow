@@ -41,7 +41,8 @@ export default function CaseConfigModal({
     updateLogisticsTask,
     addLogisticsTask,
     deleteLogisticsTask,
-    handleUpdateTask // <--- Use from props now
+    handleUpdateTask, // <--- Use from props now
+    currentUser
 }) {
     const currentTasks = (ticketTasks && ticketTasks.length > 0) ? ticketTasks : (editedData?.associatedCases || []);
     const currentTask = (selectedCaseIndex !== null && currentTasks) ? currentTasks[selectedCaseIndex] : null;
@@ -115,6 +116,7 @@ export default function CaseConfigModal({
                             task={currentTask}
                             onUpdateTask={handleUpdateTask}
                             users={users}
+                            currentUser={currentUser}
                         />
 
                         <div style={{ 
