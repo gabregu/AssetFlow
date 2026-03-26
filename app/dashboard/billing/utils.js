@@ -37,8 +37,12 @@ export const resolveTicketServiceDetails = (ticket, globalAssets) => {
             moveType = resolvedAsset.type;
         } else {
             // Fallback to Ticket Subject/Logistics context
-            const subDelivery = ticket.subject?.toLowerCase().includes('entrega') || ticket.classification?.toLowerCase().includes('entrega') || ticket.subject?.toLowerCase().includes('alta') || ticket.logistics?.type === 'Entrega';
-            const subRecovery = ticket.subject?.toLowerCase().includes('recupero') || ticket.classification?.toLowerCase().includes('recupero') || ticket.subject?.toLowerCase().includes('baja') || ticket.subject?.toLowerCase().includes('retiro') || ticket.logistics?.type === 'Recupero';
+            const subj = String(ticket.subject || '').toLowerCase();
+            const classif = String(ticket.classification || '').toLowerCase();
+            const logType = String(ticket.logistics?.type || '').toLowerCase();
+            
+            const subDelivery = subj.includes('entrega') || classif.includes('entrega') || subj.includes('alta') || logType === 'entrega';
+            const subRecovery = subj.includes('recupero') || classif.includes('recupero') || subj.includes('baja') || subj.includes('retiro') || logType === 'recupero';
             moveType = subDelivery ? 'Entrega' : (subRecovery ? 'Recupero' : 'Servicio Técnico');
         }
 
@@ -59,11 +63,13 @@ export const resolveTicketServiceDetails = (ticket, globalAssets) => {
         const match = globalAssets ? globalAssets.find(a => a.serial === asset) : null;
         if (match && match.type) assetType = match.type;
 
-        if (ticket.subject?.toLowerCase().includes('entrega') || ticket.subject?.toLowerCase().includes('alta')) moveType = 'Entrega';
-        else if (ticket.subject?.toLowerCase().includes('recupero') || ticket.subject?.toLowerCase().includes('baja') || ticket.subject?.toLowerCase().includes('retiro')) moveType = 'Recupero';
+        const subj = String(ticket.subject || '').toLowerCase();
+        if (subj.includes('entrega') || subj.includes('alta')) moveType = 'Entrega';
+        else if (subj.includes('recupero') || subj.includes('baja') || subj.includes('retiro')) moveType = 'Recupero';
     } else {
-        if (ticket.subject?.toLowerCase().includes('entrega') || ticket.subject?.toLowerCase().includes('alta')) moveType = 'Entrega';
-        else if (ticket.subject?.toLowerCase().includes('recupero') || ticket.subject?.toLowerCase().includes('baja') || ticket.subject?.toLowerCase().includes('retiro')) moveType = 'Recupero';
+        const subj = String(ticket.subject || '').toLowerCase();
+        if (subj.includes('entrega') || subj.includes('alta')) moveType = 'Entrega';
+        else if (subj.includes('recupero') || subj.includes('baja') || subj.includes('retiro')) moveType = 'Recupero';
     }
 
     // Fallback: If device is generic, check subject for clues
