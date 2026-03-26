@@ -61,6 +61,10 @@ export default function MyTicketsPage() {
             const isMeById = drvId && (drvId === uId);
             
             if (isMeByName || isMeById) {
+                // Ocultar de "Mis Servicios" si la entrega ya se concretó/finalizó
+                const taskStatus = task.status || 'Pendiente';
+                if (['Entregado', 'Finalizado', 'Resuelto', 'Cerrado', 'Caso SFDC Cerrado', 'Cancelado'].includes(taskStatus)) return;
+
                 const pTicket = tickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
                 
                 // Agregamos la tarea aunque no encontremos el ticket padre (Resiliencia total)
@@ -94,8 +98,11 @@ export default function MyTicketsPage() {
                                (tDriverUid && (tDriverUid === uId));
             
             if (isMeLegacy) {
-                const isTRes = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
-                if (isTRes) return; // No mostrar finalizados en Mis Servicios
+                const tStatus = ticket.status || 'Abierto';
+                const lStatus = ticket.logistics?.status || 'Pendiente';
+                
+                if (['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado', 'Cancelado'].includes(tStatus)) return;
+                if (['Entregado', 'Finalizado'].includes(lStatus)) return;
 
                 items.push({
                     ...ticket,

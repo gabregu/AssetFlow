@@ -85,8 +85,8 @@ export default function MyDeliveriesPage() {
             const isAssignedByUid = driverUid && (driverUid === uId);
             
             if (isAssignedByName || isAssignedByUid) {
-                // Solo mostrar los activos (En Tránsito) o los recientemente entregados si se filtran
-                const isRelevant = task.status === 'En Transito' || task.status === 'Entregado';
+                // Ocultar los ya Entregados/Finalizados de la vista de pendientes
+                const isRelevant = ['En Transito', 'Para Coordinar', 'Pendiente'].includes(task.status);
                 
                 if (isRelevant) {
                     const parentTicket = tickets.find(t => t.id === task.ticket_id);
@@ -145,7 +145,7 @@ export default function MyDeliveriesPage() {
                     
                     if (isCaseAssigned) {
                         const cStatus = c.logistics?.status || 'Pendiente';
-                        if (cStatus === 'En Transito' || cStatus === 'Entregado') {
+                        if (['En Transito', 'Para Coordinar', 'Pendiente'].includes(cStatus)) {
                             items.push({
                                 ...t, // Datos del ticket padre
                                 id: t.id,
