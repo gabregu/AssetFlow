@@ -82,7 +82,7 @@ export default function MyDeliveriesPage() {
             
             // FILTRO: Solo si está asignado a MÍ
             const isAssignedByName = driverName && (driverName === uName || uName.includes(driverName) || driverName.includes(uName));
-            const isAssignedByUid = driverUid && (driverUid === uUid);
+            const isAssignedByUid = driverUid && (driverUid === uId);
             
             if (isAssignedByName || isAssignedByUid) {
                 // Solo mostrar los activos (En Tránsito) o los recientemente entregados si se filtran
@@ -96,7 +96,7 @@ export default function MyDeliveriesPage() {
                         id: parentTicket?.id,
                         taskId: task.id,
                         isMainTicket: false, // Ahora todo se trata como tarea individual
-                        displayId: task.case_number || (parentTicket?.id?.substring(0, 8)),
+                        displayId: task.case_number || (parentTicket?.id ? String(parentTicket.id).substring(0, 8) : 'SUB-CASE'),
                         displaySubject: task.subject || parentTicket?.subject,
                         displayAddress: task.address || parentTicket?.logistics?.address,
                         displayStatus: task.status || 'Pendiente',
@@ -151,7 +151,7 @@ export default function MyDeliveriesPage() {
                                 id: t.id,
                                 legacyCaseIndex: idx,
                                 isMainTicket: false,
-                                displayId: c.caseNumber || c.case_number || `${t.id.substring(0,8)}-${idx}`,
+                                displayId: c.caseNumber || c.case_number || `${String(t.id).substring(0,8)}-${idx}`,
                                 displaySubject: c.subject || t.subject,
                                 displayAddress: c.logistics?.address || t.logistics?.address,
                                 displayStatus: cStatus,
