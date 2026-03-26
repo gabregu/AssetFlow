@@ -127,14 +127,21 @@ export function DeliveryNotificationListener() {
                         const taskAssignedTo = String(newTask.assigned_to || '');
                         const taskDriverName = (newTask.delivery_person || '').toLowerCase();
 
-                        const isAssignedToMe = (taskAssignedTo === uId) || (taskDriverName && (taskDriverName === uName || taskDriverName.includes(uName) || uName.includes(taskDriverName)));
+                        const isAssignedToMe = (taskAssignedTo === uId && taskAssignedTo !== '') || (taskDriverName && (taskDriverName === uName || taskDriverName.includes(uName) || uName.includes(taskDriverName)));
                         
                         let shouldNotify = false;
 
                         if (payload.eventType === 'INSERT' && isAssignedToMe) {
                             shouldNotify = true;
                         } else if (payload.eventType === 'UPDATE') {
-                            const wasAssignedToMe = oldTask && ((String(oldTask.assigned_to) === uId) || (oldTask.delivery_person?.toLowerCase().includes(uName)));
+                            const oldAssignedTo = String(oldTask?.assigned_to || oldTask?.assignedTo || '');
+                            const oldDriverName = (oldTask?.delivery_person || oldTask?.deliveryPerson || '').toLowerCase();
+                            
+                            const wasAssignedToMe = oldTask && (
+                                (oldAssignedTo === uId && oldAssignedTo !== '') || 
+                                (oldDriverName && (oldDriverName === uName || oldDriverName.includes(uName) || uName.includes(oldDriverName)))
+                            );
+                            
                             if (isAssignedToMe && !wasAssignedToMe) {
                                 shouldNotify = true;
                             }
