@@ -25,10 +25,9 @@ export default function Dashboard() {
     const router = useRouter();
     const { tickets, assets, currentUser, users, countryFilter, sfdcCases } = useStore();
 
-    // Redirección para conductores (solo deben ver Mis Envíos y Mis Servicios)
     useEffect(() => {
         if (currentUser?.role === 'Conductor') {
-            router.push('/dashboard/my-deliveries');
+            router.push('/dashboard/my-tickets');
         }
     }, [currentUser, router]);
 
@@ -91,7 +90,7 @@ export default function Dashboard() {
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${currentUser?.role === 'Conductor' ? 1 : 4}, 1fr)`, gap: '1rem', marginBottom: '2.5rem' }}>
                 {currentUser?.role === 'Conductor' ? (
                     <div
-                        onClick={() => router.push('/dashboard/my-deliveries')}
+                        onClick={() => router.push('/dashboard/my-tickets')}
                         style={{
                             padding: '1.5rem',
                             background: 'var(--surface)',
@@ -106,11 +105,11 @@ export default function Dashboard() {
                         className="table-row quick-action-card"
                     >
                         <div style={{ padding: '0.75rem', background: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary-color)', borderRadius: '12px' }}>
-                            <Truck size={24} />
+                            <FileText size={24} />
                         </div>
                         <div>
-                            <span style={{ fontWeight: 700, fontSize: '1.1rem', display: 'block' }}>Ir a Mis Envíos</span>
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Tienes entregas pendientes por gestionar</span>
+                            <span style={{ fontWeight: 700, fontSize: '1.1rem', display: 'block' }}>Ir a Mis Servicios</span>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Tienes servicios pendientes por gestionar</span>
                         </div>
                     </div>
                 ) : (
