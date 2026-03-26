@@ -27,7 +27,7 @@ export function Logo({ size = 'large', collapsed = false }) {
                 <span style={{
                     fontSize: isSmall ? '1.5rem' : '2.2rem',
                     fontWeight: 900,
-                    color: '#0f172a',
+                    color: 'var(--text-main)',
                     letterSpacing: '-0.03em'
                 }}>
                     AssetFlow
@@ -35,7 +35,7 @@ export function Logo({ size = 'large', collapsed = false }) {
                 <span style={{
                     fontSize: isSmall ? '0.75rem' : '1rem',
                     fontWeight: 800,
-                    color: '#334155',
+                    color: 'var(--text-secondary)',
                     marginTop: isSmall ? '2px' : '4px',
                     display: 'flex',
                     alignItems: 'center',
