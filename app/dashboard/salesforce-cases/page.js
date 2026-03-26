@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 
 export default function SFDCCasesPage() {
     const router = useRouter();
-    const { sfdcCases, tickets, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter } = useStore();
+    const { sfdcCases, tickets, logisticsTasks, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter } = useStore();
     const [filter, setFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCase, setSelectedCase] = useState(null);
@@ -37,6 +37,13 @@ export default function SFDCCasesPage() {
     // 1. Filtrado
     const filteredCases = useMemo(() => {
         return sfdcCases.filter(c => {
+            // EXCLUSIÓN: Si el caso ya fue convertido en Tarea Logística o Ticket Principal, lo ocultamos.
+            const isAttended = 
+                (logisticsTasks && logisticsTasks.some(tk => String(tk.case_number) === String(c.caseNumber))) || 
+                (tickets && tickets.some(t => String(t.id) === String(c.caseNumber)));
+                
+            if (isAttended) return false;
+
             const matchesText = c.subject.toLowerCase().includes(filter.toLowerCase()) ||
                 c.requestedFor.toLowerCase().includes(filter.toLowerCase()) ||
                 c.caseNumber.toLowerCase().includes(filter.toLowerCase());

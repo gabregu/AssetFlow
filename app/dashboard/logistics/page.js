@@ -29,8 +29,23 @@ export default function LogisticsHubPage() {
     
     // --- 1. PROCESAR TAREAS ---
     const tasks = useMemo(() => {
-        return logisticsTasks
+        // Deduplicar tareas por Case Number (Mantiene el más reciente en caso de repetidos importados)
+        const uniqueMap = new Map();
+        logisticsTasks.forEach(task => {
+            const key = task.case_number ? String(task.case_number).trim() : task.id;
+            uniqueMap.set(key, task);
+        });
+        
+        const deduplicatedTasks = Array.from(uniqueMap.values());
+
+        return deduplicatedTasks
             .filter(task => {
+                // "si están en estado Resuelto que no aparezcan" -> Ocultar absolutos de terminación
+                if (['Resuelto', 'Cancelado', 'Cerrado', 'Caso SFDC Cerrado'].includes(task.status)) return false;
+                
+                // Ocultar "Entregado" de la vista por defecto, a menos que se busque explícitamente en el filtro
+                if (task.status === 'Entregado' && statusFilter !== 'Entregado') return false;
+
                 const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
                 
                 // Filtro de País
