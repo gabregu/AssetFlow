@@ -2,95 +2,148 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../../../lib/store';
 import { Button } from './Button';
-import { Modal } from './Modal';
-import { Timer } from 'lucide-react';
+import { Timer, LogOut } from 'lucide-react';
 
 // Configuration
-const INACTIVITY_LIMIT_MS = 5 * 60 * 1000; // 5 minutes
-const WARNING_DURATION_MS = 10 * 1000; // 10 seconds warning
-const CHECK_INTERVAL_MS = 1000; // Check every second
+const INACTIVITY_LIMIT_MS = 15 * 60 * 1000; // 15 minutos de inactividad
+const WARNING_DURATION_MS = 30 * 1000;        // 30 segundos de aviso
+const STORAGE_KEY = 'assetflow_last_activity';
 
 export function InactivityMonitor() {
     const { currentUser, logout } = useStore();
-    const [lastActivity, setLastActivity] = useState(Date.now());
     const [showWarning, setShowWarning] = useState(false);
     const [timeLeft, setTimeLeft] = useState(WARNING_DURATION_MS / 1000);
-    const logoutTimerRef = useRef(null);
 
-    // Reset inactivity timer on user user interaction
-    const resetTimer = useCallback(() => {
-        setLastActivity(Date.now());
-        if (showWarning) {
-            setShowWarning(false);
-            if (logoutTimerRef.current) clearTimeout(logoutTimerRef.current);
+    // ---- REFS para evitar stale closures en el interval ----
+    const isLoggingOut = useRef(false);
+    const showWarningRef = useRef(false);           // espejo de showWarning para leer dentro del interval
+    const currentUserRef = useRef(currentUser);
+    const logoutRef = useRef(logout);
+    const intervalRef = useRef(null);
+
+    // Mantener refs sincronizados con los valores mas recientes
+    useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+    useEffect(() => { logoutRef.current = logout; }, [logout]);
+    useEffect(() => { showWarningRef.current = showWarning; }, [showWarning]);
+
+    // ---- Helpers ----
+    const getLastActivity = () => {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? parseInt(stored, 10) : Date.now();
+    };
+
+    const updateActivity = useCallback(() => {
+        if (isLoggingOut.current) return;
+        localStorage.setItem(STORAGE_KEY, Date.now().toString());
+        setShowWarning(false);
+        showWarningRef.current = false;
+    }, []);
+
+    const handleLogout = useCallback(async () => {
+        if (isLoggingOut.current) return;
+        isLoggingOut.current = true;
+
+        console.log("[InactivityMonitor] Auto-logout iniciado.");
+        setShowWarning(false);
+        showWarningRef.current = false;
+
+        if (intervalRef.current) clearInterval(intervalRef.current);
+
+        try {
+            await logoutRef.current();
+        } catch (e) {
+            console.error("[InactivityMonitor] Error en logout:", e);
+        } finally {
+            localStorage.removeItem(STORAGE_KEY);
+            window.location.href = '/';
         }
-    }, [showWarning]);
+    }, []);
 
-    // Setup event listeners for user activity
+    // ---- Activity listeners ----
     useEffect(() => {
         if (!currentUser) return;
 
-        const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+        // Inicializar actividad en localStorage si no existe
+        if (!localStorage.getItem(STORAGE_KEY)) {
+            localStorage.setItem(STORAGE_KEY, Date.now().toString());
+        }
 
-        // Throttled handler to improve performance
-        let throttleTimer;
-        const handleActivity = () => {
-            if (!throttleTimer) {
-                throttleTimer = setTimeout(() => {
-                    resetTimer();
-                    throttleTimer = null;
-                }, 1000); // Only update state at most once per second
-            }
+        const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+
+        let throttleTimer = null;
+        const throttledUpdate = () => {
+            if (throttleTimer) return;
+            throttleTimer = setTimeout(() => {
+                updateActivity();
+                throttleTimer = null;
+            }, 2000);
         };
 
-        events.forEach(event => document.addEventListener(event, handleActivity));
+        activityEvents.forEach(e => window.addEventListener(e, throttledUpdate, { passive: true }));
 
         return () => {
-            events.forEach(event => document.removeEventListener(event, handleActivity));
+            activityEvents.forEach(e => window.removeEventListener(e, throttledUpdate));
             if (throttleTimer) clearTimeout(throttleTimer);
         };
-    }, [currentUser, resetTimer]);
+    }, [currentUser, updateActivity]);
 
-    // Check for inactivity interval
-    useEffect(() => {
-        if (!currentUser) return;
+    // ---- Interval principal de chequeo ----
+    // CLAVE: `tick` lee de refs, no de closures de React state, asi que NUNCA queda stale.
+    const tick = useCallback(() => {
+        if (!currentUserRef.current || isLoggingOut.current) return;
 
-        const interval = setInterval(() => {
-            const now = Date.now();
-            const timeSinceLastActivity = now - lastActivity;
+        const now = Date.now();
+        const diff = now - getLastActivity();
 
-            // If we exceeded the limit but haven't shown warning yet
-            if (timeSinceLastActivity >= INACTIVITY_LIMIT_MS && !showWarning) {
+        if (diff >= INACTIVITY_LIMIT_MS + WARNING_DURATION_MS) {
+            // El aviso ya expiro tambien -> logout directo
+            handleLogout();
+        } else if (diff >= INACTIVITY_LIMIT_MS) {
+            // En periodo de gracia
+            const remaining = Math.max(0, Math.ceil((WARNING_DURATION_MS - (diff - INACTIVITY_LIMIT_MS)) / 1000));
+            setTimeLeft(remaining);
+
+            if (!showWarningRef.current) {
                 setShowWarning(true);
+                showWarningRef.current = true;
             }
 
-            // Update remaining time for the warning countdown
-            if (showWarning) {
-                const totalElapsedTime = timeSinceLastActivity - INACTIVITY_LIMIT_MS;
-                const remaining = Math.max(0, Math.ceil((WARNING_DURATION_MS - totalElapsedTime) / 1000));
-
-                setTimeLeft(remaining);
-
-                if (remaining <= 0) {
-                    handleLogout();
-                }
+            if (remaining <= 0) {
+                handleLogout();
             }
-        }, CHECK_INTERVAL_MS);
+        } else {
+            // Usuario activo
+            if (showWarningRef.current) {
+                setShowWarning(false);
+                showWarningRef.current = false;
+            }
+        }
+    }, [handleLogout]);
 
-        return () => clearInterval(interval);
-    }, [currentUser, lastActivity, showWarning]);
+    useEffect(() => {
+        if (!currentUser) {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+            return;
+        }
 
-    const handleLogout = () => {
-        // Clear everything and logout
-        setShowWarning(false);
-        logout();
-        window.location.href = '/'; // Force redirect to login
-    };
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        intervalRef.current = setInterval(tick, 1000);
 
-    const handleStayLoggedIn = () => {
-        resetTimer();
-        setShowWarning(false);
-    };
+        return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        };
+    }, [currentUser, tick]);
+
+    // Visibilidad: cuando la pesta;a vuelve al frente, forzar chequeo inmediato
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                tick();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [tick]);
 
     if (!showWarning) return null;
 
@@ -98,58 +151,85 @@ export function InactivityMonitor() {
         <div style={{
             position: 'fixed',
             top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            zIndex: 9999,
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            zIndex: 99999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backdropFilter: 'blur(4px)'
+            backdropFilter: 'blur(8px)'
         }}>
             <div style={{
                 background: 'var(--surface)',
-                padding: '2rem',
-                borderRadius: '12px',
-                width: '100%',
-                maxWidth: '400px',
+                padding: '2.5rem',
+                borderRadius: '20px',
+                width: '90%',
+                maxWidth: '420px',
                 textAlign: 'center',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-                border: '1px solid var(--border)'
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                position: 'relative',
+                overflow: 'hidden'
             }}>
+                {/* Barra de progreso */}
                 <div style={{
-                    width: '60px',
-                    height: '60px',
-                    background: 'rgba(239, 68, 68, 0.1)',
+                    position: 'absolute',
+                    top: 0, left: 0,
+                    height: '4px',
+                    background: '#ef4444',
+                    width: `${(timeLeft / (WARNING_DURATION_MS / 1000)) * 100}%`,
+                    transition: 'width 1s linear'
+                }} />
+
+                <div style={{
+                    width: '70px', height: '70px',
+                    background: 'rgba(239, 68, 68, 0.15)',
                     color: '#ef4444',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 1.5rem auto'
+                    borderRadius: '20px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 1.5rem auto',
+                    transform: 'rotate(-10deg)'
                 }}>
-                    <Timer size={32} />
+                    <Timer size={36} />
                 </div>
 
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-main)' }}>
-                    ¿Sigues ahí?
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-main)', letterSpacing: '-0.025em' }}>
+                    ¿Sigues trabajando?
                 </h3>
 
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                    Tu sesión se cerrará automáticamente en <strong style={{ color: '#ef4444', fontSize: '1.1em' }}>{timeLeft}</strong> segundos por inactividad.
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', lineHeight: '1.6' }}>
+                    Por inactividad, tu sesión se cerrará en:<br />
+                    <span style={{
+                        color: '#ef4444',
+                        fontSize: '2rem',
+                        fontWeight: 800,
+                        fontFamily: 'monospace',
+                        display: 'inline-block',
+                        margin: '0.5rem 0'
+                    }}>
+                        {timeLeft}s
+                    </span>
                 </p>
 
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1rem' }}>
                     <Button
-                        variant="secondary"
+                        variant="ghost"
                         onClick={handleLogout}
-                        style={{ width: '100px' }}
+                        icon={LogOut}
+                        style={{ border: '1px solid var(--border)' }}
                     >
-                        Salir
+                        Cerrar sesión
                     </Button>
                     <Button
-                        onClick={handleStayLoggedIn}
-                        style={{ width: '140px', backgroundColor: 'var(--primary-color)', color: 'white' }}
+                        onClick={() => {
+                            updateActivity();
+                        }}
+                        style={{
+                            background: 'var(--primary-color)',
+                            color: 'white',
+                            fontWeight: 700
+                        }}
                     >
-                        Continuar
+                        Continuar Sesión
                     </Button>
                 </div>
             </div>
