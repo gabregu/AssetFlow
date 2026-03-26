@@ -61,9 +61,9 @@ export default function MyTicketsPage() {
             const isMeById = drvId && (drvId === uId);
             
             if (isMeByName || isMeById) {
-                // Ocultar de "Mis Servicios" si la entrega ya se concretó/finalizó
+                // Ocultar de "Mis Servicios" si la entrega ya se concretó/finalizó o no requiere acción
                 const taskStatus = task.status || 'Pendiente';
-                if (['Entregado', 'Finalizado', 'Resuelto', 'Cerrado', 'Caso SFDC Cerrado', 'Cancelado'].includes(taskStatus)) return;
+                if (['Entregado', 'Finalizado', 'Resuelto', 'Cerrado', 'Caso SFDC Cerrado', 'Cancelado', 'No requiere accion'].includes(taskStatus)) return;
 
                 const pTicket = tickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
                 

@@ -29,6 +29,7 @@ export default function AssociatedCasesCard({
                     if (status === 'Para Coordinar') statusVariant = 'warning';
                     else if (status === 'En Transito') statusVariant = 'info';
                     else if (status === 'Entregado' || status === 'Finalizado' || status === 'Recuperado') statusVariant = 'success';
+                    else if (status === 'No requiere accion') statusVariant = 'secondary';
                     
                     const isSelected = selectedCaseIndex === index;
 
@@ -39,10 +40,11 @@ export default function AssociatedCasesCard({
                         }} style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                             padding: '0.875rem 1rem',
-                            background: isSelected ? 'var(--primary-color)' : 'var(--background)',
+                            background: isSelected ? 'var(--primary-color)' : (status === 'No requiere accion' ? 'rgba(0,0,0,0.03)' : 'var(--background)'),
                             border: `2px solid ${isSelected ? 'var(--primary-color)' : 'var(--border)'}`,
                             borderRadius: 'var(--radius-md)',
                             cursor: 'pointer',
+                            opacity: (status === 'No requiere accion' && !isSelected) ? 0.6 : 1,
                             transition: 'all 0.2s'
                         }}>
                             <div>

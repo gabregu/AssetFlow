@@ -41,7 +41,7 @@ export default function LogisticsHubPage() {
         return deduplicatedTasks
             .filter(task => {
                 // "si están en estado Resuelto que no aparezcan" -> Ocultar absolutos de terminación
-                if (['Resuelto', 'Cancelado', 'Cerrado', 'Caso SFDC Cerrado'].includes(task.status)) return false;
+                if (['Resuelto', 'Cancelado', 'Cerrado', 'Caso SFDC Cerrado', 'No requiere accion'].includes(task.status)) return false;
                 
                 // Ocultar "Entregado" de la vista por defecto, a menos que se busque explícitamente en el filtro
                 if (task.status === 'Entregado' && statusFilter !== 'Entregado') return false;
@@ -84,6 +84,7 @@ export default function LogisticsHubPage() {
             case 'Entregado': return 'success';
             case 'En Transito': return 'info';
             case 'Para Coordinar': return 'warning';
+            case 'No requiere accion': return 'secondary';
             default: return 'secondary';
         }
     };

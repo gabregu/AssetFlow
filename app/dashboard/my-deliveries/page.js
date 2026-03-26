@@ -145,7 +145,7 @@ export default function MyDeliveriesPage() {
                     
                     if (isCaseAssigned) {
                         const cStatus = c.logistics?.status || 'Pendiente';
-                        if (['En Transito', 'Para Coordinar', 'Pendiente'].includes(cStatus)) {
+                        if (['En Transito', 'Para Coordinar', 'Pendiente'].includes(cStatus) && cStatus !== 'No requiere accion') {
                             items.push({
                                 ...t, // Datos del ticket padre
                                 id: t.id,

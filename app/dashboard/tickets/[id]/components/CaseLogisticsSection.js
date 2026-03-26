@@ -80,6 +80,7 @@ export default function CaseLogisticsSection({
                         <option value="Para Coordinar">Para Coordinar</option>
                         <option value="En Transito">En Transito</option>
                         <option value="Entregado">Entregado/Finalizado</option>
+                        <option value="No requiere accion">No requiere acción (Sin intervención)</option>
                     </select>
                 </div>
 
