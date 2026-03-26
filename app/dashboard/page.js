@@ -38,16 +38,18 @@ export default function Dashboard() {
         return tickets.filter(t => {
             let matches = false;
             // 1. Try Address
-            if (t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
+            // 1. Try Address
+            if (t.logistics?.address && String(t.logistics.address).toLowerCase().includes(String(countryFilter).toLowerCase())) {
                 matches = true;
             } else {
                 // 2. Try SFDC Link
-                const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
+                const subject = String(t.subject || '');
+                const sfdcMatch = subject.match(/SFDC-(\d+)/);
                 if (sfdcMatch) {
                     const caseNum = sfdcMatch[1];
-                    const sfdcCase = sfdcCases?.find(c => c.caseNumber === caseNum);
+                    const sfdcCase = sfdcCases?.find(c => String(c.caseNumber) === caseNum);
                     if (sfdcCase && sfdcCase.country) {
-                        matches = sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase());
+                        matches = String(sfdcCase.country).toLowerCase().includes(String(countryFilter).toLowerCase());
                     }
                 }
             }
@@ -271,12 +273,14 @@ export default function Dashboard() {
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1.5rem' }}>Carga de Trabajo (Empleados)</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
 
-                        {users.map(user => {
-                            const activeCount = filteredTickets.filter(t =>
-                                (t.logistics?.deliveryPerson === user.name || t.logistics?.deliveryPerson === user.username) &&
-                                t.status !== 'Resuelto' &&
-                                t.status !== 'Cerrado'
-                            ).length;
+                        {(users || []).map(user => {
+                            const activeCount = filteredTickets.filter(t => {
+                                const deliveryPerson = String(t.logistics?.deliveryPerson || t.logistics?.delivery_person || '').toLowerCase();
+                                const userName = String(user.name || user.username || '').toLowerCase();
+                                return (deliveryPerson === userName || (deliveryPerson && userName && deliveryPerson.includes(userName))) &&
+                                    t.status !== 'Resuelto' &&
+                                    t.status !== 'Cerrado'
+                            }).length;
 
                             return (
                                 <div key={user.id} style={{

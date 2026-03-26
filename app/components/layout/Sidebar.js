@@ -212,7 +212,7 @@ export function Sidebar({ isOpen, onClose }) {
                             </p>
                             
                             {/* Lista de nombres */}
-                            {onlineUsers.length > 0 && (
+                            {onlineUsers && onlineUsers.length > 0 && (
                                 <div style={{ 
                                     marginTop: '0.5rem', 
                                     maxHeight: '100px', 
@@ -222,7 +222,7 @@ export function Sidebar({ isOpen, onClose }) {
                                     gap: '4px',
                                     paddingLeft: '2px'
                                 }}>
-                                    {onlineUsers.map((user, i) => (
+                                    {(onlineUsers || []).map((user, i) => (
                                         <div key={i} style={{ 
                                             display: 'flex', 
                                             alignItems: 'center', 
