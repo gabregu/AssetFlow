@@ -10,10 +10,11 @@ import {
     MapPin, 
     Navigation, 
     Package, 
-    ClipboardCheck, 
+    User,
     ChevronLeft,
     Clock,
-    User
+    Calendar,
+    Settings
 } from 'lucide-react';
 import Link from 'next/link';
 import InstructionsCard from './InstructionsCard';
@@ -24,7 +25,8 @@ export default function DriverDetailView({
     setEditedData, 
     updateTicket, 
     currentUser,
-    unifiedTasks 
+    unifiedTasks,
+    setSelectedCaseIndex
 }) {
     // Extraer datos del contacto
     const contactName = ticket.requester || 'Destinatario';
@@ -129,35 +131,58 @@ export default function DriverDetailView({
             </Card>
 
             {/* TASKS / ITEMS CARD */}
-            <Card title="Ítems del Caso" padding="1rem">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <Card title="Ítems del Caso" action={<p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Toca un ítem para coordinar</p>}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {unifiedTasks.map((task, idx) => (
-                        <div key={idx} style={{ padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '8px', backgroundColor: 'var(--background-secondary)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{task.caseNumber || `Sub-Caso ${idx+1}`}</span>
-                                <Badge variant={task.status === 'Entregado' ? 'success' : 'warning'}>{task.status || 'Pendiente'}</Badge>
-                            </div>
-                            <p style={{ fontSize: '0.85rem', marginBottom: '0.5rem' }}>{task.subject}</p>
-                            
-                            {/* Activos vinculados */}
-                            {task.assets && task.assets.length > 0 && (
-                                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                    {task.assets.map((asset, aIdx) => (
-                                        <div key={aIdx} style={{ fontSize: '0.7rem', background: 'white', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                                            📦 {asset.serial || asset}
-                                        </div>
-                                    ))}
+                        <div 
+                            key={idx} 
+                            onClick={() => setSelectedCaseIndex(idx)}
+                            style={{ 
+                                padding: '1rem', 
+                                border: '1px solid var(--border)', 
+                                borderRadius: '12px', 
+                                backgroundColor: 'white',
+                                cursor: 'pointer',
+                                transition: 'transform 0.1s active',
+                                boxShadow: 'var(--shadow-sm)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Package size={16} style={{ color: 'var(--primary-color)' }} />
+                                    <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{task.caseNumber || `Sub-Caso ${idx+1}`}</span>
                                 </div>
-                            )}
+                                <Badge style={{ backgroundColor: getStatusColor(task.status) }}>{task.status || 'Pendiente'}</Badge>
+                            </div>
+                            
+                            <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-main)' }}>{task.subject}</h4>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                    <Calendar size={14} /> {task.date || 'Sin fecha'}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                    <Clock size={14} /> {task.time_slot || 'Por coordinar'}
+                                </div>
+                            </div>
+
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                icon={Settings} 
+                                style={{ width: '100%', marginTop: '1rem', fontSize: '0.75rem', borderTop: '1px solid #f1f5f9', borderRadius: 0, height: '32px' }}
+                            >
+                                TOCAR PARA COORDINAR DÍA/HORA
+                            </Button>
                         </div>
                     ))}
                     {unifiedTasks.length === 0 && (
-                        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No hay ítems específicos cargados.</p>
+                        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No hay ítems cargados.</p>
                     )}
                 </div>
             </Card>
 
-            {/* CHAT / INSTRUCTIONS (Same component but full width) */}
+            {/* CHAT / INSTRUCTIONS */}
             <InstructionsCard 
                 ticket={ticket}
                 editedData={editedData}
@@ -166,7 +191,6 @@ export default function DriverDetailView({
                 currentUser={currentUser}
             />
 
-            {/* QUICK ACTIONS FOOTER (Optional, for easy thumb reach) */}
             <div style={{ padding: '1rem', textAlign: 'center' }}>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Operado por {currentUser?.name}</p>
             </div>

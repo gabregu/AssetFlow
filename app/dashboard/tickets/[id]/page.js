@@ -77,6 +77,7 @@ export default function TicketDetailPage() {
                     updateTicket={updateTicket}
                     currentUser={currentUser}
                     unifiedTasks={unifiedTasks}
+                    setSelectedCaseIndex={setSelectedCaseIndex}
                 />
             </div>
         );
