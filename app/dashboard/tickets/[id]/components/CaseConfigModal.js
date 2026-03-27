@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Modal } from '@/app/components/ui/Modal';
 import AssetListSection from './AssetListSection';
 import AccessoriesSection from './AccessoriesSection';
@@ -47,6 +47,8 @@ export default function CaseConfigModal({
     const currentTasks = (ticketTasks && ticketTasks.length > 0) ? ticketTasks : (editedData?.associatedCases || []);
     const currentTask = (selectedCaseIndex !== null && currentTasks) ? currentTasks[selectedCaseIndex] : null;
 
+    // Ref para poder llamar saveAll() desde CaseLogisticsSection antes de cerrar
+    const logisticsSaveRef = useRef(null);
     // handleUpdateTask was moved to hook for centralization
     const handleGenerateRemito = (action = 'download') => {
         if (!currentTask) return;
@@ -117,6 +119,7 @@ export default function CaseConfigModal({
                             onUpdateTask={handleUpdateTask}
                             users={users}
                             currentUser={currentUser}
+                            saveRef={logisticsSaveRef}
                         />
 
                         <div style={{ 
@@ -129,8 +132,10 @@ export default function CaseConfigModal({
                                 variant="primary" 
                                 style={{ width: '100%', padding: '0.75rem', fontWeight: 700, fontSize: '0.95rem' }}
                                 onClick={async () => {
-                                    // REFORZAR GUARDADO: Al cerrar la ventana, guardamos explicitly todos los cambios pendientes
-                                    await handleUpdate();
+                                    // Guardar todos los valores del formulario antes de cerrar
+                                    if (logisticsSaveRef.current) {
+                                        await logisticsSaveRef.current();
+                                    }
                                     setSelectedCaseIndex(null);
                                 }}
                             >

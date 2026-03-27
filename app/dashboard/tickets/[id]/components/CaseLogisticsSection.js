@@ -6,7 +6,8 @@ export default function CaseLogisticsSection({
     task,
     onUpdateTask,
     users,
-    currentUser
+    currentUser,
+    saveRef  // <-- ref externo para poder llamar saveAll() desde el padre
 }) {
     if (!task) return null;
 
@@ -82,6 +83,42 @@ export default function CaseLogisticsSection({
             setTimeout(() => setIsSaving(false), 500);
         }
     };
+
+    // Función de guardado COMPLETO: envía el estado local total a la DB de una vez
+    // Ideal para usarse al cerrar el modal (para no perder cambios)
+    const saveAll = async () => {
+        const state = localStateRef.current;
+        if (!state || Object.keys(state).length === 0) return;
+
+        setIsSaving(true);
+        let currentStatus = state.status || task.status || 'Pendiente';
+
+        // Aplicar lógica de negocio también en el guardado final
+        const hasLogisticsInfo = !!(state.method || state.delivery_person || state.date);
+        if (hasLogisticsInfo && currentStatus === 'Pendiente') currentStatus = 'Para Coordinar';
+        const readyForTransit = !!(state.date && state.time_slot && currentStatus === 'Para Coordinar');
+        if (readyForTransit) currentStatus = 'En Transito';
+
+        const payload = {
+            status: currentStatus,
+            method: state.method,
+            delivery_person: state.delivery_person,
+            assigned_to: state.assigned_to,
+            date: state.date,
+            time_slot: state.time_slot,
+            coordinated_by: state.coordinated_by,
+            tracking_number: state.tracking_number,
+        };
+
+        try {
+            await onUpdateTask(payload);
+        } finally {
+            setTimeout(() => setIsSaving(false), 500);
+        }
+    };
+
+    // Exponer saveAll al padre vía ref
+    if (saveRef) saveRef.current = saveAll;
 
     return (
         <div style={{ marginTop: '2rem' }}>
