@@ -232,8 +232,8 @@ export default function TicketsPage() {
                                     address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : mainCase.country,
                                     phone: c.mobile || '',
                                     email: c.email || '',
-                                    method: 'Por definir',
-                                    status: 'Para Coordinar'
+                                    method: '',
+                                    status: 'Pendiente'
                                 }
                             }))
                         };
