@@ -205,7 +205,6 @@ export default function CaseLogisticsSection({
                             value={localValues.date || ''}
                             onChange={e => {
                                 const newDate = e.target.value;
-                                console.log('[CaseLogisticsSection] Fecha cambiada:', newDate);
                                 const updates = { date: newDate };
                                 if (newDate && currentUser?.name) {
                                     updates.coordinated_by = currentUser.name;
