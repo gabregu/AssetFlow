@@ -43,6 +43,8 @@ export default function MyDeliveriesPage() {
     const [selectedDelivery, setSelectedDelivery] = useState(null);
     const [isDeliveryModalOpen, setIsDeliveryModalOpen] = useState(null);
     const [optimizedOrder, setOptimizedOrder] = useState([]);
+    const [editingOrderId, setEditingOrderId] = useState(null);
+    const [editOrderValue, setEditOrderValue] = useState("");
     
     // Stats state
     const [stats, setStats] = useState({
@@ -242,6 +244,11 @@ export default function MyDeliveriesPage() {
             groups[date].push(delivery);
         });
 
+        // Ordenar cada grupo por el número de orden de visita
+        Object.keys(groups).forEach(date => {
+            groups[date].sort((a, b) => (a.deliveryOrder || 0) - (b.deliveryOrder || 0));
+        });
+
         // Ordenar fechas cronológicamente
         return Object.keys(groups)
             .sort((a, b) => {
@@ -254,6 +261,27 @@ export default function MyDeliveriesPage() {
                 return acc;
             }, {});
     }, [myAssignedDeliveries]);
+
+    const handleUpdateOrder = async (delivery, newValue) => {
+        const orderNum = parseInt(newValue);
+        if (isNaN(orderNum)) return;
+
+        try {
+            if (delivery.taskId) {
+                await updateLogisticsTask(delivery.taskId, { deliveryOrder: orderNum });
+            } else if (delivery.isMainTicket) {
+                const updatedLogistics = {
+                    ...delivery.logistics,
+                    deliveryOrder: orderNum
+                };
+                await updateTicket(delivery.id, { logistics: updatedLogistics });
+            }
+            showToast('Orden actualizado', 'success');
+        } catch (error) {
+            console.error('Error al actualizar orden:', error);
+            showToast('Error al guardar el orden', 'error');
+        }
+    };
 
     const handleDeliverySubmit = async (e) => {
         e.preventDefault();
@@ -576,23 +604,64 @@ export default function MyDeliveriesPage() {
                                                         <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>
                                                             Orden de Visita:
                                                         </label>
-                                                        <div 
-                                                            style={{ 
-                                                                width: '45px', 
-                                                                height: '45px', 
-                                                                display: 'flex', 
-                                                                alignItems: 'center', 
-                                                                justifyContent: 'center', 
-                                                                backgroundColor: dayColor, 
-                                                                borderRadius: '50%', 
-                                                                color: 'white', 
-                                                                fontWeight: 800,
-                                                                fontSize: '1.2rem',
-                                                                boxShadow: `0 4px 10px ${dayColor}44`
-                                                            }}
-                                                        >
-                                                            {delivery.deliveryOrder || 0}
-                                                        </div>
+                                                        {editingOrderId === (delivery.taskId || delivery.id) ? (
+                                                            <input
+                                                                type="number"
+                                                                autoFocus
+                                                                value={editOrderValue}
+                                                                onChange={(e) => setEditOrderValue(e.target.value)}
+                                                                onBlur={() => {
+                                                                    handleUpdateOrder(delivery, editOrderValue);
+                                                                    setEditingOrderId(null);
+                                                                }}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        handleUpdateOrder(delivery, editOrderValue);
+                                                                        setEditingOrderId(null);
+                                                                    }
+                                                                }}
+                                                                style={{
+                                                                    width: '45px',
+                                                                    height: '45px',
+                                                                    backgroundColor: 'white',
+                                                                    border: `2px solid ${dayColor}`,
+                                                                    borderRadius: '50%',
+                                                                    textAlign: 'center',
+                                                                    fontWeight: 800,
+                                                                    fontSize: '1.2rem',
+                                                                    color: dayColor,
+                                                                    outline: 'none',
+                                                                    boxShadow: `0 4px 10px ${dayColor}44`
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setEditingOrderId(delivery.taskId || delivery.id);
+                                                                    setEditOrderValue(String(delivery.deliveryOrder || 0));
+                                                                }}
+                                                                style={{ 
+                                                                    width: '45px', 
+                                                                    height: '45px', 
+                                                                    display: 'flex', 
+                                                                    alignItems: 'center', 
+                                                                    justifyContent: 'center', 
+                                                                    backgroundColor: dayColor, 
+                                                                    borderRadius: '50%', 
+                                                                    color: 'white', 
+                                                                    fontWeight: 800,
+                                                                    fontSize: '1.2rem',
+                                                                    cursor: 'pointer',
+                                                                    boxShadow: `0 4px 10px ${dayColor}44`,
+                                                                    transition: 'transform 0.2s ease'
+                                                                }}
+                                                                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                                                                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                                            >
+                                                                {delivery.deliveryOrder || 0}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
