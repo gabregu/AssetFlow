@@ -262,7 +262,7 @@ export default function CaseLogisticsSection({
                     </select>
                 </div>
 
-                {(task.status === 'Entregado' || task.status === 'Finalizado') && (
+                {(task.status === 'Entregado' || task.status === 'Finalizado') && localValues.delivery_person && (
                     <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(34, 197, 94, 0.05)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
                         <h5 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534', marginBottom: '0.75rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <div style={{ width: '6px', height: '6px', background: '#22c55e', borderRadius: '50%' }}></div>
