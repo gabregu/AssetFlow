@@ -172,6 +172,20 @@ export default function CaseConfigModal({
                                 </div>
                             </div>
                         </div>
+
+                        {/* Botón de cierre más grande para móvil */}
+                        <div style={{ marginTop: '1rem', paddingTop: '1.5rem', borderTop: '2px solid var(--border)' }}>
+                            <Button 
+                                variant="primary" 
+                                style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', fontWeight: 800, borderRadius: '12px' }}
+                                onClick={() => {
+                                    if (logisticsSaveRef.current) logisticsSaveRef.current();
+                                    setSelectedCaseIndex(null);
+                                }}
+                            >
+                                LISTO / GUARDAR CAMBIOS
+                            </Button>
+                        </div>
                     </div>
                 )}
             </Modal>

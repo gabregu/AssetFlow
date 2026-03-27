@@ -67,9 +67,12 @@ export default function TicketDetailPage() {
         );
     }
 
-    if (currentUser?.role === 'Conductor') {
-        return (
-            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '1rem' }}>
+    return (
+        <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '4rem', padding: '1rem' }}>
+            
+            {/* VISTA CONDICIONAL SEGUN ROL */}
+            {currentUser?.role === 'Conductor' ? (
+                /* VISTA CONDUCTOR (Simplificada y Mobile-first) */
                 <DriverDetailView 
                     ticket={ticket}
                     editedData={editedData}
@@ -79,92 +82,91 @@ export default function TicketDetailPage() {
                     unifiedTasks={unifiedTasks}
                     setSelectedCaseIndex={setSelectedCaseIndex}
                 />
-            </div>
-        );
-    }
-
-    return (
-        <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '4rem' }}>
-            <TicketActionButtons
-                editMode={editMode}
-                setEditMode={setEditMode}
-                editedData={editedData}
-                setEditedData={setEditedData}
-                handleUpdate={handleUpdate}
-                ticket={ticket}
-            />
-
-            <div className="grid-mobile-single" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
-                {/* Main Detail area */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    <TicketHeader 
-                        ticket={ticket}
-                        editedData={editedData}
-                        setEditedData={setEditedData}
+            ) : (
+                /* VISTA ADMINISTRADOR (Completa) */
+                <>
+                    <TicketActionButtons
                         editMode={editMode}
                         setEditMode={setEditMode}
-                        editContact={editContact}
-                        setEditContact={setEditContact}
+                        editedData={editedData}
+                        setEditedData={setEditedData}
                         handleUpdate={handleUpdate}
-                        addressStatus={addressStatus}
-                        setAddressStatus={setAddressStatus}
-                        validateAddress={validateAddress}
-                        isLoaded={isLoaded}
-                    />
-
-                    <AssociatedCasesCard 
-                        ticket={ticket}
-                        editedData={editedData}
-                        setEditedData={setEditedData}
-                        updateTicket={updateTicket}
-                        sfdcCases={sfdcCases}
-                        selectedCaseIndex={selectedCaseIndex}
-                        setSelectedCaseIndex={setSelectedCaseIndex}
-                        resetSearchStates={resetSearchStates}
-                        ticketTasks={ticketTasks}
-                        unifiedTasks={unifiedTasks}
-                    />
-
-                    <InstructionsCard
-                        ticket={ticket}
-                        editedData={editedData}
-                        setEditedData={setEditedData}
-                        updateTicket={updateTicket}
-                        currentUser={currentUser}
-                    />
-
-                    <HistoryPanel 
-                        ticket={ticket} 
-                        editedData={editedData} 
-                        setEditedData={setEditedData} 
-                        updateTicket={updateTicket} 
-                        currentUser={currentUser} 
-                    />
-                </div>
-
-                {/* Sidebar area */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    <ManagementStatusCard
-                        editedData={editedData}
-                        ticket={ticket}
-                        editMode={editMode}
-                        setEditedData={setEditedData}
-                        updateTicket={updateTicket}
-                    />
-
-                    <ProcessChecklistCard
-                        editedData={editedData}
                         ticket={ticket}
                     />
 
-                    <DangerZoneCard
-                        currentUser={currentUser}
-                        handleDelete={handleDelete}
-                    />
-                </div>
-            </div>
+                    <div className="grid-mobile-single" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+                        {/* Main Detail area */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                            <TicketHeader 
+                                ticket={ticket}
+                                editedData={editedData}
+                                setEditedData={setEditedData}
+                                editMode={editMode}
+                                setEditMode={setEditMode}
+                                editContact={editContact}
+                                setEditContact={setEditContact}
+                                handleUpdate={handleUpdate}
+                                addressStatus={addressStatus}
+                                setAddressStatus={setAddressStatus}
+                                validateAddress={validateAddress}
+                                isLoaded={isLoaded}
+                            />
 
-            {/* Modals */}
+                            <AssociatedCasesCard 
+                                ticket={ticket}
+                                editedData={editedData}
+                                setEditedData={setEditedData}
+                                updateTicket={updateTicket}
+                                sfdcCases={sfdcCases}
+                                selectedCaseIndex={selectedCaseIndex}
+                                setSelectedCaseIndex={setSelectedCaseIndex}
+                                resetSearchStates={resetSearchStates}
+                                ticketTasks={ticketTasks}
+                                unifiedTasks={unifiedTasks}
+                            />
+
+                            <InstructionsCard
+                                ticket={ticket}
+                                editedData={editedData}
+                                setEditedData={setEditedData}
+                                updateTicket={updateTicket}
+                                currentUser={currentUser}
+                            />
+
+                            <HistoryPanel 
+                                ticket={ticket} 
+                                editedData={editedData} 
+                                setEditedData={setEditedData} 
+                                updateTicket={updateTicket} 
+                                currentUser={currentUser} 
+                            />
+                        </div>
+
+                        {/* Sidebar area */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                            <ManagementStatusCard
+                                editedData={editedData}
+                                ticket={ticket}
+                                editMode={editMode}
+                                setEditedData={setEditedData}
+                                updateTicket={updateTicket}
+                            />
+
+                            <ProcessChecklistCard
+                                editedData={editedData}
+                                ticket={ticket}
+                            />
+
+                            <DangerZoneCard
+                                currentUser={currentUser}
+                                handleDelete={handleDelete}
+                            />
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* MODALS (Comunes para ambas vistas) */}
             <CaseConfigModal 
                 ticket={ticket}
                 editedData={editedData}
