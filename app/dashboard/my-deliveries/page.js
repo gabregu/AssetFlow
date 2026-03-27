@@ -38,12 +38,7 @@ export default function MyDeliveriesPage() {
     const [editingOrderId, setEditingOrderId] = useState(null);
     const [editOrderValue, setEditOrderValue] = useState("");
     
-    // Stats state
-    const [stats, setStats] = useState({
-        finishedThisMonth: 0,
-        pendingThisWeek: 0,
-        last6Months: []
-    });
+    // Stats and Toast State
 
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -203,59 +198,7 @@ export default function MyDeliveriesPage() {
         return items;
     }, [tickets, currentUser, optimizedOrder, logisticsTasks]);
 
-    // 2. CALCULAR ESTADÍSTICAS (Basadas en los datos aplanados)
-    useEffect(() => {
-        if (!currentUser) return;
-
-        // Contar completados este mes
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        
-        // Pendientes esta semana
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(endOfWeek.getDate() + 6);
-
-        let finishedThisMonthCount = 0;
-        let pendingThisWeekCount = 0;
-
-        logisticsTasks.forEach(task => {
-            const tDriverName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
-            const tDriverUid = String(task.assigned_to || task.assignedTo || '');
-            
-            const isMine = (tDriverUid === uId) || 
-                           (tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName)));
-            
-            if (!isMine) return;
-
-            if (task.status === 'Entregado' || task.status === 'Finalizado') {
-                const updatedAt = task.updated_at ? new Date(task.updated_at) : new Date();
-                if (updatedAt >= startOfMonth) finishedThisMonthCount++;
-            } else if (task.status === 'En Transito' || task.status === 'Para Coordinar') {
-                const deliveryDate = task.date ? new Date(task.date + 'T00:00:00') : null;
-                if (deliveryDate && deliveryDate >= startOfWeek && deliveryDate <= endOfWeek) {
-                    pendingThisWeekCount++;
-                }
-            }
-        });
-
-        // Simular historial de los últimos 6 meses (idealmente vendría de DB)
-        const last6 = [];
-        for (let i = 5; i >= 0; i--) {
-            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            last6.push({
-                label: date.toLocaleString('default', { month: 'short' }),
-                count: Math.floor(Math.random() * 20) + 10 // Placeholder
-            });
-        }
-
-        setStats({
-            finishedThisMonth: finishedThisMonthCount,
-            pendingThisWeek: pendingThisWeekCount,
-            last6Months: last6
-        });
-    }, [tickets, currentUser, myAssignedDeliveries]);
+    // 2. ESTADÍSTICAS MOVIDAS A /dashboard/my-stats
 
     // 3. AGRUPAR POR FECHA
     const groupedDeliveries = useMemo(() => {
@@ -423,72 +366,7 @@ export default function MyDeliveriesPage() {
                 </p>
             </div>
 
-            {/* Stats Bar */}
-            <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
-                gap: '1.25rem', 
-                marginBottom: '2.5rem' 
-            }}>
-                <Card style={{ padding: '1.25rem', borderLeft: '5px solid var(--primary-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Rendimiento</span>
-                            <span style={{ fontSize: '1.75rem', fontWeight: 900 }}>{stats.finishedThisMonth}</span>
-                            <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
-                                <ArrowUpRight size={14} /> Entregados este mes
-                            </span>
-                        </div>
-                        <div style={{ padding: '0.6rem', backgroundColor: 'var(--primary-light)', borderRadius: '12px', color: 'var(--primary-color)' }}>
-                            <TrendingUp size={20} />
-                        </div>
-                    </div>
-                </Card>
-
-                <Card style={{ padding: '1.25rem', borderLeft: '5px solid #f59e0b' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Carga Semanal</span>
-                            <span style={{ fontSize: '1.75rem', fontWeight: 900 }}>{stats.pendingThisWeek}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Servicios para esta semana</span>
-                        </div>
-                        <div style={{ padding: '0.6rem', backgroundColor: '#fef3c7', borderRadius: '12px', color: '#f59e0b' }}>
-                            <ClipboardList size={20} />
-                        </div>
-                    </div>
-                </Card>
-
-                <Card style={{ padding: '1.25rem' }} className="hide-mobile">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Historial</span>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Actividad (6m)</span>
-                        </div>
-                        <BarChart3 size={16} style={{ color: 'var(--text-secondary)' }} />
-                    </div>
-                    {/* Mini Gráfico Sparkline */}
-                    <div style={{ display: 'flex', alignItems: 'flex-end', height: '35px', gap: '4px', marginTop: '0.75rem', width: '100%' }}>
-                        {stats.last6Months.map((m, i) => {
-                            const max = Math.max(...stats.last6Months.map(h => h.count), 1);
-                            const heightPercentage = (m.count / max) * 100;
-                            const height = Math.max(heightPercentage, 10);
-
-                            return (
-                                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
-                                    <div style={{ 
-                                        width: '100%', 
-                                        height: `${height}%`, 
-                                        backgroundColor: i === 5 ? 'var(--primary-color)' : '#cbd5e1',
-                                        borderRadius: '2px',
-                                        opacity: i === 5 ? 1 : 0.7,
-                                        transition: 'all 0.3s ease'
-                                    }} title={`${m.label}: ${m.count}`}></div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </Card>
-            </div>
+            {/* Stats Bar movida a /dashboard/my-stats */}
 
             {Object.keys(groupedDeliveries).length === 0 ? (
                 <Card style={{ textAlign: 'center', padding: '4rem 2rem' }}>

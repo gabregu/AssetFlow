@@ -2,7 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Ticket, Package, Truck, Settings, LogOut, FileText, X, DollarSign, History, Activity } from 'lucide-react';
+import { LayoutDashboard, Ticket, Package, Truck, Settings, LogOut, FileText, X, DollarSign, History, Activity, TrendingUp } from 'lucide-react';
 import { useStore } from '../../../lib/store';
 
 import { Logo } from '../ui/Logo';
@@ -25,6 +25,7 @@ export function Sidebar({ isOpen, onClose }) {
     const personalItems = [
         { name: 'Mis Servicios', icon: Ticket, path: '/dashboard/my-tickets', roles: ['admin', 'Administrativo', 'Gerencial', 'Conductor'] },
         { name: 'Mis Envíos', icon: Truck, path: '/dashboard/my-deliveries', roles: ['Conductor', 'admin', 'Gerencial'] },
+        { name: 'Mis Números', icon: TrendingUp, path: '/dashboard/my-stats', roles: ['Conductor', 'admin', 'Gerencial'] },
     ];
 
     const reportItems = [
