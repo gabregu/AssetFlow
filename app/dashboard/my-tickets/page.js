@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { ServiceMap } from '../../components/ui/ServiceMap';
 import { useStore } from '../../../lib/store';
-import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon, Route } from 'lucide-react';
+import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon, Route, StickyNote, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { resolveTicketServiceDetails, getRate } from '../billing/utils';
@@ -80,7 +80,16 @@ export default function MyTicketsPage() {
                     taskTimeSlot: task.time_slot || task.timeSlot || 'Por definir',
                     requester: task.requester || pTicket?.requester || 'Destinatario',
                     parentTicket: pTicket,
-                    caseData: task
+                    caseData: task,
+                    instructions: task.instructions || pTicket?.instructions || '',
+                    hasNewNotes: (() => {
+                        const notes = pTicket?.internalNotes || [];
+                        if (notes.length === 0) return false;
+                        const latest = new Date(notes[notes.length - 1].date);
+                        const oneDayAgo = new Date();
+                        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+                        return latest > oneDayAgo;
+                    })()
                 });
             }
         });
@@ -675,7 +684,20 @@ export default function MyTicketsPage() {
                                     }} className="table-row-hover">
                                         <td style={{ padding: '1rem', fontWeight: 600 }}>{ticket.displayId}</td>
                                         <td style={{ padding: '1rem' }}>
-                                            <div style={{ fontWeight: 600 }}>{ticket.displaySubject}</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>{ticket.displaySubject}</div>
+                                                {ticket.instructions && (
+                                                    <div title="Tiene instrucciones especiales" style={{ color: 'var(--primary-color)', display: 'flex' }}>
+                                                        <StickyNote size={16} />
+                                                    </div>
+                                                )}
+                                                {ticket.hasNewNotes && (
+                                                    <div title="Nuevos mensajes en el historial" style={{ color: '#ef4444', display: 'flex', animation: 'pulse 2s infinite' }}>
+                                                        <MessageSquare size={16} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>ID: {ticket.displayId}</div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                                 <span>Prioridad: {ticket.priority}</span>
                                                 {ticket.displayAddress && (
@@ -751,6 +773,8 @@ export default function MyTicketsPage() {
                                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                             <span style={{ fontWeight: 800, color: 'var(--primary-color)' }}>#{ticket.displayId}</span>
                                             {!ticket.isMainTicket && <span style={{ fontSize: '0.6rem', background: '#f1f5f9', padding: '2px 4px', borderRadius: '4px' }}>Caso SFDC</span>}
+                                            {ticket.instructions && <StickyNote size={14} style={{ color: 'var(--primary-color)' }} />}
+                                            {ticket.hasNewNotes && <MessageSquare size={14} style={{ color: '#ef4444' }} />}
                                         </div>
                                         <Badge variant={
                                             ticket.displayStatus === 'En Transito' ? 'info' :

@@ -11,6 +11,7 @@ import ProcessChecklistCard from './components/ProcessChecklistCard';
 import DangerZoneCard from './components/DangerZoneCard';
 import CaseConfigModal from './components/CaseConfigModal';
 import InventorySelectorModal from './components/InventorySelectorModal';
+import InstructionsCard from './components/InstructionsCard';
 import { useTicketDetail } from './hooks/useTicketDetail';
 import { getStatusVariant } from '../constants';
 
@@ -105,6 +106,13 @@ export default function TicketDetailPage() {
                         resetSearchStates={resetSearchStates}
                         ticketTasks={ticketTasks}
                         unifiedTasks={unifiedTasks}
+                    />
+
+                    <InstructionsCard
+                        ticket={ticket}
+                        editedData={editedData}
+                        setEditedData={setEditedData}
+                        updateTicket={updateTicket}
                     />
 
                     <HistoryPanel 

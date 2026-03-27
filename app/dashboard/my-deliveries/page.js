@@ -2,16 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-    Truck, 
-    Calendar, 
-    Clock, 
-    MapPin, 
-    CheckCircle2, 
-    ChevronRight, 
-    Search,
+    Truck, CheckCircle, Package, Send, Calendar, Clock, MapPin, Search, ChevronRight, Navigation, CheckCircle2, ChevronDown, ListFilter, LayoutGrid, List, MessageSquare, StickyNote,
     Filter,
-    Navigation,
-    Package,
     AlertCircle,
     User,
     ClipboardList,
@@ -106,7 +98,16 @@ export default function MyDeliveriesPage() {
                         deliveryOrder: task.delivery_order || task.deliveryOrder || 0,
                         taskAssets: task.assets || [],
                         taskAccessories: task.accessories || [],
-                        taskYubikeys: task.yubikeys || []
+                        taskYubikeys: task.yubikeys || [],
+                        instructions: task.instructions || parentTicket?.instructions || '',
+                        hasNewNotes: (() => {
+                            const notes = parentTicket?.internalNotes || [];
+                            if (notes.length === 0) return false;
+                            const latest = new Date(notes[notes.length - 1].date);
+                            const oneDayAgo = new Date();
+                            oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+                            return latest > oneDayAgo;
+                        })()
                     });
                 }
             }
@@ -501,6 +502,8 @@ export default function MyDeliveriesPage() {
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                                                         <span style={{ fontWeight: 800, color: dayColor, fontSize: '1.1rem' }}>#{delivery.displayId}</span>
                                                         {!delivery.isMainTicket && <span style={{ fontSize: '0.66rem', background: 'var(--background)', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Caso SFDC</span>}
+                                                        {delivery.instructions && <StickyNote size={18} style={{ color: 'var(--primary-color)' }} />}
+                                                        {delivery.hasNewNotes && <MessageSquare size={18} style={{ color: '#ef4444' }} />}
                                                         <Badge variant={
                                                             delivery.displayStatus === 'Entregado' ? 'success' :
                                                             delivery.displayStatus === 'En Transito' ? 'info' :
