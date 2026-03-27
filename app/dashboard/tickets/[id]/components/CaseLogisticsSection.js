@@ -177,7 +177,7 @@ export default function CaseLogisticsSection({
                                             flex: 1,
                                             borderRadius: '6px',
                                             border: '1px solid var(--border)',
-                                            background: (localValues.time_slot || 'AM') === slot ? 'var(--primary-color)' : 'white',
+                                            background: (localValues.time_slot || 'AM') === slot ? 'var(--primary-color)' : 'var(--surface)',
                                             color: (localValues.time_slot || 'AM') === slot ? 'white' : 'var(--text-main)',
                                             fontWeight: 600,
                                             cursor: 'pointer'

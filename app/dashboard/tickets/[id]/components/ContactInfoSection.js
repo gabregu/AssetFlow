@@ -27,7 +27,7 @@ export default function ContactInfoSection({
         <div className="grid-mobile-single" style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem 1.5rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
                 {ticket.associatedCases && ticket.associatedCases.length > 0 ? (
-                    <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                    <div style={{ padding: '0.5rem', background: 'var(--background)', borderRadius: '6px', border: '1px solid var(--border)' }}>
                         <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <Hash size={12} /> Casos Asociados ({ticket.associatedCases.length})
                         </label>
@@ -39,7 +39,7 @@ export default function ContactInfoSection({
                                     gap: '6px',
                                     fontSize: '0.8rem',
                                     padding: '4px',
-                                    background: 'white',
+                                    background: 'var(--surface)',
                                     borderRadius: '4px',
                                     border: '1px solid var(--border)'
                                 }}>
@@ -97,17 +97,24 @@ export default function ContactInfoSection({
                     ) : (
                         <MapPin size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
                     )}
-                    <input
-                        className="form-input"
-                        style={{
-                            paddingLeft: '2.2rem',
-                            paddingRight: isEditing ? '80px' : '10px',
-                            height: '32px',
-                            fontSize: '0.85rem',
-                            borderColor: addressStatus === 'valid' ? '#22c55e' : (addressStatus === 'invalid' ? '#ef4444' : 'var(--border)')
-                        }}
-                        disabled={!isEditing}
-                        value={editedData.logistics?.address || ''}
+                        <input
+                            className="form-input"
+                            style={{
+                                paddingLeft: '2.2rem',
+                                paddingRight: isEditing ? '80px' : '10px',
+                                height: 'auto',
+                                minHeight: '42px',
+                                fontSize: '1rem',
+                                fontWeight: 600,
+                                lineHeight: '1.4',
+                                borderColor: addressStatus === 'valid' ? '#22c55e' : (addressStatus === 'invalid' ? '#ef4444' : 'var(--border)'),
+                                background: isEditing ? 'var(--background)' : 'transparent',
+                                border: isEditing ? '1px solid var(--border)' : 'none',
+                                cursor: isEditing ? 'text' : 'default',
+                                color: 'var(--text-main)'
+                            }}
+                            disabled={!isEditing}
+                            value={editedData.logistics?.address || ''}
                         onChange={e => {
                             setAddressStatus('idle');
                             setEditedData({
