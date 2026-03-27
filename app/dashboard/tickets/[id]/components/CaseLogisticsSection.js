@@ -198,11 +198,14 @@ export default function CaseLogisticsSection({
                     <div className="form-group">
                         <label className="form-label">Fecha de Entrega/Retiro</label>
                         <input
+                            id={`delivery-date-${task.id || 'legacy'}`}
+                            name="delivery_date"
                             type="date"
                             className="form-input"
                             value={localValues.date || ''}
                             onChange={e => {
                                 const newDate = e.target.value;
+                                console.log('[CaseLogisticsSection] Fecha cambiada:', newDate);
                                 const updates = { date: newDate };
                                 
                                 // Autocompletar "Coordinado por" si hay una fecha
