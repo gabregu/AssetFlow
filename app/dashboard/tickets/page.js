@@ -11,7 +11,7 @@ import { CountryFilter } from '../../components/layout/CountryFilter';
 import { getStatusVariant } from './constants';
 
 export default function TicketsPage() {
-    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter } = useStore();
+    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks } = useStore();
     const fileInputRef = useRef(null);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -896,85 +896,68 @@ export default function TicketsPage() {
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                                             {(() => {
                                                 // 1. Get current sub-cases
-                                                const cases = ticket.associatedCases || [];
+                                                const tasks = logisticsTasks.filter(tk => String(tk.ticket_id) === String(ticket.id));
+                                                const legacyCases = ticket.associatedCases || [];
                                                 
-                                                // 2. Identify the "latest" modified case
-                                                // Sort by lastUpdated, and fall back to anything that has status/method info
-                                                let latestCase = [...cases].sort((a,b) => {
-                                                    const dateA = a.logistics?.lastUpdated || '0';
-                                                    const dateB = b.logistics?.lastUpdated || '0';
-                                                    return dateB.localeCompare(dateA);
-                                                })[0];
+                                                // 2. Map all to a common format
+                                                const allSubItems = [
+                                                    ...tasks.map(t => ({
+                                                        status: t.status,
+                                                        method: t.method,
+                                                        deliveryPerson: t.delivery_person,
+                                                        trackingNumber: t.tracking_number,
+                                                        date: t.date,
+                                                        updatedAt: t.updated_at || t.created_at || '0'
+                                                    })),
+                                                    ...legacyCases.map(c => ({
+                                                        status: c.logistics?.status || 'Pendiente',
+                                                        method: c.logistics?.method,
+                                                        deliveryPerson: c.logistics?.deliveryPerson,
+                                                        trackingNumber: c.logistics?.trackingNumber,
+                                                        date: c.logistics?.date,
+                                                        updatedAt: c.logistics?.lastUpdated || '0'
+                                                    }))
+                                                ];
 
-                                                // If no sub-cases with logistics exist or the above failed, fall back to main ticket logistics
-                                                if (!latestCase || !latestCase.logistics) {
-                                                    return (
-                                                        <>
-                                                            <Badge variant={getStatusVariant(ticket.status)} style={{ fontSize: '0.75rem', padding: '2px 6px' }}>
-                                                                S: {ticket.status}
-                                                            </Badge>
-                                                            {ticket.deliveryStatus && (
-                                                                <Badge
-                                                                    variant={
-                                                                        ticket.deliveryStatus === 'Entregado' ? 'success' :
-                                                                        ticket.deliveryStatus === 'En Transito' ? 'info' :
-                                                                        ticket.deliveryStatus === 'Para Coordinar' ? 'warning' :
-                                                                        'default'
-                                                                    }
-                                                                    style={{ fontSize: '0.75rem', padding: '2px 6px' }}
-                                                                >
-                                                                    E: {ticket.deliveryStatus}
-                                                                </Badge>
-                                                            )}
-                                                        </>
-                                                    );
-                                                }
+                                                // 3. Sort by updatedAt descending to find the latest log
+                                                const latestLog = allSubItems.sort((a,b) => b.updatedAt.localeCompare(a.updatedAt))[0];
 
-                                                const log = latestCase.logistics;
-                                                const senderName = log.deliveryPerson || '';
-                                                const methodName = log.method || '';
-                                                const tracking = (log.method && log.method !== 'Repartidor Propio' && log.trackingNumber) ? ` (${log.trackingNumber})` : '';
-                                                
-                                                let displaySender = '';
-                                                if (methodName === 'Repartidor Propio') {
-                                                    displaySender = senderName || 'Repartidor Propio';
-                                                } else if (methodName) {
-                                                    displaySender = methodName + tracking;
-                                                } else {
-                                                    // Fallback: if there's a deliveryPerson but no method or weird combo
-                                                    displaySender = senderName;
-                                                }
-                                                
-                                                const dateStr = log.date ? new Date(log.date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '';
+                                                // Determine badges
+                                                const dateStr = (latestLog?.date) ? new Date(latestLog.date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '';
+                                                const methodName = latestLog?.method || '';
+                                                const senderName = latestLog?.deliveryPerson || '';
+                                                const tracking = (latestLog?.method && latestLog?.method !== 'Repartidor Propio' && latestLog?.trackingNumber) ? ` (${latestLog.trackingNumber})` : '';
+                                                let displaySender = methodName === 'Repartidor Propio' ? (senderName || 'Propio') : (methodName ? (methodName + tracking) : (senderName || ''));
 
                                                 return (
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                        <Badge
-                                                            variant={
-                                                                log.status === 'Entregado' ? 'success' :
-                                                                log.status === 'En Transito' ? 'info' :
-                                                                log.status === 'Para Coordinar' ? 'warning' :
-                                                                'default'
-                                                            }
-                                                            style={{ fontSize: '0.75rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                                                        {/* Main Management Status (THE REQUESTED FIX) */}
+                                                        <Badge 
+                                                            variant={getStatusVariant(ticket.status)} 
+                                                            style={{ fontSize: '0.8rem', padding: '4px 10px', boxShadow: 'var(--shadow-sm)', border: '1px solid currentColor', fontWeight: 600 }}
                                                         >
-                                                            {log.status}
+                                                            {ticket.status}
                                                         </Badge>
-                                                        {(displaySender || dateStr) && (
+
+                                                        {/* Secondary Logistics Info (if exists) */}
+                                                        {latestLog && (
                                                             <div style={{ 
                                                                 fontSize: '0.65rem', 
                                                                 color: 'var(--text-secondary)', 
-                                                                background: 'var(--surface-color)', 
+                                                                background: `${latestLog.status === 'Entregado' ? '#10b98110' : 'var(--background-secondary)'}`, 
                                                                 padding: '4px 8px', 
                                                                 borderRadius: '4px',
-                                                                border: '1px solid var(--border)',
+                                                                border: `1px solid ${latestLog.status === 'Entregado' ? '#10b98144' : 'var(--border)'}`,
                                                                 display: 'flex',
                                                                 flexDirection: 'column',
-                                                                gap: '2px',
-                                                                marginTop: '2px'
+                                                                gap: '1px'
                                                             }}>
-                                                                {displaySender && <div style={{ fontWeight: 700, color: 'var(--primary-color)', fontSize: '0.7rem' }}>{displaySender}</div>}
-                                                                {dateStr && <div style={{ opacity: 0.8, fontSize: '0.65rem' }}>Acordado: {dateStr}</div>}
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: latestLog.status === 'Entregado' ? '#10b981' : (latestLog.status === 'En Transito' ? '#3b82f6' : '#eab308') }}></div>
+                                                                    <span style={{ fontWeight: 600 }}>{latestLog.status}</span>
+                                                                </div>
+                                                                {displaySender && <div style={{ opacity: 0.8 }}>{displaySender}</div>}
+                                                                {dateStr && <div style={{ opacity: 0.8 }}>{dateStr}</div>}
                                                             </div>
                                                         )}
                                                     </div>
