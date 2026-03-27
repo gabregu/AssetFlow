@@ -41,7 +41,7 @@ export default function ProcessChecklistCard({ editedData, ticket }) {
     ];
 
     return (
-        <Card title="Checklist de Proceso">
+        <Card title="Checklist de Proceso" style={{ height: 'auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                 {checklistItems.map((item, idx) => (
                     <div key={idx} style={{

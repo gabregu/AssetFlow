@@ -17,7 +17,7 @@ export default function ManagementStatusCard({
     const statuses = TICKET_STATUSES;
 
     return (
-        <Card title="Estado de Gestión">
+        <Card title="Estado de Gestión" style={{ height: 'auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Cambiar el estado actual:</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

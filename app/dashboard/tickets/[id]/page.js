@@ -94,7 +94,7 @@ export default function TicketDetailPage() {
                         ticket={ticket}
                     />
 
-                    <div className="grid-mobile-single" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+                    <div className="grid-mobile-single" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }}>
                         {/* Main Detail area */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                             <TicketHeader 

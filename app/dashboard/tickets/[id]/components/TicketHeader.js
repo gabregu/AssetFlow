@@ -24,7 +24,7 @@ export default function TicketHeader({
     isLoaded
 }) {
     return (
-        <Card>
+        <Card style={{ height: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <Badge variant="outline">{ticket.id}</Badge>

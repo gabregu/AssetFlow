@@ -17,7 +17,7 @@ export default function AssociatedCasesCard({
     unifiedTasks
 }) {
     return (
-        <Card title="Casos Asociados">
+        <Card title="Casos Asociados" style={{ height: 'auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {(unifiedTasks || ticketTasks || (editedData && editedData.associatedCases) || []).map((task, index) => {
                     const caseAssets = task.assets || [];
