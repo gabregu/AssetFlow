@@ -84,11 +84,15 @@ export default function MyTicketsPage() {
                     instructions: task.instructions || pTicket?.instructions || '',
                     hasNewNotes: (() => {
                         const notes = pTicket?.internalNotes || [];
-                        if (notes.length === 0) return false;
-                        const latest = new Date(notes[notes.length - 1].date);
+                        const chat = pTicket?.chatLog || task.chat_log || task.chatLog || [];
+                        
                         const oneDayAgo = new Date();
                         oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-                        return latest > oneDayAgo;
+
+                        const hasRecentNote = notes.some(n => new Date(n.date) > oneDayAgo);
+                        const hasRecentChat = chat.some(c => new Date(c.timestamp) > oneDayAgo);
+
+                        return hasRecentNote || hasRecentChat;
                     })()
                 });
             }
