@@ -316,19 +316,47 @@ export default function MyDeliveriesPage() {
         return '#10b981'; // Verde futuro
     };
 
-    // Ayudante para resumir contenido
+    // Ayudante para identificar el tipo de operación
+    const getOperationType = (delivery) => {
+        const subject = (delivery.displaySubject || '').toLowerCase();
+        if (subject.includes('collection') || subject.includes('recupero') || subject.includes('proceso de baja') || subject.includes('retiro')) {
+            return { label: 'RECUPERO', color: '#f59e0b', icon: '📥' };
+        }
+        return { label: 'ENTREGA', color: '#10b981', icon: '📤' };
+    };
+
+    // Ayudante para resumir contenido con detalle
     const getDevicesList = (delivery) => {
         const list = [];
+        
         if (delivery.taskId) {
-            // Nueva arquitectura: usar datos de la tarea
-            if (delivery.taskAssets?.length > 0) list.push(`${delivery.taskAssets.length} Equipos`);
-            if (delivery.taskAccessories?.length > 0) list.push(`${delivery.taskAccessories.length} Accesorios`);
-            if (delivery.taskYubikeys?.length > 0) list.push(`${delivery.taskYubikeys.length} YubiKeys`);
+            // Nueva arquitectura: usar datos detallados de la tarea
+            if (delivery.taskAssets?.length > 0) {
+                delivery.taskAssets.forEach(asset => {
+                    list.push(`${asset.model || 'Equipo'}: ${asset.serial || 'Sin Serial'}`);
+                });
+            }
+            if (delivery.taskAccessories?.length > 0) {
+                const accNames = delivery.taskAccessories.map(a => a.name || 'Accesorio').join(', ');
+                list.push(`${delivery.taskAccessories.length} Accesorios: ${accNames}`);
+            }
+            if (delivery.taskYubikeys?.length > 0) {
+                const yubiSerials = delivery.taskYubikeys.map(y => y.serial || 'S/N').join(', ');
+                list.push(`${delivery.taskYubikeys.length} YubiKeys: ${yubiSerials}`);
+            }
         } else if (delivery.isMainTicket) {
-            if (delivery.assetInfo?.serial) list.push(`${delivery.assetInfo.model || 'Equipo'} - ${delivery.assetInfo.serial}`);
-            if (delivery.accessoriesCount) list.push(`${delivery.accessoriesCount} Accesorios`);
-            if (delivery.yubikeysCount) list.push(`${delivery.yubikeysCount} YubiKeys`);
+            // Caso legacy
+            if (delivery.assetInfo?.serial) {
+                list.push(`${delivery.assetInfo.model || 'Equipo'}: ${delivery.assetInfo.serial}`);
+            }
+            if (delivery.accessoriesCount) {
+                list.push(`${delivery.accessoriesCount} Accesorios`);
+            }
+            if (delivery.yubikeysCount) {
+                list.push(`${delivery.yubikeysCount} YubiKeys`);
+            }
         }
+        
         return list.length > 0 ? list : ['Sin items definidos'];
     };
 
@@ -495,8 +523,21 @@ export default function MyDeliveriesPage() {
                                                             borderRadius: '8px',
                                                             borderLeft: `3px solid ${dayColor}`
                                                         }}>
-                                                            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>
-                                                                Contenido
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                                                                <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                                    Contenido
+                                                                </div>
+                                                                <div style={{ 
+                                                                    fontSize: '0.7rem', 
+                                                                    fontWeight: 900, 
+                                                                    color: getOperationType(delivery).color,
+                                                                    backgroundColor: `${getOperationType(delivery).color}15`,
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '4px',
+                                                                    border: `1px solid ${getOperationType(delivery).color}44`
+                                                                }}>
+                                                                    {getOperationType(delivery).icon} {getOperationType(delivery).label}
+                                                                </div>
                                                             </div>
                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                                                 {getDevicesList(delivery).map((item, idx) => (
