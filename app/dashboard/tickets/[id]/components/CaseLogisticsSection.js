@@ -164,7 +164,7 @@ export default function CaseLogisticsSection({
                     </select>
                 </div>
 
-                {( (task.method === 'Andreani' || task.method === 'Correo Argentino') || (task.logistics?.method === 'Andreani' || task.logistics?.method === 'Correo Argentino') ) && (
+                {(localValues.method === 'Andreani' || localValues.method === 'Correo Argentino') && (
                     <div className="form-group">
                         <label className="form-label">Número de Seguimiento</label>
                         <input
@@ -176,7 +176,7 @@ export default function CaseLogisticsSection({
                     </div>
                 )}
 
-                {(task.method === 'Repartidor Propio' || task.logistics?.method === 'Repartidor Propio') && (
+                {localValues.method === 'Repartidor Propio' && (
                     <div className="form-group">
                         <label className="form-label">Nombre del Repartidor</label>
                         <select
