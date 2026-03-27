@@ -15,11 +15,11 @@ export function Sidebar({ isOpen, onClose }) {
         { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Casos SFDC', icon: FileText, path: '/dashboard/salesforce-cases', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Servicios', icon: Ticket, path: '/dashboard/tickets', roles: ['admin', 'Administrativo', 'Gerencial'] },
-        { name: 'Inventario', icon: Package, path: '/dashboard/inventory', roles: ['admin', 'Administrativo', 'Gerencial'] },
-        { name: 'Envíos', icon: Truck, path: '/dashboard/deliveries', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Tráfico Logística', icon: Activity, path: '/dashboard/logistics', roles: ['admin', 'Administrativo', 'Gerencial'] },
+        { name: 'Envíos', icon: Truck, path: '/dashboard/deliveries', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Facturación', icon: DollarSign, path: '/dashboard/billing', roles: ['admin', 'Gerencial'] },
         { name: 'Histórico', icon: History, path: '/dashboard/history', roles: ['admin', 'Administrativo', 'Gerencial'] },
+        { name: 'Inventario', icon: Package, path: '/dashboard/inventory', roles: ['admin', 'Administrativo', 'Gerencial'] },
     ];
 
     const personalItems = [
