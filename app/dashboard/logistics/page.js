@@ -41,7 +41,7 @@ export default function LogisticsHubPage() {
         return deduplicatedTasks
             .filter(task => {
                 // "si están en estado Resuelto que no aparezcan" -> Ocultar absolutos de terminación
-                if (['Resuelto', 'Cancelado', 'Cerrado', 'Caso SFDC Cerrado', 'No requiere accion'].includes(task.status)) return false;
+                if (['Resuelto', 'Cancelado', 'Cerrado', 'Caso SFDC Cerrado', 'No requiere accion', 'Pendiente'].includes(task.status)) return false;
                 
                 // Ocultar "Entregado" de la vista por defecto, a menos que se busque explícitamente en el filtro
                 if (task.status === 'Entregado' && statusFilter !== 'Entregado') return false;
@@ -161,7 +161,7 @@ export default function LogisticsHubPage() {
                 <Card className="p-4" style={{ background: 'var(--primary-color)', color: 'white' }}>
                     <div style={{ opacity: 0.8, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Tareas</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem' }}>
-                        {logisticsTasks.length}
+                        {tasks.length}
                     </div>
                 </Card>
             </div>
