@@ -426,8 +426,8 @@ export default function SFDCCasesPage() {
                             address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : '',
                             phone: c.mobile || '',
                             email: c.email || '',
-                            method: 'Por definir',
-                            status: 'Para Coordinar' // Estado inicial para que Lucas lo vea en sus servicios
+                            method: '', // Dejar vacío para que se asigne explícitamente
+                            status: 'Pendiente' // Estado inicial estándar
                         }
                     }))
                 };

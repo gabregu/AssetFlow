@@ -131,13 +131,18 @@ export function useTicketDetail() {
         const normalize = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         const requesterName = normalize(ticket.requester);
         
-        // Usamos el ticket original del store para ver qué está ya vinculado, 
-        // evitando depender de editedData que causaría bucle infinito
-        const linkedCaseNumbers = (ticket.associatedCases || []).map(c => c.caseNumber).filter(Boolean);
+        // Sincronización robusta dse duplicados: revisar tanto el campo legacy como la tabla real de base de datos
+        const linkedLegacy = (ticket.associatedCases || []).map(c => c.caseNumber).filter(Boolean);
+        const linkedReal = (ticketTasks || []).map(c => c.caseNumber).filter(Boolean);
+        const allLinked = [...new Set([...linkedLegacy, ...linkedReal])];
         
+        // También incluimos el número de caso principal si está en el subject para no re-vincularlo a sí mismo
+        const mainCaseMatch = (ticket.subject || '').match(/SFDC-(\d+)/);
+        if (mainCaseMatch) allLinked.push(mainCaseMatch[1]);
+
         const siblings = sfdcCases.filter(sc => {
             const rf = normalize(sc.requestedFor);
-            return rf === requesterName && !linkedCaseNumbers.includes(sc.caseNumber);
+            return rf === requesterName && !allLinked.includes(sc.caseNumber);
         });
 
         if (siblings.length > 0) {
