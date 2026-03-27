@@ -402,15 +402,22 @@ export default function MyDeliveriesPage() {
                                                         <span style={{ fontWeight: 800, color: dayColor, fontSize: '1.1rem' }}>#{delivery.displayId}</span>
                                                         {!delivery.isMainTicket && <span style={{ fontSize: '0.66rem', background: 'var(--background)', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Caso SFDC</span>}
                                                         {(delivery.instructions || delivery.hasNewNotes) && (
-                                                            <MessageSquare 
-                                                                size={18} 
+                                                            <div 
+                                                                className={delivery.hasUnreadChat ? "unread-badge-v2" : ""}
                                                                 style={{ 
-                                                                    color: delivery.hasUnreadChat ? '#ef4444' : 'var(--primary-color)',
-                                                                    animation: delivery.hasUnreadChat ? 'pulse 1.5s infinite' : 'none'
-                                                                }} 
-                                                                title={delivery.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"}
-                                                                fill={delivery.hasUnreadChat ? 'rgba(239, 68, 68, 0.2)' : 'none'}
-                                                            />
+                                                                    color: delivery.hasUnreadChat ? 'white' : 'var(--primary-color)',
+                                                                    width: delivery.hasUnreadChat ? '26px' : 'auto',
+                                                                    height: delivery.hasUnreadChat ? '26px' : 'auto',
+                                                                    display: 'flex',
+                                                                    marginRight: '8px'
+                                                                }}
+                                                            >
+                                                                <MessageSquare 
+                                                                    size={16} 
+                                                                    fill={delivery.hasUnreadChat ? 'white' : 'none'} 
+                                                                    stroke={delivery.hasUnreadChat ? 'none' : 'currentColor'}
+                                                                />
+                                                            </div>
                                                         )}
                                                         <Badge variant={
                                                             delivery.displayStatus === 'Entregado' ? 'success' :

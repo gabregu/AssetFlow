@@ -207,13 +207,14 @@ export default function LogisticsHubPage() {
                                         {task.hasNewNotes && (
                                             <div 
                                                 title={task.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"} 
+                                                className={task.hasUnreadChat ? "unread-badge-v2" : ""}
                                                 style={{ 
-                                                    color: task.hasUnreadChat ? '#ef4444' : 'var(--primary-color)', 
+                                                    color: task.hasUnreadChat ? 'white' : 'var(--primary-color)', 
                                                     display: 'flex',
-                                                    animation: task.hasUnreadChat ? 'pulse 1.5s infinite' : 'none'
+                                                    marginRight: '8px'
                                                 }}
                                             >
-                                                <MessageSquare size={14} fill={task.hasUnreadChat ? 'rgba(239, 68, 68, 0.2)' : 'none'} />
+                                                <MessageSquare size={14} fill={task.hasUnreadChat ? 'white' : 'none'} stroke={task.hasUnreadChat ? 'none' : 'currentColor'} />
                                             </div>
                                         )}
                                     </div>

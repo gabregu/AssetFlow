@@ -429,13 +429,14 @@ export default function MyTicketsPage() {
                                                 {(ticket.instructions || ticket.hasNewNotes) && (
                                                     <div 
                                                         title={ticket.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"} 
+                                                        className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
                                                         style={{ 
-                                                            color: ticket.hasUnreadChat ? '#ef4444' : 'var(--primary-color)', 
+                                                            color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)', 
                                                             display: 'flex',
-                                                            animation: ticket.hasUnreadChat ? 'pulse 1.5s infinite' : 'none'
+                                                            marginRight: '8px'
                                                         }}
                                                     >
-                                                        <MessageSquare size={16} fill={ticket.hasUnreadChat ? 'rgba(239, 68, 68, 0.2)' : 'none'} />
+                                                        <MessageSquare size={16} fill={ticket.hasUnreadChat ? 'white' : 'none'} stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'} />
                                                     </div>
                                                 )}
                                             </div>
@@ -516,14 +517,20 @@ export default function MyTicketsPage() {
                                             <span style={{ fontWeight: 800, color: 'var(--primary-color)' }}>#{ticket.displayId}</span>
                                             {!ticket.isMainTicket && <span style={{ fontSize: '0.6rem', background: '#f1f5f9', padding: '2px 4px', borderRadius: '4px' }}>Caso SFDC</span>}
                                             {(ticket.instructions || ticket.hasNewNotes) && (
-                                                <MessageSquare 
-                                                    size={14} 
+                                                <div 
+                                                    className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
                                                     style={{ 
-                                                        color: ticket.hasUnreadChat ? '#ef4444' : 'var(--primary-color)',
-                                                        animation: ticket.hasUnreadChat ? 'pulse 1.5s infinite' : 'none'
-                                                    }} 
-                                                    fill={ticket.hasUnreadChat ? 'rgba(239, 68, 68, 0.2)' : 'none'}
-                                                />
+                                                        color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)',
+                                                        width: ticket.hasUnreadChat ? '22px' : 'auto',
+                                                        height: ticket.hasUnreadChat ? '22px' : 'auto'
+                                                    }}
+                                                >
+                                                    <MessageSquare 
+                                                        size={14} 
+                                                        fill={ticket.hasUnreadChat ? 'white' : 'none'} 
+                                                        stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'}
+                                                    />
+                                                </div>
                                             )}
                                         </div>
                                         <Badge variant={

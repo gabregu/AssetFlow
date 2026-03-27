@@ -347,6 +347,31 @@ a {
   border-color: var(--primary-color) !important;
 }
 
+@keyframes alertPulse {
+  0% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0px rgba(239, 68, 68, 0); }
+  50% { transform: scale(1.4); filter: brightness(1.2); box-shadow: 0 0 12px rgba(239, 68, 68, 0.6); }
+  100% { transform: scale(1); filter: brightness(1); box-shadow: 0 0 0px rgba(239, 68, 68, 0); }
+}
+
+.unread-badge-v2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ff0000;
+  color: white;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(255, 0, 0, 0.3);
+  animation: alertPulse 0.8s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
+}
+
+.unread-badge-v2:hover {
+  transform: scale(1.1);
+  background-color: #d10000;
+}
+
 @keyframes pulse {
   0% {
     transform: scale(1);
