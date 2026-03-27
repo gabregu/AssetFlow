@@ -79,7 +79,8 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
             action={<StickyNote size={20} style={{ color: 'var(--primary-color)', opacity: 0.8 }} />}
             style={{ 
                 borderLeft: '4px solid var(--primary-color)',
-                height: '600px',
+                minHeight: '500px',
+                height: typeof window !== 'undefined' && window.innerWidth < 768 ? '500px' : '600px',
                 display: 'flex',
                 flexDirection: 'column'
             }}

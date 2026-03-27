@@ -812,9 +812,33 @@ export default function MyTicketsPage() {
                                         </div>
                                     </div>
 
-                                    <Link href={`/dashboard/tickets/${ticket.id}`} style={{ width: '100%' }}>
-                                        <Button variant="secondary" icon={Eye} style={{ width: '100%', padding: '0.8rem' }}>DETALLES</Button>
-                                    </Link>
+                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                                            <Link href={`/dashboard/tickets/${ticket.id}`} style={{ flex: 1 }}>
+                                                <Button variant="secondary" icon={Eye} style={{ width: '100%', padding: '0.9rem', fontSize: '0.9rem' }}>DETALLES</Button>
+                                            </Link>
+                                            
+                                            {/* Atajo de WhatsApp para móvil */}
+                                            {ticket.parentTicket?.deliveryDetails?.contactPhone && (
+                                                <Button 
+                                                    variant="success" 
+                                                    onClick={() => window.open(`https://wa.me/${ticket.parentTicket.deliveryDetails.contactPhone.replace(/\D/g, '')}`, '_blank')}
+                                                    style={{ width: '56px', height: '52px', flexShrink: 0, padding: 0 }}
+                                                >
+                                                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" style={{ width: '24px', height: '24px' }} alt="WA" />
+                                                </Button>
+                                            )}
+
+                                            {/* Atajo de Navegación para móvil */}
+                                            {ticket.displayAddress !== 'Sin dirección' && (
+                                                <Button 
+                                                    variant="secondary" 
+                                                    onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`, '_blank')}
+                                                    style={{ width: '56px', height: '52px', flexShrink: 0, color: 'var(--primary-color)' }}
+                                                >
+                                                    📍
+                                                </Button>
+                                            )}
+                                        </div>
                                 </Card>
                             ))}
                         </div>
