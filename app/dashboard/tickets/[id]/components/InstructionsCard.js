@@ -3,11 +3,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
-import { Send, StickyNote, User } from 'lucide-react';
+import { Send, StickyNote, User, Info, Edit3, X, Save } from 'lucide-react';
 
 export default function InstructionsCard({ ticket, editedData, setEditedData, updateTicket, currentUser }) {
     const [msgText, setMsgText] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [isEditingContext, setIsEditingContext] = useState(false);
+    const [tempContext, setTempContext] = useState(editedData.instructions || '');
     const chatEndRef = useRef(null);
 
     const chatLog = editedData.chatLog || [];
@@ -15,6 +17,10 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
     useEffect(() => {
         scrollToBottom();
     }, [chatLog]);
+
+    useEffect(() => {
+        setTempContext(editedData.instructions || '');
+    }, [editedData.instructions]);
 
     const scrollToBottom = () => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,6 +48,24 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
         setIsSaving(false);
     };
 
+    const handleSaveContext = async () => {
+        setIsSaving(true);
+        const success = await updateTicket(ticket.id, { 
+            instructions: tempContext,
+            instructionsUpdatedBy: currentUser?.name || 'Sistema'
+        });
+        
+        if (success !== false) {
+            setEditedData(prev => ({ 
+                ...prev, 
+                instructions: tempContext, 
+                instructionsUpdatedBy: currentUser?.name || 'Sistema' 
+            }));
+            setIsEditingContext(false);
+        }
+        setIsSaving(false);
+    };
+
     const handleKeyPress = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -51,21 +75,70 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
 
     return (
         <Card 
-            title="Chat y Coordinación" 
+            title="Instrucciones y Notas Especiales" 
             action={<StickyNote size={20} style={{ color: 'var(--primary-color)', opacity: 0.8 }} />}
             style={{ 
                 borderLeft: '4px solid var(--primary-color)',
-                height: '500px',
+                height: '600px',
                 display: 'flex',
                 flexDirection: 'column'
             }}
         >
+            {/* FIXED CONTEXT (Permanent notes) */}
+            <div style={{ 
+                marginBottom: '1rem', 
+                backgroundColor: 'var(--background-secondary)',
+                border: '1px dashed var(--primary-color)',
+                borderRadius: '8px',
+                padding: '0.75rem',
+                position: 'relative'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Info size={12} /> Instrucción General (Contexto Permanente)
+                    </div>
+                    {!isEditingContext ? (
+                        <button 
+                            onClick={() => setIsEditingContext(true)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', opacity: 0.6 }}
+                        >
+                            <Edit3 size={14} />
+                        </button>
+                    ) : (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={() => setIsEditingContext(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><X size={14} /></button>
+                            <button onClick={handleSaveContext} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10b981' }}><Save size={14} /></button>
+                        </div>
+                    )}
+                </div>
+                
+                {isEditingContext ? (
+                    <textarea 
+                        style={{ width: '100%', border: 'none', background: 'white', borderRadius: '4px', padding: '4px', fontSize: '0.85rem', resize: 'vertical', minHeight: '60px' }}
+                        value={tempContext}
+                        onChange={e => setTempContext(e.target.value)}
+                        autoFocus
+                    />
+                ) : (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: '1.4', fontStyle: tempContext ? 'normal' : 'italic' }}>
+                        {tempContext || 'Toca el ícono de edición para agregar una instrucción fija para el conductor.'}
+                    </div>
+                )}
+                
+                {editedData.instructionsUpdatedBy && !isEditingContext && (
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', opacity: 0.6, marginTop: '4px', textAlign: 'right' }}>
+                        Modificado por {editedData.instructionsUpdatedBy}
+                    </div>
+                )}
+            </div>
+
+            {/* CHAT LOG */}
             <div style={{ 
                 flex: 1, 
                 overflowY: 'auto', 
                 marginBottom: '1rem', 
-                padding: '1rem', 
-                backgroundColor: 'var(--background-secondary)',
+                padding: '0.75rem', 
+                backgroundColor: 'rgba(0,0,0,0.02)',
                 borderRadius: '8px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -73,7 +146,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
             }}>
                 {chatLog.length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '2rem', fontSize: '0.9rem', fontStyle: 'italic' }}>
-                        No hay mensajes aún. Envía una instrucción o consulta para el conductor.
+                        No hay interacción por chat aún.
                     </div>
                 ) : (
                     chatLog.map((msg, idx) => {
@@ -106,14 +179,14 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                                     </span>
                                 </div>
                                 <div style={{ 
-                                    padding: '0.75rem 1rem', 
+                                    padding: '0.7rem 0.9rem', 
                                     borderRadius: isMe ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
                                     backgroundColor: isMe ? 'var(--primary-color)' : 'white',
                                     color: isMe ? 'white' : 'var(--text-main)',
-                                    fontSize: '0.9rem',
+                                    fontSize: '0.88rem',
                                     lineHeight: '1.4',
-                                    boxShadow: 'var(--shadow-sm)',
-                                    border: isMe ? 'none' : '1px solid var(--border)'
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                    border: isMe ? 'none' : '1px solid #e2e8f0'
                                 }}>
                                     {msg.text}
                                 </div>
@@ -126,16 +199,16 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
 
             <div style={{ 
                 display: 'flex', 
-                gap: '0.75rem', 
+                gap: '0.6rem', 
                 alignItems: 'flex-end',
                 paddingTop: '0.5rem',
                 borderTop: '1px solid var(--border)'
             }}>
                 <textarea
-                    placeholder="Escribir mensaje..."
+                    placeholder="Escribir mensaje de chat..."
                     style={{ 
                         flex: 1,
-                        minHeight: '44px',
+                        minHeight: '40px',
                         maxHeight: '100px',
                         padding: '10px 14px',
                         borderRadius: '20px',
@@ -154,7 +227,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                     size="icon"
                     disabled={!msgText.trim() || isSaving}
                     onClick={handleSendMessage}
-                    style={{ borderRadius: '50%', width: '44px', height: '44px', flexShrink: 0 }}
+                    style={{ borderRadius: '50%', width: '40px', height: '40px', flexShrink: 0 }}
                 />
             </div>
         </Card>
