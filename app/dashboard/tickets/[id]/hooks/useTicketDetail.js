@@ -395,7 +395,14 @@ export function useTicketDetail() {
 
     const handleUpdateTask = async (partialData) => {
         const currentTask = (selectedCaseIndex !== null && unifiedTasks) ? unifiedTasks[selectedCaseIndex] : null;
-        if (!currentTask) return;
+        console.log('=== [handleUpdateTask] LLAMADO ===');
+        console.log('+ selectedCaseIndex:', selectedCaseIndex);
+        console.log('+ currentTask:', currentTask ? `id=${currentTask.id}, status=${currentTask.status}` : 'null');
+        console.log('+ partialData:', JSON.stringify(partialData));
+        if (!currentTask) {
+            console.error('[handleUpdateTask] currentTask es null — abortando');
+            return;
+        }
         
         if (currentTask.id) {
             // Nueva arquitectura: actualización directa en DB
