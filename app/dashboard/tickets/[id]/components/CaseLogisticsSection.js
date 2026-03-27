@@ -19,11 +19,11 @@ export default function CaseLogisticsSection({
         const initialState = {
             status: task.status || 'Pendiente',
             method: task.method || '',
-            delivery_person: task.delivery_person || '',
-            coordinated_by: task.coordinated_by || '',
-            tracking_number: task.tracking_number || '',
+            delivery_person: task.delivery_person || task.deliveryPerson || '',
+            coordinated_by: task.coordinated_by || task.coordinatedBy || '',
+            tracking_number: task.tracking_number || task.trackingNumber || '',
             date: task.date || '',
-            time_slot: task.time_slot || 'AM'
+            time_slot: task.time_slot || task.timeSlot || 'AM'
         };
         setLocalValues(initialState);
         localStateRef.current = initialState;

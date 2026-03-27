@@ -128,19 +128,6 @@ export default function CaseConfigModal({
                             flexDirection: 'column',
                             gap: '1rem'
                         }}>
-                             <Button 
-                                variant="primary" 
-                                style={{ width: '100%', padding: '0.75rem', fontWeight: 700, fontSize: '0.95rem' }}
-                                onClick={async () => {
-                                    // Guardar todos los valores del formulario antes de cerrar
-                                    if (logisticsSaveRef.current) {
-                                        await logisticsSaveRef.current();
-                                    }
-                                    setSelectedCaseIndex(null);
-                                }}
-                            >
-                                Guardar y Cerrar Configuración
-                            </Button>
 
                             <div style={{ 
                                 display: 'flex',
