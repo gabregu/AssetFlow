@@ -85,7 +85,6 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
             handleSendMessage();
         }
     };
-
     return (
         <Card 
             title="Instrucciones y Notas Especiales" 
@@ -94,7 +93,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                 borderLeft: '4px solid var(--primary-color)',
                 display: 'flex',
                 flexDirection: 'column',
-                height: '550px', // Altura fija para que el scroll interno funcione
+                height: '700px', // Ampliado de 550px a 700px
                 overflow: 'hidden' // Importante para que el contenido no se escape
             }}
         >
@@ -103,45 +102,45 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                 flexDirection: 'column', 
                 height: '100%', 
                 overflow: 'hidden',
-                padding: '0.5rem' 
+                padding: '0.25rem' 
             }}>
-                {/* 1. FIXED CONTEXT (Permanent notes) - Se queda arriba */}
+                {/* 1. FIXED CONTEXT (Permanent notes) - Tipografía más chica */}
                 <div style={{ 
-                    marginBottom: '1rem', 
+                    marginBottom: '0.75rem', 
                     backgroundColor: 'var(--background-secondary)',
                     border: '1px dashed var(--primary-color)',
                     borderRadius: '8px',
-                    padding: '0.75rem',
+                    padding: '0.5rem',
                     flexShrink: 0 // No se achica
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Info size={12} /> Instrucción General
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Info size={10} /> Instrucción General
                         </div>
                         {!isEditingContext ? (
                             <button 
                                 onClick={() => setIsEditingContext(true)}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', opacity: 0.6 }}
                             >
-                                <Edit3 size={14} />
+                                <Edit3 size={12} />
                             </button>
                         ) : (
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <button onClick={() => setIsEditingContext(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><X size={14} /></button>
-                                <button onClick={handleSaveContext} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10b981' }}><Save size={14} /></button>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <button onClick={() => setIsEditingContext(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><X size={12} /></button>
+                                <button onClick={handleSaveContext} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10b981' }}><Save size={12} /></button>
                             </div>
                         )}
                     </div>
                     
                     {isEditingContext ? (
                         <textarea 
-                            style={{ width: '100%', border: 'none', background: 'white', borderRadius: '4px', padding: '4px', fontSize: '0.85rem', resize: 'none', minHeight: '60px' }}
+                            style={{ width: '100%', border: 'none', background: 'white', borderRadius: '4px', padding: '4px', fontSize: '0.8rem', resize: 'none', minHeight: '50px' }}
                             value={tempContext}
                             onChange={e => setTempContext(e.target.value)}
                             autoFocus
                         />
                     ) : (
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: '1.4', fontStyle: tempContext ? 'normal' : 'italic' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: '1.3', fontStyle: tempContext ? 'normal' : 'italic' }}>
                             {tempContext || 'Toca el ícono para agregar instrucción.'}
                         </div>
                     )}
@@ -153,20 +152,20 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                     )}
                 </div>
 
-                {/* 2. CHAT LOG - El área que hace scroll */}
+                {/* 2. CHAT LOG - Tipografía REDUCIDA para que entre más */}
                 <div style={{ 
                     flex: 1, 
                     overflowY: 'auto', 
                     marginBottom: '0.5rem', 
-                    padding: '0.75rem', 
-                    backgroundColor: 'rgba(0,0,0,0.02)',
+                    padding: '0.5rem', 
+                    backgroundColor: 'rgba(0,0,0,0.01)',
                     borderRadius: '8px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '12px'
+                    gap: '10px'
                 }}>
                     {chatLog.length === 0 ? (
-                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '2rem', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '2rem', fontSize: '0.8rem', fontStyle: 'italic' }}>
                             Sin mensajes aún.
                         </div>
                     ) : (
@@ -177,7 +176,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                                     key={msg.id || idx} 
                                     style={{ 
                                         alignSelf: isMe ? 'flex-end' : 'flex-start',
-                                        maxWidth: '90%',
+                                        maxWidth: '92%',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: isMe ? 'flex-end' : 'flex-start'
@@ -186,23 +185,23 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                                     <div style={{ 
                                         display: 'flex', 
                                         alignItems: 'center', 
-                                        gap: '6px', 
-                                        marginBottom: '2px',
-                                        fontSize: '0.65rem',
+                                        gap: '4px', 
+                                        marginBottom: '1px',
+                                        fontSize: '0.6rem',
                                         color: 'var(--text-secondary)',
-                                        opacity: 0.7,
+                                        opacity: 0.8,
                                         fontWeight: 600
                                     }}>
                                         {msg.user} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                     <div style={{ 
-                                        padding: '0.6rem 0.8rem', 
-                                        borderRadius: isMe ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
+                                        padding: '0.4rem 0.6rem', 
+                                        borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
                                         backgroundColor: isMe ? 'var(--primary-color)' : 'white',
                                         color: isMe ? 'white' : 'var(--text-main)',
-                                        fontSize: '0.85rem',
-                                        lineHeight: '1.4',
-                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                        fontSize: '0.78rem', // REDUCIDA
+                                        lineHeight: '1.3',
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                                         border: isMe ? 'none' : '1px solid #e2e8f0'
                                     }}>
                                         {msg.text}
@@ -217,9 +216,9 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                 {/* 3. INPUT - Siempre visible al fondo */}
                 <div style={{ 
                     display: 'flex', 
-                    gap: '0.5rem', 
+                    gap: '0.4rem', 
                     alignItems: 'center',
-                    padding: '0.5rem 0',
+                    padding: '0.25rem 0',
                     borderTop: '1px solid #f1f5f9',
                     flexShrink: 0,
                     backgroundColor: 'white'
@@ -228,13 +227,13 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                         placeholder="Escribir..."
                         style={{ 
                             flex: 1,
-                            height: '40px',
-                            minHeight: '40px',
-                            padding: '10px 15px',
-                            borderRadius: '20px',
+                            height: '34px',
+                            minHeight: '34px',
+                            padding: '8px 12px',
+                            borderRadius: '17px',
                             border: '1px solid var(--border)',
                             backgroundColor: '#f8fafc',
-                            fontSize: '0.9rem',
+                            fontSize: '0.8rem',
                             lineHeight: '1',
                             resize: 'none',
                             outline: 'none'
@@ -248,7 +247,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                         size="icon"
                         disabled={!msgText.trim() || isSaving}
                         onClick={handleSendMessage}
-                        style={{ borderRadius: '50%', width: '40px', height: '40px', flexShrink: 0 }}
+                        style={{ borderRadius: '50%', width: '34px', height: '34px', flexShrink: 0 }}
                     />
                 </div>
             </div>

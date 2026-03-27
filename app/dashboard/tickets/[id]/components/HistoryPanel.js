@@ -25,7 +25,7 @@ export default function HistoryPanel({ ticket, editedData, setEditedData, update
                 </div>
             }
         >
-            {!isOpen && <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Haz clic en el botón superior para ver el registro completo de cambios.</div>}
+            {!isOpen && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic', opacity: 0.7 }}>Haz clic arriba para expandir registro.</div>}
 
             {isOpen && (
                 <div style={{ borderLeft: '2px solid var(--border)', paddingLeft: '1.5rem', marginLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '0.5rem', animation: 'fadeIn 0.3s ease-out' }}>
