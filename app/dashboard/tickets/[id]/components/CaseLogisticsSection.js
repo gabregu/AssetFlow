@@ -11,10 +11,11 @@ export default function CaseLogisticsSection({
     if (!task) return null;
 
     const [localValues, setLocalValues] = React.useState({});
+    const localStateRef = React.useRef({});
     const [isSaving, setIsSaving] = React.useState(false);
 
     React.useEffect(() => {
-        setLocalValues({
+        const initialState = {
             status: task.status || 'Pendiente',
             method: task.method || '',
             delivery_person: task.delivery_person || '',
@@ -22,7 +23,9 @@ export default function CaseLogisticsSection({
             tracking_number: task.tracking_number || '',
             date: task.date || '',
             time_slot: task.time_slot || 'AM'
-        });
+        };
+        setLocalValues(initialState);
+        localStateRef.current = initialState;
     }, [task]);
 
     const isRelational = !!task.id;
@@ -36,38 +39,27 @@ export default function CaseLogisticsSection({
             incomingUpdates = { ...updatesOrField };
         }
 
-        // 1. Actualización visual inmediata (Optimista)
-        setLocalValues(prev => ({ ...prev, ...incomingUpdates }));
+        // Combinar instantáneamente con el historial exacto local para evadir race-conditions (clickeos rápidos)
+        const absoluteState = { ...localStateRef.current, ...incomingUpdates };
+        localStateRef.current = absoluteState; // Persistir para la próxima iteración instantánea
 
-        // 2. Lógica de Negocio y Automación
         const finalUpdates = { ...incomingUpdates };
-        
-        // Leemos el estado REAL actual del task (el grabado en DB), no el local state.
-        // Si el usuario acaba de cambiar el status en este mismo update, lo tomamos de ahí.
-        let currentStatus = incomingUpdates.status !== undefined ? incomingUpdates.status : (task.status || 'Pendiente');
+        let currentStatus = incomingUpdates.status !== undefined ? incomingUpdates.status : absoluteState.status;
 
         // --- AUTOMATIZACIÓN A: Pendiente -> Para Coordinar ---
-        // Se dispara cuando se asigna información logística relevante (excluyendo time_slot
-        // ya que tiene un default de 'AM' y no cuenta como elección explícita del usuario).
-        const hasExplicitLogisticsInfo = !!(incomingUpdates.method || incomingUpdates.delivery_person || incomingUpdates.date);
+        const hasExplicitLogisticsInfo = !!(absoluteState.method || absoluteState.delivery_person || absoluteState.date);
         
         if (hasExplicitLogisticsInfo && currentStatus === 'Pendiente') {
             currentStatus = 'Para Coordinar';
             finalUpdates.status = 'Para Coordinar';
-            setLocalValues(prev => ({ ...prev, status: 'Para Coordinar' }));
         }
 
         // --- AUTOMATIZACIÓN B: Para Coordinar -> En Transito ---
-        // Se dispara SÓLO cuando el caso ya está en 'Para Coordinar' (en DB o en este update)
-        // y se confirma fecha + turno explícito.
-        const effectiveDate = incomingUpdates.date || task.date;
-        const effectiveTimeSlot = incomingUpdates.time_slot; // Solo cuenta si el usuario lo cambió AHORA
-        
-        const readyForTransit = effectiveDate && effectiveTimeSlot && currentStatus === 'Para Coordinar';
+        // Evaluar con el estado unificado, asumiendo 'time_slot' (que tiene AM default) y 'date'
+        const readyForTransit = !!(absoluteState.date && absoluteState.time_slot && currentStatus === 'Para Coordinar');
         if (readyForTransit) {
             currentStatus = 'En Transito';
             finalUpdates.status = 'En Transito';
-            setLocalValues(prev => ({ ...prev, status: 'En Transito' }));
         }
 
         // Si cambiamos el repartidor, buscamos su UID (assigned_to)
@@ -75,6 +67,11 @@ export default function CaseLogisticsSection({
             const matchedUser = users.find(u => u.name === incomingUpdates.delivery_person);
             finalUpdates.assigned_to = matchedUser ? (matchedUser.id || matchedUser.uid) : null;
         }
+
+        // 1. Actualización visual inmediata, sincronizando el status calculado
+        absoluteState.status = currentStatus;
+        localStateRef.current = absoluteState;
+        setLocalValues(absoluteState);
 
         // Siempre grabamos el status final calculado
         finalUpdates.status = currentStatus;
