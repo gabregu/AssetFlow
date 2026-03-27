@@ -118,7 +118,9 @@ export function useTicketDetail() {
                 ...prev,
                 ...ticket,
                 associatedCases: normalizedCases,
-                internalNotes: ticket.internalNotes || []
+                internalNotes: ticket.internalNotes || [],
+                chatLog: ticket.chatLog || [],
+                instructionsUpdatedBy: ticket.instructionsUpdatedBy
             }));
         }
     }, [ticket, editMode, editContact]); // Quitamos selectedCaseIndex de las dependencias
