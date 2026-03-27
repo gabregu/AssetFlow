@@ -155,6 +155,8 @@ export default function TicketDetailPage() {
                             <ProcessChecklistCard
                                 editedData={editedData}
                                 ticket={ticket}
+                                setEditedData={setEditedData}
+                                updateTicket={updateTicket}
                             />
 
                             <DangerZoneCard
