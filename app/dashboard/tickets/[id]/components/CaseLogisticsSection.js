@@ -106,8 +106,8 @@ export default function CaseLogisticsSection({
             assigned_to: state.assigned_to,
             date: state.date,
             time_slot: state.time_slot,
+            coordinated_by: state.coordinated_by,
             tracking_number: state.tracking_number,
-            // coordinated_by omitido: columna no existe en logistics_tasks aún
         };
 
         try {
@@ -206,7 +206,11 @@ export default function CaseLogisticsSection({
                             onChange={e => {
                                 const newDate = e.target.value;
                                 console.log('[CaseLogisticsSection] Fecha cambiada:', newDate);
-                                updateLogistics({ date: newDate });
+                                const updates = { date: newDate };
+                                if (newDate && currentUser?.name) {
+                                    updates.coordinated_by = currentUser.name;
+                                }
+                                updateLogistics(updates);
                             }}
                         />
                     </div>
@@ -219,7 +223,11 @@ export default function CaseLogisticsSection({
                                         key={slot}
                                         type="button"
                                         onClick={() => {
-                                            updateLogistics({ time_slot: slot });
+                                            const updates = { time_slot: slot };
+                                            if (currentUser?.name) {
+                                                updates.coordinated_by = currentUser.name;
+                                            }
+                                            updateLogistics(updates);
                                         }}
                                         style={{
                                             flex: 1,
