@@ -67,15 +67,19 @@ export function useTicketDetail() {
         // o el ticketID cambió, procedemos a actualizar/sincronizar.
         const storeCases = ticket.associatedCases || [];
         const localCases = (editedData && editedData.associatedCases) || [];
+        const storeChat = ticket.chatLog || [];
+        const localChat = (editedData && editedData.chatLog) || [];
+        
         const needsInitialSync = !editedData || Object.keys(editedData).length === 0 || editedData.id !== ticket.id;
         const needsBackgroundSync = storeCases.length > localCases.length;
+        const needsChatSync = storeChat.length !== localChat.length || ticket.instructionsUpdatedBy !== editedData?.instructionsUpdatedBy || ticket.instructions !== editedData?.instructions;
 
         // Solo bloqueamos la sincronización si el usuario está editando activamente campos de texto 
         // (editMode o editContact). El simple hecho de tener un caso seleccionado para ver 
         // (selectedCaseIndex !== null) no debería bloquear la carga inicial de los casos.
         const isActivelyEditing = editMode || editContact;
 
-        if (needsInitialSync || (needsBackgroundSync && !isActivelyEditing)) {
+        if (needsInitialSync || ((needsBackgroundSync || needsChatSync) && !isActivelyEditing)) {
             console.log("Synchronizing editedData with store ticket:", ticket.id);
             
             let normalizedCases = [...storeCases];
