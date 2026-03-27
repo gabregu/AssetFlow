@@ -93,7 +93,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                 borderLeft: '4px solid var(--primary-color)',
                 display: 'flex',
                 flexDirection: 'column',
-                height: '1400px', // Ampliado a 1400px a pedido del usuario
+                height: '850px', // Ocupa el espacio que liberamos del HistoryPanel
                 overflow: 'hidden' // Importante para que el contenido no se escape
             }}
         >
