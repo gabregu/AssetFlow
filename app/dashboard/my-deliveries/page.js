@@ -101,16 +101,13 @@ export default function MyDeliveriesPage() {
                         taskYubikeys: task.yubikeys || [],
                         instructions: task.instructions || parentTicket?.instructions || '',
                         hasNewNotes: (() => {
-                            const notes = parentTicket?.internalNotes || [];
                             const chat = parentTicket?.chatLog || task.chat_log || task.chatLog || [];
-                            
-                            const oneDayAgo = new Date();
-                            oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
-                            const hasRecentNote = notes.some(n => new Date(n.date) > oneDayAgo);
-                            const hasRecentChat = chat.some(c => new Date(c.timestamp) > oneDayAgo);
-
-                            return hasRecentNote || hasRecentChat;
+                            return chat.length > 0;
+                        })(),
+                        hasUnreadChat: (() => {
+                            const chat = parentTicket?.chatLog || task.chat_log || task.chatLog || [];
+                            if (chat.length === 0) return false;
+                            return chat[chat.length - 1].user !== currentUser?.name;
                         })()
                     });
                 }
@@ -136,7 +133,17 @@ export default function MyDeliveriesPage() {
                     displaySubject: t.subject,
                     displayAddress: t.logistics?.address,
                     displayStatus: t.logistics?.status || 'Pendiente',
-                    displayDate: t.logistics?.date
+                    displayDate: t.logistics?.date,
+                    instructions: t.instructions || '',
+                    hasNewNotes: (() => {
+                        const chat = t.chatLog || [];
+                        return chat.length > 0;
+                    })(),
+                    hasUnreadChat: (() => {
+                        const chat = t.chatLog || [];
+                        if (chat.length === 0) return false;
+                        return chat[chat.length - 1].user !== currentUser?.name;
+                    })()
                 });
             }
 
@@ -165,7 +172,17 @@ export default function MyDeliveriesPage() {
                                 timeSlot: c.logistics?.timeSlot || 'AM',
                                 taskAssets: c.assets || [],
                                 taskAccessories: c.accessories || [],
-                                deliveryOrder: c.logistics?.deliveryOrder || c.logistics?.delivery_order || 0
+                                deliveryOrder: c.logistics?.deliveryOrder || c.logistics?.delivery_order || 0,
+                                instructions: c.instructions || t.instructions || '',
+                                hasNewNotes: (() => {
+                                    const chat = t.chatLog || [];
+                                    return chat.length > 0;
+                                })(),
+                                hasUnreadChat: (() => {
+                                    const chat = t.chatLog || [];
+                                    if (chat.length === 0) return false;
+                                    return chat[chat.length - 1].user !== currentUser?.name;
+                                })()
                             });
                         }
                     }
@@ -506,8 +523,17 @@ export default function MyDeliveriesPage() {
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                                                         <span style={{ fontWeight: 800, color: dayColor, fontSize: '1.1rem' }}>#{delivery.displayId}</span>
                                                         {!delivery.isMainTicket && <span style={{ fontSize: '0.66rem', background: 'var(--background)', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Caso SFDC</span>}
-                                                        {delivery.instructions && <StickyNote size={18} style={{ color: 'var(--primary-color)' }} />}
-                                                        {delivery.hasNewNotes && <MessageSquare size={18} style={{ color: '#ef4444' }} />}
+                                                        {(delivery.instructions || delivery.hasNewNotes) && (
+                                                            <MessageSquare 
+                                                                size={18} 
+                                                                style={{ 
+                                                                    color: delivery.hasUnreadChat ? '#ef4444' : 'var(--primary-color)',
+                                                                    animation: delivery.hasUnreadChat ? 'pulse 1.5s infinite' : 'none'
+                                                                }} 
+                                                                title={delivery.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"}
+                                                                fill={delivery.hasUnreadChat ? 'rgba(239, 68, 68, 0.2)' : 'none'}
+                                                            />
+                                                        )}
                                                         <Badge variant={
                                                             delivery.displayStatus === 'Entregado' ? 'success' :
                                                             delivery.displayStatus === 'En Transito' ? 'info' :

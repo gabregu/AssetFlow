@@ -83,16 +83,13 @@ export default function MyTicketsPage() {
                     caseData: task,
                     instructions: task.instructions || pTicket?.instructions || '',
                     hasNewNotes: (() => {
-                        const notes = pTicket?.internalNotes || [];
                         const chat = pTicket?.chatLog || task.chat_log || task.chatLog || [];
-                        
-                        const oneDayAgo = new Date();
-                        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
-                        const hasRecentNote = notes.some(n => new Date(n.date) > oneDayAgo);
-                        const hasRecentChat = chat.some(c => new Date(c.timestamp) > oneDayAgo);
-
-                        return hasRecentNote || hasRecentChat;
+                        return chat.length > 0;
+                    })(),
+                    hasUnreadChat: (() => {
+                        const chat = pTicket?.chatLog || task.chat_log || task.chatLog || [];
+                        if (chat.length === 0) return false;
+                        return chat[chat.length - 1].user !== currentUser?.name;
                     })()
                 });
             }
@@ -125,7 +122,17 @@ export default function MyTicketsPage() {
                     displayDate: ticket.logistics?.date || 'Sin fecha',
                     displayStatus: ticket.logistics?.status || 'Pendiente',
                     isMainTicket: true,
-                    taskId: null
+                    taskId: null,
+                    instructions: ticket.instructions || '',
+                    hasNewNotes: (() => {
+                        const chat = ticket.chatLog || [];
+                        return chat.length > 0;
+                    })(),
+                    hasUnreadChat: (() => {
+                        const chat = ticket.chatLog || [];
+                        if (chat.length === 0) return false;
+                        return chat[chat.length - 1].user !== currentUser?.name;
+                    })()
                 });
             }
         });
@@ -690,14 +697,16 @@ export default function MyTicketsPage() {
                                         <td style={{ padding: '1rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>{ticket.displaySubject}</div>
-                                                {ticket.instructions && (
-                                                    <div title="Tiene instrucciones especiales" style={{ color: 'var(--primary-color)', display: 'flex' }}>
-                                                        <StickyNote size={16} />
-                                                    </div>
-                                                )}
-                                                {ticket.hasNewNotes && (
-                                                    <div title="Nuevos mensajes en el historial" style={{ color: '#ef4444', display: 'flex', animation: 'pulse 2s infinite' }}>
-                                                        <MessageSquare size={16} />
+                                                {(ticket.instructions || ticket.hasNewNotes) && (
+                                                    <div 
+                                                        title={ticket.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"} 
+                                                        style={{ 
+                                                            color: ticket.hasUnreadChat ? '#ef4444' : 'var(--primary-color)', 
+                                                            display: 'flex',
+                                                            animation: ticket.hasUnreadChat ? 'pulse 1.5s infinite' : 'none'
+                                                        }}
+                                                    >
+                                                        <MessageSquare size={16} fill={ticket.hasUnreadChat ? 'rgba(239, 68, 68, 0.2)' : 'none'} />
                                                     </div>
                                                 )}
                                             </div>
@@ -777,8 +786,16 @@ export default function MyTicketsPage() {
                                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                             <span style={{ fontWeight: 800, color: 'var(--primary-color)' }}>#{ticket.displayId}</span>
                                             {!ticket.isMainTicket && <span style={{ fontSize: '0.6rem', background: '#f1f5f9', padding: '2px 4px', borderRadius: '4px' }}>Caso SFDC</span>}
-                                            {ticket.instructions && <StickyNote size={14} style={{ color: 'var(--primary-color)' }} />}
-                                            {ticket.hasNewNotes && <MessageSquare size={14} style={{ color: '#ef4444' }} />}
+                                            {(ticket.instructions || ticket.hasNewNotes) && (
+                                                <MessageSquare 
+                                                    size={14} 
+                                                    style={{ 
+                                                        color: ticket.hasUnreadChat ? '#ef4444' : 'var(--primary-color)',
+                                                        animation: ticket.hasUnreadChat ? 'pulse 1.5s infinite' : 'none'
+                                                    }} 
+                                                    fill={ticket.hasUnreadChat ? 'rgba(239, 68, 68, 0.2)' : 'none'}
+                                                />
+                                            )}
                                         </div>
                                         <Badge variant={
                                             ticket.displayStatus === 'En Transito' ? 'info' :
