@@ -7,6 +7,7 @@ import { CheckCircle2, X } from 'lucide-react';
 export function DeliveryNotificationListener() {
     const { currentUser } = useStore();
     const [notification, setNotification] = useState(null);
+    const [notifiedIds, setNotifiedIds] = useState(new Set()); // Para evitar duplicados en la misma sesión
 
     useEffect(() => {
         // Permitir a Admins, Administrativos y Conductores (incluye alias)
@@ -90,15 +91,22 @@ export function DeliveryNotificationListener() {
                         });
 
                         if ((isMainAssignedToMe && !wasMainAssignedToMe) || myNewCase) {
-                            setNotification({
-                                type: 'assignment',
-                                title: '¡Nueva Asignación!',
-                                message: `Se te ha asignado un nuevo servicio:`,
-                                subMessage: myNewCase ? (myNewCase.subject || myNewCase.caseNumber) : newData.subject,
-                                timestamp: new Date().toLocaleTimeString(),
-                                forceReload: true
-                            });
-                            // No auto-ocultar para que el conductor vea el aviso sí o sí
+                            const eventIdx = myNewCase ? (myNewCase.caseNumber || String(newData.id)) : newData.id;
+                            
+                            if (!notifiedIds.has(eventIdx)) {
+                                setNotification({
+                                    type: 'assignment',
+                                    title: '¡Nueva Asignación!',
+                                    message: `Se te ha asignado un nuevo servicio:`,
+                                    subMessage: myNewCase ? (myNewCase.subject || myNewCase.caseNumber) : newData.subject,
+                                    timestamp: new Date().toLocaleTimeString(),
+                                    forceReload: true
+                                });
+                                
+                                setNotifiedIds(prev => new Set(prev).add(eventIdx));
+                                // Auto-ocultar después de 15 segundos
+                                setTimeout(() => setNotification(null), 15000);
+                            }
                         }
                     }
                 }
@@ -147,7 +155,7 @@ export function DeliveryNotificationListener() {
                             }
                         }
 
-                        if (shouldNotify) {
+                        if (shouldNotify && !notifiedIds.has(newTask.id)) {
                             setNotification({
                                 type: 'assignment',
                                 title: '¡Nueva Tarea Asignada!',
@@ -156,6 +164,10 @@ export function DeliveryNotificationListener() {
                                 timestamp: new Date().toLocaleTimeString(),
                                 forceReload: true
                             });
+                            
+                            setNotifiedIds(prev => new Set(prev).add(newTask.id));
+                            // Auto-ocultar después de 15 segundos
+                            setTimeout(() => setNotification(null), 15000);
                         }
                     }
                 }
