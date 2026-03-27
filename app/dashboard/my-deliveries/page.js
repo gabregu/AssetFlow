@@ -103,7 +103,7 @@ export default function MyDeliveriesPage() {
                         displayDate: task.date,
                         requester: parentTicket?.requester || 'Destinatario',
                         timeSlot: task.time_slot || task.timeSlot,
-                        deliveryOrder: task.deliveryOrder || 0,
+                        deliveryOrder: task.delivery_order || task.deliveryOrder || 0,
                         taskAssets: task.assets || [],
                         taskAccessories: task.accessories || [],
                         taskYubikeys: task.yubikeys || []
@@ -159,7 +159,8 @@ export default function MyDeliveriesPage() {
                                 requester: c.requester || t.requester,
                                 timeSlot: c.logistics?.timeSlot || 'AM',
                                 taskAssets: c.assets || [],
-                                taskAccessories: c.accessories || []
+                                taskAccessories: c.accessories || [],
+                                deliveryOrder: c.logistics?.deliveryOrder || c.logistics?.delivery_order || 0
                             });
                         }
                     }
