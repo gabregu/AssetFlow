@@ -30,6 +30,8 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
         if (!msgText.trim()) return;
 
         setIsSaving(true);
+        console.log("Enviando mensaje de chat para ticket:", ticket.id);
+        
         const newMessage = {
             id: Date.now(),
             user: currentUser?.name || 'Usuario',
@@ -39,13 +41,24 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
         };
 
         const updatedChat = [...chatLog, newMessage];
-        const success = await updateTicket(ticket.id, { chatLog: updatedChat });
+        
+        try {
+            const success = await updateTicket(ticket.id, { chatLog: updatedChat });
 
-        if (success !== false) {
-            setEditedData(prev => ({ ...prev, chatLog: updatedChat }));
-            setMsgText('');
+            if (success) {
+                console.log("Chat guardado exitosamente en DB");
+                setEditedData(prev => ({ ...prev, chatLog: updatedChat }));
+                setMsgText('');
+            } else {
+                console.error("Fallo al guardar chat en DB (updateTicket devuelto false)");
+                alert("Error: No se pudo guardar el mensaje. Verifique su conexión.");
+            }
+        } catch (err) {
+            console.error("Error crítico enviando chat:", err);
+            alert("Error al enviar mensaje: " + err.message);
+        } finally {
+            setIsSaving(false);
         }
-        setIsSaving(false);
     };
 
     const handleSaveContext = async () => {
