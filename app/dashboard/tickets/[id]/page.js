@@ -12,6 +12,7 @@ import DangerZoneCard from './components/DangerZoneCard';
 import CaseConfigModal from './components/CaseConfigModal';
 import InventorySelectorModal from './components/InventorySelectorModal';
 import InstructionsCard from './components/InstructionsCard';
+import DriverDetailView from './components/DriverDetailView';
 import { useTicketDetail } from './hooks/useTicketDetail';
 import { getStatusVariant } from '../constants';
 
@@ -62,6 +63,21 @@ export default function TicketDetailPage() {
         return (
             <div style={{ padding: '2rem', textAlign: 'center' }}>
                 <p style={{ color: 'var(--text-secondary)' }}>Cargando ticket...</p>
+            </div>
+        );
+    }
+
+    if (currentUser?.role === 'Conductor') {
+        return (
+            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '1rem' }}>
+                <DriverDetailView 
+                    ticket={ticket}
+                    editedData={editedData}
+                    setEditedData={setEditedData}
+                    updateTicket={updateTicket}
+                    currentUser={currentUser}
+                    unifiedTasks={unifiedTasks}
+                />
             </div>
         );
     }
