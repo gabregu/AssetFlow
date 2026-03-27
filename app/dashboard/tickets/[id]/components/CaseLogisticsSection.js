@@ -11,6 +11,7 @@ export default function CaseLogisticsSection({
     if (!task) return null;
 
     const [localValues, setLocalValues] = React.useState({});
+    const [isSaving, setIsSaving] = React.useState(false);
 
     React.useEffect(() => {
         setLocalValues({
@@ -27,6 +28,7 @@ export default function CaseLogisticsSection({
     const isRelational = !!task.id;
 
     const updateLogistics = async (updatesOrField, valueIfSingle) => {
+        setIsSaving(true);
         let incomingUpdates = {};
         if (typeof updatesOrField === 'string') {
             incomingUpdates[updatesOrField] = valueIfSingle;
@@ -41,13 +43,22 @@ export default function CaseLogisticsSection({
         const finalUpdates = { ...incomingUpdates };
         let currentStatus = incomingUpdates.status || localValues.status || 'Pendiente';
 
-        // Automación: Asignar método o repartidor -> "Para Coordinar"
-        if (incomingUpdates.method || incomingUpdates.delivery_person) {
-            if (currentStatus === 'Pendiente') {
-                currentStatus = 'Para Coordinar';
-                finalUpdates.status = 'Para Coordinar';
-                setLocalValues(prev => ({ ...prev, status: 'Para Coordinar' }));
-            }
+        // Automación Inteligente:
+        // A. Si se agrega información logística mínima (método o repartidor o fecha), pasamos de 'Pendiente' a 'Para Coordinar'
+        const hasLogisticsInfo = (incomingUpdates.method || incomingUpdates.delivery_person || incomingUpdates.date || incomingUpdates.time_slot);
+        
+        if (hasLogisticsInfo && currentStatus === 'Pendiente') {
+            currentStatus = 'Para Coordinar';
+            finalUpdates.status = 'Para Coordinar';
+            setLocalValues(prev => ({ ...prev, status: 'Para Coordinar' }));
+        }
+
+        // B. Si ya tenemos Fecha y Turno asignados, pasamos a 'En Transito' automáticamente si estaba en 'Para Coordinar'
+        const hasScheduling = (incomingUpdates.date || localValues.date) && (incomingUpdates.time_slot || localValues.time_slot);
+        if (hasScheduling && currentStatus === 'Para Coordinar') {
+            currentStatus = 'En Transito';
+            finalUpdates.status = 'En Transito';
+            setLocalValues(prev => ({ ...prev, status: 'En Transito' }));
         }
 
         // Si cambiamos el repartidor, buscamos su UID (assigned_to)
@@ -57,16 +68,28 @@ export default function CaseLogisticsSection({
         }
 
         // Siempre enviamos el status actual para asegurar integridad en DB
-        if (!finalUpdates.status) finalUpdates.status = currentStatus;
+        finalUpdates.status = currentStatus;
 
-        await onUpdateTask(finalUpdates);
+        try {
+            await onUpdateTask(finalUpdates);
+        } finally {
+            setTimeout(() => setIsSaving(false), 500); // Pequeño delay para feedback visual
+        }
     };
 
     return (
         <div style={{ marginTop: '2rem' }}>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-color)', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                Logística del Caso
-            </h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-color)', margin: 0 }}>
+                    Logística del Caso
+                </h4>
+                {isSaving && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', fontSize: '0.75rem', fontWeight: 600 }}>
+                        <div className="spinner-mini" style={{ width: '12px', height: '12px', border: '2px solid rgba(37, 99, 235, 0.2)', borderTopColor: 'var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
+                        Guardando...
+                    </div>
+                )}
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                 <div className="form-group">
@@ -145,9 +168,6 @@ export default function CaseLogisticsSection({
                                     updates.coordinated_by = currentUser.name;
                                 }
 
-                                if (newDate && localValues.time_slot && (localValues.status === 'Para Coordinar')) {
-                                    updates.status = 'En Transito';
-                                }
                                 updateLogistics(updates);
                             }}
                         />
@@ -168,9 +188,6 @@ export default function CaseLogisticsSection({
                                                 updates.coordinated_by = currentUser.name;
                                             }
 
-                                            if (localValues.date && (localValues.status === 'Para Coordinar')) {
-                                                updates.status = 'En Transito';
-                                            }
                                             updateLogistics(updates);
                                         }}
                                         style={{
