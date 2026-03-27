@@ -92,26 +92,31 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
             action={<StickyNote size={20} style={{ color: 'var(--primary-color)', opacity: 0.8 }} />}
             style={{ 
                 borderLeft: '4px solid var(--primary-color)',
-                minHeight: '400px', // Reducido un poco para dar más espacio
-                height: typeof window !== 'undefined' && window.innerWidth < 768 ? '500px' : '550px',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                height: '550px', // Altura fija para que el scroll interno funcione
+                overflow: 'hidden' // Importante para que el contenido no se escape
             }}
         >
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-                {/* FIXED CONTEXT (Permanent notes) */}
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                height: '100%', 
+                overflow: 'hidden',
+                padding: '0.5rem' 
+            }}>
+                {/* 1. FIXED CONTEXT (Permanent notes) - Se queda arriba */}
                 <div style={{ 
                     marginBottom: '1rem', 
                     backgroundColor: 'var(--background-secondary)',
                     border: '1px dashed var(--primary-color)',
                     borderRadius: '8px',
                     padding: '0.75rem',
-                    position: 'relative',
-                    flexShrink: 0
+                    flexShrink: 0 // No se achica
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                         <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Info size={12} /> Instrucción General (Contexto Permanente)
+                            <Info size={12} /> Instrucción General
                         </div>
                         {!isEditingContext ? (
                             <button 
@@ -130,14 +135,14 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                     
                     {isEditingContext ? (
                         <textarea 
-                            style={{ width: '100%', border: 'none', background: 'white', borderRadius: '4px', padding: '4px', fontSize: '0.85rem', resize: 'vertical', minHeight: '60px' }}
+                            style={{ width: '100%', border: 'none', background: 'white', borderRadius: '4px', padding: '4px', fontSize: '0.85rem', resize: 'none', minHeight: '60px' }}
                             value={tempContext}
                             onChange={e => setTempContext(e.target.value)}
                             autoFocus
                         />
                     ) : (
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: '1.4', fontStyle: tempContext ? 'normal' : 'italic' }}>
-                            {tempContext || 'Toca el ícono de edición para agregar una instrucción fija para el conductor.'}
+                            {tempContext || 'Toca el ícono para agregar instrucción.'}
                         </div>
                     )}
                     
@@ -148,11 +153,11 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                     )}
                 </div>
 
-                {/* CHAT LOG */}
+                {/* 2. CHAT LOG - El área que hace scroll */}
                 <div style={{ 
                     flex: 1, 
                     overflowY: 'auto', 
-                    marginBottom: '1rem', 
+                    marginBottom: '0.5rem', 
                     padding: '0.75rem', 
                     backgroundColor: 'rgba(0,0,0,0.02)',
                     borderRadius: '8px',
@@ -161,8 +166,8 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                     gap: '12px'
                 }}>
                     {chatLog.length === 0 ? (
-                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '2rem', fontSize: '0.9rem', fontStyle: 'italic' }}>
-                            No hay interacción por chat aún.
+                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '2rem', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                            Sin mensajes aún.
                         </div>
                     ) : (
                         chatLog.map((msg, idx) => {
@@ -172,7 +177,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                                     key={msg.id || idx} 
                                     style={{ 
                                         alignSelf: isMe ? 'flex-end' : 'flex-start',
-                                        maxWidth: '85%',
+                                        maxWidth: '90%',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: isMe ? 'flex-end' : 'flex-start'
@@ -182,26 +187,22 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                                         display: 'flex', 
                                         alignItems: 'center', 
                                         gap: '6px', 
-                                        marginBottom: '4px',
-                                        fontSize: '0.7rem',
+                                        marginBottom: '2px',
+                                        fontSize: '0.65rem',
                                         color: 'var(--text-secondary)',
                                         opacity: 0.7,
-                                        fontWeight: 500
+                                        fontWeight: 600
                                     }}>
-                                        {!isMe && <User size={10} />}
-                                        {msg.user} 
-                                        <span style={{ fontWeight: 400, opacity: 0.6 }}>
-                                            • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                        {msg.user} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                     <div style={{ 
-                                        padding: '0.7rem 0.9rem', 
-                                        borderRadius: isMe ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
+                                        padding: '0.6rem 0.8rem', 
+                                        borderRadius: isMe ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
                                         backgroundColor: isMe ? 'var(--primary-color)' : 'white',
                                         color: isMe ? 'white' : 'var(--text-main)',
-                                        fontSize: '0.88rem',
+                                        fontSize: '0.85rem',
                                         lineHeight: '1.4',
-                                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                                         border: isMe ? 'none' : '1px solid #e2e8f0'
                                     }}>
                                         {msg.text}
@@ -213,27 +214,30 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                     <div ref={chatEndRef} />
                 </div>
 
+                {/* 3. INPUT - Siempre visible al fondo */}
                 <div style={{ 
                     display: 'flex', 
-                    gap: '0.6rem', 
-                    alignItems: 'flex-end',
-                    paddingTop: '0.5rem',
-                    borderTop: '1px solid var(--border)',
-                    flexShrink: 0
+                    gap: '0.5rem', 
+                    alignItems: 'center',
+                    padding: '0.5rem 0',
+                    borderTop: '1px solid #f1f5f9',
+                    flexShrink: 0,
+                    backgroundColor: 'white'
                 }}>
                     <textarea
-                        placeholder="Escribir mensaje de chat..."
+                        placeholder="Escribir..."
                         style={{ 
                             flex: 1,
+                            height: '40px',
                             minHeight: '40px',
-                            maxHeight: '100px',
-                            padding: '10px 14px',
+                            padding: '10px 15px',
                             borderRadius: '20px',
                             border: '1px solid var(--border)',
-                            backgroundColor: 'white',
+                            backgroundColor: '#f8fafc',
                             fontSize: '0.9rem',
-                            lineHeight: '1.4',
-                            resize: 'none'
+                            lineHeight: '1',
+                            resize: 'none',
+                            outline: 'none'
                         }}
                         value={msgText}
                         onChange={e => setMsgText(e.target.value)}
