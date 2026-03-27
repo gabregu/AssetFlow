@@ -93,7 +93,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                 borderLeft: '4px solid var(--primary-color)',
                 display: 'flex',
                 flexDirection: 'column',
-                height: '700px', // Ampliado de 550px a 700px
+                height: '1400px', // Ampliado a 1400px a pedido del usuario
                 overflow: 'hidden' // Importante para que el contenido no se escape
             }}
         >
