@@ -41,21 +41,30 @@ export default function CaseLogisticsSection({
 
         // 2. Lógica de Negocio y Automación
         const finalUpdates = { ...incomingUpdates };
-        let currentStatus = incomingUpdates.status || localValues.status || 'Pendiente';
-
-        // Automación Inteligente:
-        // A. Si se agrega información logística mínima (método o repartidor o fecha), pasamos de 'Pendiente' a 'Para Coordinar'
-        const hasLogisticsInfo = (incomingUpdates.method || incomingUpdates.delivery_person || incomingUpdates.date || incomingUpdates.time_slot);
         
-        if (hasLogisticsInfo && currentStatus === 'Pendiente') {
+        // Leemos el estado REAL actual del task (el grabado en DB), no el local state.
+        // Si el usuario acaba de cambiar el status en este mismo update, lo tomamos de ahí.
+        let currentStatus = incomingUpdates.status !== undefined ? incomingUpdates.status : (task.status || 'Pendiente');
+
+        // --- AUTOMATIZACIÓN A: Pendiente -> Para Coordinar ---
+        // Se dispara cuando se asigna información logística relevante (excluyendo time_slot
+        // ya que tiene un default de 'AM' y no cuenta como elección explícita del usuario).
+        const hasExplicitLogisticsInfo = !!(incomingUpdates.method || incomingUpdates.delivery_person || incomingUpdates.date);
+        
+        if (hasExplicitLogisticsInfo && currentStatus === 'Pendiente') {
             currentStatus = 'Para Coordinar';
             finalUpdates.status = 'Para Coordinar';
             setLocalValues(prev => ({ ...prev, status: 'Para Coordinar' }));
         }
 
-        // B. Si ya tenemos Fecha y Turno asignados, pasamos a 'En Transito' automáticamente si estaba en 'Para Coordinar'
-        const hasScheduling = (incomingUpdates.date || localValues.date) && (incomingUpdates.time_slot || localValues.time_slot);
-        if (hasScheduling && currentStatus === 'Para Coordinar') {
+        // --- AUTOMATIZACIÓN B: Para Coordinar -> En Transito ---
+        // Se dispara SÓLO cuando el caso ya está en 'Para Coordinar' (en DB o en este update)
+        // y se confirma fecha + turno explícito.
+        const effectiveDate = incomingUpdates.date || task.date;
+        const effectiveTimeSlot = incomingUpdates.time_slot; // Solo cuenta si el usuario lo cambió AHORA
+        
+        const readyForTransit = effectiveDate && effectiveTimeSlot && currentStatus === 'Para Coordinar';
+        if (readyForTransit) {
             currentStatus = 'En Transito';
             finalUpdates.status = 'En Transito';
             setLocalValues(prev => ({ ...prev, status: 'En Transito' }));
@@ -67,13 +76,13 @@ export default function CaseLogisticsSection({
             finalUpdates.assigned_to = matchedUser ? (matchedUser.id || matchedUser.uid) : null;
         }
 
-        // Siempre enviamos el status actual para asegurar integridad en DB
+        // Siempre grabamos el status final calculado
         finalUpdates.status = currentStatus;
 
         try {
             await onUpdateTask(finalUpdates);
         } finally {
-            setTimeout(() => setIsSaving(false), 500); // Pequeño delay para feedback visual
+            setTimeout(() => setIsSaving(false), 500);
         }
     };
 
