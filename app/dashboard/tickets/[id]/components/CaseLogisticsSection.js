@@ -165,7 +165,6 @@ export default function CaseLogisticsSection({
                             className="form-input"
                             value={localValues.date || ''}
                             onChange={e => {
-                                e.preventDefault();
                                 const newDate = e.target.value;
                                 const updates = { date: newDate };
                                 

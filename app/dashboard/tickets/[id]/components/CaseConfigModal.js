@@ -128,11 +128,13 @@ export default function CaseConfigModal({
                              <Button 
                                 variant="primary" 
                                 style={{ width: '100%', padding: '0.75rem', fontWeight: 700, fontSize: '0.95rem' }}
-                                onClick={() => {
+                                onClick={async () => {
+                                    // REFORZAR GUARDADO: Al cerrar la ventana, guardamos explicitly todos los cambios pendientes
+                                    await handleUpdate();
                                     setSelectedCaseIndex(null);
                                 }}
                             >
-                                Cerrar Ventana de Configuración
+                                Guardar y Cerrar Configuración
                             </Button>
 
                             <div style={{ 
