@@ -39,7 +39,7 @@ export default function Home() {
         } else if (user) {
             // Check role redirect
             if (user.role === 'Conductor') {
-                router.push('/dashboard/my-deliveries');
+                router.push('/dashboard/my-tickets');
             } else {
                 router.push('/dashboard');
             }
