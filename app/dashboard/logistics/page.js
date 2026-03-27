@@ -14,7 +14,8 @@ import {
     AlertCircle,
     Package,
     ArrowUpDown,
-    ArrowRight
+    ArrowRight,
+    MessageSquare
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -23,7 +24,7 @@ import { useStore } from '../../../lib/store';
 import { CountryFilter } from '../../components/layout/CountryFilter';
 
 export default function LogisticsHubPage() {
-    const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter } = useStore();
+    const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter, currentUser } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     
@@ -66,9 +67,13 @@ export default function LogisticsHubPage() {
             })
             .map(task => {
                 const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
+                const chat = parentTicket?.chatLog || task.chat_log || task.chatLog || [];
+                
                 return {
                     ...task,
-                    parentTicket
+                    parentTicket,
+                    hasNewNotes: chat.length > 0,
+                    hasUnreadChat: chat.length > 0 && chat[chat.length - 1].user !== currentUser?.name
                 };
             })
             .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
@@ -197,7 +202,21 @@ export default function LogisticsHubPage() {
                                     </div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
-                                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{task.parentTicket?.requester || 'Sin nombre'}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{task.parentTicket?.requester || 'Sin nombre'}</div>
+                                        {task.hasNewNotes && (
+                                            <div 
+                                                title={task.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"} 
+                                                style={{ 
+                                                    color: task.hasUnreadChat ? '#ef4444' : 'var(--primary-color)', 
+                                                    display: 'flex',
+                                                    animation: task.hasUnreadChat ? 'pulse 1.5s infinite' : 'none'
+                                                }}
+                                            >
+                                                <MessageSquare size={14} fill={task.hasUnreadChat ? 'rgba(239, 68, 68, 0.2)' : 'none'} />
+                                            </div>
+                                        )}
+                                    </div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {task.subject}
                                     </div>
