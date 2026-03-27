@@ -5,7 +5,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { StickyNote, Save, CheckCircle } from 'lucide-react';
 
-export default function InstructionsCard({ ticket, editedData, setEditedData, updateTicket }) {
+export default function InstructionsCard({ ticket, editedData, setEditedData, updateTicket, currentUser }) {
     const [localNotes, setLocalNotes] = useState(editedData.instructions || '');
     const [isSaving, setIsSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -16,13 +16,20 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
 
     const handleSave = async () => {
         setIsSaving(true);
-        const success = await updateTicket(ticket.id, { instructions: localNotes });
+        const success = await updateTicket(ticket.id, { 
+            instructions: localNotes,
+            instructionsUpdatedBy: currentUser?.name || 'Sistema'
+        });
         setIsSaving(false);
         
         if (success !== false) {
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
-            setEditedData(prev => ({ ...prev, instructions: localNotes }));
+            const updatePayload = { 
+                instructions: localNotes, 
+                instructionsUpdatedBy: currentUser?.name || 'Sistema' 
+            };
+            setEditedData(prev => ({ ...prev, ...updatePayload }));
         }
     };
 
@@ -79,7 +86,10 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                     )}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', opacity: 0.6, fontStyle: 'italic' }}>
+                        {editedData.instructionsUpdatedBy ? `Última edición por: ${editedData.instructionsUpdatedBy}` : ''}
+                    </div>
                     <Button 
                         size="sm" 
                         icon={Save} 

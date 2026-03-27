@@ -113,6 +113,7 @@ export default function TicketDetailPage() {
                         editedData={editedData}
                         setEditedData={setEditedData}
                         updateTicket={updateTicket}
+                        currentUser={currentUser}
                     />
 
                     <HistoryPanel 
