@@ -97,32 +97,45 @@ export default function ContactInfoSection({
                     ) : (
                         <MapPin size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
                     )}
+                    {isEditing ? (
                         <input
                             className="form-input"
                             style={{
                                 paddingLeft: '2.2rem',
-                                paddingRight: isEditing ? '80px' : '10px',
+                                paddingRight: '10px',
                                 height: 'auto',
                                 minHeight: '42px',
-                                fontSize: '1rem',
+                                fontSize: '1.1rem',
                                 fontWeight: 600,
                                 lineHeight: '1.4',
                                 borderColor: addressStatus === 'valid' ? '#22c55e' : (addressStatus === 'invalid' ? '#ef4444' : 'var(--border)'),
-                                background: isEditing ? 'var(--background)' : 'transparent',
-                                border: isEditing ? '1px solid var(--border)' : 'none',
-                                cursor: isEditing ? 'text' : 'default',
+                                background: 'var(--background)',
                                 color: 'var(--text-main)'
                             }}
-                            disabled={!isEditing}
                             value={editedData.logistics?.address || ''}
-                        onChange={e => {
-                            setAddressStatus('idle');
-                            setEditedData({
-                                ...editedData,
-                                logistics: { ...(editedData.logistics || {}), address: e.target.value }
-                            });
-                        }}
-                    />
+                            onChange={e => {
+                                setAddressStatus('idle');
+                                setEditedData({
+                                    ...editedData,
+                                    logistics: { ...(editedData.logistics || {}), address: e.target.value }
+                                });
+                            }}
+                        />
+                    ) : (
+                        <div style={{
+                            padding: '8px 8px 8px 2.2rem',
+                            fontSize: '1.25rem',
+                            fontWeight: 700,
+                            lineHeight: '1.4',
+                            color: 'var(--text-main)',
+                            minHeight: '42px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            wordBreak: 'break-word'
+                        }}>
+                            {editedData.logistics?.address || 'Sin dirección registrada'}
+                        </div>
+                    )}
                     {isEditing && isLoaded && (
                         <button
                             type="button"
