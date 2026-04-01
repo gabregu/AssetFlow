@@ -280,11 +280,32 @@ export default function MyDeliveriesPage() {
                         receivedBy: deliveryForm.receivedBy,
                         dni: deliveryForm.dni,
                         notes: deliveryForm.notes,
-                        deliveredAt: new Date(),
+                        deliveredAt: new Date().toISOString(),
                         actualTime: deliveryForm.actualTime
                     }
                 };
                 await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
+            } else if (selectedDelivery.caseIdx !== undefined) {
+                // Caso legacy: Sub-caso anidado en associatedCases del ticket principal
+                const parentTicket = tickets.find(t => t.id === selectedDelivery.id);
+                if (parentTicket && parentTicket.associatedCases) {
+                    const updatedCases = [...parentTicket.associatedCases];
+                    updatedCases[selectedDelivery.caseIdx] = {
+                        ...updatedCases[selectedDelivery.caseIdx],
+                        logistics: {
+                            ...updatedCases[selectedDelivery.caseIdx].logistics,
+                            status: 'Entregado',
+                            deliveryInfo: {
+                                receivedBy: deliveryForm.receivedBy,
+                                dni: deliveryForm.dni,
+                                notes: deliveryForm.notes,
+                                deliveredAt: new Date().toISOString(),
+                                actualTime: deliveryForm.actualTime
+                            }
+                        }
+                    };
+                    await updateTicket(parentTicket.id, { associatedCases: updatedCases });
+                }
             }
             
             

@@ -37,12 +37,19 @@ export default function SFDCCasesPage() {
     // 1. Filtrado
     const filteredCases = useMemo(() => {
         return sfdcCases.filter(c => {
-            // EXCLUSIÓN: Si el caso ya fue convertido en Tarea Logística o Ticket Principal, lo ocultamos.
-            const isAttended = 
-                (logisticsTasks && logisticsTasks.some(tk => String(tk.case_number) === String(c.caseNumber))) || 
-                (tickets && tickets.some(t => String(t.id) === String(c.caseNumber)));
+            // EXCLUSIÓN ORIGINAL: Si el caso ya fue convertido en Tarea Logística o Ticket Principal, lo ocultábamos.
+            // NUEVO: Solo lo ocultamos si está "Closed" o si es un status final Y ya está atendido.
+            // Si está "In Progress" o "New" queremos que siga apareciendo.
+            const linkedTicket = 
+                (tickets && tickets.find(t => String(t.id) === String(c.caseNumber))) || 
+                (logisticsTasks && logisticsTasks.find(tk => String(tk.case_number) === String(c.caseNumber)));
                 
-            if (isAttended) return false;
+            const isAttended = !!linkedTicket;
+            const status = (c.status || '').toLowerCase();
+            const isActiveStatus = status.includes('new') || status.includes('progress') || status.includes('hold') || status.includes('waiting') || status.includes('escalated');
+
+            // Si ya está atendido y NO es un estado activo de trabajo, lo ocultamos para limpiar la vista.
+            if (isAttended && !isActiveStatus) return false;
 
             const matchesText = c.subject.toLowerCase().includes(filter.toLowerCase()) ||
                 c.requestedFor.toLowerCase().includes(filter.toLowerCase()) ||
@@ -50,7 +57,7 @@ export default function SFDCCasesPage() {
 
             const matchesCountry = countryFilter === 'Todos' || (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()));
 
-            // Helper New Hire (Duplicated logic for filter consistency)
+            // Helper New Hire
             const isNewHire = (c) => {
                 const subject = c.subject.toLowerCase();
                 const today = new Date();
@@ -77,7 +84,7 @@ export default function SFDCCasesPage() {
 
             return matchesText && matchesCountry && matchesType;
         });
-    }, [sfdcCases, filter, countryFilter, filterType]);
+    }, [sfdcCases, filter, countryFilter, filterType, tickets, logisticsTasks]);
 
     // Metrics for Buttons (Including NEW HIRE filter)
     const statsByType = useMemo(() => {
@@ -322,12 +329,12 @@ export default function SFDCCasesPage() {
             const createdTicket = await addTicket(finalTicket);
 
             if (createdTicket && createdTicket.id) {
-                // Eliminar todos los casos procesados
-                for (const caseNum of casesToRemove) {
-                    await removeSfdcCase(caseNum);
-                }
-
+                // MODIFICACIÓN: Ya no eliminamos el caso de SFDC para que persista en la tabla de trabajo.
+                // Sin embargo, si el usuario explícitamente lo desea, se podría hacer opcional.
+                // Por ahora, para cumplir con "que sigan apareciendo", lo dejamos en el store.
+                
                 setIsModalOpen(false);
+                showToast(`Ticket ${createdTicket.id} generado correctamente.`, 'success');
                 // Navegación automática al detalle del nuevo ticket
                 router.push(`/dashboard/tickets/${createdTicket.id}`);
             } else {
@@ -1014,6 +1021,7 @@ export default function SFDCCasesPage() {
                                 <Th id="dateOpened">Opened</Th>
                                 <Th id="subject">Subject</Th>
                                 <Th id="requestedFor">Requested For</Th>
+                                <th style={{ padding: '1rem', width: '120px' }}>Acción</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1058,6 +1066,39 @@ export default function SFDCCasesPage() {
                                         </div>
                                     </td>
                                     <td style={{ padding: '1rem' }}>{c.requestedFor}</td>
+                                    <td style={{ padding: '1rem' }}>
+                                        {(() => {
+                                            const linkedTicket = 
+                                                (tickets?.find(t => String(t.id) === String(c.caseNumber))) || 
+                                                (logisticsTasks?.find(tk => String(tk.case_number) === String(c.caseNumber)));
+
+                                            if (linkedTicket) {
+                                                const ticketId = linkedTicket.ticket_id || linkedTicket.id;
+                                                return (
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="outline" 
+                                                        icon={ArrowRight}
+                                                        onClick={() => router.push(`/dashboard/tickets/${ticketId}`)}
+                                                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.6rem' }}
+                                                    >
+                                                        Ver Ticket
+                                                    </Button>
+                                                );
+                                            } else {
+                                                return (
+                                                    <Button 
+                                                        size="sm" 
+                                                        icon={ArrowRight}
+                                                        onClick={() => handleOpenCreateService(c)}
+                                                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.6rem' }}
+                                                    >
+                                                        Atender
+                                                    </Button>
+                                                );
+                                            }
+                                        })()}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
