@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '../components/layout/Sidebar';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { Menu, Loader2, Shield } from 'lucide-react';
 import { useStore } from '../../lib/store';
 import { LocationTracker } from '../components/logic/LocationTracker';
@@ -80,9 +81,10 @@ export default function DashboardLayout({ children }) {
                     <span style={{ fontWeight: 700, fontSize: '1.2rem' }}>AssetFlow</span>
                 </div>
 
-                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: currentUser?.role === 'Conductor' ? '6rem' : '1rem' }}>
                     {children}
                 </div>
+                <MobileBottomNav />
             </main>
         </div>
     );

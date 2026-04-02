@@ -64,11 +64,11 @@ export default function DriverDetailView({
             {/* Header / Botón Volver */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <Link href="/dashboard/my-tickets">
-                    <Button variant="ghost" size="sm" icon={ChevronLeft}>Volver</Button>
+                    <Button variant="ghost" size="sm" icon={ChevronLeft} style={{ padding: '0.4rem' }}></Button>
                 </Link>
                 <div style={{ flex: 1 }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>VISTA CONDUCTOR</h2>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Caso #{ticket.id.toString().substring(0, 8)}</p>
+                    <h2 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.01em' }}>Detalle de Servicio</h2>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Ticket #{ticket.id.toString().substring(0, 8)}</p>
                 </div>
                 <Badge style={{ backgroundColor: getStatusColor(status), color: 'white', padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
                     {status}

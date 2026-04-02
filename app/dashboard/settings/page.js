@@ -156,6 +156,22 @@ export default function SettingsPage() {
                             )}
                         </div>
                     </form>
+                    
+                    <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+                        <Button 
+                            variant="danger-soft" 
+                            style={{ width: '100%', gap: '0.5rem' }}
+                            onClick={async () => {
+                                if (confirm('¿Cerrar sesión de AssetFlow?')) {
+                                    const { logout } = useStore.getState();
+                                    await logout();
+                                    window.location.href = '/';
+                                }
+                            }}
+                        >
+                            <Trash2 size={16} /> Cerrar Sesión
+                        </Button>
+                    </div>
                 </Card>
 
                 {/* User Management (Admin Only) */}

@@ -401,15 +401,25 @@ export default function MyDeliveriesPage() {
                         const dayColor = getColorByDate(date);
                         return (
                             <div key={date} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0 0.5rem' }}>
-                                    <div style={{ backgroundColor: dayColor, width: '12px', height: '12px', borderRadius: '50%' }}></div>
-                                    <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '1rem', 
+                                    padding: '0.5rem 0.75rem',
+                                    position: 'sticky',
+                                    top: '0',
+                                    backgroundColor: 'var(--background)',
+                                    zIndex: 10,
+                                    margin: '0 -0.5rem'
+                                }}>
+                                    <div style={{ backgroundColor: dayColor, width: '10px', height: '10px', borderRadius: '50%' }}></div>
+                                    <h2 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                         {(() => {
                                             if (date === 'Sin Fecha') return 'Fecha no definida';
                                             const d = new Date(date + 'T00:00:00');
-                                            const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-                                            const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-                                            return `${days[d.getDay()]}, ${d.getDate()} de ${months[d.getMonth()]}`;
+                                            const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                                            const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                                            return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
                                         })()}
                                     </h2>
                                     <div style={{ flex: 1, height: '1px', background: `linear-gradient(to right, ${dayColor}44, transparent)` }}></div>
