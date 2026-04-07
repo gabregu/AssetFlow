@@ -60,10 +60,8 @@ export default function InventoryPage() {
     const [newAsset, setNewAsset] = useState({
         name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Nuevo',
         date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
-        name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Nuevo',
-        date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
         modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
-        eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina'
+        eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina', cod: ''
     });
     const [replacementSerial, setReplacementSerial] = useState('');
     const [smartRecommendations, setSmartRecommendations] = useState([]);
@@ -214,7 +212,7 @@ export default function InventoryPage() {
             name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Disponible',
             date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
             modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-',
-            eolDate: '', notes: '', sfd_case: '', oem: ''
+            eolDate: '', notes: '', sfd_case: '', oem: '', cod: ''
         });
     };
 
@@ -1438,6 +1436,7 @@ export default function InventoryPage() {
                                             <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ACTIVO <SortIcon column="name" /></th>
                                             <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>COD</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
                                         </tr>
@@ -1455,6 +1454,9 @@ export default function InventoryPage() {
                                                 </td>
                                                 <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.85rem' }}>{asset.serial}</td>
                                                 <td style={{ padding: '1rem' }}>{asset.assignee}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    {asset.cod ? <Badge variant="destructive">{asset.cod}</Badge> : '-'}
+                                                </td>
                                                 <td style={{ padding: '1rem' }}><Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge></td>
                                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                                     <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
@@ -1510,6 +1512,7 @@ export default function InventoryPage() {
                                                 <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>PAÍS</th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
+                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>COD</th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
                                             </tr>
@@ -1561,6 +1564,9 @@ export default function InventoryPage() {
                                                                 <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{asset.assignee}</span>
                                                             </div>
                                                         )}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        {asset.cod ? <Badge variant="destructive">{asset.cod}</Badge> : '-'}
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
@@ -2038,6 +2044,19 @@ export default function InventoryPage() {
                             value={newAsset.notes}
                             onChange={e => setNewAsset({ ...newAsset, notes: e.target.value })}
                         />
+                    </div>
+
+                    <div className="form-group" style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '1rem', borderRadius: '8px', border: '1px dashed rgba(239, 68, 68, 0.3)' }}>
+                        <label className="form-label" style={{ color: 'var(--danger-color)' }}>Certificado de Destrucción (COD)</label>
+                        <input
+                            className="form-input"
+                            placeholder="Ej: COD Abril 2026"
+                            value={newAsset.cod || ''}
+                            onChange={e => setNewAsset({ ...newAsset, cod: e.target.value })}
+                        />
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                            Si el equipo posee certificado de destrucción, ingresa la referencia aquí.
+                        </p>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem' }}>
