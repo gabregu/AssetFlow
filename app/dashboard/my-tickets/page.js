@@ -9,7 +9,7 @@ import { useStore } from '../../../lib/store';
 import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon, Route, StickyNote, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { resolveTicketServiceDetails, getRate } from '../billing/utils';
+import { resolveTicketServiceDetails, getRate } from '@/lib/billing';
 import { useJsApiLoader } from '@react-google-maps/api';
 
 const GOOGLE_MAPS_LIBRARIES = ['geometry'];

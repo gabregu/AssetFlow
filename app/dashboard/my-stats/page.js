@@ -4,7 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
 import { Archive, AlertCircle, Truck, CheckCircle2, TrendingUp, ArrowUpRight, ClipboardList, BarChart3, User } from 'lucide-react';
-import { resolveTicketServiceDetails, getRate } from '../billing/utils';
+import { resolveTicketServiceDetails, getRate } from '@/lib/billing';
 
 export default function MyStatsPage() {
     const { tickets, assets: globalAssets, currentUser, rates, users, logisticsTasks } = useStore();
