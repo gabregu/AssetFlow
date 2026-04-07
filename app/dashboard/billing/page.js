@@ -299,7 +299,7 @@ export default function BillingPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Facturación Total</p>
-                            <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>{currency} {metrics.totalRevenue.toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                            <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>USD {metrics.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                             {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.totalRevenue * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
                             )}
@@ -318,7 +318,7 @@ export default function BillingPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Costos Operativos</p>
-                            <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>{currency} {metrics.totalCost.toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                            <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>USD {metrics.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                             {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.totalCost * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
                             )}
@@ -336,7 +336,7 @@ export default function BillingPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Utilidad Neta</p>
-                            <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>{currency} {metrics.netMargin.toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+                            <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>USD {metrics.netMargin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
                             {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.netMargin * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
                             )}
@@ -439,7 +439,7 @@ export default function BillingPage() {
                                                 {/* Revenue Column */}
                                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{currencyKey} {displayRevenue.toLocaleString(currencyKey === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>USD {displayRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                         <span style={{ fontSize: '0.7rem', color: '#22c55e' }}>Serv: {displayServiceRevenue.toFixed(2)} + Log: {displayLogisticRevenue.toFixed(2)}</span>
                                                     </div>
                                                 </td>
@@ -448,7 +448,7 @@ export default function BillingPage() {
                                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                                     {displayCost > 0 ? (
                                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                                            <span style={{ fontWeight: 600, color: '#ef4444' }}>- {currencyKey} {displayCost.toLocaleString(currencyKey === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                            <span style={{ fontWeight: 600, color: '#ef4444' }}>- USD {displayCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                             <span style={{ fontSize: '0.7rem', color: '#f87171' }}>Log: {displayLogisticCost.toFixed(2)} + Ops: {displayOperationalCost.toFixed(2)}</span>
                                                         </div>
                                                     ) : <span style={{ color: 'var(--text-secondary)' }}>-</span>}
@@ -456,7 +456,7 @@ export default function BillingPage() {
 
                                                 {/* Utility Column */}
                                                 <td style={{ padding: '1rem', fontWeight: 800, textAlign: 'right', color: displayProfit >= 0 ? '#22c55e' : '#ef4444', fontSize: '1rem' }}>
-                                                    {currencyKey} {displayProfit.toLocaleString(currencyKey === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    USD {displayProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </td>
                                                 <td style={{ padding: '1rem', textAlign: 'center' }}>
                                                     <Button variant="ghost" size="sm" icon={Info} onClick={(e) => { e.preventDefault(); setDetailModal({ isOpen: true, ticket, financials: { serviceRevenue: displayServiceRevenue, logisticRevenue: displayLogisticRevenue, logisticCost: displayLogisticCost, operationalCost: displayOperationalCost, totalRevenue: displayRevenue, totalCost: displayCost, profit: displayProfit, method: method } }); }} style={{ color: 'var(--text-secondary)' }} />
