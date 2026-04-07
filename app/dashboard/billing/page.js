@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { CountryFilter } from '../../components/layout/CountryFilter';
 
-import { resolveTicketServiceDetails, getRate } from './utils';
+import { calculateTicketFinancials } from '@/lib/billing';
 
 export default function BillingPage() {
     const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, sfdcCases, countryFilter } = useStore();
@@ -121,126 +121,42 @@ export default function BillingPage() {
 
 
         filtered.forEach(ticket => {
-            // --- 1. Service Revenue Logic (Matrix A-G) ---
-            let ticketServiceRevenue = 0;
-            let ticketLogisticRevenue = 0;
-            let ticketLogisticCost = 0;
+            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users);
+            
+            if (!financials) return;
 
-            const assets = ticket.associatedAssets || [];
-            const primaryAsset = assets.length > 0 ? assets[0] : null;
+            const {
+                serviceRevenue,
+                logisticRevenue,
+                logisticCost,
+                operationalCost: ticketOperationalCost,
+                moveType,
+                assetType,
+                method
+            } = financials;
 
-            // --- 1. Robust Service & Device Detection (Centralized) ---
-            const { moveType: finalMoveType, assetType: finalDeviceType, resolvedAsset } = resolveTicketServiceDetails(ticket, globalAssets);
+            totalServiceRevenue += serviceRevenue;
+            totalLogisticRevenue += logisticRevenue;
+            totalRevenue += (serviceRevenue + logisticRevenue);
+            totalLogisticsCost += logisticCost;
+            totalOperationalCost += ticketOperationalCost;
 
-            const isDelivery = finalMoveType.toLowerCase().includes('entrega') || finalMoveType.toLowerCase().includes('alta');
-            const isRecovery = finalMoveType.toLowerCase().includes('recupero') || finalMoveType.toLowerCase().includes('retiro') || finalMoveType.toLowerCase().includes('baja');
-            const isWarranty = ticket.subject?.toLowerCase().includes('garantía') || ticket.subject?.toLowerCase().includes('warranty') || ticket.classification === 'Garantía';
+            // Driver Payment Tracking
+            const isDelivery = moveType.toLowerCase().includes('entrega') || moveType.toLowerCase().includes('alta');
+            const isRecovery = moveType.toLowerCase().includes('recupero') || moveType.toLowerCase().includes('retiro') || moveType.toLowerCase().includes('baja');
 
-            const lowerDevice = (finalDeviceType || '').toLowerCase();
-            const isLaptop = lowerDevice.includes('laptop') || lowerDevice.includes('macbook') || lowerDevice.includes('notebook') || lowerDevice.includes('equipo') || lowerDevice.includes('pc');
-            const isPhone = lowerDevice.includes('smartphone') || lowerDevice.includes('celular') || lowerDevice.includes('iphone') || lowerDevice.includes('samsung');
-            const isKey = lowerDevice.includes('key') || lowerDevice.includes('yubikey') || lowerDevice.includes('llave');
-
-
-
-            let serviceRate = 5; // Default
-
-            if (isWarranty) {
-                // G: Warranty
-                serviceRate = getRate(rates?.service_Warranty, rates?.warrantyService, 60);
-            } else if (isLaptop) {
-                // A: Laptop Delivery / B: Laptop Recovery
-                if (isDelivery) serviceRate = getRate(rates?.service_Laptop_Delivery, rates?.laptopService, 25);
-                else if (isRecovery) serviceRate = getRate(rates?.service_Laptop_Recovery, rates?.laptopService, 25);
-                else serviceRate = getRate(rates?.laptopService, null, 25);
-            } else if (isPhone) {
-                // C: Smartphone Delivery / D: Smartphone Recovery
-                if (isDelivery) serviceRate = getRate(rates?.service_Smartphone_Delivery, rates?.smartphoneService, 5);
-                else if (isRecovery) serviceRate = getRate(rates?.service_Smartphone_Recovery, rates?.smartphoneService, 5);
-                else serviceRate = getRate(rates?.smartphoneService, null, 5);
-            } else if (isKey) {
-                // E: Key Delivery / F: Key Recovery
-                if (isDelivery) serviceRate = getRate(rates?.service_Key_Delivery, rates?.securityKeyService, 5);
-                else if (isRecovery) serviceRate = getRate(rates?.service_Key_Recovery, rates?.securityKeyService, 5);
-                else serviceRate = getRate(rates?.securityKeyService, null, 5);
-            }
-
-            ticketServiceRevenue = serviceRate;
-
-            // --- 2. Logistics Revenue (H-I) ---
-            const method = ticket.logistics?.method || 'N/A';
             if (method === 'Repartidor Propio' || method === 'Envío Interno' || method.includes('Propio')) {
-                // H
-                ticketLogisticRevenue = getRate(rates?.logistics_Internal_Revenue, rates?.internalDeliveryRevenue, 20);
-            } else if (method === 'Andreani' || method === 'Correo Argentino' || method.includes('Correo')) {
-                // I
-                const postalCost = parseFloat(ticket.logistics?.cost || 0);
-                const baseCost = postalCost > 0 ? postalCost : getRate(rates?.cost_Postal_Base, rates?.postalBaseCost, 12);
-                const markup = getRate(rates?.logistics_Postal_Markup, rates?.postalServiceMarkup, 5);
-                ticketLogisticRevenue = baseCost + markup;
-            }
-
-            // --- 3. Operational/Logistics Costs (J-K) ---
-            if (method === 'Repartidor Propio' || method === 'Envío Interno' || method.includes('Propio')) {
-                // J: Driver Commission
-                let baseCommission = getRate(rates?.cost_Driver_Commission, rates?.driverCommission, 15);
-                let extra = 0;
-
-                // Driver Extra Logic
-                const driverNameRaw = ticket.logistics?.deliveryPerson || '';
-                let driverKey = null;
-                const dLower = driverNameRaw.toLowerCase();
-
-                // Dynamic Lookup (matches ANY user in the system)
-                const matchedUser = users.find(u => u.name && dLower.includes(u.name.toLowerCase()));
-                if (matchedUser) {
-                    driverKey = matchedUser.name;
-                }
-
-                if (driverKey) {
-                    const moveKey = isDelivery ? 'Delivery' : (isRecovery ? 'Recovery' : null);
-                    const deviceKey = isLaptop ? 'Laptop' : (isPhone ? 'Smartphone' : (isKey ? 'Key' : null));
-
-                    if (moveKey && deviceKey) {
-                        const rateKey = `driverExtra_${driverKey}_${moveKey}_${deviceKey}`;
-                        const extraVal = rates?.[rateKey];
-                        if (extraVal !== undefined && extraVal !== null && !isNaN(parseFloat(extraVal))) {
-                            extra = parseFloat(extraVal);
-                        }
-                    }
-                }
-
-                const cost = baseCommission + extra;
-                ticketLogisticCost = cost;
-
-                // Driver Payment Tracking
                 const driver = ticket.logistics?.deliveryPerson || '';
                 if (driver) {
                     if (!driverPayments[driver]) driverPayments[driver] = { count: 0, total: 0, deliveries: 0, recoveries: 0 };
                     driverPayments[driver].count += 1;
-                    driverPayments[driver].total += cost; // Accumulate in base USD
+                    driverPayments[driver].total += logisticCost;
                     if (isDelivery) driverPayments[driver].deliveries += 1;
                     if (isRecovery) driverPayments[driver].recoveries += 1;
                 }
-                totalDriverCost += cost;
-
+                totalDriverCost += logisticCost;
             } else if (method === 'Andreani' || method === 'Correo Argentino' || method.includes('Correo')) {
-                // K: Postal Cost
-                const postalCost = parseFloat(ticket.logistics?.cost || 0);
-                const cost = postalCost > 0 ? postalCost : getRate(rates?.cost_Postal_Base, rates?.postalBaseCost, 12);
-                ticketLogisticCost = cost;
-                totalPostalCost += cost;
-            }
-
-            totalServiceRevenue += ticketServiceRevenue;
-            totalLogisticRevenue += ticketLogisticRevenue;
-            totalRevenue += (ticketServiceRevenue + ticketLogisticRevenue);
-            totalLogisticsCost += ticketLogisticCost;
-
-            // Accessories cost (Estimated 1.5 USD)
-            if (ticket.accessories) {
-                const accCount = Object.values(ticket.accessories).filter(v => v === true && typeof v !== 'string').length;
-                if (accCount > 0) totalOperationalCost += (accCount * 1.5);
+                totalPostalCost += logisticCost;
             }
 
             // Pending deliveries count
@@ -481,136 +397,23 @@ export default function BillingPage() {
                                 <tbody>
                                     {filteredTickets.length > 0 ? filteredTickets.map(ticket => {
                                         // Calculate Profit for this row
-                                        let serviceRevenue = 0;
-                                        let logisticRevenue = 0;
-                                        let logisticCost = 0;
-                                        let operationalCost = 0;
+                                        const financials = calculateTicketFinancials(ticket, rates, globalAssets, users);
+                                        if (!financials) return null;
 
-                                        const method = ticket.logistics?.method;
-
-                                        // Revenue Calculation & Metadata Extraction (Unified)
-                                        const { moveType: finalMoveType, assetType: finalDeviceType, resolvedAsset } = resolveTicketServiceDetails(ticket, globalAssets);
-
-
-                                        // --- 2. Matrix Pricing Logic (A-G) ---
-                                        let serviceRate = 5; // Default Base
-
-                                        const isDelivery = finalMoveType.toLowerCase().includes('entrega') || finalMoveType.toLowerCase().includes('alta');
-                                        const isRecovery = finalMoveType.toLowerCase().includes('recupero') || finalMoveType.toLowerCase().includes('retiro') || finalMoveType.toLowerCase().includes('baja');
-                                        const isWarranty = ticket.subject?.toLowerCase().includes('garantía') || ticket.subject?.toLowerCase().includes('warranty') || ticket.classification === 'Garantía';
-
-                                        const lowerDevice = (finalDeviceType || '').toLowerCase();
-                                        const isLaptop = lowerDevice.includes('laptop') || lowerDevice.includes('macbook') || lowerDevice.includes('notebook') || lowerDevice.includes('equipo') || lowerDevice.includes('pc');
-                                        const isPhone = lowerDevice.includes('smartphone') || lowerDevice.includes('celular') || lowerDevice.includes('iphone') || lowerDevice.includes('samsung');
-                                        const isKey = lowerDevice.includes('key') || lowerDevice.includes('yubikey') || lowerDevice.includes('llave');
-
-                                        // Helper to safely get rate, allowing 0 as a valid value
-                                        const getRate = (primary, secondary, def) => {
-                                            if (primary !== undefined && primary !== null && primary !== '') return parseFloat(primary);
-                                            if (secondary !== undefined && secondary !== null && secondary !== '') return parseFloat(secondary);
-                                            return def;
-                                        };
-
-                                        if (isWarranty) {
-                                            // G: Warranty
-                                            serviceRate = getRate(rates?.service_Warranty, rates?.warrantyService, 60);
-                                        } else if (isLaptop) {
-                                            // A: Laptop Delivery / B: Laptop Recovery
-                                            if (isDelivery) serviceRate = getRate(rates?.service_Laptop_Delivery, rates?.laptopService, 25);
-                                            else if (isRecovery) serviceRate = getRate(rates?.service_Laptop_Recovery, rates?.laptopService, 25);
-                                            else serviceRate = getRate(rates?.laptopService, null, 25);
-                                        } else if (isPhone) {
-                                            // C: Smartphone Delivery / D: Smartphone Recovery
-                                            if (isDelivery) serviceRate = getRate(rates?.service_Smartphone_Delivery, rates?.smartphoneService, 5);
-                                            else if (isRecovery) serviceRate = getRate(rates?.service_Smartphone_Recovery, rates?.smartphoneService, 5);
-                                            else serviceRate = getRate(rates?.smartphoneService, null, 5);
-                                        } else if (isKey) {
-                                            // E: Key Delivery / F: Key Recovery
-                                            if (isDelivery) serviceRate = getRate(rates?.service_Key_Delivery, rates?.securityKeyService, 5);
-                                            else if (isRecovery) serviceRate = getRate(rates?.service_Key_Recovery, rates?.securityKeyService, 5);
-                                            else serviceRate = getRate(rates?.securityKeyService, null, 5);
-                                        }
-
-                                        serviceRevenue += serviceRate;
-
-                                        const safeMethod = method || 'N/A';
-
-                                        // --- 3. Logistics Logic (H-I) ---
-                                        if (safeMethod === 'Repartidor Propio' || safeMethod === 'Envío Interno' || safeMethod.includes('Propio')) {
-                                            // H: Internal Delivery Revenue
-                                            logisticRevenue += getRate(rates?.logistics_Internal_Revenue, rates?.internalDeliveryRevenue, 20);
-                                        } else if (safeMethod === 'Andreani' || safeMethod === 'Correo Argentino' || safeMethod.includes('Correo')) {
-                                            // I: Postal Service Markup (Revenue = Cost + Markup)
-                                            const postalCost = parseFloat(ticket.logistics?.cost || 0);
-                                            // If ticket has recorded cost, use it; otherwise fallback to configured base cost
-                                            const baseCost = postalCost > 0 ? postalCost : getRate(rates?.cost_Postal_Base, rates?.postalBaseCost, 12);
-                                            const markup = getRate(rates?.logistics_Postal_Markup, rates?.postalServiceMarkup, 5);
-
-                                            logisticRevenue += (baseCost + markup);
-                                        }
-
-                                        // --- 4. Operational Costs (J-K) ---
-                                        // Commission/Cost
-                                        if (safeMethod === 'Repartidor Propio' || safeMethod === 'Envío Interno' || safeMethod.includes('Propio')) {
-                                            // J: Driver Commission
-                                            let baseCommission = getRate(rates?.cost_Driver_Commission, rates?.driverCommission, 15);
-                                            let extra = 0;
-
-                                            // Driver Extra Logic
-                                            const driverNameRaw = ticket.logistics?.deliveryPerson || '';
-                                            let driverKey = null;
-                                            const dLower = driverNameRaw.toLowerCase();
-
-                                            // Dynamic Lookup (matches ANY user in the system)
-                                            const matchedUser = users.find(u => u.name && dLower.includes(u.name.toLowerCase()));
-                                            if (matchedUser) {
-                                                driverKey = matchedUser.name;
-                                            }
-
-                                            if (driverKey) {
-                                                const moveKey = isDelivery ? 'Delivery' : (isRecovery ? 'Recovery' : null);
-                                                const deviceKey = isLaptop ? 'Laptop' : (isPhone ? 'Smartphone' : (isKey ? 'Key' : null));
-
-                                                if (moveKey && deviceKey) {
-                                                    const rateKey = `driverExtra_${driverKey}_${moveKey}_${deviceKey}`;
-                                                    const extraVal = rates?.[rateKey];
-                                                    if (extraVal !== undefined && extraVal !== null && !isNaN(parseFloat(extraVal))) {
-                                                        extra = parseFloat(extraVal);
-                                                    }
-                                                }
-                                            }
-
-                                            logisticCost += (baseCommission + extra);
-                                        } else if (safeMethod === 'Andreani' || safeMethod === 'Correo Argentino' || safeMethod.includes('Correo')) {
-                                            // K: Postal Service Cost
-                                            const postalCost = parseFloat(ticket.logistics?.cost || 0);
-                                            logisticCost += (postalCost > 0 ? postalCost : getRate(rates?.cost_Postal_Base, rates?.postalBaseCost, 12));
-                                        }
-
-                                        // Multiplier Logic for Row
-                                        const exchangeRate = parseFloat(rates?.exchangeRate) || 0;
-                                        const useArs = exchangeRate > 0;
-                                        const multiplier = useArs ? exchangeRate : 1;
-                                        const currencyKey = useArs ? 'ARS' : 'USD';
-
-                                        // Calculations in USD base
-                                        const totalRevenueUSD = serviceRevenue + logisticRevenue;
-                                        const totalCostUSD = logisticCost + operationalCost;
-
-                                        // Final conversion
-                                        const displayRevenue = totalRevenueUSD * multiplier;
-                                        const displayCost = totalCostUSD * multiplier;
-                                        const displayProfit = (totalRevenueUSD - totalCostUSD) * multiplier;
-                                        const displayServiceRevenue = serviceRevenue * multiplier;
-                                        const displayLogisticRevenue = logisticRevenue * multiplier;
-                                        const displayLogisticCost = logisticCost * multiplier;
-                                        const displayOperationalCost = operationalCost * multiplier;
-
-                                        // Aliases for Table Display Compatibility
-                                        const displayMoveType = finalMoveType;
-                                        const displayAssetType = finalDeviceType;
-
-                                        // --- END OF NEW LOGIC ---
+                                        const {
+                                            serviceRevenue: displayServiceRevenue,
+                                            logisticRevenue: displayLogisticRevenue,
+                                            logisticCost: displayLogisticCost,
+                                            operationalCost: displayOperationalCost,
+                                            totalRevenue: displayRevenue,
+                                            totalCost: displayCost,
+                                            profit: displayProfit,
+                                            moveType: finalMoveType,
+                                            assetType: finalDeviceType,
+                                            method: safeMethod
+                                        } = financials;
+                                        
+                                        const currencyKey = 'USD'; // Enforced for consistency
 
 
 
@@ -1215,7 +1018,10 @@ export default function BillingPage() {
                         );
                     })()}
 
-                    <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                        <Button variant="outline" icon={ArrowRight} onClick={() => {
+                            window.open(`/dashboard/tickets/${t.id}`, '_blank');
+                        }}>Ver Ticket de Servicio</Button>
                         <Button onClick={() => setDetailModal({ ...detailModal, isOpen: false })}>Cerrar</Button>
                     </div>
                 </div>

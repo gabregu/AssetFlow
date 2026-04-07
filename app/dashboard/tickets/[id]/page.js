@@ -15,6 +15,7 @@ import InstructionsCard from './components/InstructionsCard';
 import DriverDetailView from './components/DriverDetailView';
 import { useTicketDetail } from './hooks/useTicketDetail';
 import { getStatusVariant } from '../constants';
+import { FinancialsSummary } from '../../components/billing/FinancialsSummary';
 
 export default function TicketDetailPage() {
     const {
@@ -144,6 +145,7 @@ export default function TicketDetailPage() {
 
                         {/* Sidebar area */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                            <FinancialsSummary ticket={ticket} />
                             <ManagementStatusCard
                                 editedData={editedData}
                                 ticket={ticket}

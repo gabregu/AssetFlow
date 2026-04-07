@@ -3,7 +3,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Ticket, Truck, TrendingUp, User } from 'lucide-react';
-import { useStore } from '../../../lib/store';
+import { useStore } from '@/lib/store';
 
 export function MobileBottomNav() {
     const pathname = usePathname();
