@@ -1201,17 +1201,6 @@ export default function InventoryPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <div style={{ width: '4px', height: '24px', background: 'var(--primary-color)', borderRadius: '4px' }}></div>
                             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Stock Disponible por Modelo</h2>
-                            <Badge variant="success" style={{ marginLeft: '0.5rem' }}>{novos + recuperados} u.</Badge>
-                            {destructionCount > 0 && (
-                                <Badge 
-                                    variant="danger" 
-                                    style={{ marginLeft: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                    onClick={() => setSearchFilter('COD')}
-                                    title="Click para ver equipos destinados a destrucción"
-                                >
-                                    <Trash2 size={12} /> {destructionCount} COD
-                                </Badge>
-                            )}
                         </div>
                         {isStockExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
