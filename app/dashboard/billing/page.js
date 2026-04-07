@@ -24,6 +24,7 @@ import {
 import { CountryFilter } from '../../components/layout/CountryFilter';
 
 import { calculateTicketFinancials, resolveTicketServiceDetails } from '@/lib/billing';
+import Link from 'next/link';
 
 export default function BillingPage() {
     const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, sfdcCases, countryFilter, logisticsTasks } = useStore();
