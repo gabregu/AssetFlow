@@ -147,6 +147,9 @@ export default function InventoryPage() {
                 }
             }
 
+            // --- EXCLUDE ASSIGNED (ASIGNADO) FROM TOTAL INVENTORY PAGE VIEW ---
+            if (a.status === 'Asignado') return false;
+
             const matchesType = columnFilters.type === 'All' || a.type === columnFilters.type;
             const matchesAssignee = !columnFilters.assignee || a.assignee.toLowerCase().includes(columnFilters.assignee.toLowerCase());
 
@@ -760,19 +763,20 @@ export default function InventoryPage() {
         });
     };
 
-    // KPI Calculations - FILTERED BY WAREHOUSE ONLY
-    const warehouseAssets = applyCountryFilter(assets).filter(a => a.assignee === 'Almacén' && a.status !== 'Asignado');
+    // KPI Calculations - FOCUS ON WAREHOUSE / NON-ASSIGNED
+    const allAssetsNonAssigned = applyCountryFilter(assets).filter(a => a.status !== 'Asignado');
+    const warehouseAssets = allAssetsNonAssigned.filter(a => a.assignee === 'Almacén');
 
     const totalAssets = warehouseAssets.length;
-    const novos = warehouseAssets.filter(a => a.status === 'Nuevo' || a.status === 'Disponible').length;
-    const recuperados = warehouseAssets.filter(a => a.status === 'Recuperado').length;
-    const enReparacion = warehouseAssets.filter(a => a.status === 'En Reparación').length;
-    const dañados = warehouseAssets.filter(a => ['Dañado', 'EOL', 'Rota', 'De Baja'].includes(a.status)).length;
+    const enReparacion = allAssetsNonAssigned.filter(a => a.status === 'En Reparación').length;
+    const novos = allAssetsNonAssigned.filter(a => a.status === 'Nuevo' || a.status === 'Disponible').length;
+    const recuperados = allAssetsNonAssigned.filter(a => a.status === 'Recuperado').length;
+    const dañados = allAssetsNonAssigned.filter(a => ['Dañado', 'EOL', 'Rota', 'De Baja'].includes(a.status)).length;
 
-    const categoriesCount = new Set(warehouseAssets.map(a => a.type)).size || (activeTab === 'hardware' ? 3 : 0);
+    const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 3 : 0);
 
     const deviceTypes = ['Laptop', 'Smartphone', 'Tablet'];
-    const statuses = ['Nuevo', 'Asignado', 'Recuperado', 'En Reparación', 'Dañado', 'EOL'];
+    const statuses = ['Nuevo', 'Recuperado', 'En Reparación', 'Dañado', 'EOL']; // Removed 'Asignado'
 
     const getCountryInitial = (country) => {
         if (!country) return '-';
@@ -980,59 +984,26 @@ export default function InventoryPage() {
             </div>
 
             {/* Global Inventory KPIs */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-                <Card style={{ padding: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+                <Card style={{ padding: '1.25rem', cursor: 'pointer' }} onClick={() => setStatusFilter(null)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{ padding: '0.75rem', background: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary-color)', borderRadius: '12px' }}>
-                            <TrendingUp size={24} />
+                            <Box size={24} />
                         </div>
                         <div>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>Activos en Almacén</p>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>Almacén</p>
                             <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>{totalAssets}</h3>
                         </div>
                     </div>
                 </Card>
-                <Card style={{ padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(22, 163, 74, 0.1)', color: '#16a34a', borderRadius: '12px' }}>
-                            <CheckCircle size={24} />
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>Nuevos</p>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#16a34a' }}>{novos}</h3>
-                        </div>
-                    </div>
-                </Card>
-                <Card style={{ padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', borderRadius: '12px' }}>
-                            <History size={24} />
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>Recuperados</p>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#2563eb' }}>{recuperados}</h3>
-                        </div>
-                    </div>
-                </Card>
-                <Card style={{ padding: '1.25rem' }}>
+                <Card style={{ padding: '1.25rem', cursor: 'pointer' }} onClick={() => setStatusFilter('En Reparación')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{ padding: '0.75rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', borderRadius: '12px' }}>
-                            <TrendingUp size={24} />
+                            <History size={24} />
                         </div>
                         <div>
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>En Reparación</p>
                             <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#f59e0b' }}>{enReparacion}</h3>
-                        </div>
-                    </div>
-                </Card>
-                <Card style={{ padding: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '12px' }}>
-                            <AlertTriangle size={24} />
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>Dañados</p>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#ef4444' }}>{dañados}</h3>
                         </div>
                     </div>
                 </Card>
@@ -1136,8 +1107,7 @@ export default function InventoryPage() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {deviceTypes.map(type => {
-                                    const countryFilteredAssets = applyCountryFilter(assets);
-                                    const count = countryFilteredAssets.filter(a => a.type === type).length;
+                                    const count = allAssetsNonAssigned.filter(a => a.type === type).length;
                                     const Icon = getTypeIcon(type);
                                     const isSelected = selectedDeviceType === type;
                                     return (
@@ -1187,8 +1157,7 @@ export default function InventoryPage() {
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                                 {statuses.map(status => {
                                     // Apply country filter first, then device type filter
-                                    const countryFilteredAssets = applyCountryFilter(assets);
-                                    const filteredByType = selectedDeviceType ? countryFilteredAssets.filter(a => a.type === selectedDeviceType) : countryFilteredAssets;
+                                    const filteredByType = selectedDeviceType ? allAssetsNonAssigned.filter(a => a.type === selectedDeviceType) : allAssetsNonAssigned;
                                     const count = filteredByType.filter(a => a.status === status || (status === 'Nuevo' && a.status === 'Disponible')).length;
                                     const color = getStatusVariant(status) === 'success' ? '#16a34a' : getStatusVariant(status) === 'info' ? '#2563eb' : getStatusVariant(status) === 'warning' ? '#f59e0b' : getStatusVariant(status) === 'danger' ? '#ef4444' : 'var(--text-secondary)';
 
@@ -1275,7 +1244,7 @@ export default function InventoryPage() {
                                     </thead>
                                     <tbody>
                                         {Object.entries(
-                                            assets.reduce((acc, a) => {
+                                            allAssetsNonAssigned.reduce((acc, a) => {
                                                 if (!acc[a.name]) {
                                                     acc[a.name] = { total: 0, type: a.type };
                                                     statuses.forEach(s => acc[a.name][s] = 0);
