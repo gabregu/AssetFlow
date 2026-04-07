@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { CountryFilter } from '../../components/layout/CountryFilter';
 
-import { calculateTicketFinancials } from '@/lib/billing';
+import { calculateTicketFinancials, resolveTicketServiceDetails } from '@/lib/billing';
 
 export default function BillingPage() {
     const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, sfdcCases, countryFilter } = useStore();
@@ -410,7 +410,7 @@ export default function BillingPage() {
                                             profit: displayProfit,
                                             moveType: finalMoveType,
                                             assetType: finalDeviceType,
-                                            method: safeMethod
+                                            method
                                         } = financials;
                                         
                                         const currencyKey = 'USD'; // Enforced for consistency
