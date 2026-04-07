@@ -147,8 +147,9 @@ export default function InventoryPage() {
                 }
             }
 
-            // --- EXCLUDE ASSIGNED (ASIGNADO) FROM TOTAL INVENTORY PAGE VIEW ---
-            if (a.status === 'Asignado') return false;
+            // --- EXCLUDED FOM TOTALS, BUT VISIBLE IN SEARCH ---
+            // We no longer return false here for 'Asignado' so the user can still search for them by serial number.
+            // if (a.status === 'Asignado') return false;
 
             const matchesType = columnFilters.type === 'All' || a.type === columnFilters.type;
             const matchesAssignee = !columnFilters.assignee || a.assignee.toLowerCase().includes(columnFilters.assignee.toLowerCase());
