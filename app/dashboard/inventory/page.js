@@ -10,7 +10,8 @@ import {
     Plus, Search, Filter, Laptop, Smartphone, Monitor,
     HardDrive, Package, Trash2, Edit3, Eye, ArrowRight,
     TrendingUp, AlertTriangle, CheckCircle, Upload, Download, History,
-    ChevronDown, ChevronUp, Key, UserPlus, Truck, MapPin, Box, User
+    ChevronDown, ChevronUp, Key, UserPlus, Truck, MapPin, Box, User,
+    Layers, Activity, Server
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
@@ -80,6 +81,13 @@ export default function InventoryPage() {
 
     // Quick Detail Modal State
     const [stockDetailModal, setStockDetailModal] = useState({ isOpen: false, model: '', status: '', items: [] });
+    
+    // Export Modal State
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportSettings, setExportSettings] = useState({
+        mode: 'all', // 'all', 'type', 'status', 'model'
+        value: ''
+    });
 
     const handleSort = (key) => {
         let direction = 'asc';
@@ -639,13 +647,28 @@ export default function InventoryPage() {
 
     const handleExportWarehouse = () => {
         // Obtenemos las listas ya filtradas por el país seleccionado
-        const filteredDocs = applyCountryFilter(assets);
-        const filteredYubis = applyCountryFilter(yubikeys);
-        const filteredCons = applyCountryFilter(consumables);
+        let filteredDocs = applyCountryFilter(assets);
+        let filteredYubis = applyCountryFilter(yubikeys);
+        let filteredCons = applyCountryFilter(consumables);
 
-        // 1. Filtrar Hardware en Almacén (Usando la lista filtrada por país)
+        // Apply Advanced Export Filters
+        if (exportSettings.mode === 'type' && exportSettings.value) {
+            filteredDocs = filteredDocs.filter(a => a.type === exportSettings.value);
+            filteredYubis = filteredYubis.filter(y => y.type === exportSettings.value);
+            // Consumables don't exactly have type, but we could filter by category if needed
+        } else if (exportSettings.mode === 'status' && exportSettings.value) {
+            filteredDocs = filteredDocs.filter(a => a.status === exportSettings.value);
+            filteredYubis = filteredYubis.filter(y => y.status === exportSettings.value);
+        } else if (exportSettings.mode === 'model' && exportSettings.value) {
+            filteredDocs = filteredDocs.filter(a => a.name === exportSettings.value);
+        }
+
+        // 1. Filtrar Hardware en Almacén (Usando la lista filtrada por país y filtros extras)
+        // Note: For regular exports, we typically only export what's NOT assigned yet if in Warehouse view, 
+        // but if the user wants "All", maybe they want everything. 
+        // Let's keep the "Warehouse" logic (Not assigned) but if it's a specific filter, maybe show all.
         const hardwareData = filteredDocs
-            .filter(a => a.assignee === 'Almacén' && a.status !== 'Asignado')
+            .filter(a => exportSettings.mode !== 'all' || (a.assignee === 'Almacén' && a.status !== 'Asignado'))
             .map(a => ({
                 "Tipo": "Hardware",
                 "Nombre del Equipo": a.name,
@@ -662,7 +685,7 @@ export default function InventoryPage() {
 
         // 2. Filtrar Yubikeys Disponibles
         const yubikeyData = filteredYubis
-            .filter(y => y.status === 'Nuevo' || y.status === 'Disponible')
+            .filter(y => exportSettings.mode !== 'all' || (y.status === 'Nuevo' || y.status === 'Disponible'))
             .map(y => ({
                 "Tipo": "Security Key",
                 "Modelo": y.type,
@@ -687,7 +710,6 @@ export default function InventoryPage() {
         // Agregar Hoja de Hardware
         if (hardwareData.length > 0) {
             const wsHardware = XLSX.utils.json_to_sheet(hardwareData);
-            // Ajustar ancho de columnas (opcional pero recomendado)
             const wscols = [
                 { wch: 10 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 15 }, { wch: 15 }
             ];
@@ -702,13 +724,14 @@ export default function InventoryPage() {
         }
 
         // Agregar Hoja de Accesorios
-        if (accessoryData.length > 0) {
+        if (accessoryData.length > 0 && exportSettings.mode === 'all') { // Only export accessories in "All" mode
             const wsAccessories = XLSX.utils.json_to_sheet(accessoryData);
             XLSX.utils.book_append_sheet(wb, wsAccessories, "Accesorios");
         }
 
-        // Descargar Archivo
-        XLSX.writeFile(wb, `Inventario_Almacen_${new Date().toISOString().split('T')[0]}.xlsx`);
+        let fileName = `Inventario_${exportSettings.mode === 'all' ? 'Completo' : exportSettings.value || exportSettings.mode}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+        setIsExportModalOpen(false);
     };
 
     const getStatusVariant = (status) => {
@@ -928,7 +951,7 @@ export default function InventoryPage() {
                                     variant="outline"
                                     size="sm"
                                     icon={Download}
-                                    onClick={handleExportWarehouse}
+                                    onClick={() => setIsExportModalOpen(true)}
                                 >
                                     Exportar Reporte
                                 </Button>
@@ -2361,6 +2384,113 @@ export default function InventoryPage() {
                     </div>
                 </form>
             </Modal>
-        </div >
+
+            {/* Modal de Opciones de Exportación */}
+            <Modal
+                isOpen={isExportModalOpen}
+                onClose={() => setIsExportModalOpen(false)}
+                title="Opciones de Exportación"
+            >
+                <div style={{ padding: '0.5rem 0' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+                        Selecciona el tipo de reporte que deseas generar para el país: <strong>{countryFilter}</strong>
+                    </p>
+
+                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                        <label className="form-label" style={{ fontWeight: 700 }}>Exportar Por:</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                            {[
+                                { id: 'all', label: 'TODO el Inventario', icon: Layers },
+                                { id: 'type', label: 'Por Tipo', icon: Laptop },
+                                { id: 'status', label: 'Por Estado', icon: Activity },
+                                { id: 'model', label: 'Por Modelo', icon: Server }
+                            ].map(opt => (
+                                <div
+                                    key={opt.id}
+                                    onClick={() => setExportSettings({ mode: opt.id, value: '' })}
+                                    style={{
+                                        padding: '1rem',
+                                        borderRadius: '12px',
+                                        border: exportSettings.mode === opt.id ? '2px solid var(--primary-color)' : '1px solid var(--border)',
+                                        background: exportSettings.mode === opt.id ? 'rgba(37, 99, 235, 0.05)' : 'transparent',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    <div style={{
+                                        padding: '0.5rem',
+                                        borderRadius: '8px',
+                                        background: exportSettings.mode === opt.id ? 'var(--primary-color)' : 'var(--background)',
+                                        color: exportSettings.mode === opt.id ? 'white' : 'var(--text-secondary)'
+                                    }}>
+                                        {opt.id === 'all' ? <Layers size={18} /> : 
+                                         opt.id === 'type' ? <Laptop size={18} /> : 
+                                         opt.id === 'status' ? <Activity size={18} /> : 
+                                         <Server size={18} />}
+                                    </div>
+                                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{opt.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {exportSettings.mode !== 'all' && (
+                        <div className="form-group" style={{ animation: 'slideDown 0.3s ease-out' }}>
+                            <label className="form-label">Seleccionar Valor:</label>
+                            {exportSettings.mode === 'type' && (
+                                <select 
+                                    className="form-select" 
+                                    value={exportSettings.value} 
+                                    onChange={(e) => setExportSettings({ ...exportSettings, value: e.target.value })}
+                                >
+                                    <option value="">-- Seleccionar Tipo --</option>
+                                    <option value="Laptop">Laptop</option>
+                                    <option value="Smartphone">Smartphone</option>
+                                    <option value="Tablet">Tablet</option>
+                                    <option value="Security keys">Security Key</option>
+                                </select>
+                            )}
+                            {exportSettings.mode === 'status' && (
+                                <select 
+                                    className="form-select" 
+                                    value={exportSettings.value} 
+                                    onChange={(e) => setExportSettings({ ...exportSettings, value: e.target.value })}
+                                >
+                                    <option value="">-- Seleccionar Estado --</option>
+                                    {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                                    <option value="Disponible">Disponible (Alternativo)</option>
+                                </select>
+                            )}
+                            {exportSettings.mode === 'model' && (
+                                <select 
+                                    className="form-select" 
+                                    value={exportSettings.value} 
+                                    onChange={(e) => setExportSettings({ ...exportSettings, value: e.target.value })}
+                                >
+                                    <option value="">-- Seleccionar Modelo --</option>
+                                    {[...new Set(assets.map(a => a.name))].sort().map(m => (
+                                        <option key={m} value={m}>{m}</option>
+                                    ))}
+                                </select>
+                            )}
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem' }}>
+                        <Button variant="ghost" onClick={() => setIsExportModalOpen(false)}>Cancelar</Button>
+                        <Button 
+                            icon={Download} 
+                            disabled={exportSettings.mode !== 'all' && !exportSettings.value}
+                            onClick={handleExportWarehouse}
+                        >
+                            Generar Excel
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+        </div>
     );
 }
