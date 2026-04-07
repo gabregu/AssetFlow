@@ -812,11 +812,11 @@ export default function BillingPage() {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {['Laptop', 'Smartphone', 'Key'].map(type => {
+                                                    {['Laptop', 'Smartphone', 'Yubikey'].map(type => {
                                                         const displayType = {
                                                             'Laptop': 'Notebook',
                                                             'Smartphone': 'Celular',
-                                                            'Key': 'Llave'
+                                                            'Yubikey': 'Llave'
                                                         }[type] || type;
 
                                                         return (
@@ -878,10 +878,8 @@ export default function BillingPage() {
                         // Extract Metadata from Asset (Source of Truth)
                         const { moveType, assetType, resolvedAsset } = resolveTicketServiceDetails(t, globalAssets);
 
-                        // Currency context re-check
-                        const exchangeRate = parseFloat(rates?.exchangeRate) || 0;
-                        const useArs = exchangeRate > 0;
-                        const currencyLabel = useArs ? 'ARS' : 'USD';
+                        // Keep currency as USD uniformly for the detail modal to match the table
+                        const currencyLabel = 'USD';
 
                         return (
                             <>
