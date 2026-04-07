@@ -5,7 +5,7 @@ import { calculateTicketFinancials } from '@/lib/billing';
 import { useStore } from '@/lib/store';
 
 export function FinancialsSummary({ ticket }) {
-    const { rates, assets, users, currentUser } = useStore();
+    const { rates, assets, users, currentUser, logisticsTasks } = useStore();
 
     // Only visible for management or admin
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'Gerencial') {
@@ -13,8 +13,8 @@ export function FinancialsSummary({ ticket }) {
     }
 
     const financials = useMemo(() => {
-        return calculateTicketFinancials(ticket, rates, assets, users);
-    }, [ticket, rates, assets, users]);
+        return calculateTicketFinancials(ticket, rates, assets, users, logisticsTasks);
+    }, [ticket, rates, assets, users, logisticsTasks]);
 
     if (!financials) return null;
 

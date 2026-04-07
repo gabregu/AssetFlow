@@ -26,7 +26,7 @@ import { CountryFilter } from '../../components/layout/CountryFilter';
 import { calculateTicketFinancials, resolveTicketServiceDetails } from '@/lib/billing';
 
 export default function BillingPage() {
-    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, sfdcCases, countryFilter } = useStore();
+    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, sfdcCases, countryFilter, logisticsTasks } = useStore();
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [isRatesModalOpen, setIsRatesModalOpen] = useState(false);
@@ -121,7 +121,7 @@ export default function BillingPage() {
 
 
         filtered.forEach(ticket => {
-            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users);
+            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
             
             if (!financials) return;
 
@@ -397,7 +397,7 @@ export default function BillingPage() {
                                 <tbody>
                                     {filteredTickets.length > 0 ? filteredTickets.map(ticket => {
                                         // Calculate Profit for this row
-                                        const financials = calculateTicketFinancials(ticket, rates, globalAssets, users);
+                                        const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
                                         if (!financials) return null;
 
                                         const {
@@ -875,11 +875,9 @@ export default function BillingPage() {
                         const f = detailModal.financials;
                         if (!t || !f) return null;
 
-                        // Extract Metadata from Asset (Source of Truth)
+                        // Force live calculation to catch sub-task drivers and corrected device fallbacks
+                        const realF = calculateTicketFinancials(t, rates, globalAssets, users, logisticsTasks) || f;
                         const { moveType, assetType, resolvedAsset } = resolveTicketServiceDetails(t, globalAssets);
-
-                        // Keep currency as USD uniformly for the detail modal to match the table
-                        const currencyLabel = 'USD';
 
                         return (
                             <>
@@ -889,139 +887,107 @@ export default function BillingPage() {
                                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Ref: {t.id} • {t.requester}</p>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>GANANCIA TOTAL</div>
-                                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: f.profit >= 0 ? '#22c55e' : '#ef4444' }}>
-                                            {currencyLabel} {f.profit.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>GANANCIA NETA</div>
+                                        <div style={{ fontSize: '1.75rem', fontWeight: 800, color: realF.profit >= 0 ? '#22c55e' : '#ef4444' }}>
+                                            USD {realF.profit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </div>
                                     </div>
                                 </div>
 
-                                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+                                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
                                     <h3 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Resumen del Servicio</h3>
 
-                                    {/* Primary Info */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1rem', borderBottom: '1px dashed var(--border)', paddingBottom: '1rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem', marginBottom: '1rem', borderBottom: '1px dashed var(--border)', paddingBottom: '1rem' }}>
                                         <div>
                                             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Tipo de Movimiento</span>
                                             <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)' }}>{moveType}</span>
                                         </div>
                                         <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Tipo de Dispositivo</span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Dispositivo</span>
                                             <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)' }}>{assetType}</span>
                                         </div>
                                         <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Conductor</span>
-                                            <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)' }}>{t.logistics?.deliveryPerson || t.driver || t.logistics?.coordinatedBy || 'N/A'}</span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Método Logístico</span>
+                                            <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)' }}>{realF.method || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Responsable</span>
+                                            <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)' }}>{realF.deliveryPerson || 'N/A'}</span>
                                         </div>
                                     </div>
 
-                                    {/* Asset & Accessories Detail */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                         <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Equipamiento</span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Equipamiento Detallado</span>
                                             <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-main)' }}>
                                                 {resolvedAsset ? (
-                                                    <>
-                                                        {resolvedAsset.name || 'Sin Nombre'} <span style={{ opacity: 0.6 }}>({resolvedAsset.serial || 'S/N'})</span>
-                                                    </>
+                                                    <>{resolvedAsset.name || 'Sin Nombre'} <span style={{ opacity: 0.6 }}>({resolvedAsset.serial || 'S/N'})</span></>
                                                 ) : 'No especificado'}
                                             </span>
                                         </div>
                                         <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Accesorios</span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Accesorios Incluidos</span>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                                                 {(() => {
                                                     const accs = t.accessories || {};
-                                                    const activeAccs = Object.entries(accs)
-                                                        .filter(([k, v]) => v && k !== 'filterSize') // filterSize is metadata for screenFilter
-                                                        .map(([k]) => {
-                                                            const map = { mouse: 'Mouse', headset: 'Auricular', charger: 'Cargador', cover: 'Funda', stand: 'Soporte', screenFilter: 'Filtro' };
-                                                            return map[k] || k;
-                                                        });
-
-                                                    if (activeAccs.length === 0) return <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Ninguno</span>;
-
-                                                    return activeAccs.map(a => (
-                                                        <span key={a} style={{ fontSize: '0.7rem', background: 'var(--background)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px' }}>{a}</span>
-                                                    ));
+                                                    const activeAccs = Object.entries(accs).filter(([k, v]) => v && k !== 'filterSize').map(([k]) => {
+                                                        const map = { mouse: 'Mouse', headset: 'Auricular', charger: 'Cargador', cover: 'Funda', stand: 'Soporte', screenFilter: 'Filtro' };
+                                                        return map[k] || k;
+                                                    });
+                                                    return activeAccs.length === 0 ? <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Ninguno</span> : activeAccs.map(a => <span key={a} style={{ fontSize: '0.7rem', background: 'var(--background)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px' }}>{a}</span>);
                                                 })()}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                                    {/* INGRESOS */}
-                                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.5rem' }}>
-                                        <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '1.25rem', borderBottom: '2px solid #22c55e', paddingBottom: '0.5rem', display: 'inline-block' }}>INGRESOS</h3>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
-
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '1.25rem' }}>
+                                        <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, marginBottom: '1rem', textTransform: 'uppercase', color: '#166534' }}>Ingresos Brutos</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <span>Total Servicio:</span>
-                                                <span style={{ fontWeight: 600 }}>{currencyLabel} {f.serviceRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                                <span style={{ fontSize: '0.85rem', color: '#166534' }}>Servicio Técnico</span>
+                                                <span style={{ fontWeight: 600 }}>USD {realF.serviceRevenue.toFixed(2)}</span>
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <span>Servicio de Delivery (Cobro):</span>
-                                                <span style={{ fontWeight: 600 }}>{currencyLabel} {f.logisticRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                                <span style={{ fontSize: '0.85rem', color: '#166534' }}>Cobro Logística</span>
+                                                <span style={{ fontWeight: 600 }}>USD {realF.logisticRevenue.toFixed(2)}</span>
                                             </div>
-
-                                            <div style={{ marginTop: '1rem', background: 'rgba(34, 197, 94, 0.1)', padding: '0.75rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ fontWeight: 700, color: '#166534' }}>Total Ingresos</span>
-                                                <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#166534' }}>{currencyLabel} {f.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                            <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', fontWeight: 800, color: '#166534' }}>
+                                                <span>TOTAL INGRESOS</span>
+                                                <span>USD {realF.totalRevenue.toFixed(2)}</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* COSTOS */}
-                                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.5rem' }}>
-                                        <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '1.25rem', borderBottom: '2px solid #ef4444', paddingBottom: '0.5rem', display: 'inline-block' }}>COSTOS</h3>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
-                                            {f.method === 'Andreani' || f.method === 'Correo Argentino' ? (
-                                                <>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>Costo de Envío (Correo):</span>
-                                                        <span style={{ fontWeight: 600 }}>{currencyLabel} {(f.logisticCost / 1.1).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>+10% Markup Adm.:</span>
-                                                        <span style={{ fontWeight: 600 }}>{currencyLabel} {(f.logisticCost - (f.logisticCost / 1.1)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: 'var(--text-secondary)' }}>Paga del Conductor:</span>
-                                                    <span style={{ fontWeight: 600 }}>{currencyLabel} {f.logisticCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                                                </div>
-                                            )}
-
-                                            {f.operationalCost > 0 && (
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span style={{ color: 'var(--text-secondary)' }}>Insumos / Accesorios:</span>
-                                                    <span style={{ fontWeight: 600 }}>{currencyLabel} {f.operationalCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                                                </div>
-                                            )}
-
-                                            <div style={{ borderTop: '1px dashed var(--border)', margin: '0.5rem 0' }} />
-
-                                            <div style={{ marginTop: 'auto', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ fontWeight: 700, color: '#991b1b' }}>Total de Costos</span>
-                                                <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#991b1b' }}>{currencyLabel} {f.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', padding: '1.25rem' }}>
+                                        <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, marginBottom: '1rem', textTransform: 'uppercase', color: '#991b1b' }}>Costos Operativos</h4>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ fontSize: '0.85rem', color: '#991b1b' }}>Paga Conductor / Correo</span>
+                                                <span style={{ fontWeight: 600 }}>USD {realF.logisticCost.toFixed(2)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ fontSize: '0.85rem', color: '#991b1b' }}>Extras Operativa</span>
+                                                <span style={{ fontWeight: 600 }}>USD {realF.operationalCost.toFixed(2)}</span>
+                                            </div>
+                                            <div style={{ marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid #fecaca', display: 'flex', justifyContent: 'space-between', fontWeight: 800, color: '#991b1b' }}>
+                                                <span>TOTAL COSTOS</span>
+                                                <span>USD {realF.totalCost.toFixed(2)}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem' }}>
+                                    <Link href={`/dashboard/tickets/${t.id}`} style={{ textDecoration: 'none' }}>
+                                        <Button icon={ArrowRight} variant="outline" size="sm">Ver Ticket Completo</Button>
+                                    </Link>
+                                    <Button onClick={() => setDetailModal({ ...detailModal, isOpen: false })}>Cerrar Detalle</Button>
+                                </div>
                             </>
                         );
                     })()}
-
-                    <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                        <Button variant="outline" icon={ArrowRight} onClick={() => {
-                            window.open(`/dashboard/tickets/${t.id}`, '_blank');
-                        }}>Ver Ticket de Servicio</Button>
-                        <Button onClick={() => setDetailModal({ ...detailModal, isOpen: false })}>Cerrar</Button>
-                    </div>
                 </div>
             </Modal>
 
