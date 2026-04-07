@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react';
 
 export default function Home() {
     const router = useRouter();
-    const { login, users, currentUser, loading } = useStore();
+    const { login, users, currentUser, setCurrentUser, loading } = useStore();
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
@@ -34,10 +34,9 @@ export default function Home() {
         const { error, user } = await login(formData.email, formData.password);
 
         if (error) {
-            // console.error('Login error:', error); // Optional: keep for internal logging
             setError(error.message || JSON.stringify(error));
         } else if (user) {
-            // Check role redirect
+            // Check role redirect - Wait slightly for state provider to sync
             if (user.role === 'Conductor') {
                 router.push('/dashboard/my-tickets');
             } else {
