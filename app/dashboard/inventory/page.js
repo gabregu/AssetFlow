@@ -651,7 +651,7 @@ export default function InventoryPage() {
                 "Nombre del Equipo": a.name,
                 "Serial / ID": a.serial,
                 "Estado": a.status,
-                "Marca": a.vendor || '-',
+                "Vendor": a.vendor || '-',
                 "Modelo": a.hardwareSpec || '-',
                 "Orden de Compra": a.purchaseOrder || '-',
                 "Notas": a.notes || '-',
