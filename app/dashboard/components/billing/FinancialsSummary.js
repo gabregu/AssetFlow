@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Card } from '../ui/Card';
+import { Card } from '@/app/components/ui/Card';
 import { TrendingUp, DollarSign, Truck, Package, Info } from 'lucide-react';
 import { calculateTicketFinancials } from '@/lib/billing';
 import { useStore } from '@/lib/store';
