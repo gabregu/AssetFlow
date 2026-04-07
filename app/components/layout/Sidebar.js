@@ -2,14 +2,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Ticket, Package, Truck, Settings, LogOut, FileText, X, DollarSign, History, Activity, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Ticket, Package, Truck, Settings, LogOut, FileText, X, DollarSign, History, Activity, TrendingUp, RefreshCcw } from 'lucide-react';
 import { useStore } from '../../../lib/store';
 
 import { Logo } from '../ui/Logo';
 
 export function Sidebar({ isOpen, onClose }) {
     const pathname = usePathname();
-    const { currentUser, logout, onlineUsers } = useStore();
+    const { currentUser, logout, onlineUsers, refreshData } = useStore();
+    const [isRefreshing, setIsRefreshing] = React.useState(false);
 
     const menuItems = [
         { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'Administrativo', 'Gerencial'] },
@@ -244,6 +245,39 @@ export function Sidebar({ isOpen, onClose }) {
                         </div>
                     </div>
                 )}
+
+                {/* Botón Sincronizar */}
+                <button
+                    disabled={isRefreshing}
+                    onClick={async () => {
+                        setIsRefreshing(true);
+                        await refreshData();
+                        // Small extra delay for UX feel
+                        setTimeout(() => setIsRefreshing(false), 800);
+                    }}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.75rem 1rem',
+                        color: 'var(--text-secondary)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: isRefreshing ? 'wait' : 'pointer',
+                        width: '100%',
+                        textAlign: 'left',
+                        fontFamily: 'inherit',
+                        fontSize: 'inherit',
+                        fontWeight: 500,
+                        borderRadius: 'var(--radius-md)',
+                        marginBottom: '0.5rem',
+                        transition: 'all 0.2s'
+                    }}
+                    className="hover-card"
+                >
+                    <RefreshCcw size={20} className={isRefreshing ? 'animate-spin' : ''} style={{ color: isRefreshing ? 'var(--primary-color)' : 'inherit' }} />
+                    {isRefreshing ? 'Sincronizando...' : 'Sincronizar'}
+                </button>
 
                 <Link href="/dashboard/settings" style={{
                     display: 'flex',
