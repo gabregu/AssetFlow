@@ -119,7 +119,8 @@ export default function InventoryPage() {
         let result = assets.filter(a => {
             const matchesSearch = a.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
                 a.serial.toLowerCase().includes(searchFilter.toLowerCase()) ||
-                a.assignee.toLowerCase().includes(searchFilter.toLowerCase());
+                a.assignee.toLowerCase().includes(searchFilter.toLowerCase()) ||
+                (a.cod && a.cod.toLowerCase().includes(searchFilter.toLowerCase()));
 
             let matchesStatus = false;
             if (columnFilters.status === 'All') {
@@ -771,6 +772,7 @@ export default function InventoryPage() {
     const novos = allAssetsNonAssigned.filter(a => a.status === 'Nuevo' || a.status === 'Disponible').length;
     const recuperados = allAssetsNonAssigned.filter(a => a.status === 'Recuperado').length;
     const dañados = allAssetsNonAssigned.filter(a => ['Dañado', 'EOL', 'Rota', 'De Baja'].includes(a.status)).length;
+    const destructionCount = allAssetsNonAssigned.filter(a => a.cod && a.cod.trim() !== '').length;
 
     const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 3 : 0);
 
@@ -1200,6 +1202,16 @@ export default function InventoryPage() {
                             <div style={{ width: '4px', height: '24px', background: 'var(--primary-color)', borderRadius: '4px' }}></div>
                             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Stock Disponible por Modelo</h2>
                             <Badge variant="success" style={{ marginLeft: '0.5rem' }}>{novos + recuperados} u.</Badge>
+                            {destructionCount > 0 && (
+                                <Badge 
+                                    variant="danger" 
+                                    style={{ marginLeft: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    onClick={() => setSearchFilter('COD')}
+                                    title="Click para ver equipos destinados a destrucción"
+                                >
+                                    <Trash2 size={12} /> {destructionCount} COD
+                                </Badge>
+                            )}
                         </div>
                         {isStockExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                     </div>
