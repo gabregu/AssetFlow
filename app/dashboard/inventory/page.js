@@ -983,31 +983,7 @@ export default function InventoryPage() {
                 </div>
             </div>
 
-            {/* Global Inventory KPIs */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-                <Card style={{ padding: '1.25rem', cursor: 'pointer' }} onClick={() => setStatusFilter(null)}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary-color)', borderRadius: '12px' }}>
-                            <Box size={24} />
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>Almacén</p>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>{totalAssets}</h3>
-                        </div>
-                    </div>
-                </Card>
-                <Card style={{ padding: '1.25rem', cursor: 'pointer' }} onClick={() => setStatusFilter('En Reparación')}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', borderRadius: '12px' }}>
-                            <History size={24} />
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontWeight: 600 }}>En Reparación</p>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#f59e0b' }}>{enReparacion}</h3>
-                        </div>
-                    </div>
-                </Card>
-            </div>
+            {/* Global Inventory KPIs Removidos */}
 
             {/* --- TABLA YUBIKEYS (SECURITY KEYS) --- */}
             {activeTab === 'yubikeys' && (
