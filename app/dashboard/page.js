@@ -77,17 +77,19 @@ export default function Dashboard() {
     const recentTickets = filteredTickets.slice(0, 3);
 
     return (
-        <div>
-            <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Hola, {currentUser?.name || 'Usuario'}</h1>
-                <p style={{ color: 'var(--text-secondary)' }}>Aquí tienes un resumen de la actividad de hoy en AssetFlow.</p>
-                <div style={{ marginTop: '1rem' }}>
+        <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+            <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Hola, {currentUser?.name || 'Usuario'}</h1>
+                    <p style={{ color: 'var(--text-secondary)' }}>Aquí tienes un resumen de la actividad de hoy en AssetFlow.</p>
+                </div>
+                <div>
                     <CountryFilter />
                 </div>
             </div>
 
             {/* Quick Actions */}
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${currentUser?.role === 'Conductor' ? 1 : 4}, 1fr)`, gap: '1rem', marginBottom: '2.5rem' }}>
+            <div className="grid-responsive-4" style={{ marginBottom: '2.5rem' }}>
                 {currentUser?.role === 'Conductor' ? (
                     <div
                         onClick={() => router.push('/dashboard/my-tickets')}
@@ -202,7 +204,7 @@ export default function Dashboard() {
             </div>
 
             {/* KPI Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div className="grid-responsive-dashboard" style={{ marginBottom: '2rem' }}>
                 <Card>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
@@ -270,7 +272,7 @@ export default function Dashboard() {
             <div style={{ marginBottom: '2rem' }}>
                 <Card>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1.5rem' }}>Carga de Trabajo (Empleados)</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                    <div className="grid-responsive-dashboard">
 
                         {(users || []).map(user => {
                             const activeCount = filteredTickets.filter(t => {

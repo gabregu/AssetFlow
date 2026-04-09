@@ -182,25 +182,23 @@ export default function MyStatsPage() {
     }, [myAssignedItems, globalAssets, currentUser, rates, users]);
 
     return (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem', animation: 'fadeIn 0.5s ease-out' }}>
-            {/* Header */}
-            <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <TrendingUp size={32} style={{ color: 'var(--primary-color)' }} />
-                    Mis <span style={{ color: 'var(--primary-color)' }}>Números</span>
-                </h1>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem' }}>
-                    Visualiza el rendimiento de tus entregas y tu liquidación.
-                </p>
+        <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+            <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <TrendingUp size={32} style={{ color: 'var(--primary-color)' }} />
+                        Mis <span style={{ color: 'var(--primary-color)' }}>Números</span>
+                    </h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem' }}>
+                        Visualiza el rendimiento de tus entregas y tu liquidación.
+                    </p>
+                </div>
+                <div style={{ padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', color: '#3b82f6' }}>
+                    <BarChart3 size={24} />
+                </div>
             </div>
 
-            {/* Fila 0: Rendimiento y Carga Semanal (Desde Mis Envíos) */}
-            <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
-                gap: '1.25rem', 
-                marginBottom: '1.25rem' 
-            }}>
+            <div className="grid-responsive-dashboard" style={{ marginBottom: '1.25rem' }}>
                 <Card style={{ padding: '1.25rem', borderLeft: '5px solid var(--primary-color)', backgroundColor: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -230,13 +228,8 @@ export default function MyStatsPage() {
                 </Card>
             </div>
 
-            {/* Fila 1: Indicadores Básicos (Desde Mis Servicios) */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '1.25rem',
-                marginBottom: '1.25rem'
-            }}>
+            {/* Fila 1: Indicadores Básicos */}
+            <div className="grid-responsive-4" style={{ marginBottom: '1.25rem' }}>
                 <Card style={{ padding: '1.25rem', borderLeft: '4px solid #94a3b8', backgroundColor: 'var(--surface)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <div style={{ padding: '0.5rem', backgroundColor: '#f1f5f9', borderRadius: '50%', color: '#64748b' }}>
@@ -287,12 +280,7 @@ export default function MyStatsPage() {
             </div>
 
             {/* Fila 2: Liquidación y Evolución */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '1.25rem',
-                marginBottom: '2rem'
-            }}>
+            <div className="grid-responsive-dashboard" style={{ marginBottom: '2rem' }}>
                 {/* Resumen de Liquidación */}
                 <Card style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6', backgroundColor: 'var(--surface)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>

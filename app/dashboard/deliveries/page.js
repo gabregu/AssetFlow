@@ -452,7 +452,7 @@ export default function DeliveriesPage() {
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Envíos (Actualizado)</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Logística avanzada con posicionamiento geográfico real.</p>
@@ -460,7 +460,7 @@ export default function DeliveriesPage() {
                         <CountryFilter />
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }} className="flex-mobile-column">
                     {currentUser?.role === 'Administrador' && selectedIds.length > 0 && (
                         <Button
                             icon={Trash2}
@@ -481,7 +481,7 @@ export default function DeliveriesPage() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div className="grid-responsive-4" style={{ marginBottom: '2rem' }}>
                 <Card
                     className="p-4 clickable-card"
                     style={{
@@ -633,7 +633,7 @@ export default function DeliveriesPage() {
             </Card>
 
             <Card>
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }} className="flex-mobile-column">
                     <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
                         <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                         <input
@@ -657,7 +657,7 @@ export default function DeliveriesPage() {
                     )}
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
+                <div className="table-responsive">
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>

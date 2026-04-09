@@ -103,7 +103,7 @@ export default function HistoryPage() {
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+            <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Histórico de Servicios</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Repositorio de todos los casos resueltos y cerrados.</p>
@@ -111,15 +111,17 @@ export default function HistoryPage() {
                         <CountryFilter />
                     </div>
                 </div>
-                <div style={{ padding: '0.75rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: '50%', color: '#22c55e' }}>
-                    <History size={24} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }} className="hide-mobile">
+                    <div style={{ padding: '0.75rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: '50%', color: '#22c55e' }}>
+                        <History size={24} />
+                    </div>
                 </div>
             </div>
 
             <Card className="p-0">
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }} className="flex-mobile-column">
+                        <div style={{ position: 'relative', flex: 1, minWidth: '100%', width: '100%' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
                                 type="text"
@@ -137,7 +139,7 @@ export default function HistoryPage() {
                                 }}
                             />
                         </div>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
                             Total Resueltos: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{historicalTickets.length}</span>
                         </div>
                     </div>
@@ -168,7 +170,7 @@ export default function HistoryPage() {
                     </div>
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
+                <div className="table-responsive">
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--background-secondary)' }}>

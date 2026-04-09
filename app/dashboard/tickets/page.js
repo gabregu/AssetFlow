@@ -478,7 +478,7 @@ export default function TicketsPage() {
                     {toast.message}
                 </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+            <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Servicios</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Gestiona y resuelve las incidencias reportadas.</p>
@@ -486,7 +486,7 @@ export default function TicketsPage() {
                         <CountryFilter />
                     </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <input
                             type="file"
@@ -513,7 +513,7 @@ export default function TicketsPage() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
+            <div className="grid-responsive-3" style={{ marginBottom: '2.5rem' }}>
                 <Card
                     className="p-4 clickable-card"
                     style={{
@@ -624,7 +624,7 @@ export default function TicketsPage() {
 
             <Card>
                 {/* FILTROS TIPO DE PEDIDO (ENTREGA, RECOLECCIÓN, NEW HIRE) */}
-                <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                <div className="grid-responsive-3" style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
                     {/* BOTÓN VERDE (ENTREGA) */}
                     <button
                         onClick={() => setFilterType(filterType === 'DELIVERY' ? 'ALL' : 'DELIVERY')}
@@ -725,7 +725,7 @@ export default function TicketsPage() {
                     </button>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }} className="flex-mobile-column">
                     {selectedTickets.length > 0 && canDelete ? (
                         <div style={{
                             flex: 1,
@@ -774,7 +774,7 @@ export default function TicketsPage() {
                     )}
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
+                <div className="table-responsive">
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>

@@ -78,13 +78,18 @@ export default function SettingsPage() {
     const roles = ['Gerencial', 'Administrativo', 'Conductor', 'user', 'admin'];
 
     return (
-        <div>
-            <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Configuración del Sistema</h1>
-                <p style={{ color: 'var(--text-secondary)' }}>Personaliza tu experiencia y gestiona el acceso al sistema.</p>
+        <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+            <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Configuración</h1>
+                    <p style={{ color: 'var(--text-secondary)' }}>Gestiona las preferencias del sistema y usuarios.</p>
+                </div>
+                <div style={{ padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', color: '#3b82f6' }}>
+                    <Shield size={24} />
+                </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
+            <div className="grid-responsive-dashboard" style={{ marginBottom: '2.5rem' }}>
                 {/* Visual Settings */}
                 <Card title="Apariencia" action={theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}>
                     <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
@@ -229,7 +234,7 @@ export default function SettingsPage() {
                                 </div>
                             )}
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
+                            <div className="table-responsive" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
                                 {users.filter(u => u.role !== 'pending' && u.email).map(u => (
                                     <div key={u.id} style={{
                                         display: 'flex',

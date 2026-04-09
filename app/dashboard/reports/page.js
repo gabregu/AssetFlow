@@ -119,7 +119,7 @@ export default function ReportsPage() {
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+            <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Informes de Gestión</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Análisis y reporte detallado de servicios finalizados.</p>
@@ -130,7 +130,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Stats Graphic Area */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <div className="grid-responsive-dashboard" style={{ marginBottom: '1.5rem' }}>
                 <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <h3 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -163,8 +163,8 @@ export default function ReportsPage() {
 
             <Card className="p-0">
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
+                    <div className="flex-mobile-column" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', flex: 1, width: '100%', minWidth: 'min(300px, 100%)' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
                                 type="text"
@@ -212,7 +212,7 @@ export default function ReportsPage() {
                     </div>
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
+                <div className="table-responsive">
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--background-secondary)' }}>

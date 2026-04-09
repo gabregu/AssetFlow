@@ -737,7 +737,7 @@ export default function SFDCCasesPage() {
                     {toast.message}
                 </div>
             )}
-            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Casos Salesforce (SFDC)</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Importar y gestionar casos provenientes de Salesforce.</p>
@@ -745,7 +745,10 @@ export default function SFDCCasesPage() {
                         <CountryFilter />
                     </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch', marginTop: '1rem' }} className="show-mobile">
+                    {/* Mobile optimized buttons if needed, or just let regular flex handle it */}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }} className="hide-mobile">
                     <div>
                         <input
                             type="file"
@@ -758,7 +761,6 @@ export default function SFDCCasesPage() {
                             Importar CSV
                         </Button>
                     </div>
-                    {/* Mostrar botón solo para Admin/Gerencial Y SI HAY UN PAÍS SELECCIONADO (distinto a 'Todos') */}
                     {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && countryFilter !== 'Todos' && (
                         <button
                             onClick={() => {
@@ -787,13 +789,7 @@ export default function SFDCCasesPage() {
             {/* Dashboard / Metrics Section - Compacted Row */}
             {/* Dashboard / Metrics Section - Compacted Row */}
             {sfdcCases.length > 0 && (
-                <div style={{
-                    display: 'flex',
-                    gap: '0.75rem',
-                    marginBottom: '1.5rem',
-                    overflowX: 'auto',
-                    paddingBottom: '4px',
-                }}>
+                <div className="grid-responsive-6" style={{ marginBottom: '1.5rem' }}>
                     {/* Total Backlog Card */}
                     <Card style={{ minWidth: '140px', flex: 1, padding: '1rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
@@ -853,7 +849,7 @@ export default function SFDCCasesPage() {
 
             <Card>
                 {/* FILTROS TIPO DE PEDIDO (ENTREGA, RECOLECCIÓN, NEW HIRE) */}
-                <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                <div className="grid-responsive-3" style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
                     {/* BOTÓN VERDE (ENTREGA) */}
                     <button
                         onClick={() => setFilterType(filterType === 'DELIVERY' ? 'ALL' : 'DELIVERY')}
@@ -954,7 +950,7 @@ export default function SFDCCasesPage() {
                     </button>
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }} className="flex-mobile-column">
                     {selectedCases.length > 0 ? (
                         <div style={{
                             flex: 1,
@@ -1002,7 +998,7 @@ export default function SFDCCasesPage() {
                     )}
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
+                <div className="table-responsive">
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>

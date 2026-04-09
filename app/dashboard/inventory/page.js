@@ -82,6 +82,7 @@ export default function InventoryPage() {
     
     // Export Modal State
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [isFullInventoryModalOpen, setIsFullInventoryModalOpen] = useState(false);
     const [exportSettings, setExportSettings] = useState({
         mode: 'all', // 'all', 'type', 'status', 'model'
         value: ''
@@ -866,18 +867,18 @@ export default function InventoryPage() {
     );
 
     return (
-        <div style={{ paddingBottom: '4rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div style={{ paddingBottom: '4rem', animation: 'fadeIn 0.5s ease-out' }}>
+            <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Inventario</h1>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Gestión de Inventario</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Control de activos de hardware y stock de consumibles.</p>
                     <div style={{ marginTop: '1rem' }}>
                         <CountryFilter />
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem', background: 'var(--background)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                <div className="flex-mobile-column" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div className="flex-mobile-column" style={{ display: 'flex', gap: '1rem', background: 'var(--background)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', width: '100%' }}>
                         <button
                             style={{
                                 padding: '0.5rem 1rem',
@@ -890,7 +891,9 @@ export default function InventoryPage() {
                                 alignItems: 'center',
                                 gap: '0.5rem',
                                 fontWeight: 600,
-                                transition: 'all 0.2s ease'
+                                transition: 'all 0.2s ease',
+                                width: '100%',
+                                justifyContent: 'center'
                             }}
                             onClick={() => setActiveTab('hardware')}
                         >
@@ -908,7 +911,9 @@ export default function InventoryPage() {
                                 alignItems: 'center',
                                 gap: '0.5rem',
                                 fontWeight: 600,
-                                transition: 'all 0.2s ease'
+                                transition: 'all 0.2s ease',
+                                width: '100%',
+                                justifyContent: 'center'
                             }}
                             onClick={() => setActiveTab('accessories')}
                         >
@@ -926,7 +931,9 @@ export default function InventoryPage() {
                                 alignItems: 'center',
                                 gap: '0.5rem',
                                 fontWeight: 600,
-                                transition: 'all 0.2s ease'
+                                transition: 'all 0.2s ease',
+                                width: '100%',
+                                justifyContent: 'center'
                             }}
                             onClick={() => setActiveTab('yubikeys')}
                         >
@@ -952,14 +959,7 @@ export default function InventoryPage() {
                                 >
                                     Cargar CSV
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    icon={Download}
-                                    onClick={() => setIsExportModalOpen(true)}
-                                >
-                                    Exportar Reporte
-                                </Button>
+                                {/* Botón de Exportar Reporte movido al modal de Inventario Completo */}
                             </div>
                         )}
                         {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
@@ -1002,7 +1002,7 @@ export default function InventoryPage() {
                         Gestión de llaves de seguridad físicas. Monitoreo por cantidad y estado.
                     </p>
 
-                    <div style={{ overflowX: 'auto' }}>
+                    <div className="table-responsive">
                         {yubikeys.length === 0 && <p style={{ padding: '1rem', color: 'var(--text-secondary)' }}>No hay Security Keys registradas.</p>}
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                             <thead>
@@ -1075,9 +1075,9 @@ export default function InventoryPage() {
             {/* Resumen Ejecutivo de Inventario */}
             {activeTab === 'hardware' && (
                 <Card style={{ marginBottom: '2rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1px 1.5fr', gap: '2rem', alignItems: 'start' }}>
+                    <div className="flex-mobile-column" style={{ display: 'flex', gap: '2rem', alignItems: 'start' }}>
                         {/* Columna Izquierda: Totales por Tipo */}
-                        <div>
+                        <div style={{ flex: 1, width: '100%' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
                                 <div style={{ width: '3px', height: '16px', background: 'var(--primary-color)', borderRadius: '2px' }}></div>
                                 <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>Inventario por Tipo</h4>
@@ -1114,11 +1114,8 @@ export default function InventoryPage() {
                             </div>
                         </div>
 
-                        {/* Divisor Visual */}
-                        <div style={{ width: '1px', height: '100%', background: 'var(--border)' }}></div>
-
-                        {/* Columna Derecha: Totales por Estado (Columnado) */}
-                        <div>
+                        {/* Columna Derecha: Totales por Estado */}
+                        <div style={{ flex: 1.5, width: '100%' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <div style={{ width: '3px', height: '16px', background: 'var(--primary-color)', borderRadius: '2px' }}></div>
@@ -1131,7 +1128,7 @@ export default function InventoryPage() {
                                     </div>
                                 )}
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                            <div className="grid-responsive-3">
                                 {statuses.map(status => {
                                     // Apply country filter first, then device type filter
                                     const filteredByType = selectedDeviceType ? allAssetsNonAssigned.filter(a => a.type === selectedDeviceType) : allAssetsNonAssigned;
@@ -1207,7 +1204,7 @@ export default function InventoryPage() {
 
                     {isStockExpanded && (
                         <Card style={{ padding: 0, overflow: 'hidden' }}>
-                            <div style={{ overflowX: 'auto' }}>
+                            <div className="table-responsive">
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                                     <thead>
                                         <tr style={{ background: 'var(--background)', borderBottom: '1px solid var(--border)' }}>
@@ -1375,7 +1372,7 @@ export default function InventoryPage() {
                                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
                                         Recomendaciones del Stock ({smartRecommendations.length})
                                     </label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <div className="grid-responsive-2">
                                         {smartRecommendations.length > 0 ? smartRecommendations.map(rec => (
                                             <div key={rec.id} style={{
                                                 padding: '0.75rem',
@@ -1430,7 +1427,7 @@ export default function InventoryPage() {
                                 <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Resultados de Búsqueda</h3>
                                 <Badge variant="info">{filteredAssets.length}</Badge>
                             </div>
-                            <div style={{ overflowX: 'auto', background: 'rgba(37, 99, 235, 0.02)', borderRadius: '12px', padding: '0.5rem', border: '1px dashed rgba(37, 99, 235, 0.2)' }}>
+                            <div className="table-responsive" style={{ background: 'rgba(37, 99, 235, 0.02)', borderRadius: '12px', padding: '0.5rem', border: '1px dashed rgba(37, 99, 235, 0.2)' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
                                         <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -1479,119 +1476,139 @@ export default function InventoryPage() {
                         </div>
                     )}
 
-                    {/* Desplegable de Inventario Completo */}
+                    {/* Botón para abrir modal de Inventario Completo */}
                     {searchFilter === '' && (
-                        <div style={{ marginTop: '1rem' }}>
-                            <div
-                                onClick={() => setIsInventoryExpanded(!isInventoryExpanded)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    padding: '1rem 1.5rem',
-                                    background: 'var(--background)',
-                                    borderRadius: '12px',
-                                    border: '1px solid var(--border)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease'
+                        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center' }}>
+                            <Button
+                                size="lg"
+                                icon={Box}
+                                onClick={() => setIsFullInventoryModalOpen(true)}
+                                style={{ 
+                                    padding: '1rem 2rem', 
+                                    fontSize: '1rem',
+                                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
                                 }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <div style={{ width: '4px', height: '24px', background: 'var(--text-secondary)', borderRadius: '4px', opacity: 0.5 }}></div>
-                                    <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Ver Inventario Completo</h2>
-                                    <Badge style={{ background: 'var(--border)', color: 'var(--text-main)' }}>{assets.length} activos</Badge>
-                                </div>
-                                {isInventoryExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                            </div>
-
-                            {isInventoryExpanded && (
-                                <div style={{ marginTop: '1.5rem', overflowX: 'auto', animation: 'fadeIn 0.3s ease-out' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                        <thead>
-                                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                                <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ACTIVO <SortIcon column="name" /></th>
-                                                <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
-                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>PAÍS</th>
-                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
-                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>COD</th>
-                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
-                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredAssets.map((asset) => (
-                                                <tr key={asset.id} className="table-row" style={{ borderBottom: '1px solid var(--border)' }}>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                            <div style={{ padding: '0.6rem', backgroundColor: 'var(--background)', borderRadius: '10px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                                                                {React.createElement(getTypeIcon(asset.type), { size: 18 })}
-                                                            </div>
-                                                            <div>
-                                                                <Link href={`/dashboard/inventory/${asset.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                                                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }} className="hover-link">{asset.name}</div>
-                                                                </Link>
-                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{asset.type}</div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.9rem' }}>{asset.serial}</td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        {asset.country && (
-                                                            <span style={{
-                                                                display: 'inline-flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                width: '28px',
-                                                                height: '28px',
-                                                                borderRadius: '6px',
-                                                                backgroundColor: 'var(--background)',
-                                                                border: '1px solid var(--border)',
-                                                                fontSize: '0.75rem',
-                                                                fontWeight: 700,
-                                                                color: 'var(--text-primary)'
-                                                            }} title={asset.country}>
-                                                                {getCountryInitial(asset.country)}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        {asset.assignee === 'Almacén' ? (
-                                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', background: 'var(--background)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>En Almacén</span>
-                                                        ) : (
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
-                                                                    {asset.assignee.charAt(0)}
-                                                                </div>
-                                                                <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{asset.assignee}</span>
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        {asset.cod ? <Badge variant="destructive">{asset.cod}</Badge> : '-'}
-                                                    </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
-                                                    </td>
-                                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                            {(asset.status === 'Nuevo' || asset.status === 'Disponible' || asset.status === 'Recuperado') && (
-                                                                <Button variant="ghost" size="sm" icon={UserPlus} onClick={() => handleAssignClick(asset)} title="Asignar" />
-                                                            )}
-                                                            <Button variant="ghost" size="sm" icon={Eye} onClick={() => router.push(`/dashboard/inventory/${asset.id}`)} />
-                                                            <Button variant="ghost" size="sm" icon={Edit3} onClick={() => handleEdit(asset)} />
-                                                            {currentUser?.role === 'admin' && (
-                                                                <Button variant="ghost" size="sm" icon={Trash2} onClick={() => handleDelete(asset.id)} style={{ color: '#ef4444' }} />
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
+                                Ver Inventario Completo
+                            </Button>
                         </div>
                     )}
+
+                    {/* Modal de Inventario Completo */}
+                    <Modal
+                        isOpen={isFullInventoryModalOpen}
+                        onClose={() => setIsFullInventoryModalOpen(false)}
+                        title="Inventario Global de Activos"
+                        width="95%"
+                    >
+                        <div style={{ padding: '1rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Listado Detallado</h3>
+                                    <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                        Visualización completa de todos los equipos registrados en el sistema.
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <Button
+                                        variant="outline"
+                                        icon={Download}
+                                        onClick={() => setIsExportModalOpen(true)}
+                                    >
+                                        Exportar Reporte
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => setIsFullInventoryModalOpen(false)}
+                                    >
+                                        Cerrar
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="table-responsive" style={{ maxHeight: '65vh', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--surface)', zIndex: 10, borderBottom: '2px solid var(--border)' }}>
+                                        <tr>
+                                            <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ACTIVO <SortIcon column="name" /></th>
+                                            <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
+                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>PAÍS</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>COD</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredAssets.map((asset) => (
+                                            <tr key={asset.id} className="table-row" style={{ borderBottom: '1px solid var(--border)' }}>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                        <div style={{ padding: '0.6rem', backgroundColor: 'var(--background)', borderRadius: '10px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                                                            {React.createElement(getTypeIcon(asset.type), { size: 18 })}
+                                                        </div>
+                                                        <div>
+                                                            <Link href={`/dashboard/inventory/${asset.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                                                <div style={{ fontWeight: 600, fontSize: '0.95rem' }} className="hover-link">{asset.name}</div>
+                                                            </Link>
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{asset.type}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.9rem' }}>{asset.serial}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    {asset.country && (
+                                                        <span style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            width: '28px',
+                                                            height: '28px',
+                                                            borderRadius: '6px',
+                                                            backgroundColor: 'var(--background)',
+                                                            border: '1px solid var(--border)',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 700,
+                                                            color: 'var(--text-primary)'
+                                                        }} title={asset.country}>
+                                                            {getCountryInitial(asset.country)}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    {asset.assignee === 'Almacén' ? (
+                                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', background: 'var(--background)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>En Almacén</span>
+                                                    ) : (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+                                                                {asset.assignee.charAt(0)}
+                                                            </div>
+                                                            <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{asset.assignee}</span>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    {asset.cod ? <Badge variant="destructive">{asset.cod}</Badge> : '-'}
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
+                                                </td>
+                                                <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                                        {(asset.status === 'Nuevo' || asset.status === 'Disponible' || asset.status === 'Recuperado') && (
+                                                            <Button variant="ghost" size="sm" icon={UserPlus} onClick={() => handleAssignClick(asset)} title="Asignar" />
+                                                        )}
+                                                        <Button variant="ghost" size="sm" icon={Eye} onClick={() => router.push(`/dashboard/inventory/${asset.id}`)} />
+                                                        <Button variant="ghost" size="sm" icon={Edit3} onClick={() => handleEdit(asset)} />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </Modal>
                 </Card>
             )}
 
@@ -1614,7 +1631,7 @@ export default function InventoryPage() {
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
                         Accesorios genéricos controlados por cantidad unitaria.
                     </p>
-                    <div style={{ overflowX: 'auto' }}>
+                    <div className="table-responsive">
                         {consumables.length === 0 && <p style={{ padding: '1rem', color: 'red' }}>Debug: No consumables found in state (Length: 0)</p>}
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                             <thead>
@@ -1743,7 +1760,7 @@ export default function InventoryPage() {
                         </div>
 
                         {isYubikeyInventoryExpanded && (
-                            <div style={{ overflowX: 'auto', transition: 'all 0.3s ease' }}>
+                            <div className="table-responsive" style={{ transition: 'all 0.3s ease' }}>
                                 {yubikeys.length === 0 && <p style={{ padding: '1rem', color: 'var(--text-secondary)' }}>No hay Security Keys registradas.</p>}
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
@@ -1857,7 +1874,7 @@ export default function InventoryPage() {
                         />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div className="grid-responsive-2">
                         <div className="form-group">
                             <label className="form-label">Tipo de Activo</label>
                             <select
@@ -1883,7 +1900,7 @@ export default function InventoryPage() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div className="grid-responsive-2">
                         <div className="form-group">
                             <label className="form-label">Estado</label>
                             <select
@@ -1924,7 +1941,7 @@ export default function InventoryPage() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div className="grid-responsive-2">
                         <div className="form-group">
                             <label className="form-label">Fecha de Ingreso</label>
                             <input
@@ -1948,7 +1965,7 @@ export default function InventoryPage() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                    <div className="grid-responsive-4">
                         <div className="form-group">
                             <label className="form-label">Orden de Compra (PO)</label>
                             <input
@@ -1995,7 +2012,7 @@ export default function InventoryPage() {
                             />
                         </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div className="grid-responsive-2">
                         <div className="form-group">
                             <label className="form-label">Modelo Técnico</label>
                             <input
@@ -2364,7 +2381,7 @@ export default function InventoryPage() {
 
                     <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                         <label className="form-label" style={{ fontWeight: 700 }}>Exportar Por:</label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                        <div className="grid-responsive-2" style={{ marginTop: '0.5rem' }}>
                             {[
                                 { id: 'all', label: 'TODO el Inventario', icon: Layers },
                                 { id: 'type', label: 'Por Tipo', icon: Laptop },

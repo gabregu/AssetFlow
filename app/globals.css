@@ -449,7 +449,19 @@ a {
   }
 }
 
-/* --- Mobile Responsiveness --- */
+/* --- Responsive Utilities --- */
+
+.grid-responsive-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+.grid-responsive-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+.grid-responsive-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+.grid-responsive-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1.5rem; }
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+}
 
 /* Sidebar Mobile Overlay */
 .mobile-sidebar-overlay {
@@ -461,6 +473,14 @@ a {
   animation: modalFadeIn 0.3s ease;
 }
 
+/* Tablet */
+@media (max-width: 1024px) {
+  .grid-responsive-6 { grid-template-columns: repeat(3, 1fr); }
+  .grid-responsive-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-responsive-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Mobile */
 @media (max-width: 768px) {
   .sidebar-container {
     position: fixed !important;
@@ -497,6 +517,18 @@ a {
   .grid-mobile-single {
     grid-template-columns: 1fr !important;
     gap: 1.5rem !important;
+  }
+
+  .grid-responsive-6 { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  .grid-responsive-4 { grid-template-columns: 1fr; gap: 1rem; }
+  .grid-responsive-3 { grid-template-columns: 1fr; gap: 1rem; }
+  .grid-responsive-2 { grid-template-columns: 1fr; gap: 1rem; }
+  
+  /* Additional mobile fixes */
+  .modal-content {
+    width: 95% !important;
+    max-height: 90vh !important;
+    margin: auto;
   }
 }
 

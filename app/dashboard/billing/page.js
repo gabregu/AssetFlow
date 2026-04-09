@@ -253,7 +253,7 @@ export default function BillingPage() {
 
     return (
         <div style={{ paddingBottom: '4rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.875rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>Facturación ({currency})</h1>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Análisis financiero en {currency === 'USD' ? 'Dólares Estadounidenses' : 'Pesos Argentinos'}.</p>
@@ -262,40 +262,44 @@ export default function BillingPage() {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <select
-                        className="form-select"
-                        value={selectedMonth}
-                        onChange={e => setSelectedMonth(parseInt(e.target.value))}
-                        style={{ width: 'auto', padding: '0.5rem 2rem 0.5rem 1rem' }}
-                    >
-                        {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
-                    </select>
-                    <select
-                        className="form-select"
-                        value={selectedYear}
-                        onChange={e => setSelectedYear(parseInt(e.target.value))}
-                        style={{ width: 'auto', padding: '0.5rem 2rem 0.5rem 1rem' }}
-                    >
-                        {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                    {selectedTickets.size > 0 && (
-                        <Button icon={Trash} onClick={handleDeleteSelected} style={{ backgroundColor: '#ef4444', color: 'white', borderColor: '#ef4444' }}>Eliminar ({selectedTickets.size})</Button>
-                    )}
-                    <Button icon={Settings} onClick={() => setIsRatesModalOpen(true)}>Configurar Tarifas</Button>
-                    <Button
-                        icon={DollarSign}
-                        onClick={() => setIsExpenseModalOpen(true)}
-                        style={{ backgroundColor: '#800020', borderColor: '#800020', color: 'white' }}
-                    >
-                        Agregar Gasto
-                    </Button>
-                    <Button icon={Download} variant="outline">Exportar</Button>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '1.5rem' }} className="flex-mobile-column">
+                    <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+                        <select
+                            className="form-select"
+                            value={selectedMonth}
+                            onChange={e => setSelectedMonth(parseInt(e.target.value))}
+                            style={{ flex: 1, padding: '0.5rem 1rem' }}
+                        >
+                            {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
+                        </select>
+                        <select
+                            className="form-select"
+                            value={selectedYear}
+                            onChange={e => setSelectedYear(parseInt(e.target.value))}
+                            style={{ flex: 1, padding: '0.5rem 1rem' }}
+                        >
+                            {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', width: '100%', flexWrap: 'wrap' }}>
+                        {selectedTickets.size > 0 && (
+                            <Button icon={Trash} onClick={handleDeleteSelected} style={{ backgroundColor: '#ef4444', color: 'white', borderColor: '#ef4444', flex: 1 }}>Eliminar ({selectedTickets.size})</Button>
+                        )}
+                        <Button icon={Settings} onClick={() => setIsRatesModalOpen(true)} style={{ flex: 1 }}>Tarifas</Button>
+                        <Button
+                            icon={DollarSign}
+                            onClick={() => setIsExpenseModalOpen(true)}
+                            style={{ backgroundColor: '#800020', borderColor: '#800020', color: 'white', flex: 1 }}
+                        >
+                            Gasto
+                        </Button>
+                        <Button icon={Download} variant="outline" style={{ flex: 1 }}>Exportar</Button>
+                    </div>
                 </div>
             </div>
 
             {/* Top KPIs Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
+            <div className="grid-responsive-4" style={{ marginBottom: '2.5rem' }}>
                 <Card style={{ borderLeft: '4px solid #22c55e' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
@@ -370,10 +374,10 @@ export default function BillingPage() {
                 </Card>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+            <div className="grid-responsive-dashboard">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     {/* Profit Analysis Table */}
-                    <Card title="Detalle de Utilidad por Servicio">
+                    <Card title="Detalle de Utilidad por Servicio" className="table-responsive">
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>

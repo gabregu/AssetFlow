@@ -339,8 +339,7 @@ export default function MyTicketsPage() {
             case 'En Progreso': return 'info';
             case 'Resuelto': return 'success';
             case 'Pendiente': return 'warning';
-            default: return 'default';
-        }
+        };
     };
 
     const SortIcon = ({ column }) => {
@@ -353,27 +352,67 @@ export default function MyTicketsPage() {
             <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Servicios</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Tickets asignados bajo tu responsabilidad.</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>Gestiona tus tareas asignadas y reporta entregas.</p>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <Button variant="secondary" icon={Route} onClick={() => setIsOptimizationModalOpen(true)}>Optimizar Ruta</Button>
-                        <Button variant="secondary" icon={MapIcon} onClick={() => setIsMapOpen(true)}>Ver Mapa</Button>
-                        <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Servicio</Button>
-                    </div>
+                <div style={{ padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', color: '#3b82f6' }}>
+                    <Truck size={24} />
                 </div>
             </div>
 
-            {/* Fila 1 y Fila 2 (KPIs y Stats) fueron removidos y movidos a /dashboard/my-stats */}
+            <div className="grid-responsive-dashboard" style={{ marginBottom: '2rem' }}>
+                <Card>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Pendientes</p>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{pendingTickets}</h2>
+                        </div>
+                        <div style={{ padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', color: '#3b82f6' }}>
+                            <Clock size={20} />
+                        </div>
+                    </div>
+                </Card>
 
-            <Card style={{ padding: 0 }}>
+                <Card>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>En Progreso</p>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{inProgressTickets}</h2>
+                        </div>
+                        <div style={{ padding: '0.5rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '8px', color: '#eab308' }}>
+                            <Truck size={20} />
+                        </div>
+                    </div>
+                </Card>
+
+                <Card>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Resueltos Hoy</p>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{resolvedToday}</h2>
+                        </div>
+                        <div style={{ padding: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', color: '#22c55e' }}>
+                            <CheckCircle size={20} />
+                        </div>
+                    </div>
+                </Card>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <Button variant="secondary" icon={Route} onClick={() => setIsOptimizationModalOpen(true)}>Optimizar Ruta</Button>
+                    <Button variant="secondary" icon={MapIcon} onClick={() => setIsMapOpen(true)}>Ver Mapa</Button>
+                    <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Servicio</Button>
+                </div>
+            </div>
+
+            <Card className="p-0">
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+                    <div className="flex-mobile-column" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', flex: 1, width: '100%', minWidth: 'min(300px, 100%)' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
                                 type="text"
-                                placeholder="Buscar en mis tickets..."
+                                placeholder="Buscar en mis servicios..."
                                 value={filter}
                                 onChange={(e) => setFilter(e.target.value)}
                                 style={{
@@ -386,6 +425,9 @@ export default function MyTicketsPage() {
                                     color: 'var(--text-main)'
                                 }}
                             />
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>
+                            Total Servicios: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{ticketsToDisplay.length}</span>
                         </div>
                         {(columnFilters.status !== 'All' || filter !== '') && (
                             <Button variant="ghost" size="sm" onClick={() => {

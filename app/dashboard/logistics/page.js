@@ -97,7 +97,7 @@ export default function LogisticsHubPage() {
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             {/* Header section */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <Activity className="text-primary-500" />
@@ -108,7 +108,7 @@ export default function LogisticsHubPage() {
                         <CountryFilter />
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }} className="flex-mobile-column">
                     <div style={{ position: 'relative' }}>
                         <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} size={18} />
                         <input 
@@ -120,7 +120,7 @@ export default function LogisticsHubPage() {
                                 padding: '0.6rem 1rem 0.6rem 2.5rem',
                                 borderRadius: 'var(--radius-md)',
                                 border: '1px solid var(--border)',
-                                width: '250px',
+                                width: '100%',
                                 background: 'var(--surface)'
                             }}
                         />
@@ -132,7 +132,8 @@ export default function LogisticsHubPage() {
                             padding: '0.6rem 1rem',
                             borderRadius: 'var(--radius-md)',
                             border: '1px solid var(--border)',
-                            background: 'var(--surface)'
+                            background: 'var(--surface)',
+                            width: '100%'
                         }}
                     >
                         <option value="All">Todos los Estados</option>
@@ -144,7 +145,7 @@ export default function LogisticsHubPage() {
             </div>
 
             {/* Metrics cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div className="grid-responsive-4" style={{ marginBottom: '2rem' }}>
                 <Card className="p-4" style={{ borderLeft: '4px solid #f97316' }}>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Por Coordinar</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem' }}>
@@ -172,7 +173,7 @@ export default function LogisticsHubPage() {
             </div>
 
             {/* Global Tasks Table */}
-            <Card style={{ padding: 0, overflow: 'hidden' }}>
+            <Card style={{ padding: 0 }} className="table-responsive">
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ background: 'var(--background)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}>
                         <tr>
