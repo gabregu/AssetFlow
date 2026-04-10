@@ -54,8 +54,41 @@ export function FinancialsSummary({ ticket }) {
                 <div>
                     <h3 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Proyección Financiera</h3>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
-                        {moveType} de {assetType}
+                        Estimación automática de costos y utilidades
                     </p>
+                </div>
+            </div>
+
+            {/* Detalle del Servicio para Administración */}
+            <div style={{ 
+                marginBottom: '1.25rem', 
+                padding: '0.75rem', 
+                background: 'rgba(59, 130, 246, 0.03)', 
+                borderRadius: '8px', 
+                border: '1px solid rgba(59, 130, 246, 0.1)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Solicitante:</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{ticket.requester || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Movimiento:</span>
+                    <span style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{moveType}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Dispositivo:</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-main)', textAlign: 'right' }}>{assetType}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Repartidor/Responsable:</span>
+                    <span style={{ fontWeight: 600, color: '#166534' }}>{financials.deliveryPerson || 'No asignado'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Método Logístico:</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{method}</span>
                 </div>
             </div>
 
