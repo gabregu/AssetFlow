@@ -285,15 +285,15 @@ export default function MyDeliveriesPage() {
                     }
                 };
                 await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
-            } else if (selectedDelivery.caseIdx !== undefined) {
+            } else if (selectedDelivery.legacyCaseIndex !== undefined) {
                 // Caso legacy: Sub-caso anidado en associatedCases del ticket principal
                 const parentTicket = tickets.find(t => t.id === selectedDelivery.id);
                 if (parentTicket && parentTicket.associatedCases) {
                     const updatedCases = [...parentTicket.associatedCases];
-                    updatedCases[selectedDelivery.caseIdx] = {
-                        ...updatedCases[selectedDelivery.caseIdx],
+                    updatedCases[selectedDelivery.legacyCaseIndex] = {
+                        ...updatedCases[selectedDelivery.legacyCaseIndex],
                         logistics: {
-                            ...updatedCases[selectedDelivery.caseIdx].logistics,
+                            ...updatedCases[selectedDelivery.legacyCaseIndex].logistics,
                             status: 'Entregado',
                             deliveryInfo: {
                                 receivedBy: deliveryForm.receivedBy,
@@ -415,8 +415,11 @@ export default function MyDeliveriesPage() {
                                     <div style={{ backgroundColor: dayColor, width: '10px', height: '10px', borderRadius: '50%' }}></div>
                                     <h2 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                         {(() => {
-                                            if (date === 'Sin Fecha') return 'Fecha no definida';
-                                            const d = new Date(date + 'T00:00:00');
+                                            const d = (date && date !== 'Sin Fecha') ? new Date(date + 'T00:00:00') : null;
+                                            const isInvalid = !d || isNaN(d.getTime());
+                                            
+                                            if (isInvalid) return 'Fecha no definida';
+                                            
                                             const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
                                             const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
                                             return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
@@ -426,7 +429,7 @@ export default function MyDeliveriesPage() {
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                                     {deliveries.map(delivery => (
-                                        <Card key={`${delivery.id}-${delivery.displayId}`} style={{ borderLeft: `5px solid ${delivery.status === 'Resuelto' ? '#22c55e' : dayColor}` }}>
+                                        <Card key={delivery.taskId || `${delivery.id}-${delivery.displayId}`} style={{ borderLeft: `5px solid ${delivery.status === 'Resuelto' ? '#22c55e' : dayColor}` }}>
                                             <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                                                 <div style={{ flex: 1, width: '100%' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>

@@ -185,9 +185,9 @@ export default function CaseLogisticsSection({
                             onChange={e => updateLogistics('delivery_person', e.target.value)}
                         >
                             <option value="">Seleccionar repartidor...</option>
-                            {users.filter(u => u.role !== 'admin').map(u => (
+                            {users.filter(u => u.role === 'Conductor' || u.role === 'admin' || u.role === 'Administrador').map(u => (
                                 <option key={u.id} value={u.name}>
-                                    {u.name} {u.role === 'Conductor' ? '(Conductor)' : ''}
+                                    {u.name} {u.role === 'Conductor' ? '(Conductor)' : (u.role === 'admin' || u.role === 'Administrador') ? '(Admin)' : ''}
                                 </option>
                             ))}
                         </select>
