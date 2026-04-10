@@ -9,7 +9,6 @@ import { useStore } from '../../../lib/store';
 import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon, Route, StickyNote, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { resolveTicketServiceDetails, getRate } from '@/lib/billing';
 import { useJsApiLoader } from '@react-google-maps/api';
 
 const GOOGLE_MAPS_LIBRARIES = ['geometry'];
@@ -332,25 +331,36 @@ export default function MyTicketsPage() {
     }, [myAssignedItems, filter, sortConfig, columnFilters, optimizedOrder]);
 
     const stats = useMemo(() => {
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        
-        return {
-            pending: sortedAndFilteredTickets.filter(t => t.displayStatus === 'Para Coordinar' || t.displayStatus === 'Pendiente').length,
-            inProgress: sortedAndFilteredTickets.filter(t => t.displayStatus === 'En Transito').length,
-            resolvedToday: tickets.filter(t => {
-                const isResolved = t.status === 'Resuelto' || t.status === 'Cerrado';
-                if (!isResolved) return false;
-                
-                // Si tiene fecha de resolución en el log
-                const lastLog = t.actionLog && t.actionLog.length > 0 ? t.actionLog[t.actionLog.length - 1] : null;
-                if (lastLog && lastLog.date) {
-                    const logDate = new Date(lastLog.date).getTime();
-                    return logDate >= startOfToday;
-                }
-                return false;
-            }).length
-        };
+        try {
+            const now = new Date();
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            
+            const list = Array.isArray(sortedAndFilteredTickets) ? sortedAndFilteredTickets : [];
+            const allTickets = Array.isArray(tickets) ? tickets : [];
+
+            return {
+                pending: list.filter(t => t?.displayStatus === 'Para Coordinar' || t?.displayStatus === 'Pendiente').length,
+                inProgress: list.filter(t => t?.displayStatus === 'En Transito').length,
+                resolvedToday: allTickets.filter(t => {
+                    if (!t) return false;
+                    const isResolved = t.status === 'Resuelto' || t.status === 'Cerrado';
+                    if (!isResolved) return false;
+                    
+                    const logs = Array.isArray(t.actionLog) ? t.actionLog : (Array.isArray(t.action_log) ? t.action_log : []);
+                    const lastLog = logs.length > 0 ? logs[logs.length - 1] : null;
+                    if (lastLog && lastLog.date) {
+                        try {
+                            const logDate = new Date(lastLog.date).getTime();
+                            return !isNaN(logDate) && logDate >= startOfToday;
+                        } catch (e) { return false; }
+                    }
+                    return false;
+                }).length
+            };
+        } catch (error) {
+            console.error("Error calculating stats:", error);
+            return { pending: 0, inProgress: 0, resolvedToday: 0 };
+        }
     }, [sortedAndFilteredTickets, tickets]);
 
     // Estadísticas movidas a /dashboard/my-stats
