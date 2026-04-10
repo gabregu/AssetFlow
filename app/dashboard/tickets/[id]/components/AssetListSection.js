@@ -31,6 +31,12 @@ export default function AssetListSection({
         await onUpdateTask({ assets: newAssets });
     };
 
+    const handleUpdateHardwareType = async (idx, hardware_type) => {
+        const newAssets = [...caseAssets];
+        newAssets[idx] = { ...newAssets[idx], hardware_type };
+        await onUpdateTask({ assets: newAssets });
+    };
+
     const handleLinkToCase = async (serial) => {
         if (!caseAssets.some(a => a.serial === serial)) {
             const newAssets = [...caseAssets, { serial: serial, type: '' }];
@@ -63,16 +69,30 @@ export default function AssetListSection({
                             <div key={idxx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '6px', border: '1px solid var(--border)' }}>
                                 <div>
                                     <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>{assetInfo?.name || 'Hardware'} (S/N: {item.serial})</p>
-                                    <select
-                                        className="form-select"
-                                        style={{ fontSize: '0.75rem', padding: '2px 6px', height: '26px', marginTop: '4px', width: 'auto' }}
-                                        value={item.type || ''}
-                                        onChange={(e) => handleUpdateType(idxx, e.target.value)}
-                                    >
-                                        <option value="">Selecciona Acción</option>
-                                        <option value="Entrega">Entrega</option>
-                                        <option value="Recupero">Recupero</option>
-                                    </select>
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '4px' }}>
+                                        <select
+                                            className="form-select"
+                                            style={{ fontSize: '0.75rem', padding: '2px 6px', height: '26px', width: 'auto' }}
+                                            value={item.type || ''}
+                                            onChange={(e) => handleUpdateType(idxx, e.target.value)}
+                                        >
+                                            <option value="">Acción</option>
+                                            <option value="Entrega">Entrega</option>
+                                            <option value="Recupero">Recupero</option>
+                                        </select>
+                                        <select
+                                            className="form-select"
+                                            style={{ fontSize: '0.75rem', padding: '2px 6px', height: '26px', width: 'auto' }}
+                                            value={item.hardware_type || assetInfo?.type || ''}
+                                            onChange={(e) => handleUpdateHardwareType(idxx, e.target.value)}
+                                        >
+                                            <option value="">Tipo Activo (Auto)</option>
+                                            <option value="Laptop">Laptop</option>
+                                            <option value="Smartphone">Smartphone</option>
+                                            <option value="Tablet">Tablet</option>
+                                            <option value="Security Key">Security Key</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <Button variant="ghost" size="sm" onClick={() => handleUnlink(idxx)} style={{ color: '#ef4444', padding: '4px' }}>
                                     <Trash2 size={16} />
