@@ -882,7 +882,7 @@ export default function BillingPage() {
 
                         // Force live calculation to catch sub-task drivers and corrected device fallbacks
                         const realF = calculateTicketFinancials(t, rates, globalAssets, users, logisticsTasks) || f;
-                        const { moveType, assetType, resolvedAsset } = resolveTicketServiceDetails(t, globalAssets);
+                        const { moveType, assetType, resolvedAsset } = resolveTicketServiceDetails(t, globalAssets, logisticsTasks);
 
                         return (
                             <>
@@ -926,7 +926,9 @@ export default function BillingPage() {
                                             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Equipamiento Detallado</span>
                                             <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-main)' }}>
                                                 {resolvedAsset ? (
-                                                    <>{resolvedAsset.name || 'Sin Nombre'} <span style={{ opacity: 0.6 }}>({resolvedAsset.serial || 'S/N'})</span></>
+                                                    typeof resolvedAsset === 'string' ? resolvedAsset : (
+                                                        <>{resolvedAsset.name || 'Sin Nombre'} <span style={{ opacity: 0.6 }}>({resolvedAsset.serial || 'S/N'})</span></>
+                                                    )
                                                 ) : 'No especificado'}
                                             </span>
                                         </div>
