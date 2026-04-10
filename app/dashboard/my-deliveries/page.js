@@ -61,9 +61,6 @@ export default function MyDeliveriesPage() {
         
         const items = [];
 
-        // Permitir a cualquier usuario asignado ver sus entregas en esta vista
-        if (!currentUser) return [];
-        
         // 1. Procesar tareas de la nueva tabla relacional
         logisticsTasks.forEach(task => {
             const driverName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
@@ -220,7 +217,11 @@ export default function MyDeliveriesPage() {
             .sort((a, b) => {
                 if (a === 'Sin Fecha') return 1;
                 if (b === 'Sin Fecha') return -1;
-                return new Date(a) - new Date(b);
+                const dateA = new Date(a);
+                const dateB = new Date(b);
+                if (isNaN(dateA.getTime())) return 1;
+                if (isNaN(dateB.getTime())) return -1;
+                return dateA - dateB;
             })
             .reduce((acc, key) => {
                 acc[key] = groups[key];
@@ -346,18 +347,29 @@ export default function MyDeliveriesPage() {
         
         if (delivery.taskId) {
             // Nueva arquitectura: usar datos detallados de la tarea
-            if (delivery.taskAssets?.length > 0) {
-                delivery.taskAssets.forEach(asset => {
+            const assets = Array.isArray(delivery.taskAssets) ? delivery.taskAssets : [];
+            const accessories = Array.isArray(delivery.taskAccessories) ? delivery.taskAccessories : [];
+            const yubikeys = Array.isArray(delivery.taskYubikeys) ? delivery.taskYubikeys : [];
+
+            if (assets.length > 0) {
+                assets.forEach(asset => {
                     list.push(`${asset.model || 'Equipo'}: ${asset.serial || 'Sin Serial'}`);
                 });
             }
-            if (delivery.taskAccessories?.length > 0) {
-                const accNames = delivery.taskAccessories.map(a => a.name || 'Accesorio').join(', ');
-                list.push(`${delivery.taskAccessories.length} Accesorios: ${accNames}`);
+            if (accessories.length > 0) {
+                const accNames = accessories.map(a => a.name || 'Accesorio').join(', ');
+                list.push(`${accessories.length} Accesorios: ${accNames}`);
+            } else if (typeof delivery.taskAccessories === 'object' && delivery.taskAccessories !== null) {
+                // Manejar caso donde accesorios es un objeto de flags (ej: {backpack: true})
+                const active = Object.entries(delivery.taskAccessories)
+                    .filter(([_, val]) => val === true || val === 'true')
+                    .map(([key]) => key.replace(/([A-Z])/g, ' $1').toLowerCase());
+                if (active.length > 0) list.push(`Accesorios: ${active.join(', ')}`);
             }
-            if (delivery.taskYubikeys?.length > 0) {
-                const yubiSerials = delivery.taskYubikeys.map(y => y.serial || 'S/N').join(', ');
-                list.push(`${delivery.taskYubikeys.length} YubiKeys: ${yubiSerials}`);
+
+            if (yubikeys.length > 0) {
+                const yubiSerials = yubikeys.map(y => y.serial || 'S/N').join(', ');
+                list.push(`${yubikeys.length} YubiKeys: ${yubiSerials}`);
             }
         } else if (delivery.isMainTicket) {
             // Caso legacy
@@ -366,6 +378,11 @@ export default function MyDeliveriesPage() {
             }
             if (delivery.accessoriesCount) {
                 list.push(`${delivery.accessoriesCount} Accesorios`);
+            } else if (typeof delivery.accessories === 'object' && delivery.accessories !== null) {
+                const active = Object.entries(delivery.accessories)
+                    .filter(([_, val]) => val === true || val === 'true')
+                    .map(([key]) => key.replace(/([A-Z])/g, ' $1').toLowerCase());
+                if (active.length > 0) list.push(`Accesorios: ${active.join(', ')}`);
             }
             if (delivery.yubikeysCount) {
                 list.push(`${delivery.yubikeysCount} YubiKeys`);
