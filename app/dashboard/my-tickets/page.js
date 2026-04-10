@@ -331,6 +331,28 @@ export default function MyTicketsPage() {
         return result;
     }, [myAssignedItems, filter, sortConfig, columnFilters, optimizedOrder]);
 
+    const stats = useMemo(() => {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        
+        return {
+            pending: sortedAndFilteredTickets.filter(t => t.displayStatus === 'Para Coordinar' || t.displayStatus === 'Pendiente').length,
+            inProgress: sortedAndFilteredTickets.filter(t => t.displayStatus === 'En Transito').length,
+            resolvedToday: tickets.filter(t => {
+                const isResolved = t.status === 'Resuelto' || t.status === 'Cerrado';
+                if (!isResolved) return false;
+                
+                // Si tiene fecha de resolución en el log
+                const lastLog = t.actionLog && t.actionLog.length > 0 ? t.actionLog[t.actionLog.length - 1] : null;
+                if (lastLog && lastLog.date) {
+                    const logDate = new Date(lastLog.date).getTime();
+                    return logDate >= startOfToday;
+                }
+                return false;
+            }).length
+        };
+    }, [sortedAndFilteredTickets, tickets]);
+
     // Estadísticas movidas a /dashboard/my-stats
 
     const getStatusVariant = (status) => {
@@ -364,7 +386,7 @@ export default function MyTicketsPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Pendientes</p>
-                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{pendingTickets}</h2>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{stats.pending}</h2>
                         </div>
                         <div style={{ padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', color: '#3b82f6' }}>
                             <Clock size={20} />
@@ -376,7 +398,7 @@ export default function MyTicketsPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>En Progreso</p>
-                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{inProgressTickets}</h2>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{stats.inProgress}</h2>
                         </div>
                         <div style={{ padding: '0.5rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '8px', color: '#eab308' }}>
                             <Truck size={20} />
@@ -388,7 +410,7 @@ export default function MyTicketsPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Resueltos Hoy</p>
-                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{resolvedToday}</h2>
+                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{stats.resolvedToday}</h2>
                         </div>
                         <div style={{ padding: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', color: '#22c55e' }}>
                             <CheckCircle size={20} />
@@ -427,7 +449,7 @@ export default function MyTicketsPage() {
                             />
                         </div>
                         <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>
-                            Total Servicios: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{ticketsToDisplay.length}</span>
+                            Total Servicios: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{sortedAndFilteredTickets.length}</span>
                         </div>
                         {(columnFilters.status !== 'All' || filter !== '') && (
                             <Button variant="ghost" size="sm" onClick={() => {
@@ -512,12 +534,21 @@ export default function MyTicketsPage() {
                                                 fontSize: '0.85rem',
                                                 fontWeight: 600,
                                                 color: (() => {
-                                                    const dateToCompare = ticket.displayDate || ticket.date;
-                                                    const days = Math.floor((new Date() - new Date(dateToCompare + 'T00:00:00')) / (1000 * 60 * 60 * 24));
+                                                    const dateStr = ticket.displayDate || ticket.date;
+                                                    if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return 'var(--text-secondary)';
+                                                    const d = new Date(dateStr + 'T00:00:00');
+                                                    if (isNaN(d.getTime())) return 'var(--text-secondary)';
+                                                    const days = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
                                                     return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
                                                 })()
                                             }}>
-                                                {Math.floor((new Date() - new Date((ticket.displayDate || ticket.date) + 'T00:00:00')) / (1000 * 60 * 60 * 24))}d
+                                                {(() => {
+                                                    const dateStr = ticket.displayDate || ticket.date;
+                                                    if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return '-';
+                                                    const d = new Date(dateStr + 'T00:00:00');
+                                                    if (isNaN(d.getTime())) return '-';
+                                                    return Math.floor((new Date() - d) / (1000 * 60 * 60 * 24)) + 'd';
+                                                })()}
                                             </span>
                                         </td>
                                         <td style={{ padding: '1rem' }}>
@@ -597,12 +628,22 @@ export default function MyTicketsPage() {
                                                 marginLeft: 'auto',
                                                 fontWeight: 700,
                                                 color: (() => {
-                                                    const dateVal = ticket.displayDate || ticket.date;
-                                                    const days = Math.floor((new Date() - new Date(dateVal + 'T00:00:00')) / (1000 * 60 * 60 * 24));
+                                                    const dateStr = ticket.displayDate || ticket.date;
+                                                    if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return 'var(--text-secondary)';
+                                                    const d = new Date(dateStr + 'T00:00:00');
+                                                    if (isNaN(d.getTime())) return 'var(--text-secondary)';
+                                                    const days = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
                                                     return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
                                                 })()
                                             }}>
-                                                {Math.floor((new Date() - new Date((ticket.displayDate || ticket.date) + 'T00:00:00')) / (1000 * 60 * 60 * 24))} días
+                                                {(() => {
+                                                    const dateStr = ticket.displayDate || ticket.date;
+                                                    if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return '-';
+                                                    const d = new Date(dateStr + 'T00:00:00');
+                                                    if (isNaN(d.getTime())) return '-';
+                                                    const days = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
+                                                    return `${days} días`;
+                                                })()}
                                             </span>
                                         </div>
                                     </div>
