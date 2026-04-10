@@ -50,9 +50,12 @@ export default function MyTicketsPage() {
         const uName = (currentUser.name || '').trim().toLowerCase();
         const uId = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
         
+        const tasks = Array.isArray(logisticsTasks) ? logisticsTasks : [];
+        const allTickets = Array.isArray(tickets) ? tickets : [];
+
         // --- 1. PROCESAR SUB-CASOS (logistics_tasks) ---
-        // Fuente principal de verdad para asignaciones individuales
-        logisticsTasks.forEach(task => {
+        tasks.forEach(task => {
+            if (!task) return;
             const drvName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
             const drvId = String(task.assigned_to || task.assignedTo || '');
             
@@ -60,13 +63,11 @@ export default function MyTicketsPage() {
             const isMeById = drvId && (drvId === uId);
             
             if (isMeByName || isMeById) {
-                // Ocultar de "Mis Servicios" si la entrega ya se concretó/finalizó o no requiere acción
                 const taskStatus = task.status || 'Pendiente';
                 if (['Entregado', 'Finalizado', 'Resuelto', 'Cerrado', 'Caso SFDC Cerrado', 'Cancelado', 'No requiere accion'].includes(taskStatus)) return;
 
-                const pTicket = tickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
+                const pTicket = allTickets.find(t => t && String(t.id) === String(task.ticket_id || task.ticketId));
                 
-                // Agregamos la tarea aunque no encontremos el ticket padre (Resiliencia total)
                 items.push({
                     id: pTicket?.id || task.ticket_id || 'N/A',
                     taskId: task.id,
@@ -94,10 +95,10 @@ export default function MyTicketsPage() {
             }
         });
 
-        // --- 2. PROCESAR TICKETS LEGACY (Solo si no tienen sub-casos asociados) ---
-        tickets.forEach(ticket => {
-            // Si el ticket ya tiene tareas en la nueva tabla, las tareas mandan (evitamos duplicados)
-            const hasNewTasks = logisticsTasks.some(tk => String(tk.ticket_id) === String(ticket.id));
+        // --- 2. PROCESAR TICKETS LEGACY ---
+        allTickets.forEach(ticket => {
+            if (!ticket) return;
+            const hasNewTasks = tasks.some(tk => tk && String(tk.ticket_id) === String(ticket.id));
             if (hasNewTasks) return;
 
             const tDriverName = (ticket.logistics?.delivery_person || ticket.logistics?.deliveryPerson || '').trim().toLowerCase();
@@ -423,7 +424,7 @@ export default function MyTicketsPage() {
                             <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{stats.resolvedToday}</h2>
                         </div>
                         <div style={{ padding: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', color: '#22c55e' }}>
-                            <CheckCircle size={20} />
+                            <CheckCircle2 size={20} />
                         </div>
                     </div>
                 </Card>
