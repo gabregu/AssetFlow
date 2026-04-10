@@ -37,19 +37,27 @@ export default function SFDCCasesPage() {
     // 1. Filtrado
     const filteredCases = useMemo(() => {
         return sfdcCases.filter(c => {
-            // EXCLUSIÓN ORIGINAL: Si el caso ya fue convertido en Tarea Logística o Ticket Principal, lo ocultábamos.
-            // NUEVO: Solo lo ocultamos si está "Closed" o si es un status final Y ya está atendido.
-            // Si está "In Progress" o "New" queremos que siga apareciendo.
+            // Exclusión: Si el servicio vinculado (Ticket/Logística) está finalizado, lo ocultamos.
             const linkedTicket = 
-                (tickets && tickets.find(t => String(t.id) === String(c.caseNumber))) || 
+                (tickets && tickets.find(t => String(t.id) === String(c.caseNumber) || (t.subject && t.subject.includes(c.caseNumber)))) || 
                 (logisticsTasks && logisticsTasks.find(tk => String(tk.case_number) === String(c.caseNumber)));
                 
-            const isAttended = !!linkedTicket;
+            if (linkedTicket) {
+                const linkedStatus = String(linkedTicket.status || '').toLowerCase();
+                const isServiceClosed = linkedStatus.includes('cerrado') || 
+                                        linkedStatus.includes('resuelto') || 
+                                        linkedStatus.includes('cancelado') || 
+                                        linkedStatus.includes('entregado') || 
+                                        linkedStatus.includes('completado') ||
+                                        linkedStatus.includes('devuelto');
+                if (isServiceClosed) return false;
+            }
+
             const status = (c.status || '').toLowerCase();
             const isActiveStatus = status.includes('new') || status.includes('progress') || status.includes('hold') || status.includes('waiting') || status.includes('escalated');
 
-            // Si ya está atendido y NO es un estado activo de trabajo, lo ocultamos para limpiar la vista.
-            if (isAttended && !isActiveStatus) return false;
+            // Si el caso en SFDC está en estado cerrado/finalizado, también lo ocultamos
+            if (!isActiveStatus) return false;
 
             const matchesText = c.subject.toLowerCase().includes(filter.toLowerCase()) ||
                 c.requestedFor.toLowerCase().includes(filter.toLowerCase()) ||
