@@ -133,27 +133,30 @@ export default function DriverDetailView({
             {/* TASKS / ITEMS CARD */}
             <Card title="Ítems del Caso" action={<p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Toca un ítem para coordinar</p>}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {unifiedTasks.map((task, idx) => (
-                        <div 
-                            key={idx} 
-                            onClick={() => setSelectedCaseIndex(idx)}
-                            style={{ 
-                                padding: '1rem', 
-                                border: '1px solid var(--border)', 
-                                borderRadius: '12px', 
-                                backgroundColor: 'white',
-                                cursor: 'pointer',
-                                transition: 'transform 0.1s active',
-                                boxShadow: 'var(--shadow-sm)'
-                            }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Package size={16} style={{ color: 'var(--primary-color)' }} />
-                                    <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{task.caseNumber || `Sub-Caso ${idx+1}`}</span>
+                    {unifiedTasks.filter(t => t.status !== 'No requiere accion').map((task) => {
+                        const originalIdx = unifiedTasks.findIndex(t => t === task || (t.id && t.id === task.id));
+                        
+                        return (
+                            <div 
+                                key={task.id || originalIdx} 
+                                onClick={() => setSelectedCaseIndex(originalIdx)}
+                                style={{ 
+                                    padding: '1rem', 
+                                    border: '1px solid var(--border)', 
+                                    borderRadius: '12px', 
+                                    backgroundColor: 'white',
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.1s active',
+                                    boxShadow: 'var(--shadow-sm)'
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Package size={16} style={{ color: 'var(--primary-color)' }} />
+                                        <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{task.caseNumber}</span>
+                                    </div>
+                                    <Badge style={{ backgroundColor: getStatusColor(task.status) }}>{task.status || 'Pendiente'}</Badge>
                                 </div>
-                                <Badge style={{ backgroundColor: getStatusColor(task.status) }}>{task.status || 'Pendiente'}</Badge>
-                            </div>
                             
                             <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-main)' }}>{task.subject}</h4>
                             
