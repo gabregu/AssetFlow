@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Badge } from '@/app/components/ui/Badge';
 import { getStatusVariant } from '../../constants';
+import { ChevronDown } from 'lucide-react';
 
 export default function CaseLogisticsSection({
     task,
@@ -16,6 +17,19 @@ export default function CaseLogisticsSection({
     const [localValues, setLocalValues] = React.useState({});
     const localStateRef = React.useRef({});
     const [isSaving, setIsSaving] = React.useState(false);
+    const [isStatusOpen, setIsStatusOpen] = useState(false);
+    const statusDropdownRef = useRef(null);
+
+    // Cerrar dropdown al hacer click fuera
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+                setIsStatusOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     React.useEffect(() => {
         const initialState = {
@@ -137,54 +151,110 @@ export default function CaseLogisticsSection({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
-                <div className="form-group" style={{ marginBottom: '0.5rem' }}>
+                <div className="form-group" style={{ marginBottom: '0.5rem', position: 'relative' }} ref={statusDropdownRef}>
                     <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
                         Estado de la Logística / Envío
                     </label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-                        {[
-                            'Pendiente',
-                            'Para Coordinar',
-                            'En Transito',
-                            'Entregado',
-                            'No requiere accion'
-                        ].map(s => {
-                            const isSelected = (localValues.status || 'Pendiente') === s;
-                            const variant = getStatusVariant(s);
-                            
-                            return (
-                                <button
-                                    key={s}
-                                    type="button"
-                                    onClick={() => updateLogistics('status', s)}
-                                    style={{
-                                        border: 'none',
-                                        background: 'none',
-                                        padding: 0,
-                                        cursor: 'pointer',
-                                        outline: 'none'
-                                    }}
-                                >
-                                    <Badge
-                                        variant={variant}
-                                        style={{
-                                            padding: '0.5rem 0.8rem',
-                                            fontSize: '0.8rem',
-                                            borderRadius: '8px',
-                                            opacity: isSelected ? 1 : 0.4,
-                                            transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                                            border: isSelected ? '2px solid currentColor' : '1px solid var(--border)',
-                                            boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
-                                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                                            fontWeight: isSelected ? 700 : 500
-                                        }}
-                                    >
-                                        {s === 'No requiere accion' ? 'No requiere acción' : s}
-                                    </Badge>
-                                </button>
-                            );
-                        })}
+                    <div 
+                        onClick={() => setIsStatusOpen(!isStatusOpen)}
+                        style={{ 
+                            cursor: 'pointer', 
+                            padding: '0.625rem 0.875rem', 
+                            border: '1px solid var(--border)', 
+                            borderRadius: 'var(--radius-md)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: 'var(--background)',
+                            transition: 'all 0.2s',
+                            boxShadow: isStatusOpen ? '0 0 0 2px rgba(37, 99, 235, 0.1)' : 'none',
+                            borderColor: isStatusOpen ? 'var(--primary-color)' : 'var(--border)'
+                        }}
+                    >
+                        <Badge
+                            variant={getStatusVariant(localValues.status || 'Pendiente')}
+                            style={{
+                                padding: '0.4rem 0.7rem',
+                                fontSize: '0.8rem',
+                                borderRadius: '6px',
+                                fontWeight: 700
+                            }}
+                        >
+                            {(localValues.status || 'Pendiente') === 'No requiere accion' ? 'Sin intervención' : (localValues.status || 'Pendiente')}
+                        </Badge>
+                        <ChevronDown 
+                            size={16} 
+                            style={{ 
+                                opacity: 0.5, 
+                                transform: isStatusOpen ? 'rotate(180deg)' : 'rotate(0)',
+                                transition: 'transform 0.3s ease'
+                            }} 
+                        />
                     </div>
+
+                    {isStatusOpen && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            zIndex: 100,
+                            marginTop: '0.5rem',
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                            overflow: 'hidden',
+                            animation: 'modalSlideUp 0.2s ease-out'
+                        }}>
+                            {[
+                                'Pendiente',
+                                'Para Coordinar',
+                                'En Transito',
+                                'Entregado',
+                                'No requiere accion'
+                            ].map(s => {
+                                const isSelected = (localValues.status || 'Pendiente') === s;
+                                const variant = getStatusVariant(s);
+                                
+                                return (
+                                    <div
+                                        key={s}
+                                        onClick={() => {
+                                            updateLogistics('status', s);
+                                            setIsStatusOpen(false);
+                                        }}
+                                        style={{
+                                            padding: '0.75rem 1rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            background: isSelected ? 'rgba(37, 99, 235, 0.05)' : 'transparent',
+                                            transition: 'background 0.2s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(37, 99, 235, 0.05)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(37, 99, 235, 0.05)' : 'transparent'}
+                                    >
+                                        <Badge
+                                            variant={variant}
+                                            style={{
+                                                padding: '0.35rem 0.6rem',
+                                                fontSize: '0.75rem',
+                                                borderRadius: '6px',
+                                                fontWeight: isSelected ? 700 : 500,
+                                                opacity: isSelected ? 1 : 0.8
+                                            }}
+                                        >
+                                            {s === 'No requiere accion' ? 'Sin intervención' : s}
+                                        </Badge>
+                                        {isSelected && (
+                                            <div style={{ marginLeft: 'auto', width: '6px', height: '6px', background: 'var(--primary-color)', borderRadius: '50%' }}></div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ height: '1px', background: 'var(--border)', margin: '0.5rem 0' }}></div>
