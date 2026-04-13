@@ -131,61 +131,65 @@ export default function DriverDetailView({
             </Card>
 
             {/* TASKS / ITEMS CARD */}
-            <Card title="Ítems del Caso" action={<p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Toca un ítem para coordinar</p>}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {unifiedTasks.filter(t => {
-                        const s = (t.status || '').toLowerCase().trim();
-                        // Filtramos robusto contra variantes de "No requiere accion" o "Sin intervencion"
-                        return s !== 'no requiere accion' && s !== 'sin intervención' && s !== 'sin intervencion' && !s.includes('no requiere');
-                    }).map((task) => {
-                        const originalIdx = unifiedTasks.findIndex(t => t === task || (t.id && t.id === task.id));
-                        
-                        return (
-                            <div 
-                                key={task.id || originalIdx} 
-                                onClick={() => setSelectedCaseIndex(originalIdx)}
-                                style={{ 
-                                    padding: '1rem', 
-                                    border: '1px solid var(--border)', 
-                                    borderRadius: '12px', 
-                                    backgroundColor: 'white',
-                                    cursor: 'pointer',
-                                    transition: 'transform 0.1s active',
-                                    boxShadow: 'var(--shadow-sm)'
-                                }}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <Package size={16} style={{ color: 'var(--primary-color)' }} />
-                                        <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{task.caseNumber}</span>
-                                    </div>
-                                    <Badge style={{ backgroundColor: getStatusColor(task.status) }}>{task.status || 'Pendiente'}</Badge>
-                                </div>
-                            
-                            <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-main)' }}>{task.subject}</h4>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                    <Calendar size={14} /> {task.date || 'Sin fecha'}
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                    <Clock size={14} /> {task.time_slot || 'Por coordinar'}
-                                </div>
-                            </div>
+                    {(() => {
+                        const visibleTasks = unifiedTasks.filter(t => {
+                            const s = (t.status || '').toLowerCase().trim();
+                            // Filtramos robusto contra variantes de "No requiere accion" o "Sin intervencion"
+                            return s !== 'no requiere accion' && s !== 'sin intervención' && s !== 'sin intervencion' && !s.includes('no requiere');
+                        });
 
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                icon={Settings} 
-                                style={{ width: '100%', marginTop: '1rem', fontSize: '0.75rem', borderTop: '1px solid #f1f5f9', borderRadius: 0, height: '32px' }}
-                            >
-                                TOCAR PARA COORDINAR DÍA/HORA
-                            </Button>
-                        </div>
-                    ))}
-                    {unifiedTasks.length === 0 && (
-                        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No hay ítems cargados.</p>
-                    )}
+                        if (visibleTasks.length === 0) {
+                            return <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem', padding: '1rem' }}>No hay ítems para coordinar.</p>;
+                        }
+
+                        return visibleTasks.map((task) => {
+                            const originalIdx = unifiedTasks.findIndex(t => t === task || (t.id && t.id === task.id));
+                            
+                            return (
+                                <div 
+                                    key={task.id || `task-${originalIdx}`} 
+                                    onClick={() => setSelectedCaseIndex(originalIdx)}
+                                    style={{ 
+                                        padding: '1rem', 
+                                        border: '1px solid var(--border)', 
+                                        borderRadius: '12px', 
+                                        backgroundColor: 'white',
+                                        cursor: 'pointer',
+                                        transition: 'transform 0.1s active',
+                                        boxShadow: 'var(--shadow-sm)'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Package size={16} style={{ color: 'var(--primary-color)' }} />
+                                            <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{task.caseNumber || `Sub-caso`}</span>
+                                        </div>
+                                        <Badge style={{ backgroundColor: getStatusColor(task.status) }}>{task.status || 'Pendiente'}</Badge>
+                                    </div>
+                                    
+                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-main)' }}>{task.subject}</h4>
+                                    
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                            <Calendar size={14} /> {task.date || 'Sin fecha'}
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                            <Clock size={14} /> {task.time_slot || 'Por coordinar'}
+                                        </div>
+                                    </div>
+
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        icon={Settings} 
+                                        style={{ width: '100%', marginTop: '1rem', fontSize: '0.75rem', borderTop: '1px solid #f1f5f9', borderRadius: 0, height: '32px' }}
+                                    >
+                                        TOCAR PARA COORDINAR DÍA/HORA
+                                    </Button>
+                                </div>
+                            );
+                        });
+                    })()}
                 </div>
             </Card>
 
