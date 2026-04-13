@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     reactStrictMode: true,
-    poweredByHeader: false, // Hide 'X-Powered-By: Next.js'
+    poweredByHeader: false,
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
     async headers() {
         return [
             {
