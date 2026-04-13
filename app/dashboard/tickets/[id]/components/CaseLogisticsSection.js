@@ -39,7 +39,8 @@ export default function CaseLogisticsSection({
             coordinated_by: task.coordinated_by || task.coordinatedBy || '',
             tracking_number: task.tracking_number || task.trackingNumber || '',
             date: task.date || '',
-            time_slot: task.time_slot || task.timeSlot || 'AM'
+            time_slot: task.time_slot || task.timeSlot || 'AM',
+            deliveryInfo: task.deliveryInfo || task.delivery_info || {}
         };
         setLocalValues(initialState);
         localStateRef.current = initialState;
@@ -124,6 +125,7 @@ export default function CaseLogisticsSection({
             time_slot: state.time_slot,
             coordinated_by: state.coordinated_by,
             tracking_number: state.tracking_number,
+            deliveryInfo: state.deliveryInfo,
         };
 
         try {
@@ -383,8 +385,8 @@ export default function CaseLogisticsSection({
                                 <input
                                     className="form-input"
                                     style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-                                    value={task.deliveryInfo?.receivedBy || ''}
-                                    onChange={e => updateLogistics('deliveryInfo', { ...(task.deliveryInfo || {}), receivedBy: e.target.value })}
+                                    value={localValues.deliveryInfo?.receivedBy || ''}
+                                    onChange={e => updateLogistics('deliveryInfo', { ...(localValues.deliveryInfo || {}), receivedBy: e.target.value })}
                                     placeholder="Nombre completo"
                                 />
                             </div>
@@ -393,8 +395,8 @@ export default function CaseLogisticsSection({
                                 <input
                                     className="form-input"
                                     style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-                                    value={task.deliveryInfo?.dni || ''}
-                                    onChange={e => updateLogistics('deliveryInfo', { ...(task.deliveryInfo || {}), dni: e.target.value })}
+                                    value={localValues.deliveryInfo?.dni || ''}
+                                    onChange={e => updateLogistics('deliveryInfo', { ...(localValues.deliveryInfo || {}), dni: e.target.value })}
                                     placeholder="DNI"
                                 />
                             </div>
@@ -404,8 +406,8 @@ export default function CaseLogisticsSection({
                             <textarea
                                 className="form-input"
                                 style={{ padding: '0.4rem 0.75rem', minHeight: '60px', resize: 'vertical', fontSize: '0.85rem' }}
-                                value={task.deliveryInfo?.notes || ''}
-                                onChange={e => updateLogistics('deliveryInfo', { ...(task.deliveryInfo || {}), notes: e.target.value })}
+                                value={localValues.deliveryInfo?.notes || ''}
+                                onChange={e => updateLogistics('deliveryInfo', { ...(localValues.deliveryInfo || {}), notes: e.target.value })}
                                 placeholder="Observaciones del repartidor..."
                             />
                         </div>
