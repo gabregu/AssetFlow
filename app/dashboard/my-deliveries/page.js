@@ -23,12 +23,22 @@ export default function MyDeliveriesPage() {
         currentUser, 
         updateTicket, 
         logisticsTasks, 
-        updateLogisticsTask 
+        updateLogisticsTask,
+        refreshData
     } = useStore();
     
     // Identidad del usuario para filtrado (Definida a nivel de componente para evitar ReferenceErrors)
     const uName = (currentUser?.name || '').trim().toLowerCase();
     const uId = String(currentUser?.id || currentUser?.uid || currentUser?.uuid || '');
+
+    // Refresco automático al cargar y al enfocar la pestaña
+    useEffect(() => {
+        refreshData();
+        
+        const handleFocus = () => refreshData();
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, []);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('En Transito'); // Solo activos por defecto
@@ -311,6 +321,7 @@ export default function MyDeliveriesPage() {
             
             
             showToast('Entrega registrada correctamente', 'success');
+            await refreshData(); // Asegurar sincronización total tras el guardado
             setIsDeliveryModalOpen(false);
             setDeliveryForm({ receivedBy: '', dni: '', notes: '', actualTime: '' });
         } catch (error) {
