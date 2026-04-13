@@ -131,6 +131,8 @@ export default function DriverDetailView({
             </Card>
 
             {/* TASKS / ITEMS CARD */}
+            <Card title="Ítems del Caso" action={<p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Toca un ítem para coordinar</p>}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {(() => {
                         const visibleTasks = unifiedTasks.filter(t => {
                             const s = (t.status || '').toLowerCase().trim();
