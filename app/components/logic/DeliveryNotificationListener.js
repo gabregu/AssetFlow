@@ -7,7 +7,20 @@ import { CheckCircle2, X } from 'lucide-react';
 export function DeliveryNotificationListener() {
     const { currentUser } = useStore();
     const [notification, setNotification] = useState(null);
-    const [notifiedIds, setNotifiedIds] = useState(new Set()); // Para evitar duplicados en la misma sesión
+    const [notifiedIds, setNotifiedIds] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('notified_task_ids');
+            return saved ? new Set(JSON.parse(saved)) : new Set();
+        }
+        return new Set();
+    });
+
+    // Sincronizar con localStorage cada vez que cambie
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('notified_task_ids', JSON.stringify([...notifiedIds]));
+        }
+    }, [notifiedIds]);
 
     useEffect(() => {
         // Permitir a Admins, Administrativos y Conductores (incluye alias)
@@ -57,7 +70,6 @@ export function DeliveryNotificationListener() {
                         const uId = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
 
                         // Verificar si EL TICKET PRINCIPAL fue asignado a mí
-                        // Buscamos en columna top-level (si existe) o dentro del JSONB de logistics
                         const newAssignedTo = newData.assigned_to || newData.logistics?.assigned_to || newData.logistics?.assignedTo;
                         const newDeliveryPerson = (newData.delivery_person || newData.logistics?.delivery_person || newData.logistics?.deliveryPerson || '').toLowerCase();
                         
@@ -67,10 +79,7 @@ export function DeliveryNotificationListener() {
                         const isMainAssignedToMe = String(newAssignedTo || '') === uId || newDeliveryPerson.includes(uName);
                         const wasMainAssignedToMe = String(oldAssignedTo || '') === uId || oldDeliveryPerson.includes(uName);
 
-                        // Verificar si ALGÚN CASO ASOCIADO fue asignado a mí (Estructura Legacy)
-                        // IMPORTANTE: En el payload RAW de Postgres, la columna es associated_assets
                         const newCases = newData.associated_assets || [];
-                        const oldCases = oldData ? (oldData.associated_assets || []) : [];
                         
                         const myNewCase = newCases.find((c, idx) => {
                             const cAssignedTo = c.assigned_to || c.assignedTo;
@@ -79,7 +88,6 @@ export function DeliveryNotificationListener() {
                             const isAssigned = (String(cAssignedTo) === uId) || (cDeliveryPerson.includes(uName));
                             if (!isAssigned) return false;
                             
-                            // Verificar si YA estaba asignado en el estado anterior
                             if (!oldData || !oldData.associated_assets || !oldData.associated_assets[idx]) return true;
                             
                             const oldCase = oldData.associated_assets[idx];
@@ -103,7 +111,11 @@ export function DeliveryNotificationListener() {
                                     forceReload: true
                                 });
                                 
-                                setNotifiedIds(prev => new Set(prev).add(eventIdx));
+                                setNotifiedIds(prev => {
+                                    const next = new Set(prev);
+                                    next.add(eventIdx);
+                                    return next;
+                                });
                                 // Auto-ocultar después de 15 segundos
                                 setTimeout(() => setNotification(null), 15000);
                             }
@@ -165,7 +177,11 @@ export function DeliveryNotificationListener() {
                                 forceReload: true
                             });
                             
-                            setNotifiedIds(prev => new Set(prev).add(newTask.id));
+                            setNotifiedIds(prev => {
+                                const next = new Set(prev);
+                                next.add(newTask.id);
+                                return next;
+                            });
                             // Auto-ocultar después de 15 segundos
                             setTimeout(() => setNotification(null), 15000);
                         }
@@ -178,7 +194,7 @@ export function DeliveryNotificationListener() {
             supabase.removeChannel(channel);
             supabase.removeChannel(taskChannel);
         };
-    }, [currentUser]);
+    }, [currentUser, notifiedIds]); // Add notifiedIds here too
 
     if (!notification) return null;
 
