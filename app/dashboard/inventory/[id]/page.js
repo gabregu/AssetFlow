@@ -145,7 +145,13 @@ export default function AssetDetailPage() {
                                     </div>
                                     <div>
                                         <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>SFDC Case</p>
-                                        <p style={{ fontSize: '0.95rem', fontWeight: 500, margin: '0.2rem 0' }}>{asset.sfd_case || '-'}</p>
+                                        <p style={{ fontSize: '0.95rem', fontWeight: 500, margin: '0.2rem 0' }}>
+                                            {asset.sfdcCase ? (
+                                                <Link href={`/dashboard/tickets/${asset.sfdcCase}`} style={{ color: 'var(--primary-color)', fontWeight: 600 }}>
+                                                    {asset.sfdcCase}
+                                                </Link>
+                                            ) : '-'}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -198,24 +204,80 @@ export default function AssetDetailPage() {
 
                     {/* Assignment History */}
                     <Card title="Historial de Asignaciones" icon={History}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div style={{ display: 'flex', gap: '1rem', padding: '1rem', backgroundColor: 'var(--background)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {/* Current Status */}
+                            <div style={{ display: 'flex', gap: '1rem', padding: '1rem', backgroundColor: 'var(--background)', borderRadius: '12px', border: '1px solid var(--border)', position: 'relative' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '1.1rem' }}>
                                     {asset.assignee.charAt(0)}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span style={{ fontWeight: 600 }}>Asignado a: {asset.assignee}</span>
-                                        {asset.status === 'Asignado' && <Badge variant="success">Actual</Badge>}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontWeight: 700, fontSize: '1rem' }}>Asignación Actual: {asset.assignee}</span>
+                                        <Badge variant="success">ACTIVO</Badge>
                                     </div>
                                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.25rem 0' }}>
-                                        Estado: {asset.status}
+                                        Estado: <strong>{asset.status}</strong> 
+                                        {asset.sfdcCase && <span> • Ticket: <strong>{asset.sfdcCase}</strong></span>}
                                     </p>
                                 </div>
                             </div>
 
-                            <div style={{ padding: '0 2rem', color: 'var(--text-secondary)', fontSize: '0.8rem', fontStyle: 'italic' }}>
-                                • Ingresó al inventario el {asset.date || 'Desconocido'}
+                            {/* Timeline of past events parsed from notes */}
+                            <div style={{ marginLeft: '1.25rem', paddingLeft: '1.5rem', borderLeft: '2px dashed var(--border)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                {(() => {
+                                    if (!asset.notes) return null;
+                                    const lines = asset.notes.split('\n');
+                                    const historyItems = lines
+                                        .filter(line => line.trim().startsWith('[') && line.includes(']'))
+                                        .map((line, idx) => {
+                                            const bracketEnd = line.indexOf(']');
+                                            const dateStr = line.substring(1, bracketEnd);
+                                            const content = line.substring(bracketEnd + 1).trim();
+                                            return (
+                                                <div key={idx} style={{ position: 'relative' }}>
+                                                    <div style={{ 
+                                                        position: 'absolute', 
+                                                        left: '-1.95rem', 
+                                                        top: '0.25rem', 
+                                                        width: '10px', 
+                                                        height: '10px', 
+                                                        borderRadius: '50%', 
+                                                        background: 'var(--border)',
+                                                        border: '2px solid white'
+                                                    }}></div>
+                                                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                                                        {dateStr}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.875rem', color: 'var(--text-main)', lineHeight: '1.4' }}>
+                                                        {content}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                        .reverse(); // Newest first
+                                    
+                                    return historyItems.length > 0 ? historyItems : null;
+                                })()}
+
+                                {/* Original Entry */}
+                                <div style={{ position: 'relative' }}>
+                                    <div style={{ 
+                                        position: 'absolute', 
+                                        left: '-1.95rem', 
+                                        top: '0.25rem', 
+                                        width: '10px', 
+                                        height: '10px', 
+                                        borderRadius: '50%', 
+                                        background: 'var(--border)',
+                                        border: '2px solid white'
+                                    }}></div>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                                        {asset.date || 'Desconocida'}
+                                    </div>
+                                    <div style={{ fontSize: '0.875rem', color: 'var(--text-main)' }}>
+                                        Ingreso inicial al inventario.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </Card>
