@@ -40,6 +40,7 @@ export default function CaseLogisticsSection({
             tracking_number: task.tracking_number || task.trackingNumber || '',
             date: task.date || '',
             time_slot: task.time_slot || task.timeSlot || 'AM',
+            address: task.address || '',
             deliveryInfo: task.deliveryInfo || task.delivery_info || {}
         };
         setLocalValues(initialState);
@@ -125,6 +126,7 @@ export default function CaseLogisticsSection({
             time_slot: state.time_slot,
             coordinated_by: state.coordinated_by,
             tracking_number: state.tracking_number,
+            address: state.address,
             deliveryInfo: state.deliveryInfo,
         };
 
@@ -355,6 +357,16 @@ export default function CaseLogisticsSection({
                             })}
                         </div>
                     </div>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Dirección de Entrega / Retiro</label>
+                    <input
+                        className="form-input"
+                        placeholder="Ej: Av. Siempreviva 123, CABA"
+                        value={localValues.address || ''}
+                        onChange={e => updateLogistics('address', e.target.value)}
+                    />
                 </div>
 
                 <div className="form-group">
