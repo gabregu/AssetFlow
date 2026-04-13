@@ -92,16 +92,17 @@ export default function MyDeliveriesPage() {
                         isMainTicket: false, // Ahora todo se trata como tarea individual
                         displayId: task.case_number || (parentTicket?.id ? String(parentTicket.id).substring(0, 8) : 'SUB-CASE'),
                         displaySubject: task.subject || parentTicket?.subject,
-                        displayAddress: task.address || parentTicket?.logistics?.address,
+                        displayAddress: task.address || parentTicket?.logistics?.address || 'Sin dirección',
                         displayStatus: task.status || 'Pendiente',
                         displayDate: task.date,
-                        requester: parentTicket?.requester || 'Destinatario',
+                        requester: task.recipient || parentTicket?.requester || 'Destinatario',
+                        displayPhone: task.phone || parentTicket?.logistics?.phone || parentTicket?.requesterPhone || 'Sin teléfono',
                         timeSlot: task.time_slot || task.timeSlot,
                         deliveryOrder: task.delivery_order || task.deliveryOrder || 0,
                         taskAssets: task.assets || [],
                         taskAccessories: task.accessories || [],
                         taskYubikeys: task.yubikeys || [],
-                        instructions: task.instructions || parentTicket?.instructions || '',
+                        instructions: task.instructions || parentTicket?.logistics?.instructions || parentTicket?.instructions || '',
                         hasNewNotes: (() => {
                             const chat = parentTicket?.chatLog || task.chat_log || task.chatLog || [];
                             return chat.length > 0;
@@ -522,6 +523,24 @@ export default function MyDeliveriesPage() {
                                                                 <Clock size={16} />
                                                                 Turno: {delivery.timeSlot || 'AM'}
                                                             </div>
+                                                            {delivery.displayPhone && delivery.displayPhone !== 'Sin teléfono' && (
+                                                                <a 
+                                                                    href={`tel:${delivery.displayPhone}`}
+                                                                    style={{ 
+                                                                        display: 'flex', 
+                                                                        alignItems: 'center', 
+                                                                        gap: '0.4rem', 
+                                                                        color: 'var(--primary-color)',
+                                                                        textDecoration: 'none',
+                                                                        fontWeight: 700
+                                                                    }}
+                                                                >
+                                                                    <div style={{ width: '18px', height: '18px', background: 'var(--primary-color)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                                                                        <span style={{ fontSize: '10px' }}>📞</span>
+                                                                    </div>
+                                                                    {delivery.displayPhone}
+                                                                </a>
+                                                            )}
                                                         </div>
 
                                                         {/* Listado de Items en la Tarjeta */}

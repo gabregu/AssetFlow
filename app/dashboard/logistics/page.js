@@ -55,8 +55,13 @@ export default function LogisticsHubPage() {
                     (parentTicket?.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase());
 
                 // Filtro de Texto
+                const displayAddress = task.address || parentTicket?.logistics?.address || '';
+                const displayRequester = parentTicket?.requester || '';
+
                 const matchesText = 
                     (task.case_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    displayRequester.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    displayAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (task.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (task.delivery_person || '').toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -69,9 +74,15 @@ export default function LogisticsHubPage() {
                 const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
                 const chat = parentTicket?.chatLog || task.chat_log || task.chatLog || [];
                 
+                // Fallbacks unificados
+                const displayAddress = task.address || parentTicket?.logistics?.address || 'Sin dirección';
+                const displayRequester = parentTicket?.requester || 'Sin nombre';
+                
                 return {
                     ...task,
                     parentTicket,
+                    displayAddress,
+                    displayRequester,
                     hasNewNotes: chat.length > 0,
                     hasUnreadChat: chat.length > 0 && chat[chat.length - 1].user !== currentUser?.name
                 };
@@ -204,7 +215,7 @@ export default function LogisticsHubPage() {
                                 </td>
                                 <td style={{ padding: '1rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{task.parentTicket?.requester || 'Sin nombre'}</div>
+                                        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{task.displayRequester}</div>
                                         {task.hasNewNotes && (
                                             <div 
                                                 title={task.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"} 
@@ -226,7 +237,7 @@ export default function LogisticsHubPage() {
                                 <td style={{ padding: '1rem' }}>
                                     <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                         <MapPin size={14} className="text-secondary-400" />
-                                        {task.address || 'Sin dirección'}
+                                        {task.displayAddress}
                                     </div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
