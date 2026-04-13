@@ -1430,11 +1430,11 @@ export default function InventoryPage() {
                             <div className="table-responsive" style={{ background: 'rgba(37, 99, 235, 0.02)', borderRadius: '12px', padding: '0.5rem', border: '1px dashed rgba(37, 99, 235, 0.2)' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
-                                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <tr style={{ borderBottom: '2px solid var(--border)', background: 'var(--background)' }}>
                                             <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ACTIVO <SortIcon column="name" /></th>
                                             <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>COD</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>CASO SFDC</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
                                         </tr>
@@ -1453,7 +1453,13 @@ export default function InventoryPage() {
                                                 <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.85rem' }}>{asset.serial}</td>
                                                 <td style={{ padding: '1rem' }}>{asset.assignee}</td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    {asset.cod ? <Badge variant="destructive">{asset.cod}</Badge> : '-'}
+                                                    {asset.sfdcCase ? (
+                                                        <Link href={`/dashboard/tickets/${asset.sfdcCase}`} className="hover-link" style={{ fontWeight: 600, color: 'var(--primary-color)' }}>
+                                                            {asset.sfdcCase}
+                                                        </Link>
+                                                    ) : (
+                                                        <span style={{ opacity: 0.3 }}>-</span>
+                                                    )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}><Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge></td>
                                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
@@ -1534,6 +1540,7 @@ export default function InventoryPage() {
                                             <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>PAÍS</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>CASO SFDC</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>COD</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
@@ -1585,6 +1592,15 @@ export default function InventoryPage() {
                                                             </div>
                                                             <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{asset.assignee}</span>
                                                         </div>
+                                                    )}
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    {asset.sfdcCase ? (
+                                                        <Link href={`/dashboard/tickets/${asset.sfdcCase}`} className="hover-link" style={{ fontWeight: 600, color: 'var(--primary-color)' }}>
+                                                            {asset.sfdcCase}
+                                                        </Link>
+                                                    ) : (
+                                                        <span style={{ opacity: 0.3 }}>-</span>
                                                     )}
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
