@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import InstructionsCard from './InstructionsCard';
+import { getStatusVariant } from '../../constants';
 
 export default function DriverDetailView({ 
     ticket, 
@@ -49,14 +50,6 @@ export default function DriverDetailView({
         window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
     };
 
-    const getStatusColor = (s) => {
-        switch (s) {
-            case 'En Transito': return '#0ea5e9';
-            case 'Entregado': return '#22c55e';
-            case 'Para Coordinar': return '#f59e0b';
-            default: return '#64748b';
-        }
-    };
 
     return (
         <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '3rem' }}>
@@ -70,7 +63,7 @@ export default function DriverDetailView({
                     <h2 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.01em' }}>Detalle de Servicio</h2>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Ticket #{ticket.id.toString().substring(0, 8)}</p>
                 </div>
-                <Badge style={{ backgroundColor: getStatusColor(status), color: 'white', padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
+                <Badge variant={getStatusVariant(status)} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
                     {status}
                 </Badge>
             </div>
@@ -166,7 +159,7 @@ export default function DriverDetailView({
                                             <Package size={16} style={{ color: 'var(--primary-color)' }} />
                                             <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{task.caseNumber || `Sub-caso`}</span>
                                         </div>
-                                        <Badge style={{ backgroundColor: getStatusColor(task.status) }}>{task.status || 'Pendiente'}</Badge>
+                                        <Badge variant={getStatusVariant(task.status)}>{task.status || 'Pendiente'}</Badge>
                                     </div>
                                     
                                     <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-main)' }}>{task.subject}</h4>
