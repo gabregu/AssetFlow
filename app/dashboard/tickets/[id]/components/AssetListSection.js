@@ -94,7 +94,15 @@ export default function AssetListSection({
                                         </select>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="sm" onClick={() => handleUnlink(idxx)} style={{ color: '#ef4444', padding: '4px' }}>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleUnlink(idxx);
+                                    }} 
+                                    style={{ color: '#ef4444', padding: '4px', cursor: 'pointer' }}
+                                >
                                     <Trash2 size={16} />
                                 </Button>
                             </div>
