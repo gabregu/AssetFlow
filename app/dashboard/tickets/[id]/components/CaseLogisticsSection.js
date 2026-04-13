@@ -47,6 +47,13 @@ export default function CaseLogisticsSection({
         localStateRef.current = initialState;
     }, [task]);
 
+    // Intentar obtener la dirección del ticket padre (si existe)
+    // Esto es para mostrar al usuario de dónde se hereda
+    const store = require('../../../lib/store').useStore();
+    const parentTicket = store.tickets.find(t => t.id === task.ticket_id);
+    const serviceAddress = parentTicket?.logistics?.address || '';
+    const isInherited = !localValues.address;
+
     const isRelational = !!task.id;
 
     const updateLogistics = async (updatesOrField, valueIfSingle) => {
@@ -360,13 +367,51 @@ export default function CaseLogisticsSection({
                 </div>
 
                 <div className="form-group">
-                    <label className="form-label">Dirección de Entrega / Retiro</label>
-                    <input
-                        className="form-input"
-                        placeholder="Ej: Av. Siempreviva 123, CABA"
-                        value={localValues.address || ''}
-                        onChange={e => updateLogistics('address', e.target.value)}
-                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <label className="form-label" style={{ margin: 0 }}>Dirección de Entrega / Retiro</label>
+                        {!isInherited && (
+                            <button 
+                                onClick={() => updateLogistics('address', '')}
+                                style={{ fontSize: '0.65rem', color: 'var(--primary-color)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, textTransform: 'uppercase' }}
+                            >
+                                ↺ Restablecer a Servicios
+                            </button>
+                        )}
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                        <input
+                            className="form-input"
+                            placeholder={serviceAddress || "Ej: Av. Siempreviva 123"}
+                            value={localValues.address || ''}
+                            onChange={e => updateLogistics('address', e.target.value)}
+                            style={{ 
+                                paddingRight: isInherited ? '80px' : '10px',
+                                border: isInherited ? '1px dashed var(--border)' : '1px solid var(--primary-color)',
+                                background: isInherited ? 'rgba(0,0,0,0.02)' : 'white'
+                            }}
+                        />
+                        {isInherited && (
+                            <span style={{ 
+                                position: 'absolute', 
+                                right: '10px', 
+                                top: '50%', 
+                                transform: 'translateY(-50%)', 
+                                fontSize: '0.6rem', 
+                                fontWeight: 800, 
+                                color: 'var(--text-secondary)',
+                                textTransform: 'uppercase',
+                                pointerEvents: 'none',
+                                opacity: 0.7
+                            }}>
+                                [Heredada]
+                            </span>
+                        )}
+                    </div>
+                    {isInherited && serviceAddress && (
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.7rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                            Usando dirección del Servicio: {serviceAddress}
+                        </p>
+                    )}
                 </div>
 
                 <div className="form-group">

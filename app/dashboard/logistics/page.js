@@ -88,7 +88,7 @@ export default function LogisticsHubPage() {
                 };
             })
             .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-    }, [logisticsTasks, tickets, searchTerm, statusFilter, countryFilter]);
+    }, [logisticsTasks, tickets, searchTerm, statusFilter, countryFilter, currentUser]);
 
     // --- 2. ACCIONES RÁPIDAS ---
     const handleUpdateStatus = async (id, newStatus) => {
