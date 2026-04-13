@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { Badge } from '@/app/components/ui/Badge';
+import { getStatusVariant } from '../../constants';
 
 export default function CaseLogisticsSection({
     task,
@@ -121,34 +123,71 @@ export default function CaseLogisticsSection({
     if (saveRef) saveRef.current = saveAll;
 
     return (
-        <div style={{ marginTop: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary-color)', margin: 0 }}>
-                    Logística del Caso
+        <div style={{ marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-color)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+                    Logística y Estado
                 </h4>
                 {isSaving && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', fontSize: '0.75rem', fontWeight: 600 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)', fontSize: '0.7rem', fontWeight: 600 }}>
                         <div className="spinner-mini" style={{ width: '12px', height: '12px', border: '2px solid rgba(37, 99, 235, 0.2)', borderTopColor: 'var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></div>
                         Guardando...
                     </div>
                 )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
-                <div className="form-group">
-                    <label className="form-label">Estado de la Logística / Envío</label>
-                    <select
-                        className="form-select"
-                        value={localValues.status || 'Pendiente'}
-                        onChange={e => updateLogistics('status', e.target.value)}
-                    >
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="Para Coordinar">Para Coordinar</option>
-                        <option value="En Transito">En Transito</option>
-                        <option value="Entregado">Entregado/Finalizado</option>
-                        <option value="No requiere accion">No requiere acción (Sin intervención)</option>
-                    </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
+                <div className="form-group" style={{ marginBottom: '0.5rem' }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                        Estado de la Logística / Envío
+                    </label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        {[
+                            'Pendiente',
+                            'Para Coordinar',
+                            'En Transito',
+                            'Entregado',
+                            'No requiere accion'
+                        ].map(s => {
+                            const isSelected = (localValues.status || 'Pendiente') === s;
+                            const variant = getStatusVariant(s);
+                            
+                            return (
+                                <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() => updateLogistics('status', s)}
+                                    style={{
+                                        border: 'none',
+                                        background: 'none',
+                                        padding: 0,
+                                        cursor: 'pointer',
+                                        outline: 'none'
+                                    }}
+                                >
+                                    <Badge
+                                        variant={variant}
+                                        style={{
+                                            padding: '0.5rem 0.8rem',
+                                            fontSize: '0.8rem',
+                                            borderRadius: '8px',
+                                            opacity: isSelected ? 1 : 0.4,
+                                            transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                                            border: isSelected ? '2px solid currentColor' : '1px solid var(--border)',
+                                            boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
+                                            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                                            fontWeight: isSelected ? 700 : 500
+                                        }}
+                                    >
+                                        {s === 'No requiere accion' ? 'No requiere acción' : s}
+                                    </Badge>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
+
+                <div style={{ height: '1px', background: 'var(--border)', margin: '0.5rem 0' }}></div>
 
                 <div className="form-group">
                     <label className="form-label">Medio Proveedor</label>

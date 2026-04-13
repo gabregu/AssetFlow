@@ -90,6 +90,14 @@ export default function CaseConfigModal({
             >
                 {selectedCaseIndex !== null && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                        <CaseLogisticsSection
+                            task={currentTask}
+                            onUpdateTask={handleUpdateTask}
+                            users={users}
+                            currentUser={currentUser}
+                            saveRef={logisticsSaveRef}
+                        />
+
                         <AssetListSection
                             task={currentTask}
                             onUpdateTask={handleUpdateTask}
@@ -112,14 +120,6 @@ export default function CaseConfigModal({
                             task={currentTask}
                             onUpdateTask={handleUpdateTask}
                             yubikeys={yubikeys}
-                        />
-
-                        <CaseLogisticsSection
-                            task={currentTask}
-                            onUpdateTask={handleUpdateTask}
-                            users={users}
-                            currentUser={currentUser}
-                            saveRef={logisticsSaveRef}
                         />
 
                         <div style={{ 

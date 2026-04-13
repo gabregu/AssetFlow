@@ -14,9 +14,17 @@ export const getStatusVariant = (status) => {
         case 'En Progreso':
             return 'info';
         case 'Resuelto':
+        case 'Finalizado':
+        case 'Entregado':
             return 'success';
         case 'Pendiente':
             return 'warning';
+        case 'Para Coordinar':
+            return 'info';
+        case 'En Transito':
+            return 'primary';
+        case 'No requiere accion':
+            return 'default';
         case 'Caso SFDC Cerrado':
             return 'success';
         case 'Servicio Facturado':

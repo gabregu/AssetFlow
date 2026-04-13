@@ -1,0 +1,82 @@
+
+> assetflow-yawi@0.1.0 build
+> next build
+
+  ??? Next.js 14.2.5
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+node.exe : Failed to 
+compile.
+En l?nea: 1 Car?cter: 1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified    : 
+(Failed to compil    
+e.:String) [], Remo    
+teException
+    + FullyQualifiedErr    
+orId : NativeComman    
+dError
+ 
+
+./lib/store.js
+Error: 
+  [31mx[0m Expected ',', 
+got 'export'
+      ,-[[36;1;4mC:\Users\
+guill\OneDrive\Documents\An
+tigravity-APP\AssetFlow\lib
+\store.js[0m:1337:1]
+ [2m1337[0m |     );
+ [2m1338[0m | }
+ [2m1339[0m | 
+ [2m1340[0m | export 
+const useStore = () => 
+useContext(StoreContext);
+      : [31;1m^^^^^^[0m
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested 
+module:
+./lib/store.js
+./app/components/ui/Inactiv
+ityMonitor.js
+
+./lib/store.js
+Error: 
+  [31mx[0m Expected ',', 
+got 'export'
+      ,-[[36;1;4mC:\Users\
+guill\OneDrive\Documents\An
+tigravity-APP\AssetFlow\lib
+\store.js[0m:1337:1]
+ [2m1337[0m |     );
+ [2m1338[0m | }
+ [2m1339[0m | 
+ [2m1340[0m | export 
+const useStore = () => 
+useContext(StoreContext);
+      : [31;1m^^^^^^[0m
+      `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested 
+module:
+./lib/store.js
+./app/layout.js
+
+
+> Build failed because of 
+webpack errors
