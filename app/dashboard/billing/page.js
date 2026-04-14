@@ -67,7 +67,7 @@ export default function BillingPage() {
     }, [isRatesModalOpen, rates]);
 
     // Advanced analysis
-    const { metrics, filteredTickets, currency, filteredExpenses } = useMemo(() => {
+    const { metrics, filteredTickets, currency, filteredExpenses, selectedExchangeRate } = useMemo(() => {
         let totalRevenue = 0;
         let totalLogisticsCost = 0;
         let totalOperationalCost = 0;
@@ -205,7 +205,8 @@ export default function BillingPage() {
             },
             filteredTickets: filtered,
             filteredExpenses,
-            currency: currencyKey
+            currency: currencyKey,
+            selectedExchangeRate: exchangeRate  // Cotización histórica del mes seleccionado
         };
     }, [tickets, selectedMonth, selectedYear, rates, globalAssets, expenses, sfdcCases, countryFilter]);
 
@@ -257,11 +258,10 @@ export default function BillingPage() {
     const handleCreateExpense = async () => {
         if (!expenseForm.description || !expenseForm.amount) return alert('Completa todos los campos');
 
-        const exchangeRate = parseFloat(rates?.exchangeRate) || 0;
-        if (exchangeRate <= 0) return alert('No hay un valor de referencia (dólar) configurado en las tarifas. Configúralo primero.');
+        if (!selectedExchangeRate || selectedExchangeRate <= 0) return alert('No hay cotización del dólar configurada para este mes en el Historial de Tarifas.');
 
         const amountARS = parseFloat(expenseForm.amount);
-        const amountUSD = amountARS / exchangeRate;
+        const amountUSD = amountARS / selectedExchangeRate;
 
         await addExpense({
             description: expenseForm.description,
@@ -328,8 +328,8 @@ export default function BillingPage() {
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Facturación Total</p>
                             <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>USD {metrics.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-                            {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.totalRevenue * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                            {selectedExchangeRate > 0 && (
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.totalRevenue * selectedExchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
                             )}
                         </div>
                         <div style={{ padding: '0.6rem', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', borderRadius: '12px' }}>
@@ -347,8 +347,8 @@ export default function BillingPage() {
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Costos Operativos</p>
                             <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>USD {metrics.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-                            {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.totalCost * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                            {selectedExchangeRate > 0 && (
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.totalCost * selectedExchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
                             )}
                         </div>
                         <div style={{ padding: '0.6rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '12px' }}>
@@ -365,8 +365,8 @@ export default function BillingPage() {
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Utilidad Neta</p>
                             <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>USD {metrics.netMargin.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-                            {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.netMargin * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                            {selectedExchangeRate > 0 && (
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(metrics.netMargin * selectedExchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
                             )}
                         </div>
                         <div style={{ padding: '0.6rem', background: 'rgba(37, 99, 235, 0.1)', color: 'var(--primary-color)', borderRadius: '12px' }}>
@@ -383,8 +383,8 @@ export default function BillingPage() {
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Pago a Repartidores</p>
                             <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>{currency} {Object.values(metrics.driverPayments).reduce((sum, d) => sum + d.total, 0).toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}</h3>
-                            {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(Object.values(metrics.driverPayments).reduce((sum, d) => sum + d.total, 0) * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
+                            {selectedExchangeRate > 0 && (
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(Object.values(metrics.driverPayments).reduce((sum, d) => sum + d.total, 0) * selectedExchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>
                             )}
                         </div>
                         <div style={{ padding: '0.6rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', borderRadius: '12px' }}>
@@ -528,9 +528,9 @@ export default function BillingPage() {
                                             <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>
                                                 {currency} {data.total.toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}
                                             </div>
-                                            {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
+                                            {selectedExchangeRate > 0 && (
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                    ARS {(data.total * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                                    ARS {(data.total * selectedExchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                                                 </div>
                                             )}
                                         </div>
@@ -618,11 +618,11 @@ export default function BillingPage() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                                                 <span style={{ fontWeight: 700, color: '#800020' }}>
-                                                    {currency} {(parseFloat(expense.amount) * (currency === 'USD' ? 1 : (parseFloat(rates?.exchangeRate) || 1))).toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}
+                                                    {currency} {(parseFloat(expense.amount) * (currency === 'USD' ? 1 : (selectedExchangeRate || 1))).toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}
                                                 </span>
-                                                {(parseFloat(rates?.exchangeRate) || 0) > 0 && (
+                                                {selectedExchangeRate > 0 && (
                                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                        ARS {(parseFloat(expense.amount) * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                                                        ARS {(parseFloat(expense.amount) * selectedExchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
                                                     </span>
                                                 )}
                                             </div>
@@ -1259,15 +1259,15 @@ export default function BillingPage() {
                         />
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', background: 'var(--surface-hover)', padding: '0.5rem', borderRadius: '6px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span>Cotización ref (Guardada):</span>
-                                <strong style={{ color: 'var(--primary-color)' }}>${rates?.exchangeRate || '0.00'}</strong>
+                                <span>Cotización del mes (Historial):</span>
+                                <strong style={{ color: 'var(--primary-color)' }}>ARS {selectedExchangeRate ? selectedExchangeRate.toLocaleString('es-AR') : '—'}</strong>
                             </div>
-                            {(!rates?.exchangeRate || rates.exchangeRate === 0) && (
+                            {(!selectedExchangeRate || selectedExchangeRate === 0) && (
                                 <div style={{ color: '#ef4444', marginTop: '0.25rem', fontWeight: 600 }}>
-                                    ⚠️ Configura y GUARDA el "Valor de Referencia" en Tarifas.
+                                    ⚠️ Agrega la cotización de este mes en Tarifas → Historial.
                                 </div>
                             )}
-                            <div>Equivalente: <strong>USD {((parseFloat(expenseForm.amount) || 0) / (parseFloat(rates?.exchangeRate) || 1)).toFixed(2)}</strong></div>
+                            <div>Equivalente: <strong>USD {((parseFloat(expenseForm.amount) || 0) / (selectedExchangeRate || 1)).toFixed(2)}</strong></div>
                         </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
