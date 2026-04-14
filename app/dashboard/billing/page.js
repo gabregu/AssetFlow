@@ -38,6 +38,12 @@ export default function BillingPage() {
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
     const [expenseForm, setExpenseForm] = useState({ description: '', amount: '' });
 
+    // Estado para la edición de cotización histórica
+    const currentDate = new Date();
+    const [historyEditMonth, setHistoryEditMonth] = useState(String(currentDate.getMonth() + 1).padStart(2, '0'));
+    const [historyEditYear, setHistoryEditYear] = useState(String(currentDate.getFullYear()));
+    const [historyEditValue, setHistoryEditValue] = useState('');
+
     useEffect(() => {
         if (isRatesModalOpen) {
             fetch('https://dolarapi.com/v1/dolares/oficial')
@@ -677,47 +683,154 @@ export default function BillingPage() {
                                 Este valor se utilizará para cálculos de conversión si es necesario.
                             </p>
                         </div>
+                        {/* Historial de Cotizaciones por Mes - EDITABLE */}
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Historial de Cotizaciones por Mes
+                            </div>
 
-                        {/* Historial de Cotizaciones por Mes */}
-                        {rates?.exchangeRateHistory && Object.keys(rates.exchangeRateHistory).length > 0 && (
-                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                    Historial de Cotizaciones por Mes
+                            {/* Selector de mes + input de valor */}
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', gap: '0.4rem', flex: '1 1 auto', minWidth: '200px' }}>
+                                    <div className="form-group" style={{ margin: 0, flex: 1 }}>
+                                        <label className="form-label" style={{ fontSize: '0.7rem' }}>Mes</label>
+                                        <select
+                                            className="form-select"
+                                            style={{ fontSize: '0.85rem', padding: '0.4rem 0.6rem', height: 'auto' }}
+                                            value={historyEditMonth}
+                                            onChange={e => {
+                                                setHistoryEditMonth(e.target.value);
+                                                // Precargar valor existente si lo hay
+                                                const key = `${historyEditYear}-${e.target.value}`;
+                                                setHistoryEditValue(tempRates.exchangeRateHistory?.[key] || '');
+                                            }}
+                                        >
+                                            {MONTHS.map((m, i) => (
+                                                <option key={i} value={String(i + 1).padStart(2, '0')}>{m}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group" style={{ margin: 0, flex: '0 0 90px' }}>
+                                        <label className="form-label" style={{ fontSize: '0.7rem' }}>Año</label>
+                                        <select
+                                            className="form-select"
+                                            style={{ fontSize: '0.85rem', padding: '0.4rem 0.6rem', height: 'auto' }}
+                                            value={historyEditYear}
+                                            onChange={e => {
+                                                setHistoryEditYear(e.target.value);
+                                                const key = `${e.target.value}-${historyEditMonth}`;
+                                                setHistoryEditValue(tempRates.exchangeRateHistory?.[key] || '');
+                                            }}
+                                        >
+                                            {YEARS.map(y => (
+                                                <option key={y} value={String(y)}>{y}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '140px', overflowY: 'auto' }}>
-                                    {Object.entries(rates.exchangeRateHistory)
-                                        .sort(([a], [b]) => b.localeCompare(a)) // Más reciente primero
+                                <div className="form-group" style={{ margin: 0, flex: '1 1 120px', minWidth: '120px' }}>
+                                    <label className="form-label" style={{ fontSize: '0.7rem' }}>Valor ARS</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <span style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>$</span>
+                                        <input
+                                            type="number"
+                                            className="form-input"
+                                            style={{ paddingLeft: '22px', fontSize: '0.9rem', fontWeight: 700 }}
+                                            placeholder="Ej: 1440"
+                                            value={historyEditValue}
+                                            onChange={e => setHistoryEditValue(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const val = parseFloat(historyEditValue);
+                                        if (!val || val <= 0) { alert('Ingresa un valor válido'); return; }
+                                        const key = `${historyEditYear}-${historyEditMonth}`;
+                                        const existing = tempRates.exchangeRateHistory || {};
+                                        setTempRates(prev => ({
+                                            ...prev,
+                                            exchangeRateHistory: { ...existing, [key]: val }
+                                        }));
+                                        setHistoryEditValue('');
+                                    }}
+                                    style={{
+                                        background: 'var(--primary-color)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        padding: '0.45rem 1rem',
+                                        fontWeight: 700,
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        alignSelf: 'flex-end',
+                                        height: '38px'
+                                    }}
+                                >
+                                    + Guardar
+                                </button>
+                            </div>
+
+                            {/* Tabla del historial */}
+                            {tempRates.exchangeRateHistory && Object.keys(tempRates.exchangeRateHistory).length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', maxHeight: '160px', overflowY: 'auto' }}>
+                                    {Object.entries(tempRates.exchangeRateHistory)
+                                        .sort(([a], [b]) => b.localeCompare(a))
                                         .map(([monthKey, value]) => {
-                                            const [year, month] = monthKey.split('-');
-                                            const monthName = MONTHS[parseInt(month) - 1];
-                                            const isCurrentMonth = (() => {
-                                                const now = new Date();
-                                                const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-                                                return monthKey === key;
-                                            })();
+                                            const [year, monthNum] = monthKey.split('-');
+                                            const monthName = MONTHS[parseInt(monthNum) - 1];
+                                            const now = new Date();
+                                            const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                                            const isCurrentMonth = monthKey === currentKey;
                                             return (
                                                 <div key={monthKey} style={{
                                                     display: 'flex',
                                                     justifyContent: 'space-between',
                                                     alignItems: 'center',
-                                                    padding: '0.4rem 0.6rem',
+                                                    padding: '0.4rem 0.75rem',
                                                     borderRadius: '6px',
-                                                    background: isCurrentMonth ? 'rgba(37, 99, 235, 0.08)' : 'var(--background)',
-                                                    border: isCurrentMonth ? '1px solid rgba(37, 99, 235, 0.2)' : '1px solid transparent'
+                                                    background: isCurrentMonth ? 'rgba(37, 99, 235, 0.07)' : 'var(--background)',
+                                                    border: `1px solid ${isCurrentMonth ? 'rgba(37, 99, 235, 0.25)' : 'var(--border)'}`,
                                                 }}>
-                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: isCurrentMonth ? 700 : 400 }}>
-                                                        {monthName} {year} {isCurrentMonth && <span style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: 800 }}>● Actual</span>}
-                                                    </span>
-                                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                                                        ARS {Number(value).toLocaleString('es-AR')}
-                                                    </span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        {isCurrentMonth && <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#2563eb', display: 'inline-block' }} />}
+                                                        <span style={{ fontSize: '0.82rem', fontWeight: isCurrentMonth ? 700 : 500, color: isCurrentMonth ? '#2563eb' : 'var(--text-main)' }}>
+                                                            {monthName} {year}
+                                                        </span>
+                                                        {isCurrentMonth && <span style={{ fontSize: '0.65rem', color: '#2563eb', background: 'rgba(37, 99, 235, 0.1)', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>Actual</span>}
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                                            ARS {Number(value).toLocaleString('es-AR')}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            title="Eliminar este registro"
+                                                            onClick={() => {
+                                                                if (confirm(`¿Eliminar cotización de ${monthName} ${year}?`)) {
+                                                                    const newHistory = { ...(tempRates.exchangeRateHistory || {}) };
+                                                                    delete newHistory[monthKey];
+                                                                    setTempRates(prev => ({ ...prev, exchangeRateHistory: newHistory }));
+                                                                }
+                                                            }}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '2px', opacity: 0.5, lineHeight: 1 }}
+                                                        >
+                                                            <Trash size={13} />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             );
                                         })
                                     }
                                 </div>
-                            </div>
-                        )}
+                            ) : (
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem', fontStyle: 'italic' }}>
+                                    Sin historial aun. Agrega la cotización de cada mes.
+                                </p>
+                            )}
+                        </div>
                     </div>
                     <div style={{ padding: '1rem', background: 'rgba(37, 99, 235, 0.05)', borderRadius: '8px', border: '1px solid rgba(37, 99, 235, 0.1)' }}>
                         <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--primary-color)' }}>Ingresos por Servicios (Cuadro Tarifario)</h4>
