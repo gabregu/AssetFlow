@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { CountryFilter } from '../../components/layout/CountryFilter';
 
-import { calculateTicketFinancials, resolveTicketServiceDetails, calculateTaskFinancials } from '@/lib/billing';
+import { calculateTicketFinancials, resolveTicketServiceDetails, calculateTaskFinancials, getExchangeRateForDate } from '@/lib/billing';
 import Link from 'next/link';
 
 export default function BillingPage() {
@@ -74,10 +74,10 @@ export default function BillingPage() {
         const driverPayments = {};
 
         // Currency Conversion Logic
-        const exchangeRate = parseFloat(rates?.exchangeRate) || 0;
-        // const useArs = exchangeRate > 0; // DISABLED: User wants USD enforced
-        // const multiplier = useArs ? exchangeRate : 1;
-        // const currencyKey = useArs ? 'ARS' : 'USD';
+        // Usar la cotización del MES SELECCIONADO, no la actual
+        // Esto garantiza que meses anteriores usen su cotización histórica correcta
+        const historicalDate = new Date(selectedYear, selectedMonth, 1);
+        const exchangeRate = getExchangeRateForDate(rates, historicalDate);
         const useArs = false;
         const multiplier = 1;
         const currencyKey = 'USD';
@@ -205,7 +205,24 @@ export default function BillingPage() {
 
     const handleSaveRates = (e) => {
         e.preventDefault();
-        updateRates(tempRates);
+        
+        // Auto-registrar la cotización del mes actual en el historial
+        const now = new Date();
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; // Ej: "2026-04"
+        
+        const currentExchangeRate = parseFloat(tempRates.exchangeRate);
+        const updatedRates = { ...tempRates };
+        
+        if (currentExchangeRate > 0) {
+            // Preservar el historial existente y agregar/actualizar el mes corriente
+            const existingHistory = rates?.exchangeRateHistory || {};
+            updatedRates.exchangeRateHistory = {
+                ...existingHistory,
+                [monthKey]: currentExchangeRate
+            };
+        }
+        
+        updateRates(updatedRates);
         setIsRatesModalOpen(false);
     };
 
@@ -660,6 +677,47 @@ export default function BillingPage() {
                                 Este valor se utilizará para cálculos de conversión si es necesario.
                             </p>
                         </div>
+
+                        {/* Historial de Cotizaciones por Mes */}
+                        {rates?.exchangeRateHistory && Object.keys(rates.exchangeRateHistory).length > 0 && (
+                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Historial de Cotizaciones por Mes
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '140px', overflowY: 'auto' }}>
+                                    {Object.entries(rates.exchangeRateHistory)
+                                        .sort(([a], [b]) => b.localeCompare(a)) // Más reciente primero
+                                        .map(([monthKey, value]) => {
+                                            const [year, month] = monthKey.split('-');
+                                            const monthName = MONTHS[parseInt(month) - 1];
+                                            const isCurrentMonth = (() => {
+                                                const now = new Date();
+                                                const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                                                return monthKey === key;
+                                            })();
+                                            return (
+                                                <div key={monthKey} style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    padding: '0.4rem 0.6rem',
+                                                    borderRadius: '6px',
+                                                    background: isCurrentMonth ? 'rgba(37, 99, 235, 0.08)' : 'var(--background)',
+                                                    border: isCurrentMonth ? '1px solid rgba(37, 99, 235, 0.2)' : '1px solid transparent'
+                                                }}>
+                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: isCurrentMonth ? 700 : 400 }}>
+                                                        {monthName} {year} {isCurrentMonth && <span style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: 800 }}>● Actual</span>}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                                        ARS {Number(value).toLocaleString('es-AR')}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })
+                                    }
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div style={{ padding: '1rem', background: 'rgba(37, 99, 235, 0.05)', borderRadius: '8px', border: '1px solid rgba(37, 99, 235, 0.1)' }}>
                         <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--primary-color)' }}>Ingresos por Servicios (Cuadro Tarifario)</h4>
