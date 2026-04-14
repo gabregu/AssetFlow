@@ -15,7 +15,8 @@ import {
     Package,
     ArrowUpDown,
     ArrowRight,
-    MessageSquare
+    MessageSquare,
+    RefreshCw
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -78,11 +79,17 @@ export default function LogisticsHubPage() {
                 const displayAddress = task.address || parentTicket?.logistics?.address || 'Sin dirección';
                 const displayRequester = parentTicket?.requester || 'Sin nombre';
                 
+                // Detectar desincronización
+                const parentAddress = parentTicket?.logistics?.address || '';
+                const isOutOfSync = task.address && parentAddress && task.address !== parentAddress;
+                
                 return {
                     ...task,
                     parentTicket,
                     displayAddress,
                     displayRequester,
+                    parentAddress,
+                    isOutOfSync,
                     hasNewNotes: chat.length > 0,
                     hasUnreadChat: chat.length > 0 && chat[chat.length - 1].user !== currentUser?.name
                 };
@@ -93,6 +100,13 @@ export default function LogisticsHubPage() {
     // --- 2. ACCIONES RÁPIDAS ---
     const handleUpdateStatus = async (id, newStatus) => {
         await updateLogisticsTask(id, { status: newStatus });
+    };
+
+    const handleSyncTaskAddress = async (task) => {
+        if (!task.parentAddress) return;
+        if (confirm(`¿Sincronizar dirección con el Servicio? Se cambiará a: ${task.parentAddress}`)) {
+            await updateLogisticsTask(task.id, { address: null });
+        }
     };
 
     const getStatusVariant = (status) => {
@@ -235,9 +249,34 @@ export default function LogisticsHubPage() {
                                     </div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
-                                    <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                        <MapPin size={14} className="text-secondary-400" />
-                                        {task.displayAddress}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                        <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <MapPin size={14} className={task.isOutOfSync ? "text-warning" : "text-secondary-400"} />
+                                            <span style={{ color: task.isOutOfSync ? 'var(--warning-color)' : 'inherit', fontWeight: task.isOutOfSync ? 600 : 400 }}>
+                                                {task.displayAddress}
+                                            </span>
+                                        </div>
+                                        {task.isOutOfSync && (
+                                            <button 
+                                                onClick={() => handleSyncTaskAddress(task)}
+                                                style={{ 
+                                                    fontSize: '0.65rem', 
+                                                    color: 'var(--primary-color)', 
+                                                    background: 'rgba(37, 99, 235, 0.05)', 
+                                                    border: '1px solid var(--primary-color)', 
+                                                    padding: '2px 6px', 
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer',
+                                                    width: 'fit-content',
+                                                    marginTop: '4px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px'
+                                                }}
+                                            >
+                                                <RefreshCw size={10} /> Sincronizar con Servicio
+                                            </button>
+                                        )}
                                     </div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
