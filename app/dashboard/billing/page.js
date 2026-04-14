@@ -212,24 +212,8 @@ export default function BillingPage() {
 
     const handleSaveRates = (e) => {
         e.preventDefault();
-        
-        // Auto-registrar la cotización del mes actual en el historial
-        const now = new Date();
-        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; // Ej: "2026-04"
-        
-        const currentExchangeRate = parseFloat(tempRates.exchangeRate);
-        const updatedRates = { ...tempRates };
-        
-        if (currentExchangeRate > 0) {
-            // Preservar el historial existente y agregar/actualizar el mes corriente
-            const existingHistory = rates?.exchangeRateHistory || {};
-            updatedRates.exchangeRateHistory = {
-                ...existingHistory,
-                [monthKey]: currentExchangeRate
-            };
-        }
-        
-        updateRates(updatedRates);
+        // Guardar todo el objeto tempRates (que ya incluye el exchangeRateHistory actualizado)
+        updateRates(tempRates);
         setIsRatesModalOpen(false);
     };
 
@@ -592,10 +576,10 @@ export default function BillingPage() {
                             <div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
                                     <span style={{ color: 'var(--text-secondary)' }}>Gastos Operativos (Manual)</span>
-                                    <span style={{ fontWeight: 600, color: '#800020' }}>{currency} {(metrics.totalManualExpenses * (currency === 'USD' ? 1 : (parseFloat(rates?.exchangeRate) || 1))).toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}</span>
+                                    <span style={{ fontWeight: 600, color: '#800020' }}>{currency} {(metrics.totalManualExpenses * (currency === 'USD' ? 1 : (selectedExchangeRate || 1))).toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}</span>
                                 </div>
                                 <div style={{ height: '6px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', background: '#800020', width: `${metrics.totalRevenue > 0 ? ((metrics.totalManualExpenses * (currency === 'USD' ? 1 : (parseFloat(rates?.exchangeRate) || 1))) / metrics.totalRevenue) * 100 : 0}%` }} />
+                                    <div style={{ height: '100%', background: '#800020', width: `${metrics.totalRevenue > 0 ? ((metrics.totalManualExpenses * (currency === 'USD' ? 1 : (selectedExchangeRate || 1))) / metrics.totalRevenue) * 100 : 0}%` }} />
                                 </div>
                             </div>
                         </div>

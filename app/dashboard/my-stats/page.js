@@ -4,7 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
 import { Archive, AlertCircle, Truck, CheckCircle2, TrendingUp, ArrowUpRight, ClipboardList, BarChart3, User } from 'lucide-react';
-import { resolveTicketServiceDetails, getRate } from '@/lib/billing';
+import { resolveTicketServiceDetails, getRate, getExchangeRateForDate } from '@/lib/billing';
 
 export default function MyStatsPage() {
     const { tickets, assets: globalAssets, currentUser, rates, users, logisticsTasks } = useStore();
@@ -303,11 +303,14 @@ export default function MyStatsPage() {
                                 USD {stats.personalLiquidation.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </div>
                             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, marginTop: '2px' }}>
-                                {rates?.exchangeRate ? (
-                                    <>ARS {(stats.personalLiquidation * parseFloat(rates.exchangeRate)).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</>
-                                ) : (
-                                    <span style={{ color: '#ef4444', fontSize: '0.7rem' }}>Sin TC Configurado</span>
-                                )}
+                                {(() => {
+                                    const currentMonthRate = getExchangeRateForDate(rates, new Date());
+                                    return currentMonthRate > 0 ? (
+                                        <>ARS {(stats.personalLiquidation * currentMonthRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</>
+                                    ) : (
+                                        <span style={{ color: '#ef4444', fontSize: '0.7rem' }}>Sin cotización del mes en Tarifas</span>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
