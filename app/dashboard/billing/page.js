@@ -38,11 +38,17 @@ export default function BillingPage() {
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
     const [expenseForm, setExpenseForm] = useState({ description: '', amount: '' });
 
-    // Estado para la edición de cotización histórica
+    // Estado para edición de cotización histórica
     const currentDate = new Date();
     const [historyEditMonth, setHistoryEditMonth] = useState(String(currentDate.getMonth() + 1).padStart(2, '0'));
     const [historyEditYear, setHistoryEditYear] = useState(String(currentDate.getFullYear()));
     const [historyEditValue, setHistoryEditValue] = useState('');
+
+    // Estado para campos de pago real a repartidores (edición local antes de guardar)
+    const [driverPaymentInputs, setDriverPaymentInputs] = useState({});
+
+    // Clave del mes seleccionado (ej: "2026-04")
+    const selectedMonthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
 
     useEffect(() => {
         if (isRatesModalOpen) {
@@ -489,44 +495,121 @@ export default function BillingPage() {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    {/* Driver Payments */}
-                    <Card title="Liquidación repartidores" action={<CreditCard size={18} style={{ opacity: 0.6 }} />}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* Driver Payments - Liquidación detallada con pago real */}
+                    <Card title="Liquidación Conductores" action={<CreditCard size={18} style={{ opacity: 0.6 }} />}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {Object.entries(metrics.driverPayments).length > 0 ? (
-                                Object.entries(metrics.driverPayments).map(([name, data]) => (
-                                    <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'rgba(0,0,0,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem' }}>
-                                                {name.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{name}</div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', gap: '0.5rem' }}>
-                                                    <span>{data.deliveries} E</span>
-                                                    <span style={{ opacity: 0.3 }}>|</span>
-                                                    <span>{data.recoveries} R</span>
+                                Object.entries(metrics.driverPayments).map(([name, data]) => {
+                                    // Pago real persistido en BD para este conductor y mes
+                                    const savedPayment = rates?.driverActualPayments?.[selectedMonthKey]?.[name];
+                                    // Valor que el usuario está editando localmente
+                                    const inputRaw = driverPaymentInputs[name];
+                                    const inputVal = inputRaw !== undefined ? inputRaw : (savedPayment !== undefined ? String(savedPayment) : '');
+                                    const paidUSD = parseFloat(inputVal) || savedPayment || 0;
+                                    const diff = data.total - paidUSD;
+                                    const isPaid = savedPayment !== undefined && savedPayment > 0;
+
+                                    return (
+                                        <div key={name} style={{
+                                            padding: '1rem',
+                                            background: 'var(--background)',
+                                            borderRadius: '10px',
+                                            border: `1px solid ${isPaid ? 'rgba(34, 197, 94, 0.25)' : 'var(--border)'}`,
+                                        }}>
+                                            {/* Header conductor */}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #0ea5e9, #2563eb)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1rem' }}>
+                                                        {name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>{name}</div>
+                                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', gap: '0.4rem' }}>
+                                                            <span style={{ background: 'rgba(37, 99, 235, 0.08)', color: '#2563eb', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>{data.deliveries} Entregas</span>
+                                                            <span style={{ background: 'rgba(245, 158, 11, 0.08)', color: '#d97706', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>{data.recoveries} Recuperos</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* Calculado */}
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>A pagar</div>
+                                                    <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-main)' }}>
+                                                        USD {data.total.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                                    </div>
+                                                    {selectedExchangeRate > 0 && (
+                                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                                            ARS {(data.total * selectedExchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 0 })}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                            <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                                                {currency} {data.total.toLocaleString(currency === 'USD' ? 'en-US' : 'es-AR', { minimumFractionDigits: 2 })}
+
+                                            {/* Fila: Pago real ingresado */}
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase' }}>Pagado (real)</div>
+                                                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                                        <span style={{ position: 'absolute', left: '8px', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>USD</span>
+                                                        <input
+                                                            type="number"
+                                                            className="form-input"
+                                                            style={{ paddingLeft: '40px', height: '34px', fontSize: '0.9rem', fontWeight: 700, borderColor: isPaid ? 'rgba(34, 197, 94, 0.5)' : undefined }}
+                                                            placeholder="0.00"
+                                                            value={inputVal}
+                                                            onChange={e => setDriverPaymentInputs(prev => ({ ...prev, [name]: e.target.value }))}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    title="Guardar pago real"
+                                                    onClick={async () => {
+                                                        const val = parseFloat(inputVal);
+                                                        if (isNaN(val)) { alert('Ingresa un valor válido'); return; }
+                                                        const existing = rates?.driverActualPayments || {};
+                                                        const monthData = { ...(existing[selectedMonthKey] || {}), [name]: val };
+                                                        await updateRates({ ...rates, driverActualPayments: { ...existing, [selectedMonthKey]: monthData } }, true);
+                                                        // Limpiar input local (ya queda en BD)
+                                                        setDriverPaymentInputs(prev => { const n = {...prev}; delete n[name]; return n; });
+                                                    }}
+                                                    style={{
+                                                        background: 'var(--primary-color)', color: 'white', border: 'none',
+                                                        borderRadius: '8px', padding: '0 12px', height: '34px',
+                                                        cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap',
+                                                        alignSelf: 'flex-end', fontWeight: 700,
+                                                        display: 'flex', alignItems: 'center', gap: '4px'
+                                                    }}
+                                                >
+                                                    💾 Guardar
+                                                </button>
                                             </div>
-                                            {selectedExchangeRate > 0 && (
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                    ARS {(data.total * selectedExchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+
+                                            {/* Balance */}
+                                            {isPaid && (
+                                                <div style={{
+                                                    marginTop: '0.6rem',
+                                                    padding: '0.4rem 0.6rem',
+                                                    borderRadius: '6px',
+                                                    background: Math.abs(diff) < 0.01 ? 'rgba(34, 197, 94, 0.07)' : 'rgba(239, 68, 68, 0.07)',
+                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                                }}>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                                        {Math.abs(diff) < 0.01 ? '✅ Cuadrado' : diff > 0 ? '⚠️ Pendiente' : '⬆️ Exceso'}
+                                                    </span>
+                                                    <span style={{
+                                                        fontSize: '0.8rem', fontWeight: 700,
+                                                        color: Math.abs(diff) < 0.01 ? '#16a34a' : diff > 0 ? '#f59e0b' : '#ef4444'
+                                                    }}>
+                                                        {diff > 0.01 ? '-' : ''}{Math.abs(diff) < 0.01 ? '—' : `USD ${Math.abs(diff).toFixed(2)}`}
+                                                    </span>
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             ) : (
-                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center' }}>No hay liquidaciones pendientes para el período.</p>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center', padding: '1rem' }}>No hay liquidaciones para este período.</p>
                             )}
                         </div>
-                        {Object.entries(metrics.driverPayments).length > 0 && (
-                            <Button style={{ width: '100%', marginTop: '1.5rem', justifyContent: 'center' }} variant="outline">Ver Historial de Pagos</Button>
-                        )}
                     </Card>
 
                     {/* Financial Distribution */}
