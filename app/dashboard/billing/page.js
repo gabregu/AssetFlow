@@ -154,27 +154,67 @@ export default function BillingPage() {
             totalLogisticsCost += logisticCost;
             totalOperationalCost += ticketOperationalCost;
 
-            // Driver Payment Tracking
-            const isDelivery = moveType.toLowerCase().includes('entrega') || moveType.toLowerCase().includes('alta');
-            const isRecovery = moveType.toLowerCase().includes('recupero') || moveType.toLowerCase().includes('retiro') || moveType.toLowerCase().includes('baja');
+            // Driver Payment Tracking - only for tickets WITHOUT logisticsTasks (legacy)
+            const hasRelatedTasks = (logisticsTasks || []).some(tk =>
+                String(tk.ticket_id || tk.ticketId) === String(ticket.id)
+            );
 
-            if (method === 'Repartidor Propio' || method === 'Envío Interno' || method.includes('Propio')) {
-                const driver = ticket.logistics?.deliveryPerson || '';
-                if (driver) {
-                    if (!driverPayments[driver]) driverPayments[driver] = { count: 0, total: 0, deliveries: 0, recoveries: 0 };
-                    driverPayments[driver].count += 1;
-                    driverPayments[driver].total += logisticCost;
-                    if (isDelivery) driverPayments[driver].deliveries += 1;
-                    if (isRecovery) driverPayments[driver].recoveries += 1;
+            if (!hasRelatedTasks) {
+                const isDelivery = moveType.toLowerCase().includes('entrega') || moveType.toLowerCase().includes('alta');
+                const isRecovery = moveType.toLowerCase().includes('recupero') || moveType.toLowerCase().includes('retiro') || moveType.toLowerCase().includes('baja');
+
+                if (method === 'Repartidor Propio' || method === 'Envío Interno' || method.includes('Propio')) {
+                    const driver = ticket.logistics?.deliveryPerson || '';
+                    if (driver) {
+                        if (!driverPayments[driver]) driverPayments[driver] = { count: 0, total: 0, deliveries: 0, recoveries: 0 };
+                        driverPayments[driver].count += 1;
+                        driverPayments[driver].total += logisticCost;
+                        if (isDelivery) driverPayments[driver].deliveries += 1;
+                        if (isRecovery) driverPayments[driver].recoveries += 1;
+                    }
+                    totalDriverCost += logisticCost;
+                } else if (method === 'Andreani' || method === 'Correo Argentino' || method.includes('Correo')) {
+                    totalPostalCost += logisticCost;
                 }
-                totalDriverCost += logisticCost;
-            } else if (method === 'Andreani' || method === 'Correo Argentino' || method.includes('Correo')) {
-                totalPostalCost += logisticCost;
             }
 
             // Pending deliveries count
             if (ticket.status === 'Abierto' || ticket.status === 'En Progreso') {
                 pendingDeliveriesCount += 1;
+            }
+        });
+
+        // ── DRIVER TRACKING via logisticsTasks (new model) ──
+        // Iterate each task of the filtered period and accumulate per-driver
+        const filteredTasksForDrivers = (logisticsTasks || []).filter(task => {
+            // Only tasks belonging to filtered tickets
+            const parentTicket = filtered.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
+            if (!parentTicket) return false;
+            return true;
+        });
+
+        filteredTasksForDrivers.forEach(task => {
+            const taskF = calculateTaskFinancials(task, rates, globalAssets, users);
+            if (!taskF) return;
+
+            const taskMethod = taskF.method || task.method || '';
+            const isPropio = taskMethod === 'Repartidor Propio' || taskMethod === 'Envío Interno' || taskMethod.includes('Propio');
+            const isPostal = taskMethod === 'Andreani' || taskMethod === 'Correo Argentino' || taskMethod.includes('Correo');
+
+            if (isPropio) {
+                const driver = (task.delivery_person || task.deliveryPerson || taskF.deliveryPerson || '').trim();
+                if (driver) {
+                    const isDelivery = (taskF.moveType || '').toLowerCase().includes('entrega') || (taskF.moveType || '').toLowerCase().includes('alta');
+                    const isRecovery = (taskF.moveType || '').toLowerCase().includes('recupero') || (taskF.moveType || '').toLowerCase().includes('retiro') || (taskF.moveType || '').toLowerCase().includes('baja');
+                    if (!driverPayments[driver]) driverPayments[driver] = { count: 0, total: 0, deliveries: 0, recoveries: 0 };
+                    driverPayments[driver].count += 1;
+                    driverPayments[driver].total += taskF.logisticCost || 0;
+                    if (isDelivery) driverPayments[driver].deliveries += 1;
+                    if (isRecovery) driverPayments[driver].recoveries += 1;
+                    totalDriverCost += taskF.logisticCost || 0;
+                }
+            } else if (isPostal) {
+                totalPostalCost += taskF.logisticCost || 0;
             }
         });
 
