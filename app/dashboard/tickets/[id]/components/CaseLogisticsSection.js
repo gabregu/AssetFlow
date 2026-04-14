@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Badge } from '@/app/components/ui/Badge';
 import { getStatusVariant } from '../../constants';
 import { ChevronDown } from 'lucide-react';
+import { useStore } from '@/lib/store';
 
 export default function CaseLogisticsSection({
     task,
@@ -49,7 +50,7 @@ export default function CaseLogisticsSection({
 
     // Intentar obtener la dirección del ticket padre (si existe)
     // Esto es para mostrar al usuario de dónde se hereda
-    const store = require('../../../lib/store').useStore();
+    const store = useStore();
     const parentTicket = store.tickets.find(t => t.id === task.ticket_id);
     const serviceAddress = parentTicket?.logistics?.address || '';
     const isInherited = !localValues.address;
