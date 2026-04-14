@@ -744,15 +744,18 @@ export default function BillingPage() {
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={async () => {
                                         const val = parseFloat(historyEditValue);
                                         if (!val || val <= 0) { alert('Ingresa un valor válido'); return; }
                                         const key = `${historyEditYear}-${historyEditMonth}`;
-                                        const existing = tempRates.exchangeRateHistory || {};
-                                        setTempRates(prev => ({
-                                            ...prev,
-                                            exchangeRateHistory: { ...existing, [key]: val }
-                                        }));
+                                        const existing = rates?.exchangeRateHistory || {};
+                                        const newHistory = { ...existing, [key]: val };
+                                        // Construir el rates completo actualizado
+                                        const newRates = { ...rates, exchangeRateHistory: newHistory };
+                                        // Actualizar UI local instantáneamente
+                                        setTempRates(newRates);
+                                        // Persistir en Supabase de inmediato (silencioso: sin alert)
+                                        await updateRates(newRates, true);
                                         setHistoryEditValue('');
                                     }}
                                     style={{
@@ -808,11 +811,13 @@ export default function BillingPage() {
                                                         <button
                                                             type="button"
                                                             title="Eliminar este registro"
-                                                            onClick={() => {
+                                                            onClick={async () => {
                                                                 if (confirm(`¿Eliminar cotización de ${monthName} ${year}?`)) {
-                                                                    const newHistory = { ...(tempRates.exchangeRateHistory || {}) };
+                                                                    const newHistory = { ...(rates?.exchangeRateHistory || {}) };
                                                                     delete newHistory[monthKey];
-                                                                    setTempRates(prev => ({ ...prev, exchangeRateHistory: newHistory }));
+                                                                    const newRates = { ...rates, exchangeRateHistory: newHistory };
+                                                                    setTempRates(newRates);
+                                                                    await updateRates(newRates, true);
                                                                 }
                                                             }}
                                                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '2px', opacity: 0.5, lineHeight: 1 }}
