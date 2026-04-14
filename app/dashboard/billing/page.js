@@ -666,23 +666,7 @@ export default function BillingPage() {
                             </div>
                         </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Valor de Referencia (Interno)</label>
-                            <div style={{ position: 'relative' }}>
-                                <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>ARS</span>
-                                <input
-                                    type="number"
-                                    className="form-input"
-                                    style={{ paddingLeft: '45px', fontWeight: 700 }}
-                                    placeholder={dolarQuotes.official?.venta ? String(dolarQuotes.official.venta) : '0.00'}
-                                    value={tempRates.exchangeRate || ''}
-                                    onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, exchangeRate: val === '' ? '' : parseFloat(val) })) }}
-                                />
-                            </div>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                                Este valor se utilizará para cálculos de conversión si es necesario.
-                            </p>
-                        </div>
+
                         {/* Historial de Cotizaciones por Mes - EDITABLE */}
                         <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
                             <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
