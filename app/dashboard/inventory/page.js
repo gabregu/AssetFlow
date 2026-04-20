@@ -72,10 +72,12 @@ export default function InventoryPage() {
     const [columnFilters, setColumnFilters] = useState({ status: 'All', type: 'All', assignee: '' });
     const [statusFilter, setStatusFilter] = useState(null); // Nuevo estado para el filtro visual de tarjetas
     const [selectedDeviceType, setSelectedDeviceType] = useState(null); // null = todos los tipos
+    const [codFilter, setCodFilter] = useState(false); // Filtro para activos en COD
     const [activeTab, setActiveTab] = useState('hardware'); // 'hardware', 'accessories', 'yubikeys'
     const [yubikeySearchFilter, setYubikeySearchFilter] = useState('');
     const [isYubikeyInventoryExpanded, setIsYubikeyInventoryExpanded] = useState(false);
-
+    const [isInventoryExpanded, setIsInventoryExpanded] = useState(false);
+    const [selectedAssets, setSelectedAssets] = useState([]);
 
     // Quick Detail Modal State
     const [stockDetailModal, setStockDetailModal] = useState({ isOpen: false, model: '', status: '', items: [] });
@@ -94,6 +96,41 @@ export default function InventoryPage() {
             direction = 'desc';
         }
         setSortConfig({ key, direction });
+    };
+
+    const handleToggleAsset = (assetId) => {
+        setSelectedAssets(prev => 
+            prev.includes(assetId) ? prev.filter(id => id !== assetId) : [...prev, assetId]
+        );
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedAssets(filteredAssets.map(a => a.id));
+        } else {
+            setSelectedAssets([]);
+        }
+    };
+
+    const handleBulkDelete = () => {
+        if (window.confirm(`⚠️ ADVERTENCIA ⚠️\n\nEstás a punto de ELIMINAR PERMANENTEMENTE ${selectedAssets.length} equipos del inventario.\n\nEsta acción no se puede deshacer. ¿Deseas continuar?`)) {
+            selectedAssets.forEach(id => {
+                deleteAsset(id);
+            });
+            setSelectedAssets([]);
+        }
+    };
+
+    const handleBulkRetire = () => {
+        if (window.confirm(`Vas a cambiar el estado de ${selectedAssets.length} equipos a "De Baja" (Retirado). ¿Aceptar?`)) {
+            selectedAssets.forEach(id => {
+                const assetStr = assets.find(a => a.id === id);
+                if (assetStr) {
+                    updateAsset(id, { ...assetStr, status: 'De Baja' });
+                }
+            });
+            setSelectedAssets([]);
+        }
     };
 
     const handleStockClick = (model, status) => {
@@ -147,6 +184,10 @@ export default function InventoryPage() {
                 }
             }
 
+            if (codFilter) {
+                matchesStatus = matchesStatus && a.cod && a.cod.trim() !== '';
+            }
+
             // --- EXCLUDED FOM TOTALS, BUT VISIBLE IN SEARCH ---
             // We no longer return false here for 'Asignado' so the user can still search for them by serial number.
             // if (a.status === 'Asignado') return false;
@@ -180,7 +221,7 @@ export default function InventoryPage() {
             });
         }
         return result;
-    }, [assets, searchFilter, sortConfig, columnFilters, statusFilter]);
+    }, [assets, searchFilter, sortConfig, columnFilters, statusFilter, codFilter]);
 
     const SortIcon = ({ column }) => {
         if (sortConfig.key !== column) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
@@ -1121,10 +1162,11 @@ export default function InventoryPage() {
                                     <div style={{ width: '3px', height: '16px', background: 'var(--primary-color)', borderRadius: '2px' }}></div>
                                     <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>Equipos por Estado</h4>
                                 </div>
-                                {(selectedDeviceType || statusFilter) && (
+                                {(selectedDeviceType || statusFilter || codFilter) && (
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {statusFilter && <Badge variant="primary" style={{ cursor: 'pointer' }} onClick={() => setStatusFilter(null)}>Filtro: {statusFilter} x</Badge>}
                                         {selectedDeviceType && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Tipo: {selectedDeviceType}s</span>}
+                                        {codFilter && <Badge variant="warning" style={{ cursor: 'pointer' }} onClick={() => setCodFilter(false)}>Filtro: COD x</Badge>}
                                     </div>
                                 )}
                             </div>
@@ -1171,6 +1213,38 @@ export default function InventoryPage() {
                                         </div>
                                     );
                                 })}
+                                {(() => {
+                                    const filteredCodByType = selectedDeviceType ? allAssetsNonAssigned.filter(a => a.type === selectedDeviceType) : allAssetsNonAssigned;
+                                    const codCount = filteredCodByType.filter(a => a.cod && a.cod.trim() !== '').length;
+                                    return (
+                                        <div
+                                            onClick={() => {
+                                                setCodFilter(!codFilter);
+                                                setIsInventoryExpanded(true);
+                                            }}
+                                            style={{
+                                                padding: '1rem',
+                                                background: 'var(--background)',
+                                                borderRadius: '12px',
+                                                border: codFilter ? `2px solid #a855f7` : '1px solid var(--border)',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '0.5rem',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                transform: codFilter ? 'scale(1.02)' : 'scale(1)',
+                                                boxShadow: codFilter ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+                                                textAlign: 'center',
+                                            }}>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#a855f7', marginBottom: '0.2rem' }}>
+                                                {codCount}
+                                            </div>
+                                            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>COD</div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
@@ -1419,212 +1493,184 @@ export default function InventoryPage() {
                         </div>
                     )}
 
-                    {/* Resultados de Búsqueda Directos */}
-                    {searchFilter !== '' && (
-                        <div style={{ marginBottom: '2rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                                <div style={{ width: '4px', height: '20px', background: 'var(--primary-color)', borderRadius: '2px' }}></div>
-                                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Resultados de Búsqueda</h3>
-                                <Badge variant="info">{filteredAssets.length}</Badge>
+                    {/* Listado de Inventario (Desplegable Inline) */}
+                    <div style={{ marginBottom: '2rem', marginTop: '1rem' }}>
+                        <div
+                            onClick={() => setIsInventoryExpanded(!isInventoryExpanded)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                marginBottom: '1rem',
+                                cursor: 'pointer',
+                                padding: '1rem',
+                                background: 'white',
+                                borderRadius: '12px',
+                                border: '1px solid var(--border)',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                                transition: 'all 0.2s',
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ width: '4px', height: '24px', background: 'var(--primary-color)', borderRadius: '4px' }}></div>
+                                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
+                                    {(searchFilter !== '' || statusFilter !== null || selectedDeviceType !== null || codFilter) ? 'Equipos Seleccionados' : 'Inventario Global de Activos'}
+                                </h3>
+                                <Badge variant="info" style={{ fontSize: '0.85rem', padding: '0.2rem 0.5rem' }}>{filteredAssets.length}</Badge>
                             </div>
-                            <div className="table-responsive" style={{ background: 'rgba(37, 99, 235, 0.02)', borderRadius: '12px', padding: '0.5rem', border: '1px dashed rgba(37, 99, 235, 0.2)' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                    <thead>
-                                        <tr style={{ borderBottom: '2px solid var(--border)', background: 'var(--background)' }}>
-                                            <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ACTIVO <SortIcon column="name" /></th>
-                                            <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>CASO SFDC</th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredAssets.length > 0 ? filteredAssets.map((asset) => (
-                                            <tr key={asset.id} className="table-row" style={{ borderBottom: '1px solid var(--border)' }}>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                        <div style={{ padding: '0.5rem', backgroundColor: 'var(--surface)', borderRadius: '8px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                                                            {React.createElement(getTypeIcon(asset.type), { size: 16 })}
-                                                        </div>
-                                                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{asset.name}</div>
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.85rem' }}>{asset.serial}</td>
-                                                <td style={{ padding: '1rem' }}>{asset.assignee}</td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    {asset.sfdcCase ? (
-                                                        <Link href={`/dashboard/tickets/${asset.sfdcCase}`} className="hover-link" style={{ fontWeight: 600, color: 'var(--primary-color)' }}>
-                                                            {asset.sfdcCase}
-                                                        </Link>
-                                                    ) : (
-                                                        <span style={{ opacity: 0.3 }}>-</span>
-                                                    )}
-                                                </td>
-                                                <td style={{ padding: '1rem' }}><Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge></td>
-                                                <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                                    <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
-                                                        <Button variant="ghost" size="sm" icon={Eye} onClick={() => router.push(`/dashboard/inventory/${asset.id}`)} />
-                                                        <Button variant="ghost" size="sm" icon={Edit3} onClick={() => handleEdit(asset)} />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                {(searchFilter !== '' || statusFilter !== null || selectedDeviceType !== null || codFilter) && (
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--primary-color)', fontWeight: 600 }}>Filtros Aplicados</span>
+                                )}
+                                {isInventoryExpanded ? <ChevronUp size={20} color="var(--text-secondary)" /> : <ChevronDown size={20} color="var(--text-secondary)" />}
+                            </div>
+                        </div>
+
+                        {isInventoryExpanded && (
+                            <div style={{ animation: 'slideDown 0.3s ease-out' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    {selectedAssets.length > 0 ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(37, 99, 235, 0.1)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+                                            <span style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{selectedAssets.length} seleccionados</span>
+                                            <Button variant="danger" size="sm" icon={Trash2} onClick={handleBulkDelete}>
+                                                Eliminar
+                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={handleBulkRetire}>
+                                                Marcar De Baja
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                            Visualización detallada de los equipos. Usa los filtros superiores para refinar la vista.
+                                        </p>
+                                    )}
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            icon={Download}
+                                            onClick={() => setIsExportModalOpen(true)}
+                                        >
+                                            Exportar Reporte
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="table-responsive" style={{ maxHeight: '65vh', overflowY: 'auto', background: 'white', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                        <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--surface)', zIndex: 10, borderBottom: '2px solid var(--border)' }}>
                                             <tr>
-                                                <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                                    No se encontraron coincidencias para "{searchFilter}"
-                                                </td>
+                                                <th style={{ padding: '1rem', width: '40px', textAlign: 'center' }}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        onChange={handleSelectAll} 
+                                                        checked={filteredAssets.length > 0 && selectedAssets.length === filteredAssets.length}
+                                                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                    />
+                                                </th>
+                                                <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ACTIVO <SortIcon column="name" /></th>
+                                                <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
+                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>PAÍS</th>
+                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
+                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>CASO SFDC</th>
+                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>COD</th>
+                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
+                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
                                             </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Botón para abrir modal de Inventario Completo */}
-                    {searchFilter === '' && (
-                        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center' }}>
-                            <Button
-                                size="lg"
-                                icon={Box}
-                                onClick={() => setIsFullInventoryModalOpen(true)}
-                                style={{ 
-                                    padding: '1rem 2rem', 
-                                    fontSize: '1rem',
-                                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
-                                }}
-                            >
-                                Ver Inventario Completo
-                            </Button>
-                        </div>
-                    )}
-
-                    {/* Modal de Inventario Completo */}
-                    <Modal
-                        isOpen={isFullInventoryModalOpen}
-                        onClose={() => setIsFullInventoryModalOpen(false)}
-                        title="Inventario Global de Activos"
-                        width="95%"
-                    >
-                        <div style={{ padding: '1rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-                                <div>
-                                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Listado Detallado</h3>
-                                    <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                                        Visualización completa de todos los equipos registrados en el sistema.
-                                    </p>
-                                </div>
-                                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                    <Button
-                                        variant="outline"
-                                        icon={Download}
-                                        onClick={() => setIsExportModalOpen(true)}
-                                    >
-                                        Exportar Reporte
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        onClick={() => setIsFullInventoryModalOpen(false)}
-                                    >
-                                        Cerrar
-                                    </Button>
-                                </div>
-                            </div>
-
-                            <div className="table-responsive" style={{ maxHeight: '65vh', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '12px' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                    <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--surface)', zIndex: 10, borderBottom: '2px solid var(--border)' }}>
-                                        <tr>
-                                            <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ACTIVO <SortIcon column="name" /></th>
-                                            <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>PAÍS</th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>CASO SFDC</th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>COD</th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredAssets.map((asset) => (
-                                            <tr key={asset.id} className="table-row" style={{ borderBottom: '1px solid var(--border)' }}>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                        <div style={{ padding: '0.6rem', backgroundColor: 'var(--background)', borderRadius: '10px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                                                            {React.createElement(getTypeIcon(asset.type), { size: 18 })}
-                                                        </div>
-                                                        <div>
-                                                            <Link href={`/dashboard/inventory/${asset.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                                                <div style={{ fontWeight: 600, fontSize: '0.95rem' }} className="hover-link">{asset.name}</div>
-                                                            </Link>
-                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{asset.type}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.9rem' }}>{asset.serial}</td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    {asset.country && (
-                                                        <span style={{
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            width: '28px',
-                                                            height: '28px',
-                                                            borderRadius: '6px',
-                                                            backgroundColor: 'var(--background)',
-                                                            border: '1px solid var(--border)',
-                                                            fontSize: '0.75rem',
-                                                            fontWeight: 700,
-                                                            color: 'var(--text-primary)'
-                                                        }} title={asset.country}>
-                                                            {getCountryInitial(asset.country)}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    {asset.assignee === 'Almacén' ? (
-                                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', background: 'var(--background)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>En Almacén</span>
-                                                    ) : (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
-                                                                {asset.assignee.charAt(0)}
+                                        </thead>
+                                        <tbody>
+                                            {filteredAssets.length > 0 ? filteredAssets.map((asset) => (
+                                                <tr key={asset.id} className="table-row" style={{ borderBottom: '1px solid var(--border)', backgroundColor: selectedAssets.includes(asset.id) ? 'rgba(37, 99, 235, 0.05)' : 'transparent' }}>
+                                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={selectedAssets.includes(asset.id)}
+                                                            onChange={() => handleToggleAsset(asset.id)}
+                                                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                            <div style={{ padding: '0.6rem', backgroundColor: 'var(--background)', borderRadius: '10px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                                                                {React.createElement(getTypeIcon(asset.type), { size: 18 })}
                                                             </div>
-                                                            <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{asset.assignee}</span>
+                                                            <div>
+                                                                <Link href={`/dashboard/inventory/${asset.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                                                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }} className="hover-link">{asset.name}</div>
+                                                                </Link>
+                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{asset.type}</div>
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    {asset.sfdcCase ? (
-                                                        <Link href={`/dashboard/tickets/${asset.sfdcCase}`} className="hover-link" style={{ fontWeight: 600, color: 'var(--primary-color)' }}>
-                                                            {asset.sfdcCase}
-                                                        </Link>
-                                                    ) : (
-                                                        <span style={{ opacity: 0.3 }}>-</span>
-                                                    )}
-                                                </td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    {asset.cod ? <Badge variant="destructive">{asset.cod}</Badge> : '-'}
-                                                </td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
-                                                </td>
-                                                <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                        {(asset.status === 'Nuevo' || asset.status === 'Disponible' || asset.status === 'Recuperado') && (
-                                                            <Button variant="ghost" size="sm" icon={UserPlus} onClick={() => handleAssignClick(asset)} title="Asignar" />
+                                                    </td>
+                                                    <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.9rem' }}>{asset.serial}</td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        {asset.country && (
+                                                            <span style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                width: '28px',
+                                                                height: '28px',
+                                                                borderRadius: '6px',
+                                                                backgroundColor: 'var(--background)',
+                                                                border: '1px solid var(--border)',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: 700,
+                                                                color: 'var(--text-primary)'
+                                                            }} title={asset.country}>
+                                                                {getCountryInitial(asset.country)}
+                                                            </span>
                                                         )}
-                                                        <Button variant="ghost" size="sm" icon={Eye} onClick={() => router.push(`/dashboard/inventory/${asset.id}`)} />
-                                                        <Button variant="ghost" size="sm" icon={Edit3} onClick={() => handleEdit(asset)} />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        {asset.assignee === 'Almacén' ? (
+                                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', background: 'var(--background)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>En Almacén</span>
+                                                        ) : (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+                                                                    {asset.assignee.charAt(0)}
+                                                                </div>
+                                                                <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{asset.assignee}</span>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        {asset.sfdcCase ? (
+                                                            <Link href={`/dashboard/tickets/${asset.sfdcCase}`} className="hover-link" style={{ fontWeight: 600, color: 'var(--primary-color)' }}>
+                                                                {asset.sfdcCase}
+                                                            </Link>
+                                                        ) : (
+                                                            <span style={{ opacity: 0.3 }}>-</span>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        {asset.cod ? <Badge variant="destructive">{asset.cod}</Badge> : '-'}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
+                                                    </td>
+                                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                                            {(asset.status === 'Nuevo' || asset.status === 'Disponible' || asset.status === 'Recuperado') && (
+                                                                <Button variant="ghost" size="sm" icon={UserPlus} onClick={() => handleAssignClick(asset)} title="Asignar" />
+                                                            )}
+                                                            <Button variant="ghost" size="sm" icon={Eye} onClick={() => router.push(`/dashboard/inventory/${asset.id}`)} />
+                                                            <Button variant="ghost" size="sm" icon={Edit3} onClick={() => handleEdit(asset)} />
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )) : (
+                                                <tr>
+                                                    <td colSpan="9" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                                        No se encontraron activos que coincidan con la búsqueda.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
-                    </Modal>
+                        )}
+                    </div>
                 </Card>
             )}
 
