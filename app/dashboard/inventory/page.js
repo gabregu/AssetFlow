@@ -43,7 +43,6 @@ export default function InventoryPage() {
     const [selectedYubikey, setSelectedYubikey] = useState(null);
     const [yubikeyStockChange, setYubikeyStockChange] = useState(0);
     const [isStockExpanded, setIsStockExpanded] = useState(false);
-    const [isInventoryExpanded, setIsInventoryExpanded] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [assigningAsset, setAssigningAsset] = useState(null);
     const [assignmentData, setAssignmentData] = useState({
