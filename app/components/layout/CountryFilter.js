@@ -3,8 +3,8 @@ import { useStore } from '../../../lib/store';
 import { Globe, ChevronDown } from 'lucide-react';
 
 export const CountryFilter = () => {
-    const { countryFilter, setCountryFilter } = useStore();
-    const countries = ['Todos', 'Argentina', 'Chile', 'Colombia', 'Costa Rica', 'Uruguay'];
+    const { countryFilter, setCountryFilter, entities = [] } = useStore();
+    const countries = ['Todos', ...entities.map(e => e.name)];
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>

@@ -4,14 +4,15 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { useStore } from '../../../lib/store';
-import { Trash2, Shield, Moon, Sun, Pencil, Lock, Eye, EyeOff, Key, MapPin, MapPinOff } from 'lucide-react';
+import { Trash2, Shield, Moon, Sun, Pencil, Lock, Eye, EyeOff, Key, MapPin, MapPinOff, Globe } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
 
 export default function SettingsPage() {
-    const { users, currentUser, deleteUser, updateUser, sendPasswordReset, updatePassword } = useStore();
+    const { users, currentUser, deleteUser, updateUser, sendPasswordReset, updatePassword, entities = [], addEntity, deleteEntity } = useStore();
     const { theme } = useTheme();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [userToEdit, setUserToEdit] = useState(null);
+    const [newEntityName, setNewEntityName] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -335,8 +336,71 @@ export default function SettingsPage() {
                         </div>
                     )}
                 </Card>
-            </div>
 
+                {/* Entity Management (Admin Only) */}
+                {isAdmin && (
+                    <Card
+                        title="Gestión de Sedes y Clientes"
+                        action={<Globe size={20} style={{ color: 'var(--primary-color)' }} />}
+                    >
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                            Agrega nuevos países o clientes para separar sus inventarios de forma independiente.
+                        </p>
+
+                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <input 
+                                className="form-input" 
+                                placeholder="Nombre de la sede o cliente (ej: Nuevo Cliente ABC)" 
+                                value={newEntityName}
+                                onChange={e => setNewEntityName(e.target.value)}
+                                style={{ flex: 1 }}
+                            />
+                            <Button 
+                                onClick={async () => {
+                                    if (!newEntityName.trim()) return;
+                                    await addEntity({ name: newEntityName.trim() });
+                                    setNewEntityName('');
+                                }}
+                                disabled={!newEntityName.trim()}
+                            >
+                                Agregar Sede
+                            </Button>
+                        </div>
+
+                        <div className="table-responsive" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
+                            {entities.map(entity => (
+                                <div key={entity.id} style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '0.75rem',
+                                    background: 'var(--background)',
+                                    borderRadius: 'var(--radius-md)',
+                                    border: '1px solid var(--border)'
+                                }}>
+                                    <div>
+                                        <p style={{ fontWeight: 600, margin: 0, fontSize: '0.9rem' }}>{entity.name}</p>
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            if (confirm(`¿Estás seguro de eliminar la sede "${entity.name}"? Los equipos no se borrarán pero dejarán de verse agrupados bajo este nombre.`)) {
+                                                await deleteEntity(entity.id);
+                                            }
+                                        }}
+                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.5rem' }}
+                                        title="Eliminar Sede"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                            {entities.length === 0 && (
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'center', padding: '1rem' }}>No hay sedes configuradas.</p>
+                            )}
+                        </div>
+                    </Card>
+                )}
+            </div>
 
 
             {/* Modal para Editar Usuario */}

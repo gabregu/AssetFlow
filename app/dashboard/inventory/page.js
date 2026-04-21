@@ -25,7 +25,7 @@ export default function InventoryPage() {
         addDelivery, deleteDelivery, deleteDeliveries, updateConsumableStock, updateConsumable, addConsumable, deleteConsumable,
         clearInventory, updateRates, addExpense, deleteExpense,
         importSfdcCases, clearSfdcCases, removeSfdcCase,
-        countryFilter, setCountryFilter,
+        countryFilter, setCountryFilter, entities = [],
         login, logout, signup, addUser, deleteUser, updateUser, updatePassword, sendPasswordReset
     } = useStore();
 
@@ -2013,11 +2013,7 @@ export default function InventoryPage() {
                                 value={newAsset.country || 'Argentina'}
                                 onChange={e => setNewAsset({ ...newAsset, country: e.target.value })}
                             >
-                                <option value="Argentina">Argentina</option>
-                                <option value="Chile">Chile</option>
-                                <option value="Colombia">Colombia</option>
-                                <option value="Costa Rica">Costa Rica</option>
-                                <option value="Uruguay">Uruguay</option>
+                                {entities.map(e => <option key={e.id} value={e.name}>{e.name}</option>)}
                             </select>
                         </div>
                     </div>
@@ -2431,11 +2427,7 @@ export default function InventoryPage() {
                             value={selectedYubikey ? selectedYubikey.country : newYubikey.country}
                             onChange={(e) => selectedYubikey ? setSelectedYubikey({ ...selectedYubikey, country: e.target.value }) : setNewYubikey({ ...newYubikey, country: e.target.value })}
                         >
-                            <option value="Argentina">Argentina</option>
-                            <option value="Chile">Chile</option>
-                            <option value="Colombia">Colombia</option>
-                            <option value="Costa Rica">Costa Rica</option>
-                            <option value="Uruguay">Uruguay</option>
+                            {entities.map(e => <option key={e.id} value={e.name}>{e.name}</option>)}
                         </select>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
