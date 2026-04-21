@@ -377,7 +377,7 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="table-responsive" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
-                            {entities && entities.length > 0 ? entities.map(entity => (
+                            {entities && entities.length > 0 && entities.map(entity => (
                                 <div key={entity.id} style={{
                                     display: 'flex',
                                     justifyContent: 'space-between',
