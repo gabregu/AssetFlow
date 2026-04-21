@@ -132,6 +132,18 @@ export default function InventoryPage() {
         }
     };
 
+    const handleBulkBajaDeEquipo = () => {
+        if (window.confirm(`Vas a asignar de forma masiva a "BAJA DE EQUIPO" a los ${selectedAssets.length} equipos seleccionados. ¿Continuar?`)) {
+            selectedAssets.forEach(id => {
+                const assetStr = assets.find(a => a.id === id);
+                if (assetStr) {
+                    updateAsset(id, { ...assetStr, assignee: 'BAJA DE EQUIPO' });
+                }
+            });
+            setSelectedAssets([]);
+        }
+    };
+
     const handleStockClick = (model, status) => {
         // Filter assets for this specific bucket
         const items = assets.filter(a => {
@@ -1541,6 +1553,9 @@ export default function InventoryPage() {
                                             </Button>
                                             <Button variant="outline" size="sm" onClick={handleBulkRetire}>
                                                 Marcar De Baja
+                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={handleBulkBajaDeEquipo}>
+                                                BAJA DE EQUIPO
                                             </Button>
                                         </div>
                                     ) : (
