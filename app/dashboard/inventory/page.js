@@ -2527,6 +2527,7 @@ export default function InventoryPage() {
                                     {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                                     <option value="Disponible">Disponible (Alternativo)</option>
                                     <option value="COD Abril 2026">COD Abril 2026</option>
+                                    <option value="BAJA DE EQUIPO">BAJA DE EQUIPO</option>
                                 </select>
                             )}
                             {exportSettings.mode === 'model' && (
