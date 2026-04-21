@@ -60,8 +60,9 @@ export default function InventoryPage() {
         name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Nuevo',
         date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
         modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
-        eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina', cod: ''
+        eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina', cod: '', boxNumber: ''
     });
+    const [bulkBoxNumber, setBulkBoxNumber] = useState('');
     const [replacementSerial, setReplacementSerial] = useState('');
     const [smartRecommendations, setSmartRecommendations] = useState([]);
     const [assetToReplace, setAssetToReplace] = useState(null);
@@ -137,10 +138,15 @@ export default function InventoryPage() {
             selectedAssets.forEach(id => {
                 const assetStr = assets.find(a => a.id === id);
                 if (assetStr) {
-                    updateAsset(id, { ...assetStr, status: 'BAJA DE EQUIPO' });
+                    updateAsset(id, { 
+                        ...assetStr, 
+                        status: 'BAJA DE EQUIPO',
+                        boxNumber: bulkBoxNumber || assetStr.boxNumber
+                    });
                 }
             });
             setSelectedAssets([]);
+            setBulkBoxNumber('');
         }
     };
 
@@ -1561,6 +1567,23 @@ export default function InventoryPage() {
                                             <Button variant="outline" size="sm" onClick={handleBulkRetire}>
                                                 Marcar De Baja
                                             </Button>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid rgba(37, 99, 235, 0.2)', paddingLeft: '0.75rem' }}>
+                                                <Box size={14} style={{ color: 'var(--primary-color)' }} />
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Caja N°"
+                                                    value={bulkBoxNumber}
+                                                    onChange={(e) => setBulkBoxNumber(e.target.value)}
+                                                    style={{ 
+                                                        width: '70px', 
+                                                        padding: '0.2rem 0.5rem', 
+                                                        fontSize: '0.75rem', 
+                                                        borderRadius: '4px', 
+                                                        border: '1px solid var(--border)',
+                                                        outline: 'none'
+                                                    }}
+                                                />
+                                            </div>
                                             <Button variant="outline" size="sm" onClick={handleBulkBajaDeEquipo}>
                                                 BAJA DE EQUIPO
                                             </Button>
@@ -1599,6 +1622,7 @@ export default function InventoryPage() {
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>USUARIO</th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>CASO SFDC</th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>COD</th>
+                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>CAJA</th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
                                             </tr>
@@ -1670,6 +1694,13 @@ export default function InventoryPage() {
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         {asset.cod ? <Badge variant="destructive">{asset.cod}</Badge> : '-'}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        {asset.boxNumber ? (
+                                                            <Badge variant="outline" style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content', borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}>
+                                                                <Box size={12} /> {asset.boxNumber}
+                                                            </Badge>
+                                                        ) : <span style={{ opacity: 0.3 }}>-</span>}
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
@@ -2135,6 +2166,20 @@ export default function InventoryPage() {
                             value={newAsset.eolDate}
                             onChange={e => setNewAsset({ ...newAsset, eolDate: e.target.value })}
                         />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Número de Caja</label>
+                        <div style={{ position: 'relative' }}>
+                            <Box size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                            <input
+                                className="form-input"
+                                style={{ paddingLeft: '2.5rem' }}
+                                placeholder="Ej: 102"
+                                value={newAsset.boxNumber || ''}
+                                onChange={e => setNewAsset({ ...newAsset, boxNumber: e.target.value })}
+                            />
+                        </div>
                     </div>
 
                     <div className="form-group">
