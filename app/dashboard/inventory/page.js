@@ -715,6 +715,9 @@ export default function InventoryPage() {
             if (exportSettings.value === 'COD Abril 2026') {
                 filteredDocs = filteredDocs.filter(a => a.cod && String(a.cod).toLowerCase().includes('abril 2026'));
                 filteredYubis = filteredYubis.filter(y => y.cod && String(y.cod).toLowerCase().includes('abril 2026'));
+            } else if (exportSettings.value === 'Almacén') {
+                filteredDocs = filteredDocs.filter(a => a.assignee === 'Almacén');
+                filteredYubis = filteredYubis.filter(y => y.assignee === 'Almacén');
             } else {
                 filteredDocs = filteredDocs.filter(a => a.status === exportSettings.value);
                 filteredYubis = filteredYubis.filter(y => y.status === exportSettings.value);
@@ -835,7 +838,7 @@ export default function InventoryPage() {
     const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 3 : 0);
 
     const deviceTypes = ['Laptop', 'Smartphone', 'Tablet'];
-    const statuses = ['Nuevo', 'Recuperado', 'En Reparación', 'Dañado', 'EOL']; // Removed 'Asignado'
+    const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'En Reparación', 'Dañado', 'EOL', 'COD Abril 2026']; // Removed 'Asignado'
 
     const getCountryInitial = (country) => {
         if (!country) return '-';
