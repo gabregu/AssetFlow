@@ -210,6 +210,8 @@ export default function InventoryPage() {
                     matchesStatus = matchesStatus && (a.status === 'Nuevo' || a.status === 'Disponible');
                 } else if (statusFilter === 'Dañado') {
                     matchesStatus = matchesStatus && ['Dañado', 'Rota', 'De Baja'].includes(a.status);
+                } else if (statusFilter === 'COD Abril 2026') {
+                    matchesStatus = matchesStatus && (a.status === 'COD Abril 2026' || a.status === 'BAJA DE EQUIPO');
                 } else {
                     matchesStatus = matchesStatus && a.status === statusFilter;
                 }
@@ -1215,7 +1217,11 @@ export default function InventoryPage() {
                                 {statuses.map(status => {
                                     // Apply country filter first, then device type filter
                                     const filteredByType = selectedDeviceType ? allAssetsNonAssigned.filter(a => a.type === selectedDeviceType) : allAssetsNonAssigned;
-                                    const count = filteredByType.filter(a => a.status === status || (status === 'Nuevo' && a.status === 'Disponible')).length;
+                                    const count = filteredByType.filter(a => 
+                                        a.status === status || 
+                                        (status === 'Nuevo' && a.status === 'Disponible') ||
+                                        (status === 'COD Abril 2026' && a.status === 'BAJA DE EQUIPO')
+                                    ).length;
                                     const color = getStatusVariant(status) === 'success' ? '#16a34a' : getStatusVariant(status) === 'info' ? '#2563eb' : getStatusVariant(status) === 'warning' ? '#f59e0b' : getStatusVariant(status) === 'danger' ? '#ef4444' : 'var(--text-secondary)';
 
                                     const isSelected = statusFilter === status;
