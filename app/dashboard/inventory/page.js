@@ -699,10 +699,14 @@ export default function InventoryPage() {
         if (exportSettings.mode === 'type' && exportSettings.value) {
             filteredDocs = filteredDocs.filter(a => a.type === exportSettings.value);
             filteredYubis = filteredYubis.filter(y => y.type === exportSettings.value);
-            // Consumables don't exactly have type, but we could filter by category if needed
         } else if (exportSettings.mode === 'status' && exportSettings.value) {
-            filteredDocs = filteredDocs.filter(a => a.status === exportSettings.value);
-            filteredYubis = filteredYubis.filter(y => y.status === exportSettings.value);
+            if (exportSettings.value === 'COD Abril 2026') {
+                filteredDocs = filteredDocs.filter(a => a.cod && String(a.cod).toLowerCase().includes('abril 2026'));
+                filteredYubis = filteredYubis.filter(y => y.cod && String(y.cod).toLowerCase().includes('abril 2026'));
+            } else {
+                filteredDocs = filteredDocs.filter(a => a.status === exportSettings.value);
+                filteredYubis = filteredYubis.filter(y => y.status === exportSettings.value);
+            }
         } else if (exportSettings.mode === 'model' && exportSettings.value) {
             filteredDocs = filteredDocs.filter(a => a.name === exportSettings.value);
         }
@@ -718,6 +722,7 @@ export default function InventoryPage() {
                 "Nombre del Equipo": a.name,
                 "Serial / ID": a.serial,
                 "Estado": a.status,
+                "COD": a.cod || '-',
                 "Vendor": a.vendor || '-',
                 "Modelo": a.hardwareSpec || '-',
                 "Orden de Compra": a.purchaseOrder || '-',
@@ -2506,6 +2511,7 @@ export default function InventoryPage() {
                                     <option value="">-- Seleccionar Estado --</option>
                                     {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                                     <option value="Disponible">Disponible (Alternativo)</option>
+                                    <option value="COD Abril 2026">COD Abril 2026</option>
                                 </select>
                             )}
                             {exportSettings.mode === 'model' && (
