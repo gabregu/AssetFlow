@@ -232,7 +232,7 @@ export default function InventoryPage() {
             });
         }
         return result;
-    }, [assets, searchFilter, sortConfig, columnFilters, statusFilter, codFilter]);
+    }, [assets, searchFilter, sortConfig, columnFilters, statusFilter, codFilter, countryFilter]);
 
     const SortIcon = ({ column }) => {
         if (sortConfig.key !== column) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
@@ -927,7 +927,9 @@ export default function InventoryPage() {
         <div style={{ paddingBottom: '4rem', animation: 'fadeIn 0.5s ease-out' }}>
             <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>Gestión de Inventario</h1>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                        Gestión de Inventario {countryFilter !== 'Todos' ? ` - ${countryFilter}` : ''}
+                    </h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Control de activos de hardware y stock de consumibles.</p>
                     <div style={{ marginTop: '1rem' }}>
                         <CountryFilter />
@@ -1530,7 +1532,9 @@ export default function InventoryPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <div style={{ width: '4px', height: '24px', background: 'var(--primary-color)', borderRadius: '4px' }}></div>
                                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
-                                    {(searchFilter !== '' || statusFilter !== null || selectedDeviceType !== null || codFilter) ? 'Equipos Seleccionados' : 'Inventario Global de Activos'}
+                                    {(searchFilter !== '' || statusFilter !== null || selectedDeviceType !== null || codFilter || countryFilter !== 'Todos') 
+                                        ? (countryFilter === 'Todos' ? 'Equipos Seleccionados' : `Inventario: ${countryFilter}`) 
+                                        : 'Inventario Global de Activos'}
                                 </h3>
                                 <Badge variant="info" style={{ fontSize: '0.85rem', padding: '0.2rem 0.5rem' }}>{filteredAssets.length}</Badge>
                             </div>
