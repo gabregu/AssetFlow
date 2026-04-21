@@ -150,6 +150,20 @@ export default function InventoryPage() {
         }
     };
 
+    const handleBulkAssignBox = () => {
+        if (!bulkBoxNumber) return alert("Por favor ingresa un número de caja.");
+        if (window.confirm(`¿Asignar la caja "${bulkBoxNumber}" a los ${selectedAssets.length} equipos seleccionados?`)) {
+            selectedAssets.forEach(id => {
+                const assetStr = assets.find(a => a.id === id);
+                if (assetStr) {
+                    updateAsset(id, { ...assetStr, boxNumber: bulkBoxNumber });
+                }
+            });
+            setSelectedAssets([]);
+            setBulkBoxNumber('');
+        }
+    };
+
     const handleStockClick = (model, status) => {
         // Filter assets for this specific bucket
         const items = assets.filter(a => {
@@ -1569,21 +1583,30 @@ export default function InventoryPage() {
                                             </Button>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid rgba(37, 99, 235, 0.2)', paddingLeft: '0.75rem' }}>
                                                 <Box size={14} style={{ color: 'var(--primary-color)' }} />
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Caja N°"
-                                                    value={bulkBoxNumber}
-                                                    onChange={(e) => setBulkBoxNumber(e.target.value)}
-                                                    style={{ 
-                                                        width: '70px', 
-                                                        padding: '0.2rem 0.5rem', 
-                                                        fontSize: '0.75rem', 
-                                                        borderRadius: '4px', 
-                                                        border: '1px solid var(--border)',
-                                                        outline: 'none'
-                                                    }}
-                                                />
-                                            </div>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Caja N°"
+                                                        value={bulkBoxNumber}
+                                                        onChange={(e) => setBulkBoxNumber(e.target.value)}
+                                                        style={{ 
+                                                            width: '70px', 
+                                                            padding: '0.2rem 0.5rem', 
+                                                            fontSize: '0.75rem', 
+                                                            borderRadius: '4px', 
+                                                            border: '1px solid var(--border)',
+                                                            outline: 'none'
+                                                        }}
+                                                    />
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={handleBulkAssignBox}
+                                                        style={{ padding: '0.2rem 0.4rem', color: 'var(--primary-color)' }}
+                                                        title="Guardar Caja"
+                                                    >
+                                                        <CheckCircle size={16} />
+                                                    </Button>
+                                                </div>
                                             <Button variant="outline" size="sm" onClick={handleBulkBajaDeEquipo}>
                                                 BAJA DE EQUIPO
                                             </Button>
