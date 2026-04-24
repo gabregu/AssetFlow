@@ -766,7 +766,8 @@ export default function InventoryPage() {
                 "Notas": a.notes || '-',
                 "Ubicación": a.country || 'N/A',
                 "Actualizado Por": a.updatedBy || 'Sistema',
-                "Fecha Actualización": a.dateLastUpdate ? new Date(a.dateLastUpdate).toLocaleDateString() : '-'
+                "Fecha Actualización": a.dateLastUpdate ? new Date(a.dateLastUpdate).toLocaleDateString() : '-',
+                "Caja": a.boxNumber || '-'
             }));
 
         // 2. Filtrar Yubikeys Disponibles
@@ -797,7 +798,7 @@ export default function InventoryPage() {
         if (hardwareData.length > 0) {
             const wsHardware = XLSX.utils.json_to_sheet(hardwareData);
             const wscols = [
-                { wch: 10 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 15 }, { wch: 15 }
+                { wch: 10 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 }
             ];
             wsHardware['!cols'] = wscols;
             XLSX.utils.book_append_sheet(wb, wsHardware, "Equipos");
@@ -2599,7 +2600,6 @@ export default function InventoryPage() {
                                     <option value="">-- Seleccionar Estado --</option>
                                     {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                                     <option value="Disponible">Disponible (Alternativo)</option>
-                                    <option value="COD Abril 2026">COD Abril 2026</option>
                                     <option value="BAJA DE EQUIPO">BAJA DE EQUIPO</option>
                                 </select>
                             )}
