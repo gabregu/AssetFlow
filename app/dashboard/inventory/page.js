@@ -503,7 +503,9 @@ export default function InventoryPage() {
                     'imei': 'imei', 'imei 2': 'imei2', 'imei2': 'imei2',
                     'eol': 'eolDate', 'eol date': 'eolDate', 'fin de vida': 'eolDate',
                     'notes': 'notes', 'notas': 'notes', 'comentarios': 'notes', 'comments': 'notes',
-                    'country': 'country', 'pais': 'country', 'país': 'country', 'location': 'country', 'ubicacion': 'country', 'ubicación': 'country'
+                    'country': 'country', 'pais': 'country', 'país': 'country', 'location': 'country', 'ubicacion': 'country', 'ubicación': 'country',
+                    'cod': 'cod', 'lote': 'cod', 'pote': 'cod',
+                    'box_number': 'boxNumber', 'box number': 'boxNumber', 'caja': 'boxNumber', 'box': 'boxNumber', 'nro caja': 'boxNumber'
                 };
 
                 const mappedHeaders = rawHeaders.map(h => headerMap[h] || h);
