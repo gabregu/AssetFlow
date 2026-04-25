@@ -121,17 +121,6 @@ export default function InventoryPage() {
         }
     };
 
-    const handleBulkRetire = () => {
-        if (window.confirm(`Vas a cambiar el estado de ${selectedAssets.length} equipos a "De Baja" (Retirado). ¿Aceptar?`)) {
-            selectedAssets.forEach(id => {
-                const assetStr = assets.find(a => a.id === id);
-                if (assetStr) {
-                    updateAsset(id, { ...assetStr, status: 'De Baja' });
-                }
-            });
-            setSelectedAssets([]);
-        }
-    };
 
     const handleBulkBajaDeEquipo = () => {
         if (window.confirm(`Vas a asignar de forma masiva el estado "BAJA DE EQUIPO" a los ${selectedAssets.length} equipos seleccionados. ¿Continuar?`)) {
@@ -210,8 +199,13 @@ export default function InventoryPage() {
                     matchesStatus = matchesStatus && (a.status === 'Nuevo' || a.status === 'Disponible');
                 } else if (statusFilter === 'Dañado') {
                     matchesStatus = matchesStatus && ['Dañado', 'Rota', 'De Baja'].includes(a.status);
-                } else if (statusFilter === 'COD Abril 2026') {
-                    matchesStatus = matchesStatus && (a.status === 'COD Abril 2026' || a.status === 'BAJA DE EQUIPO');
+                } else if (statusFilter === 'Baja de Equipos') {
+                    matchesStatus = matchesStatus && (
+                        a.status === 'COD Abril 2026' || 
+                        a.status === 'BAJA DE EQUIPO' || 
+                        a.assignee === 'BAJA DE EQUIPO' || 
+                        (a.cod && a.cod.toLowerCase().includes('abril 2026'))
+                    );
                 } else {
                     matchesStatus = matchesStatus && a.status === statusFilter;
                 }
@@ -736,9 +730,9 @@ export default function InventoryPage() {
             filteredDocs = filteredDocs.filter(a => a.type === exportSettings.value);
             filteredYubis = filteredYubis.filter(y => y.type === exportSettings.value);
         } else if (exportSettings.mode === 'status' && exportSettings.value) {
-            if (exportSettings.value === 'COD Abril 2026') {
-                filteredDocs = filteredDocs.filter(a => a.cod && String(a.cod).toLowerCase().includes('abril 2026'));
-                filteredYubis = filteredYubis.filter(y => y.cod && String(y.cod).toLowerCase().includes('abril 2026'));
+            if (exportSettings.value === 'Baja de Equipos') {
+                filteredDocs = filteredDocs.filter(a => a.status === 'COD Abril 2026' || a.status === 'BAJA DE EQUIPO' || a.assignee === 'BAJA DE EQUIPO' || (a.cod && a.cod.toLowerCase().includes('abril 2026')));
+                filteredYubis = filteredYubis.filter(y => y.status === 'COD Abril 2026' || y.status === 'BAJA DE EQUIPO' || y.assignee === 'BAJA DE EQUIPO' || (y.cod && y.cod.toLowerCase().includes('abril 2026')));
             } else if (exportSettings.value === 'Almacén') {
                 filteredDocs = filteredDocs.filter(a => a.assignee === 'Almacén');
                 filteredYubis = filteredYubis.filter(y => y.assignee === 'Almacén');
@@ -863,7 +857,7 @@ export default function InventoryPage() {
     const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 3 : 0);
 
     const deviceTypes = ['Laptop', 'Smartphone', 'Tablet'];
-    const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'En Reparación', 'Dañado', 'EOL', 'COD Abril 2026']; // Removed 'Asignado'
+    const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
 
     const getCountryInitial = (country) => {
         if (!country) return '-';
@@ -1223,7 +1217,7 @@ export default function InventoryPage() {
                                     const count = filteredByType.filter(a => 
                                         a.status === status || 
                                         (status === 'Nuevo' && a.status === 'Disponible') ||
-                                        (status === 'COD Abril 2026' && a.status === 'BAJA DE EQUIPO')
+                                        (status === 'Baja de Equipos' && (a.status === 'COD Abril 2026' || a.status === 'BAJA DE EQUIPO' || a.assignee === 'BAJA DE EQUIPO' || (a.cod && a.cod.toLowerCase().includes('abril 2026'))))
                                     ).length;
                                     const color = getStatusVariant(status) === 'success' ? '#16a34a' : getStatusVariant(status) === 'info' ? '#2563eb' : getStatusVariant(status) === 'warning' ? '#f59e0b' : getStatusVariant(status) === 'danger' ? '#ef4444' : 'var(--text-secondary)';
 
@@ -1587,9 +1581,7 @@ export default function InventoryPage() {
                                             <Button variant="danger" size="sm" icon={Trash2} onClick={handleBulkDelete}>
                                                 Eliminar
                                             </Button>
-                                            <Button variant="outline" size="sm" onClick={handleBulkRetire}>
-                                                Marcar De Baja
-                                            </Button>
+
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid rgba(37, 99, 235, 0.2)', paddingLeft: '0.75rem' }}>
                                                 <Box size={14} style={{ color: 'var(--primary-color)' }} />
                                                     <input 
@@ -2602,7 +2594,6 @@ export default function InventoryPage() {
                                     <option value="">-- Seleccionar Estado --</option>
                                     {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                                     <option value="Disponible">Disponible (Alternativo)</option>
-                                    <option value="BAJA DE EQUIPO">BAJA DE EQUIPO</option>
                                 </select>
                             )}
                             {exportSettings.mode === 'model' && (

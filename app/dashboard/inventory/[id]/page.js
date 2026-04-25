@@ -10,7 +10,7 @@ import {
     Calendar, User, History, Tag, ExternalLink,
     AlertCircle, CheckCircle, Clock, Trash2, Edit3,
     ShoppingCart, Info, FileText, Smartphone as ImeiIcon,
-    ArrowRight, Key
+    ArrowRight, Key, Box
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -152,6 +152,16 @@ export default function AssetDetailPage() {
                                                 </Link>
                                             ) : '-'}
                                         </p>
+                                    </div>
+                                    <div>
+                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Caja / Box</p>
+                                        <p style={{ fontSize: '0.95rem', fontWeight: 500, margin: '0.2rem 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {asset.boxNumber ? <><Box size={14} /> {asset.boxNumber}</> : '-'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Certificado (COD)</p>
+                                        <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--danger-color)', margin: '0.2rem 0' }}>{asset.cod || '-'}</p>
                                     </div>
                                 </div>
                             </div>
