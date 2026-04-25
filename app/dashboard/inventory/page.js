@@ -197,6 +197,8 @@ export default function InventoryPage() {
             if (statusFilter) {
                 if (statusFilter === 'Nuevo') {
                     matchesStatus = matchesStatus && (a.status === 'Nuevo' || a.status === 'Disponible');
+                } else if (statusFilter === 'Almacén') {
+                    matchesStatus = matchesStatus && (a.assignee === 'Almacén' || a.assignee === 'En Almacén');
                 } else if (statusFilter === 'Dañado') {
                     matchesStatus = matchesStatus && ['Dañado', 'Rota', 'De Baja'].includes(a.status);
                 } else if (statusFilter === 'Baja de Equipos') {
@@ -732,8 +734,8 @@ export default function InventoryPage() {
                 filteredDocs = filteredDocs.filter(a => (a.status && a.status.toLowerCase().includes('baja de equipo')) || (a.assignee && a.assignee.toLowerCase().includes('baja de equipo')));
                 filteredYubis = filteredYubis.filter(y => (y.status && y.status.toLowerCase().includes('baja de equipo')) || (y.assignee && y.assignee.toLowerCase().includes('baja de equipo')));
             } else if (exportSettings.value === 'Almacén') {
-                filteredDocs = filteredDocs.filter(a => a.assignee === 'Almacén');
-                filteredYubis = filteredYubis.filter(y => y.assignee === 'Almacén');
+                filteredDocs = filteredDocs.filter(a => a.assignee === 'Almacén' || a.assignee === 'En Almacén');
+                filteredYubis = filteredYubis.filter(y => y.assignee === 'Almacén' || y.assignee === 'En Almacén');
             } else {
                 filteredDocs = filteredDocs.filter(a => a.status === exportSettings.value);
                 filteredYubis = filteredYubis.filter(y => y.status === exportSettings.value);
@@ -1215,6 +1217,7 @@ export default function InventoryPage() {
                                     const filteredByType = selectedDeviceType ? allAssetsNonAssigned.filter(a => a.type === selectedDeviceType) : allAssetsNonAssigned;
                                     const count = filteredByType.filter(a => 
                                         a.status === status || 
+                                        (status === 'Almacén' && (a.assignee === 'Almacén' || a.assignee === 'En Almacén')) ||
                                         (status === 'Nuevo' && a.status === 'Disponible') ||
                                         (status === 'Baja de Equipos' && ((a.status && a.status.toLowerCase().includes('baja de equipo')) || (a.assignee && a.assignee.toLowerCase().includes('baja de equipo'))))
                                     ).length;
