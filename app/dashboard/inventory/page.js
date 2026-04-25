@@ -1256,7 +1256,8 @@ export default function InventoryPage() {
                                     );
                                 })}
                                 {(() => {
-                                    const filteredCodByType = selectedDeviceType ? allAssetsNonAssigned.filter(a => a.type === selectedDeviceType) : allAssetsNonAssigned;
+                                    const allAssetsList = applyCountryFilter(assets);
+                                    const filteredCodByType = selectedDeviceType ? allAssetsList.filter(a => a.type === selectedDeviceType) : allAssetsList;
                                     const codCount = filteredCodByType.filter(a => a.cod && a.cod.trim() !== '').length;
                                     return (
                                         <div
