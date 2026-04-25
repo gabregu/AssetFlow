@@ -1163,7 +1163,8 @@ export default function InventoryPage() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {deviceTypes.map(type => {
-                                    const count = allAssetsNonAssigned.filter(a => a.type === type).length;
+                                    const allAssetsList = applyCountryFilter(assets);
+                                    const count = allAssetsList.filter(a => a.type === type).length;
                                     const Icon = getTypeIcon(type);
                                     const isSelected = selectedDeviceType === type;
                                     return (
