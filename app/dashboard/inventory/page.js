@@ -844,7 +844,9 @@ export default function InventoryPage() {
     };
 
     // KPI Calculations - FOCUS ON WAREHOUSE / NON-ASSIGNED
-    const allAssetsNonAssigned = applyCountryFilter(assets).filter(a => a.status !== 'Asignado');
+    const allAssetsNonAssigned = applyCountryFilter(assets).filter(a => 
+        a.status !== 'Asignado' || a.assignee === 'Almacén' || a.assignee === 'En Almacén'
+    );
     const warehouseAssets = allAssetsNonAssigned.filter(a => a.assignee === 'Almacén');
 
     const totalAssets = warehouseAssets.length;
