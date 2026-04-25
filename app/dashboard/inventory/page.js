@@ -201,10 +201,8 @@ export default function InventoryPage() {
                     matchesStatus = matchesStatus && ['Dañado', 'Rota', 'De Baja'].includes(a.status);
                 } else if (statusFilter === 'Baja de Equipos') {
                     matchesStatus = matchesStatus && (
-                        a.status === 'COD Abril 2026' || 
-                        a.status === 'BAJA DE EQUIPO' || 
-                        a.assignee === 'BAJA DE EQUIPO' || 
-                        (a.cod && a.cod.toLowerCase().includes('abril 2026'))
+                        (a.status && a.status.toLowerCase().includes('baja de equipo')) || 
+                        (a.assignee && a.assignee.toLowerCase().includes('baja de equipo'))
                     );
                 } else {
                     matchesStatus = matchesStatus && a.status === statusFilter;
@@ -731,8 +729,8 @@ export default function InventoryPage() {
             filteredYubis = filteredYubis.filter(y => y.type === exportSettings.value);
         } else if (exportSettings.mode === 'status' && exportSettings.value) {
             if (exportSettings.value === 'Baja de Equipos') {
-                filteredDocs = filteredDocs.filter(a => a.status === 'COD Abril 2026' || a.status === 'BAJA DE EQUIPO' || a.assignee === 'BAJA DE EQUIPO' || (a.cod && a.cod.toLowerCase().includes('abril 2026')));
-                filteredYubis = filteredYubis.filter(y => y.status === 'COD Abril 2026' || y.status === 'BAJA DE EQUIPO' || y.assignee === 'BAJA DE EQUIPO' || (y.cod && y.cod.toLowerCase().includes('abril 2026')));
+                filteredDocs = filteredDocs.filter(a => (a.status && a.status.toLowerCase().includes('baja de equipo')) || (a.assignee && a.assignee.toLowerCase().includes('baja de equipo')));
+                filteredYubis = filteredYubis.filter(y => (y.status && y.status.toLowerCase().includes('baja de equipo')) || (y.assignee && y.assignee.toLowerCase().includes('baja de equipo')));
             } else if (exportSettings.value === 'Almacén') {
                 filteredDocs = filteredDocs.filter(a => a.assignee === 'Almacén');
                 filteredYubis = filteredYubis.filter(y => y.assignee === 'Almacén');
@@ -1217,7 +1215,7 @@ export default function InventoryPage() {
                                     const count = filteredByType.filter(a => 
                                         a.status === status || 
                                         (status === 'Nuevo' && a.status === 'Disponible') ||
-                                        (status === 'Baja de Equipos' && (a.status === 'COD Abril 2026' || a.status === 'BAJA DE EQUIPO' || a.assignee === 'BAJA DE EQUIPO' || (a.cod && a.cod.toLowerCase().includes('abril 2026'))))
+                                        (status === 'Baja de Equipos' && ((a.status && a.status.toLowerCase().includes('baja de equipo')) || (a.assignee && a.assignee.toLowerCase().includes('baja de equipo'))))
                                     ).length;
                                     const color = getStatusVariant(status) === 'success' ? '#16a34a' : getStatusVariant(status) === 'info' ? '#2563eb' : getStatusVariant(status) === 'warning' ? '#f59e0b' : getStatusVariant(status) === 'danger' ? '#ef4444' : 'var(--text-secondary)';
 
