@@ -883,17 +883,28 @@ export default function InventoryPage() {
             ? allAssetsNonAssigned.filter(a => a.type === selectedDeviceType) 
             : allAssetsNonAssigned;
 
+        // Special Handling for BAJA DE EQUIPOS and COD (Global counts, both in and out of warehouse)
+        const allAssetsForGlobalCounts = selectedDeviceType 
+            ? applyCountryFilter(assets).filter(a => a.type === selectedDeviceType) 
+            : applyCountryFilter(assets);
+
         statuses.forEach(status => {
-            statusCounts[status] = filteredBySelectedType.filter(a => 
-                a.status === status || 
-                (status === 'Almacén' && (a.assignee === 'Almacén' || a.assignee === 'En Almacén')) ||
-                (status === 'Nuevo' && a.status === 'Disponible') ||
-                (status === 'Baja de Equipos' && ((a.status && a.status.toLowerCase().includes('baja de equipo')) || (a.assignee && a.assignee.toLowerCase().includes('baja de equipo'))))
-            ).length;
+            if (status === 'Baja de Equipos') {
+                statusCounts[status] = allAssetsForGlobalCounts.filter(a => 
+                    (a.status && a.status.toLowerCase().includes('baja de equipo')) || 
+                    (a.assignee && a.assignee.toLowerCase().includes('baja de equipo'))
+                ).length;
+            } else {
+                statusCounts[status] = filteredBySelectedType.filter(a => 
+                    a.status === status || 
+                    (status === 'Almacén' && (a.assignee === 'Almacén' || a.assignee === 'En Almacén')) ||
+                    (status === 'Nuevo' && a.status === 'Disponible')
+                ).length;
+            }
         });
 
-        // COD count specifically
-        statusCounts['COD'] = filteredBySelectedType.filter(a => a.cod && a.cod.trim() !== '').length;
+        // COD count specifically (Global)
+        statusCounts['COD'] = allAssetsForGlobalCounts.filter(a => a.cod && a.cod.trim() !== '').length;
 
         return { countsByType: typeCounts, countsByStatus: statusCounts };
     }, [allAssetsNonAssigned, selectedDeviceType]);
