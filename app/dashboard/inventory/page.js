@@ -346,24 +346,23 @@ export default function InventoryPage() {
     };
 
     const handleAddAccessory = async (e) => {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
+        alert("Paso 1: Iniciando creación. name=" + newAccessory.name);
         try {
-            // Aseguramos que el nuevo accesorio tenga el país seleccionado
             const accessoryWithCountry = {
                 ...newAccessory,
                 country: countryFilter !== 'Todos' ? countryFilter : 'Argentina'
             };
-
+            
+            alert("Paso 2: Llamando a Supabase con country=" + accessoryWithCountry.country);
             await addConsumable(accessoryWithCountry);
             
-            // Reset state BEFORE closing
+            alert("Paso 3: Artículo insertado. Cerrando modal...");
             setNewAccessory({ name: '', category: 'Accesorio', stock: 0 });
             setIsAddAccessoryModalOpen(false);
             
-            console.log("Artículo creado correctamente con país:", accessoryWithCountry.country);
         } catch (error) {
-            console.error(error);
-            alert("Error al crear artículo: " + (error.message || JSON.stringify(error)));
+            alert("Error atrapado en catch: " + (error && error.message ? error.message : JSON.stringify(error)));
         }
     };
 
