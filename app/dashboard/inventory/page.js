@@ -842,11 +842,11 @@ export default function InventoryPage() {
         });
     };
 
-    // KPI Calculations - FOCUS ON WAREHOUSE / NON-ASSIGNED
+    // KPI Calculations - STRICT FOCUS ON PHYSICAL WAREHOUSE STOCK
     const allAssetsNonAssigned = applyCountryFilter(assets).filter(a => 
-        a.status !== 'Asignado' || a.assignee === 'Almacén' || a.assignee === 'En Almacén'
+        a.assignee === 'Almacén' || a.assignee === 'En Almacén'
     );
-    const warehouseAssets = allAssetsNonAssigned.filter(a => a.assignee === 'Almacén');
+    const warehouseAssets = allAssetsNonAssigned;
 
     const totalAssets = warehouseAssets.length;
     const enReparacion = allAssetsNonAssigned.filter(a => a.status === 'En Reparación').length;
