@@ -1170,7 +1170,13 @@ export default function InventoryPage() {
                     title="Inventario de Security Keys (Yubikeys)"
                     action={
                         (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
-                            <Button size="sm" icon={Plus} onClick={() => setIsAddYubikeyModalOpen(true)}>
+                            <Button 
+                                size="sm" 
+                                icon={Plus} 
+                                disabled={countryFilter === 'Todos'}
+                                title={countryFilter === 'Todos' ? "Selecciona una región específica para añadir items" : "Añadir Security Key"}
+                                onClick={() => setIsAddYubikeyModalOpen(true)}
+                            >
                                 Añadir Security Key
                             </Button>
                         )
@@ -1537,6 +1543,8 @@ export default function InventoryPage() {
                         {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
                             <Button
                                 icon={Plus}
+                                disabled={countryFilter === 'Todos'}
+                                title={countryFilter === 'Todos' ? "Selecciona una región específica para añadir activos" : "Añadir nuevo equipo"}
                                 onClick={() => {
                                     setEditingAsset(null);
                                     setNewAsset({
@@ -1884,7 +1892,13 @@ export default function InventoryPage() {
                     title="Inventario de Consumibles"
                     action={
                         (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
-                            <Button size="sm" icon={Plus} onClick={() => setIsAddAccessoryModalOpen(true)}>
+                            <Button 
+                                size="sm" 
+                                icon={Plus} 
+                                disabled={countryFilter === 'Todos'}
+                                title={countryFilter === 'Todos' ? "Selecciona una región específica para añadir artículos" : "Añadir nuevo artículo"}
+                                onClick={() => setIsAddAccessoryModalOpen(true)}
+                            >
                                 Añadir Artículo
                             </Button>
                         )
