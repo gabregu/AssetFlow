@@ -1205,7 +1205,7 @@ export default function InventoryPage() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {deviceTypes.map(type => {
-                                    const allAssetsList = allAssetsNonAssigned;
+                                    const allAssetsList = applyCountryFilter(assets);
                                     const count = allAssetsList.filter(a => a.type === type).length;
                                     const Icon = getTypeIcon(type);
                                     const isSelected = selectedDeviceType === type;
@@ -1304,7 +1304,7 @@ export default function InventoryPage() {
                                     );
                                 })}
                                 {(() => {
-                                    const allAssetsList = allAssetsNonAssigned;
+                                    const allAssetsList = applyCountryFilter(assets);
                                     const filteredCodByType = selectedDeviceType ? allAssetsList.filter(a => a.type === selectedDeviceType) : allAssetsList;
                                     const codCount = filteredCodByType.filter(a => a.cod && a.cod.trim() !== '').length;
                                     return (
