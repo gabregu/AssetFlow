@@ -234,7 +234,15 @@ export default function InventoryPage() {
                 matchesSelectedType = a.type === selectedDeviceType;
             }
 
-            return matchesSearch && matchesStatus && matchesType && matchesAssignee && matchesCountry && matchesSelectedType;
+            // --- DEFAULT VISIBILITY LOGIC ---
+            // If NO global search is active, only show items in Warehouse.
+            // If a search IS active, search across the entire asset universe.
+            let matchesDefaultVisibility = true;
+            if (searchFilter === '') {
+                matchesDefaultVisibility = a.assignee === 'Almacén' || a.assignee === 'En Almacén';
+            }
+
+            return matchesSearch && matchesStatus && matchesType && matchesAssignee && matchesCountry && matchesSelectedType && matchesDefaultVisibility;
         });
 
         if (sortConfig.key) {
