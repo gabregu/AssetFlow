@@ -1294,7 +1294,7 @@ export default function InventoryPage() {
                                                 <div>
                                                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: isSelected ? 'white' : 'var(--text-main)' }}>{type}s</div>
                                                     <div style={{ fontSize: '0.7rem', color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>
-                                                        Total: {totalCount} / Almacén: {count}
+                                                        Total Registros: {totalCount} / En Almacén: {count}
                                                     </div>
                                                 </div>
                                             </div>
