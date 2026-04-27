@@ -856,9 +856,39 @@ export default function InventoryPage() {
     const destructionCount = allAssetsNonAssigned.filter(a => a.cod && a.cod.trim() !== '').length;
 
     const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 3 : 0);
-
     const deviceTypes = ['Laptop', 'Smartphone', 'Tablet'];
+
     const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
+
+    // Performance Optimization: Memoize all summary counts
+    const { countsByType, countsByStatus } = React.useMemo(() => {
+        const typeCounts = {};
+        const statusCounts = {};
+
+        // Category counts (Left side cards)
+        deviceTypes.forEach(type => {
+            typeCounts[type] = allAssetsNonAssigned.filter(a => a.type === type).length;
+        });
+
+        // Status counts (Right side grid)
+        const filteredBySelectedType = selectedDeviceType 
+            ? allAssetsNonAssigned.filter(a => a.type === selectedDeviceType) 
+            : allAssetsNonAssigned;
+
+        statuses.forEach(status => {
+            statusCounts[status] = filteredBySelectedType.filter(a => 
+                a.status === status || 
+                (status === 'Almacén' && (a.assignee === 'Almacén' || a.assignee === 'En Almacén')) ||
+                (status === 'Nuevo' && a.status === 'Disponible') ||
+                (status === 'Baja de Equipos' && ((a.status && a.status.toLowerCase().includes('baja de equipo')) || (a.assignee && a.assignee.toLowerCase().includes('baja de equipo'))))
+            ).length;
+        });
+
+        // COD count specifically
+        statusCounts['COD'] = filteredBySelectedType.filter(a => a.cod && a.cod.trim() !== '').length;
+
+        return { countsByType: typeCounts, countsByStatus: statusCounts };
+    }, [allAssetsNonAssigned, selectedDeviceType]);
 
     const getCountryInitial = (country) => {
         if (!country) return '-';
@@ -1205,8 +1235,7 @@ export default function InventoryPage() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {deviceTypes.map(type => {
-                                    const allAssetsList = applyCountryFilter(assets);
-                                    const count = allAssetsList.filter(a => a.type === type).length;
+                                    const count = countsByType[type] || 0;
                                     const Icon = getTypeIcon(type);
                                     const isSelected = selectedDeviceType === type;
                                     return (
@@ -1257,14 +1286,7 @@ export default function InventoryPage() {
                             </div>
                             <div className="grid-responsive-3">
                                 {statuses.map(status => {
-                                    // Apply country filter first, then device type filter
-                                    const filteredByType = selectedDeviceType ? allAssetsNonAssigned.filter(a => a.type === selectedDeviceType) : allAssetsNonAssigned;
-                                    const count = filteredByType.filter(a => 
-                                        a.status === status || 
-                                        (status === 'Almacén' && (a.assignee === 'Almacén' || a.assignee === 'En Almacén')) ||
-                                        (status === 'Nuevo' && a.status === 'Disponible') ||
-                                        (status === 'Baja de Equipos' && ((a.status && a.status.toLowerCase().includes('baja de equipo')) || (a.assignee && a.assignee.toLowerCase().includes('baja de equipo'))))
-                                    ).length;
+                                    const count = countsByStatus[status] || 0;
                                     const color = getStatusVariant(status) === 'success' ? '#16a34a' : getStatusVariant(status) === 'info' ? '#2563eb' : getStatusVariant(status) === 'warning' ? '#f59e0b' : getStatusVariant(status) === 'danger' ? '#ef4444' : 'var(--text-secondary)';
 
                                     const isSelected = statusFilter === status;
@@ -1304,9 +1326,7 @@ export default function InventoryPage() {
                                     );
                                 })}
                                 {(() => {
-                                    const allAssetsList = applyCountryFilter(assets);
-                                    const filteredCodByType = selectedDeviceType ? allAssetsList.filter(a => a.type === selectedDeviceType) : allAssetsList;
-                                    const codCount = filteredCodByType.filter(a => a.cod && a.cod.trim() !== '').length;
+                                    const codCount = countsByStatus['COD'] || 0;
                                     return (
                                         <div
                                             onClick={() => {
@@ -1382,7 +1402,7 @@ export default function InventoryPage() {
                                     </thead>
                                     <tbody>
                                         {Object.entries(
-                                            applyCountryFilter(assets)
+                                            allAssetsNonAssigned
                                                 .filter(a => !selectedDeviceType || a.type === selectedDeviceType)
                                                 .reduce((acc, a) => {
                                                 if (!acc[a.name]) {
