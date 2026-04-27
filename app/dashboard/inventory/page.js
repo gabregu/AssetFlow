@@ -349,9 +349,14 @@ export default function InventoryPage() {
         e.preventDefault();
         try {
             await addConsumable(newAccessory);
-            setIsAddAccessoryModalOpen(false);
+            // Reset state BEFORE closing or alerts to ensure it's ready for the next one
             setNewAccessory({ name: '', category: 'Accesorio', stock: 0 });
-            alert("Artículo creado correctamente");
+            setIsAddAccessoryModalOpen(false);
+            
+            // Optional: You could call refreshData() here if you want a full sync, 
+            // but addConsumable already updates the local state.
+            
+            console.log("Artículo creado correctamente");
         } catch (error) {
             alert("Error al crear artículo: " + error.message);
         }
