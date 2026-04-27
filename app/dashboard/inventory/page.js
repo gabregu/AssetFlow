@@ -23,7 +23,7 @@ export default function InventoryPage() {
         tickets, assets, consumables, yubikeys, deliveries, sfdcCases, lastImportedCases, users, currentUser, rates, expenses, loading,
         addTicket, updateTicket, deleteTicket, deleteTickets, addAsset, addAssets, updateAsset, deleteAsset,
         addDelivery, deleteDelivery, deleteDeliveries, updateConsumableStock, updateConsumable, addConsumable, deleteConsumable,
-        clearInventory, updateRates, addExpense, deleteExpense,
+        clearInventory, clearInventoryLaptops, clearInventorySmartphones, updateRates, addExpense, deleteExpense,
         importSfdcCases, clearSfdcCases, removeSfdcCase,
         countryFilter, setCountryFilter, entities = [],
         login, logout, signup, addUser, deleteUser, updateUser, updatePassword, sendPasswordReset
@@ -184,23 +184,21 @@ export default function InventoryPage() {
             if (columnFilters.status === 'All') {
                 matchesStatus = true;
             } else if (columnFilters.status === 'Nuevo') {
-                // 'Nuevo' filter includes both 'Nuevo' and 'Disponible'
                 matchesStatus = a.status === 'Nuevo' || a.status === 'Disponible';
             } else if (columnFilters.status === 'Dañado') {
-                // 'Dañado' filter includes 'Rota', 'De Baja', 'Dañado'
-                matchesStatus = ['Dañado', 'Rota', 'De Baja'].includes(a.status);
+                matchesStatus = ['Dañado', 'Rota', 'De Baja', 'EOL'].includes(a.status);
             } else {
                 matchesStatus = a.status === columnFilters.status;
             }
 
-            // --- NUEVO FILTRO VISUAL POR ESTADO ---
+            // --- NUEVO FILTRO VISUAL POR ESTADO (CARDS SUPERIORES) ---
             if (statusFilter) {
                 if (statusFilter === 'Nuevo') {
                     matchesStatus = matchesStatus && (a.status === 'Nuevo' || a.status === 'Disponible');
                 } else if (statusFilter === 'Almacén') {
                     matchesStatus = matchesStatus && (a.assignee === 'Almacén' || a.assignee === 'En Almacén');
                 } else if (statusFilter === 'Dañado') {
-                    matchesStatus = matchesStatus && ['Dañado', 'Rota', 'De Baja'].includes(a.status);
+                    matchesStatus = matchesStatus && ['Dañado', 'Rota', 'De Baja', 'EOL'].includes(a.status);
                 } else if (statusFilter === 'Baja de Equipos') {
                     matchesStatus = matchesStatus && (
                         (a.status && a.status.toLowerCase().includes('baja de equipo')) || 
@@ -215,10 +213,6 @@ export default function InventoryPage() {
                 matchesStatus = matchesStatus && a.cod && a.cod.trim() !== '';
             }
 
-            // --- EXCLUDED FOM TOTALS, BUT VISIBLE IN SEARCH ---
-            // We no longer return false here for 'Asignado' so the user can still search for them by serial number.
-            // if (a.status === 'Asignado') return false;
-
             const matchesType = columnFilters.type === 'All' || a.type === columnFilters.type;
             const matchesAssignee = !columnFilters.assignee || a.assignee.toLowerCase().includes(columnFilters.assignee.toLowerCase());
 
@@ -228,14 +222,19 @@ export default function InventoryPage() {
                 if (a.country) {
                     matchesCountry = a.country.toLowerCase().includes(countryFilter.toLowerCase());
                 } else if (a.notes && a.notes.includes(countryFilter)) {
-                    // Fallback: check notes if country was imported there
                     matchesCountry = true;
                 } else {
-                    matchesCountry = false; // Unknown country -> hide
+                    matchesCountry = false;
                 }
             }
 
-            return matchesSearch && matchesStatus && matchesType && matchesAssignee && matchesCountry;
+            // --- NUEVO FILTRO POR TIPO DE DISPOSITIVO (CARDS SUPERIORES) ---
+            let matchesSelectedType = true;
+            if (selectedDeviceType) {
+                matchesSelectedType = a.type === selectedDeviceType;
+            }
+
+            return matchesSearch && matchesStatus && matchesType && matchesAssignee && matchesCountry && matchesSelectedType;
         });
 
         if (sortConfig.key) {
@@ -248,7 +247,7 @@ export default function InventoryPage() {
             });
         }
         return result;
-    }, [assets, searchFilter, sortConfig, columnFilters, statusFilter, codFilter, countryFilter]);
+    }, [assets, searchFilter, sortConfig, columnFilters, statusFilter, codFilter, countryFilter, selectedDeviceType]);
 
     const SortIcon = ({ column }) => {
         if (sortConfig.key !== column) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
@@ -1046,22 +1045,61 @@ export default function InventoryPage() {
                             </div>
                         )}
                         {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                icon={Trash2}
-                                onClick={() => {
-                                    const scopeMsg = countryFilter === 'Todos' ? 'TODO EL INVENTARIO (GLOBAL)' : `EL INVENTARIO DE ${countryFilter.toUpperCase()}`;
-                                    if (window.confirm(`⚠️ ADVERTENCIA: Esta acción BORRARÁ ${scopeMsg}.\n\n¿Estás absolutamente seguro?`)) {
-                                        if (window.confirm('¿Confirmación final? Esta acción es irreversible.')) {
-                                            clearInventory(countryFilter);
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    icon={Trash2}
+                                    onClick={() => {
+                                        const scopeMsg = countryFilter === 'Todos' ? 'TODO EL INVENTARIO (GLOBAL)' : `EL INVENTARIO DE ${countryFilter.toUpperCase()}`;
+                                        if (window.confirm(`⚠️ ADVERTENCIA: Esta acción BORRARÁ ${scopeMsg}.\n\n¿Estás absolutamente seguro?`)) {
+                                            if (window.confirm('¿Confirmación final? Esta acción es irreversible.')) {
+                                                clearInventory(countryFilter);
+                                            }
                                         }
-                                    }
-                                }}
-                                style={{ color: '#ef4444', borderColor: '#ef4444', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
-                            >
-                                {countryFilter === 'Todos' ? 'Vaciar Todo' : `Vaciar ${countryFilter}`}
-                            </Button>
+                                    }}
+                                    style={{ color: '#ef4444', borderColor: '#ef4444', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                                    title="Vaciar todo el inventario (Equipos y Accesorios)"
+                                >
+                                    {countryFilter === 'Todos' ? 'Vaciar Todo' : `Vaciar ${countryFilter}`}
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    icon={Trash2}
+                                    onClick={() => {
+                                        const scopeMsg = countryFilter === 'Todos' ? 'TODAS LAS LAPTOPS (GLOBAL)' : `LAS LAPTOPS DE ${countryFilter.toUpperCase()}`;
+                                        if (window.confirm(`⚠️ ADVERTENCIA: Esta acción BORRARÁ ${scopeMsg}.\n\n¿Estás absolutamente seguro?`)) {
+                                            if (window.confirm('¿Confirmación final? Esta acción es irreversible.')) {
+                                                clearInventoryLaptops(countryFilter);
+                                            }
+                                        }
+                                    }}
+                                    style={{ color: '#ef4444', borderColor: '#ef4444', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                                    title="Vaciar solo laptops"
+                                >
+                                    Vaciar Laptops
+                                </Button>
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    icon={Trash2}
+                                    onClick={() => {
+                                        const scopeMsg = countryFilter === 'Todos' ? 'TODOS LOS SMARTPHONES (GLOBAL)' : `LOS SMARTPHONES DE ${countryFilter.toUpperCase()}`;
+                                        if (window.confirm(`⚠️ ADVERTENCIA: Esta acción BORRARÁ ${scopeMsg}.\n\n¿Estás absolutamente seguro?`)) {
+                                            if (window.confirm('¿Confirmación final? Esta acción es irreversible.')) {
+                                                clearInventorySmartphones(countryFilter);
+                                            }
+                                        }
+                                    }}
+                                    style={{ color: '#ef4444', borderColor: '#ef4444', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}
+                                    title="Vaciar solo smartphones"
+                                >
+                                    Vaciar Celulares
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -1174,7 +1212,11 @@ export default function InventoryPage() {
                                     return (
                                         <div
                                             key={type}
-                                            onClick={() => setSelectedDeviceType(isSelected ? null : type)}
+                                            onClick={() => {
+                                                const newType = isSelected ? null : type;
+                                                setSelectedDeviceType(newType);
+                                                if (newType) setIsInventoryExpanded(true);
+                                            }}
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
