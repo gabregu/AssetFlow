@@ -2452,7 +2452,22 @@ export default function InventoryPage() {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem' }}>
                         <Button type="button" variant="ghost" onClick={() => setIsAddAccessoryModalOpen(false)}>Cancelar</Button>
-                        <Button type="submit">Crear Artículo</Button>
+                        <Button 
+                            type="button" 
+                            onClick={(e) => {
+                                if (!newAccessory.name) {
+                                    alert("Por favor, ingrese un nombre para el artículo.");
+                                    return;
+                                }
+                                if (newAccessory.stock === '' || newAccessory.stock < 0) {
+                                    alert("Por favor, ingrese un stock válido (mayor o igual a 0).");
+                                    return;
+                                }
+                                handleAddAccessory(e);
+                            }}
+                        >
+                            Crear Artículo
+                        </Button>
                     </div>
                 </form>
             </Modal>
