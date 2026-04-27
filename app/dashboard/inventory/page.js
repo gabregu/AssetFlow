@@ -869,13 +869,16 @@ export default function InventoryPage() {
     const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
 
     // Performance Optimization: Memoize all summary counts
-    const { countsByType, countsByStatus } = React.useMemo(() => {
+    const { countsByType, totalCountsByType, countsByStatus } = React.useMemo(() => {
         const typeCounts = {};
+        const totalTypeCounts = {};
         const statusCounts = {};
 
         // Category counts (Left side cards)
+        const allAssetsGlobal = applyCountryFilter(assets);
         deviceTypes.forEach(type => {
             typeCounts[type] = allAssetsNonAssigned.filter(a => a.type === type).length;
+            totalTypeCounts[type] = allAssetsGlobal.filter(a => a.type === type).length;
         });
 
         // Status counts (Right side grid)
@@ -906,8 +909,8 @@ export default function InventoryPage() {
         // COD count specifically (Global)
         statusCounts['COD'] = allAssetsForGlobalCounts.filter(a => a.cod && a.cod.trim() !== '').length;
 
-        return { countsByType: typeCounts, countsByStatus: statusCounts };
-    }, [allAssetsNonAssigned, selectedDeviceType]);
+        return { countsByType: typeCounts, totalCountsByType: totalTypeCounts, countsByStatus: statusCounts };
+    }, [allAssetsNonAssigned, selectedDeviceType, assets, countryFilter]);
 
     const getCountryInitial = (country) => {
         if (!country) return '-';
@@ -1255,6 +1258,7 @@ export default function InventoryPage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {deviceTypes.map(type => {
                                     const count = countsByType[type] || 0;
+                                    const totalCount = totalCountsByType[type] || 0;
                                     const Icon = getTypeIcon(type);
                                     const isSelected = selectedDeviceType === type;
                                     return (
@@ -1269,19 +1273,42 @@ export default function InventoryPage() {
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'space-between',
-                                                padding: '0.6rem 0.8rem',
+                                                padding: '0.75rem 1rem',
                                                 background: isSelected ? 'var(--primary-color)' : 'var(--background)',
-                                                borderRadius: '10px',
+                                                borderRadius: '12px',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s ease',
-                                                border: isSelected ? '2px solid var(--primary-color)' : '2px solid transparent'
+                                                border: isSelected ? '2px solid var(--primary-color)' : '2px solid transparent',
+                                                boxShadow: isSelected ? '0 4px 12px rgba(37, 99, 235, 0.2)' : 'none'
                                             }}
                                         >
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                <div style={{ color: isSelected ? 'white' : 'var(--primary-color)' }}><Icon size={16} /></div>
-                                                <span style={{ fontSize: '0.85rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'white' : 'var(--text-main)' }}>{type}s</span>
+                                                <div style={{ 
+                                                    padding: '0.4rem', 
+                                                    background: isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(37, 99, 235, 0.1)', 
+                                                    color: isSelected ? 'white' : 'var(--primary-color)',
+                                                    borderRadius: '8px'
+                                                }}>
+                                                    <Icon size={18} />
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: isSelected ? 'white' : 'var(--text-main)' }}>{type}s</div>
+                                                    <div style={{ fontSize: '0.7rem', color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>
+                                                        Total: {totalCount} / Almacén: {count}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: isSelected ? 'white' : 'var(--text-main)' }}>{count}</span>
+                                            <div style={{ 
+                                                fontSize: '1rem', 
+                                                fontWeight: 800, 
+                                                color: isSelected ? 'white' : 'var(--primary-color)',
+                                                background: isSelected ? 'rgba(255,255,255,0.15)' : 'white',
+                                                padding: '0.2rem 0.6rem',
+                                                borderRadius: '6px',
+                                                border: isSelected ? 'none' : '1px solid var(--border)'
+                                            }}>
+                                                {count}
+                                            </div>
                                         </div>
                                     );
                                 })}
