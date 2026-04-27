@@ -362,7 +362,8 @@ export default function InventoryPage() {
             
             console.log("Artículo creado correctamente con país:", accessoryWithCountry.country);
         } catch (error) {
-            alert("Error al crear artículo: " + error.message);
+            console.error(error);
+            alert("Error al crear artículo: " + (error.message || JSON.stringify(error)));
         }
     };
 
