@@ -348,15 +348,19 @@ export default function InventoryPage() {
     const handleAddAccessory = async (e) => {
         e.preventDefault();
         try {
-            await addConsumable(newAccessory);
-            // Reset state BEFORE closing or alerts to ensure it's ready for the next one
+            // Aseguramos que el nuevo accesorio tenga el país seleccionado
+            const accessoryWithCountry = {
+                ...newAccessory,
+                country: countryFilter !== 'Todos' ? countryFilter : 'Argentina'
+            };
+
+            await addConsumable(accessoryWithCountry);
+            
+            // Reset state BEFORE closing
             setNewAccessory({ name: '', category: 'Accesorio', stock: 0 });
             setIsAddAccessoryModalOpen(false);
             
-            // Optional: You could call refreshData() here if you want a full sync, 
-            // but addConsumable already updates the local state.
-            
-            console.log("Artículo creado correctamente");
+            console.log("Artículo creado correctamente con país:", accessoryWithCountry.country);
         } catch (error) {
             alert("Error al crear artículo: " + error.message);
         }
