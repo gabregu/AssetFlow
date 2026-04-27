@@ -1382,7 +1382,9 @@ export default function InventoryPage() {
                                     </thead>
                                     <tbody>
                                         {Object.entries(
-                                            allAssetsNonAssigned.reduce((acc, a) => {
+                                            allAssetsNonAssigned
+                                                .filter(a => !selectedDeviceType || a.type === selectedDeviceType)
+                                                .reduce((acc, a) => {
                                                 if (!acc[a.name]) {
                                                     acc[a.name] = { total: 0, type: a.type };
                                                     statuses.forEach(s => acc[a.name][s] = 0);
