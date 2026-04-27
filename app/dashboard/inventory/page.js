@@ -1890,7 +1890,12 @@ export default function InventoryPage() {
                         Accesorios genéricos controlados por cantidad unitaria.
                     </p>
                     <div className="table-responsive">
-                        {consumables.length === 0 && <p style={{ padding: '1rem', color: 'red' }}>Debug: No consumables found in state (Length: 0)</p>}
+                        {consumables.length === 0 && (
+                            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                <Package size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                                <p>No hay consumibles registrados todavía.</p>
+                            </div>
+                        )}
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
