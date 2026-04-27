@@ -1382,7 +1382,7 @@ export default function InventoryPage() {
                                     </thead>
                                     <tbody>
                                         {Object.entries(
-                                            allAssetsNonAssigned
+                                            applyCountryFilter(assets)
                                                 .filter(a => !selectedDeviceType || a.type === selectedDeviceType)
                                                 .reduce((acc, a) => {
                                                 if (!acc[a.name]) {
