@@ -124,13 +124,13 @@ export default function InventoryPage() {
 
 
     const handleBulkBajaDeEquipo = () => {
-        if (window.confirm(`Vas a asignar de forma masiva el estado "BAJA DE EQUIPO" a los ${selectedAssets.length} equipos seleccionados. ¿Continuar?`)) {
+        if (window.confirm(`Vas a reasignar de forma masiva a "Baja de Equipo" los ${selectedAssets.length} equipos seleccionados. ¿Continuar?`)) {
             selectedAssets.forEach(id => {
                 const assetStr = assets.find(a => a.id === id);
                 if (assetStr) {
                     updateAsset(id, { 
                         ...assetStr, 
-                        status: 'BAJA DE EQUIPO',
+                        assignee: 'Baja de Equipo',
                         boxNumber: bulkBoxNumber || assetStr.boxNumber
                     });
                 }
