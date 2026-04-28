@@ -2010,6 +2010,22 @@ export default function InventoryPage() {
                                                         <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
                                                     </td>
                                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                        {asset.lastAssetCheck && (
+                                                            <div style={{ 
+                                                                fontSize: '0.68rem', 
+                                                                color: '#16a34a', 
+                                                                fontWeight: 600,
+                                                                marginBottom: '4px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'flex-end',
+                                                                gap: '3px'
+                                                            }}
+                                                            title={`Verificado: ${new Date(asset.lastAssetCheck).toLocaleString('es-AR')}`}
+                                                            >
+                                                                ✓ {new Date(asset.lastAssetCheck).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                                            </div>
+                                                        )}
                                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                                                             {(asset.status === 'Nuevo' || asset.status === 'Disponible' || asset.status === 'Recuperado') && (
                                                                 <Button variant="ghost" size="sm" icon={UserPlus} onClick={() => handleAssignClick(asset)} title="Asignar" />
