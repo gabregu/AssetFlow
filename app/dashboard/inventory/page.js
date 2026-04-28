@@ -73,6 +73,7 @@ export default function InventoryPage() {
     const [statusFilter, setStatusFilter] = useState(null); // Nuevo estado para el filtro visual de tarjetas
     const [selectedDeviceType, setSelectedDeviceType] = useState(null); // null = todos los tipos
     const [codFilter, setCodFilter] = useState(false); // Filtro para activos en COD
+    const [boxFilter, setBoxFilter] = useState(''); // Filtro para agrupar por Caja
     const [activeTab, setActiveTab] = useState('hardware'); // 'hardware', 'accessories', 'yubikeys'
     const [yubikeySearchFilter, setYubikeySearchFilter] = useState('');
     const [isYubikeyInventoryExpanded, setIsYubikeyInventoryExpanded] = useState(false);
@@ -234,15 +235,21 @@ export default function InventoryPage() {
                 matchesSelectedType = a.type === selectedDeviceType;
             }
 
+            // --- NUEVO FILTRO POR CAJA ---
+            let matchesBoxFilter = true;
+            if (boxFilter) {
+                matchesBoxFilter = a.boxNumber && a.boxNumber.trim() === boxFilter;
+            }
+
             // --- DEFAULT VISIBILITY LOGIC ---
             // If NO global search is active, only show items in Warehouse.
-            // EXCEPT if a global filter (COD or Baja de Equipos) is active.
+            // EXCEPT if a global filter (COD, Baja de Equipos, o Caja) is active.
             let matchesDefaultVisibility = true;
-            if (searchFilter === '' && !codFilter && statusFilter !== 'Baja de Equipos') {
+            if (searchFilter === '' && !codFilter && statusFilter !== 'Baja de Equipos' && !boxFilter) {
                 matchesDefaultVisibility = a.assignee === 'Almacén' || a.assignee === 'En Almacén';
             }
 
-            return matchesSearch && matchesStatus && matchesType && matchesAssignee && matchesCountry && matchesSelectedType && matchesDefaultVisibility;
+            return matchesSearch && matchesStatus && matchesType && matchesAssignee && matchesCountry && matchesSelectedType && matchesBoxFilter && matchesDefaultVisibility;
         });
 
         if (sortConfig.key) {
@@ -921,6 +928,16 @@ export default function InventoryPage() {
         return { countsByType: typeCounts, totalCountsByType: totalTypeCounts, countsByStatus: statusCounts };
     }, [allAssetsNonAssigned, selectedDeviceType, assets, countryFilter]);
 
+    const availableBoxes = React.useMemo(() => {
+        const boxes = new Set();
+        applyCountryFilter(assets).forEach(a => {
+            if (a.boxNumber && a.boxNumber.trim() !== '') {
+                boxes.add(a.boxNumber.trim().toUpperCase());
+            }
+        });
+        return Array.from(boxes).sort();
+    }, [assets, countryFilter]);
+
     const getCountryInitial = (country) => {
         if (!country) return '-';
         const c = country.toUpperCase();
@@ -1417,6 +1434,44 @@ export default function InventoryPage() {
                                         </div>
                                     );
                                 })()}
+                                <div style={{
+                                    padding: '1rem',
+                                    background: 'var(--background)',
+                                    borderRadius: '12px',
+                                    border: boxFilter ? `2px solid var(--primary-color)` : '1px solid var(--border)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    transition: 'all 0.2s',
+                                    boxShadow: boxFilter ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+                                }}>
+                                    <select
+                                        value={boxFilter}
+                                        onChange={(e) => {
+                                            setBoxFilter(e.target.value);
+                                            setIsInventoryExpanded(true);
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.5rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border)',
+                                            background: 'var(--surface)',
+                                            color: 'var(--text-main)',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 600,
+                                            outline: 'none',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <option value="">FILTRAR POR CAJA</option>
+                                        {availableBoxes.map(box => (
+                                            <option key={box} value={box}>CAJA: {box}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2204,12 +2259,31 @@ export default function InventoryPage() {
                         </div>
                         <div className="form-group">
                             <label className="form-label">Asignado a</label>
-                            <input
-                                className="form-input"
-                                placeholder="Nombre o Almacén"
+                            <select
+                                className="form-select"
                                 value={newAsset.assignee}
                                 onChange={e => setNewAsset({ ...newAsset, assignee: e.target.value })}
-                            />
+                            >
+                                <optgroup label="Ubicaciones Generales">
+                                    <option value="Almacén">Almacén</option>
+                                    <option value="En Almacén">En Almacén</option>
+                                    <option value="Baja de Equipo">Baja de Equipo</option>
+                                </optgroup>
+                                {users && users.length > 0 && (
+                                    <optgroup label="Usuarios Registrados">
+                                        {users.filter(u => u.name && u.name.trim() !== '').map(u => (
+                                            <option key={u.id} value={u.name}>{u.name}</option>
+                                        ))}
+                                    </optgroup>
+                                )}
+                                {newAsset.assignee && 
+                                 !['Almacén', 'En Almacén', 'Baja de Equipo'].includes(newAsset.assignee) && 
+                                 !(users && users.some(u => u.name === newAsset.assignee)) && (
+                                    <optgroup label="Asignación Actual (Personalizada)">
+                                        <option value={newAsset.assignee}>{newAsset.assignee}</option>
+                                    </optgroup>
+                                )}
+                            </select>
                         </div>
                         <div className="form-group">
                             <label className="form-label">País</label>
