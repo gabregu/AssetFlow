@@ -2920,18 +2920,14 @@ export default function InventoryPage() {
                     const text = result.id || result.raw || '';
                     if (!text) return;
 
-                    // Buscar match exacto por serial
-                    const exactMatch = assets.find(a => a.serial.toLowerCase() === text.toLowerCase());
-                    if (exactMatch) {
-                        // Agregar a Equipos Seleccionados si no está ya
-                        setSelectedAssets(prev => 
-                            prev.includes(exactMatch.id) ? prev : [...prev, exactMatch.id]
-                        );
-                        setIsInventoryExpanded(true);
-                    } else {
-                        // Si no hay match exacto, poner el texto en el buscador para que el usuario lo vea
-                        setSearchFilter(text);
-                    }
+                    // Poner el serial en el buscador y resetear todos los filtros
+                    // (mismo comportamiento que escribir en el input de búsqueda)
+                    setSearchFilter(text);
+                    setStatusFilter(null);
+                    setCodFilter(false);
+                    setBoxFilter('');
+                    setColumnFilters({ status: 'All', type: 'All', assignee: '' });
+                    setIsInventoryExpanded(true);
                     setIsScannerOpen(false);
                 }} 
             />
