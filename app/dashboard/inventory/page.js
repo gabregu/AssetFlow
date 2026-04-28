@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -82,6 +82,7 @@ export default function InventoryPage() {
     const [isYubikeyInventoryExpanded, setIsYubikeyInventoryExpanded] = useState(false);
     const [isInventoryExpanded, setIsInventoryExpanded] = useState(false);
     const [selectedAssets, setSelectedAssets] = useState([]);
+    const [isPending, startTransition] = useTransition();
 
     // Quick Detail Modal State
     const [stockDetailModal, setStockDetailModal] = useState({ isOpen: false, model: '', status: '', items: [] });
@@ -178,11 +179,15 @@ export default function InventoryPage() {
     };
 
     const filteredAssets = React.useMemo(() => {
+        const lowerSearch = searchFilter.toLowerCase();
         let result = assets.filter(a => {
-            const matchesSearch = a.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-                a.serial.toLowerCase().includes(searchFilter.toLowerCase()) ||
-                a.assignee.toLowerCase().includes(searchFilter.toLowerCase()) ||
-                (a.cod && a.cod.toLowerCase().includes(searchFilter.toLowerCase()));
+            const matchesSearch = !lowerSearch ||
+                a.name.toLowerCase().includes(lowerSearch) ||
+                a.serial.toLowerCase().includes(lowerSearch) ||
+                a.assignee.toLowerCase().includes(lowerSearch) ||
+                (a.cod && a.cod.toLowerCase().includes(lowerSearch));
+
+            if (!matchesSearch) return false;
 
             let matchesStatus = false;
             if (columnFilters.status === 'All') {
@@ -195,7 +200,7 @@ export default function InventoryPage() {
                 matchesStatus = a.status === columnFilters.status;
             }
 
-            // --- NUEVO FILTRO VISUAL POR ESTADO (CARDS SUPERIORES) ---
+            // --- FILTRO VISUAL POR ESTADO (CARDS SUPERIORES) ---
             if (statusFilter) {
                 if (statusFilter === 'Nuevo') {
                     matchesStatus = matchesStatus && (a.status === 'Nuevo' || a.status === 'Disponible');
@@ -204,10 +209,9 @@ export default function InventoryPage() {
                 } else if (statusFilter === 'Dañado') {
                     matchesStatus = matchesStatus && ['Dañado', 'Rota', 'De Baja', 'EOL'].includes(a.status);
                 } else if (statusFilter === 'Baja de Equipos') {
-                    matchesStatus = matchesStatus && (
-                        (a.status && a.status.toLowerCase().includes('baja de equipo')) || 
-                        (a.assignee && a.assignee.toLowerCase().includes('baja de equipo'))
-                    );
+                    const lStatus = (a.status || '').toLowerCase();
+                    const lAssignee = (a.assignee || '').toLowerCase();
+                    matchesStatus = matchesStatus && (lStatus.includes('baja de equipo') || lAssignee.includes('baja de equipo'));
                 } else {
                     matchesStatus = matchesStatus && a.status === statusFilter;
                 }
@@ -232,27 +236,19 @@ export default function InventoryPage() {
                 }
             }
 
-            // --- NUEVO FILTRO POR TIPO DE DISPOSITIVO (CARDS SUPERIORES) ---
-            let matchesSelectedType = true;
-            if (selectedDeviceType) {
-                matchesSelectedType = a.type === selectedDeviceType;
-            }
+            // --- FILTRO POR TIPO DE DISPOSITIVO ---
+            const matchesSelectedType = !selectedDeviceType || a.type === selectedDeviceType;
 
-            // --- NUEVO FILTRO POR CAJA ---
-            let matchesBoxFilter = true;
-            if (boxFilter) {
-                matchesBoxFilter = a.boxNumber && a.boxNumber.trim() === boxFilter;
-            }
+            // --- FILTRO POR CAJA ---
+            const matchesBoxFilter = !boxFilter || (a.boxNumber && a.boxNumber.trim() === boxFilter);
 
-            // --- DEFAULT VISIBILITY LOGIC ---
-            // If NO global search is active, only show items in Warehouse.
-            // EXCEPT if a global filter (COD, Baja de Equipos, o Caja) is active.
+            // --- DEFAULT VISIBILITY ---
             let matchesDefaultVisibility = true;
             if (searchFilter === '' && !codFilter && statusFilter !== 'Baja de Equipos' && !boxFilter) {
                 matchesDefaultVisibility = a.assignee === 'Almacén' || a.assignee === 'En Almacén';
             }
 
-            return matchesSearch && matchesStatus && matchesType && matchesAssignee && matchesCountry && matchesSelectedType && matchesBoxFilter && matchesDefaultVisibility;
+            return matchesStatus && matchesType && matchesAssignee && matchesCountry && matchesSelectedType && matchesBoxFilter && matchesDefaultVisibility;
         });
 
         if (sortConfig.key) {
@@ -1625,12 +1621,13 @@ export default function InventoryPage() {
                                     const val = e.target.value;
                                     setSearchFilter(val);
                                     if (val.trim() !== '') {
-                                        // Resetear todos los filtros para que el resultado se muestre siempre
-                                        setStatusFilter(null);
-                                        setCodFilter(false);
-                                        setBoxFilter('');
-                                        setColumnFilters({ status: 'All', type: 'All', assignee: '' });
-                                        setIsInventoryExpanded(true);
+                                        startTransition(() => {
+                                            setStatusFilter(null);
+                                            setCodFilter(false);
+                                            setBoxFilter('');
+                                            setColumnFilters({ status: 'All', type: 'All', assignee: '' });
+                                            setIsInventoryExpanded(true);
+                                        });
                                     }
                                 }}
                             />
