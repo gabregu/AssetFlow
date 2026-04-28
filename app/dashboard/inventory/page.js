@@ -16,6 +16,8 @@ import {
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
 import { CountryFilter } from '../../components/layout/CountryFilter';
+import { QRScannerModal } from '../../components/ui/QRScannerModal';
+import { Camera } from 'lucide-react';
 
 export default function InventoryPage() {
     const router = useRouter();
@@ -45,6 +47,7 @@ export default function InventoryPage() {
     const [isStockExpanded, setIsStockExpanded] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [assigningAsset, setAssigningAsset] = useState(null);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [assignmentData, setAssignmentData] = useState({
         userId: '',
         userName: '',
@@ -1614,7 +1617,7 @@ export default function InventoryPage() {
                                 type="text"
                                 placeholder="Buscar por serie, modelo o usuario..."
                                 className="form-input"
-                                style={{ paddingLeft: '2.5rem' }}
+                                style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                                 value={searchFilter}
                                 onChange={(e) => setSearchFilter(e.target.value)}
                                 onKeyDown={(e) => {
@@ -1624,6 +1627,28 @@ export default function InventoryPage() {
                                     }
                                 }}
                             />
+                            <button
+                                onClick={() => setIsScannerOpen(true)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '8px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'var(--primary-color)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    padding: '6px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                                title="Escanear Código"
+                            >
+                                <Camera size={16} />
+                            </button>
                         </div>
 
                         {(columnFilters.status !== 'All' || columnFilters.type !== 'All' || columnFilters.assignee !== '') && (
@@ -2886,6 +2911,26 @@ export default function InventoryPage() {
                     </div>
                 </div>
             </Modal>
+
+            <QRScannerModal 
+                isOpen={isScannerOpen} 
+                onClose={() => setIsScannerOpen(false)} 
+                onScanSuccess={(result) => {
+                    const text = result.id || result.raw || '';
+                    if (!text) return;
+                    setSearchFilter(text);
+                    setIsScannerOpen(false);
+
+                    // Si hay un match exacto por serial, lo abrimos directamente
+                    const exactMatch = assets.find(a => a.serial.toLowerCase() === text.toLowerCase());
+                    if (exactMatch) {
+                        setTimeout(() => {
+                            handleEdit(exactMatch);
+                            setSearchFilter('');
+                        }, 500);
+                    }
+                }} 
+            />
         </div>
     );
 }
