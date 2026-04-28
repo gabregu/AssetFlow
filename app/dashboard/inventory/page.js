@@ -2547,18 +2547,7 @@ export default function InventoryPage() {
                         />
                     </div>
 
-                    <div className="form-group" style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '1rem', borderRadius: '8px', border: '1px dashed rgba(239, 68, 68, 0.3)' }}>
-                        <label className="form-label" style={{ color: 'var(--danger-color)' }}>Certificado de Destrucción (COD)</label>
-                        <input
-                            className="form-input"
-                            placeholder="Ej: COD Abril 2026"
-                            value={newAsset.cod || ''}
-                            onChange={e => setNewAsset({ ...newAsset, cod: e.target.value })}
-                        />
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                            Si el equipo posee certificado de destrucción, ingresa la referencia aquí.
-                        </p>
-                    </div>
+
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem' }}>
                         <Button type="button" variant="ghost" onClick={closeModal}>Cancelar</Button>
