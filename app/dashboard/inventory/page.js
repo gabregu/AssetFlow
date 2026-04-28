@@ -296,6 +296,7 @@ export default function InventoryPage() {
         } else {
             addAsset({ ...newAsset, dateLastUpdate: new Date().toISOString(), updatedBy: currentUser.name });
         }
+        setSearchFilter('');
         closeModal();
     };
 
@@ -945,7 +946,12 @@ export default function InventoryPage() {
                 boxes.add(a.boxNumber.trim().toUpperCase());
             }
         });
-        return Array.from(boxes).sort();
+        return Array.from(boxes).sort((a, b) => {
+            const numA = parseInt(a);
+            const numB = parseInt(b);
+            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+            return a.localeCompare(b);
+        });
     }, [assets, countryFilter]);
 
     const getCountryInitial = (country) => {
