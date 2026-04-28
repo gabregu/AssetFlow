@@ -135,6 +135,7 @@ export default function InventoryPage() {
                     });
                 }
             });
+            setSearchFilter('');
             setSelectedAssets([]);
             setBulkBoxNumber('');
         }
@@ -149,6 +150,7 @@ export default function InventoryPage() {
                     updateAsset(id, { ...assetStr, boxNumber: bulkBoxNumber });
                 }
             });
+            setSearchFilter('');
             setSelectedAssets([]);
             setBulkBoxNumber('');
         }
@@ -314,6 +316,7 @@ export default function InventoryPage() {
     const handleEdit = (asset) => {
         setEditingAsset(asset);
         setNewAsset(asset);
+        setSearchFilter('');
         setIsModalOpen(true);
     };
 
@@ -1614,6 +1617,12 @@ export default function InventoryPage() {
                                 style={{ paddingLeft: '2.5rem' }}
                                 value={searchFilter}
                                 onChange={(e) => setSearchFilter(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && filteredAssets.length === 1) {
+                                        handleEdit(filteredAssets[0]);
+                                        setSearchFilter('');
+                                    }
+                                }}
                             />
                         </div>
 
