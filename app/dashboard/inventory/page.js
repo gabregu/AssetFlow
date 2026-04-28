@@ -262,7 +262,17 @@ export default function InventoryPage() {
             });
         }
         return result;
-    }, [assets, searchFilter, sortConfig, columnFilters, statusFilter, codFilter, countryFilter, selectedDeviceType]);
+    }, [assets, searchFilter, sortConfig, columnFilters, statusFilter, codFilter, countryFilter, selectedDeviceType, boxFilter]);
+
+    const boxesInFilter = React.useMemo(() => {
+        const boxes = new Set();
+        filteredAssets.forEach(a => {
+            if (a.boxNumber && a.boxNumber.trim() !== '') {
+                boxes.add(a.boxNumber.trim().toUpperCase());
+            }
+        });
+        return boxes.size;
+    }, [filteredAssets]);
 
     const SortIcon = ({ column }) => {
         if (sortConfig.key !== column) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
@@ -1471,6 +1481,9 @@ export default function InventoryPage() {
                                             <option key={box} value={box}>CAJA: {box}</option>
                                         ))}
                                     </select>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        {boxesInFilter} CAJA{boxesInFilter !== 1 ? 'S' : ''} EN FILTRO
+                                    </div>
                                 </div>
                             </div>
                         </div>
