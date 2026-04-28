@@ -1615,7 +1615,18 @@ export default function InventoryPage() {
                                 className="form-input"
                                 style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                                 value={searchFilter}
-                                onChange={(e) => setSearchFilter(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSearchFilter(val);
+                                    if (val.trim() !== '') {
+                                        // Resetear todos los filtros para que el resultado se muestre siempre
+                                        setStatusFilter(null);
+                                        setCodFilter(false);
+                                        setBoxFilter('');
+                                        setColumnFilters({ status: 'All', type: 'All', assignee: '' });
+                                        setIsInventoryExpanded(true);
+                                    }
+                                }}
                             />
                             <button
                                 onClick={() => setIsScannerOpen(true)}
