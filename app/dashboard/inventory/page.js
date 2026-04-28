@@ -236,9 +236,9 @@ export default function InventoryPage() {
 
             // --- DEFAULT VISIBILITY LOGIC ---
             // If NO global search is active, only show items in Warehouse.
-            // If a search IS active, search across the entire asset universe.
+            // EXCEPT if a global filter (COD or Baja de Equipos) is active.
             let matchesDefaultVisibility = true;
-            if (searchFilter === '') {
+            if (searchFilter === '' && !codFilter && statusFilter !== 'Baja de Equipos') {
                 matchesDefaultVisibility = a.assignee === 'Almacén' || a.assignee === 'En Almacén';
             }
 
