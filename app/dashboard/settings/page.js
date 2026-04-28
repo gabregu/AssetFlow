@@ -6,12 +6,32 @@ import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { useStore } from '../../../lib/store';
 import { Trash2, Shield, Moon, Sun, Pencil, Lock, Eye, EyeOff, Key, MapPin, MapPinOff, Globe } from 'lucide-react';
 import { useTheme } from '../../components/theme-provider';
+import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../../lib/supabase';
+
+const secondarySupabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false
+        }
+    }
+);
 
 export default function SettingsPage() {
-    const { users, currentUser, deleteUser, updateUser, sendPasswordReset, updatePassword, entities = [], addEntity, deleteEntity } = useStore();
+    const { users, currentUser, deleteUser, updateUser, sendPasswordReset, updatePassword, entities = [], addEntity, deleteEntity, refreshData } = useStore();
     const { theme } = useTheme();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [userToEdit, setUserToEdit] = useState(null);
+    
+    // Add User State
+    const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+    const [newUserForm, setNewUserForm] = useState({ name: '', username: '', email: '', password: '', role: 'Administrativo' });
+    const [isAddingUser, setIsAddingUser] = useState(false);
+
     const [newEntityName, setNewEntityName] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -19,7 +39,47 @@ export default function SettingsPage() {
 
     const isAdmin = currentUser?.role === 'admin';
 
+    const handleAddUser = async (e) => {
+        e.preventDefault();
+        setIsAddingUser(true);
+        
+        try {
+            // 1. Sign up the user using the secondary client to prevent logging out the admin
+            const { data, error } = await secondarySupabase.auth.signUp({
+                email: newUserForm.email.toLowerCase().trim(),
+                password: newUserForm.password,
+                options: {
+                    data: {
+                        full_name: newUserForm.name.trim(),
+                        username: newUserForm.username.trim()
+                    }
+                }
+            });
 
+            if (error) throw error;
+
+            // 2. Wait for the database trigger to create the row in the users table
+            await new Promise(r => setTimeout(r, 1500));
+
+            // 3. Update the role of the newly created user using the admin's primary client
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ role: newUserForm.role })
+                .eq('email', newUserForm.email.toLowerCase().trim());
+
+            if (updateError) throw updateError;
+
+            alert('Usuario creado y aprobado exitosamente.');
+            setIsAddUserModalOpen(false);
+            setNewUserForm({ name: '', username: '', email: '', password: '', role: 'Administrativo' });
+            refreshData(); // Fetch fresh user list
+        } catch (error) {
+            console.error("Error adding user:", error);
+            alert("Error al crear usuario: " + error.message);
+        } finally {
+            setIsAddingUser(false);
+        }
+    };
 
     const handleEditClick = (user) => {
         setUserToEdit({ ...user, password: '' });
@@ -198,6 +258,9 @@ export default function SettingsPage() {
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
                                     {users.filter(u => u.email).length} usuarios activos
                                 </p>
+                                <Button size="sm" onClick={() => setIsAddUserModalOpen(true)}>
+                                    + Agregar Usuario
+                                </Button>
                             </div>
 
                             {/* Pending Users Section */}
@@ -449,6 +512,53 @@ export default function SettingsPage() {
                                         <Button type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)}>Cancelar</Button>
                                         <Button type="submit">Guardar Cambios</Button>
                                     </div>
+                                </div>
+                            </form>
+                        </Card>
+                    </div>
+                )
+            }
+
+            {/* Modal para Agregar Usuario */}
+            {
+                isAddUserModalOpen && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        zIndex: 1000, backdropFilter: 'blur(4px)'
+                    }}>
+                        <Card title="Agregar Nuevo Usuario" style={{ width: '400px', margin: '2rem' }}>
+                            <form onSubmit={handleAddUser}>
+                                <div className="form-group">
+                                    <label className="form-label">Nombre Completo</label>
+                                    <input className="form-input" required placeholder="Ej: Juan Pérez" value={newUserForm.name} onChange={e => setNewUserForm({ ...newUserForm, name: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Email</label>
+                                    <input type="email" className="form-input" required placeholder="Ej: juan@assetflow.com" value={newUserForm.email} onChange={e => setNewUserForm({ ...newUserForm, email: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Nombre de Usuario (Username)</label>
+                                    <input className="form-input" required placeholder="Ej: jperez" value={newUserForm.username} onChange={e => setNewUserForm({ ...newUserForm, username: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Contraseña Temporal</label>
+                                    <input type="password" minLength={6} className="form-input" required placeholder="Mínimo 6 caracteres" value={newUserForm.password} onChange={e => setNewUserForm({ ...newUserForm, password: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Rol Inicial</label>
+                                    <select className="form-input" value={newUserForm.role} onChange={e => setNewUserForm({ ...newUserForm, role: e.target.value })}>
+                                        {roles.filter(r => r !== 'pending').map(r => (
+                                            <option key={r} value={r}>{r}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
+                                    <Button type="button" variant="secondary" onClick={() => setIsAddUserModalOpen(false)}>Cancelar</Button>
+                                    <Button type="submit" disabled={isAddingUser}>
+                                        {isAddingUser ? 'Creando...' : 'Crear Usuario'}
+                                    </Button>
                                 </div>
                             </form>
                         </Card>
