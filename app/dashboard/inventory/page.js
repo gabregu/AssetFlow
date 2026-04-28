@@ -2342,29 +2342,33 @@ export default function InventoryPage() {
                             <label className="form-label">Asignado a</label>
                             <select
                                 className="form-select"
-                                value={newAsset.assignee}
-                                onChange={e => setNewAsset({ ...newAsset, assignee: e.target.value })}
+                                value={['Almacén', 'Baja de Equipo', 'En Reparación'].includes(newAsset.assignee) ? newAsset.assignee : (newAsset.assignee === '' ? 'Almacén' : 'Asignado')}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    if (val === 'Asignado') {
+                                        // Limpiar para que el usuario ingrese el nombre
+                                        setNewAsset({ ...newAsset, assignee: '' });
+                                    } else {
+                                        setNewAsset({ ...newAsset, assignee: val });
+                                    }
+                                }}
                             >
-                                <optgroup label="Ubicaciones Generales">
-                                    <option value="Almacén">Almacén</option>
-                                    <option value="En Almacén">En Almacén</option>
-                                    <option value="Baja de Equipo">Baja de Equipo</option>
-                                </optgroup>
-                                {users && users.length > 0 && (
-                                    <optgroup label="Usuarios Registrados">
-                                        {users.filter(u => u.name && u.name.trim() !== '').map(u => (
-                                            <option key={u.id} value={u.name}>{u.name}</option>
-                                        ))}
-                                    </optgroup>
-                                )}
-                                {newAsset.assignee && 
-                                 !['Almacén', 'En Almacén', 'Baja de Equipo'].includes(newAsset.assignee) && 
-                                 !(users && users.some(u => u.name === newAsset.assignee)) && (
-                                    <optgroup label="Asignación Actual (Personalizada)">
-                                        <option value={newAsset.assignee}>{newAsset.assignee}</option>
-                                    </optgroup>
-                                )}
+                                <option value="Almacén">Almacén</option>
+                                <option value="Asignado">Asignado</option>
+                                <option value="Baja de Equipo">Baja de Equipo</option>
+                                <option value="En Reparación">En Reparación</option>
                             </select>
+                            {/* Campo de nombre cuando está Asignado */}
+                            {!['Almacén', 'Baja de Equipo', 'En Reparación'].includes(newAsset.assignee) && (
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Nombre del asignado..."
+                                    value={newAsset.assignee}
+                                    onChange={e => setNewAsset({ ...newAsset, assignee: e.target.value })}
+                                    style={{ marginTop: '0.5rem' }}
+                                />
+                            )}
                         </div>
                         <div className="form-group">
                             <label className="form-label">País</label>
