@@ -285,6 +285,12 @@ export default function InventoryPage() {
     const handleCreateOrUpdate = (e) => {
         e.preventDefault();
 
+        // Validar que el asignado no esté vacío
+        if (!newAsset.assignee || newAsset.assignee.trim() === '') {
+            alert('Por favor ingresá el nombre del asignado.');
+            return;
+        }
+
         // Verificar duplicados solo si estamos CREANDO un activo nuevo
         if (!editingAsset) {
             const isDuplicate = assets.some(a => a.serial.toLowerCase() === newAsset.serial.toLowerCase());
@@ -308,8 +314,8 @@ export default function InventoryPage() {
         setNewAsset({
             name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Disponible',
             date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
-            modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-',
-            eolDate: '', notes: '', sfd_case: '', oem: '', cod: ''
+            modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
+            eolDate: '', notes: '', sfdcCase: '', oem: '', cod: '', boxNumber: '', country: 'Argentina'
         });
     };
 
