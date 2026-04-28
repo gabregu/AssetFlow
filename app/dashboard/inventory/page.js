@@ -1855,6 +1855,30 @@ export default function InventoryPage() {
                                             <Button variant="outline" size="sm" onClick={handleBulkBajaDeEquipo}>
                                                 BAJA DE EQUIPO
                                             </Button>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                onClick={() => {
+                                                    if (window.confirm(`¿Marcar ${selectedAssets.length} equipo(s) como verificados hoy?`)) {
+                                                        const now = new Date().toISOString();
+                                                        selectedAssets.forEach(id => {
+                                                            const assetStr = assets.find(a => a.id === id);
+                                                            if (assetStr) {
+                                                                updateAsset(id, {
+                                                                    ...assetStr,
+                                                                    lastAssetCheck: now,
+                                                                    dateLastUpdate: now,
+                                                                    updatedBy: currentUser.name
+                                                                });
+                                                            }
+                                                        });
+                                                        setSelectedAssets([]);
+                                                    }
+                                                }}
+                                                style={{ color: '#16a34a', borderColor: '#16a34a' }}
+                                            >
+                                                ✓ Verificar
+                                            </Button>
                                         </div>
                                     ) : (
                                         <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
