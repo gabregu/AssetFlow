@@ -1482,7 +1482,10 @@ export default function InventoryPage() {
                                         ))}
                                     </select>
                                     <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                        {boxesInFilter} CAJA{boxesInFilter !== 1 ? 'S' : ''} EN FILTRO
+                                        {boxFilter 
+                                            ? `${filteredAssets.length} ACTIVO${filteredAssets.length !== 1 ? 'S' : ''} EN ESTA CAJA`
+                                            : `${boxesInFilter} CAJA${boxesInFilter !== 1 ? 'S' : ''} EN FILTRO`
+                                        }
                                     </div>
                                 </div>
                             </div>
