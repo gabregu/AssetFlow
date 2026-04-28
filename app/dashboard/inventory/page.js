@@ -298,10 +298,19 @@ export default function InventoryPage() {
 
         if (editingAsset) {
             updateAsset(editingAsset.id, { ...newAsset, dateLastUpdate: new Date().toISOString(), updatedBy: currentUser.name });
+            closeModal();
         } else {
+            const serialCreado = newAsset.serial;
             addAsset({ ...newAsset, dateLastUpdate: new Date().toISOString(), updatedBy: currentUser.name });
+            closeModal();
+            // Mostrar el activo recién creado en la lista
+            setSearchFilter(serialCreado);
+            setStatusFilter(null);
+            setCodFilter(false);
+            setBoxFilter('');
+            setColumnFilters({ status: 'All', type: 'All', assignee: '' });
+            setIsInventoryExpanded(true);
         }
-        closeModal();
     };
 
     const closeModal = () => {
