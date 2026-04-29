@@ -349,10 +349,10 @@ export default function InventoryPage() {
             });
 
             const printWindow = window.open('', '_blank');
-            printWindow.document.write(\`
+            printWindow.document.write(`
                 <html>
                     <head>
-                        <title>Etiqueta - \${asset.serial}</title>
+                        <title>Etiqueta - ${asset.serial}</title>
                         <style>
                             @page {
                                 size: 50mm 25mm;
@@ -446,17 +446,17 @@ export default function InventoryPage() {
                         <div class="label-container">
                             <div class="left-side">
                                 <div class="header">
-                                    <div class="type-label">\${asset.type}</div>
+                                    <div class="type-label">${asset.type}</div>
                                 </div>
-                                <div class="asset-name">\${asset.name}</div>
+                                <div class="asset-name">${asset.name}</div>
                                 <div class="serial-section">
-                                    Serial: <span class="serial-bold">\${asset.serial}</span>
+                                    Serial: <span class="serial-bold">${asset.serial}</span>
                                 </div>
                             </div>
                             <div class="right-side">
-                                <img class="qr-code" src="\${qrDataUrl}" />
+                                <img class="qr-code" src="${qrDataUrl}" />
                                 <div class="footer-id">CÓDIGO DE ACTIVO</div>
-                                <div class="footer-val">AST-\${asset.id?.toString().slice(-4) || 'XXXX'}</div>
+                                <div class="footer-val">AST-${asset.id?.toString().slice(-4) || 'XXXX'}</div>
                             </div>
                         </div>
                         <script>
@@ -467,7 +467,7 @@ export default function InventoryPage() {
                         </script>
                     </body>
                 </html>
-            \`);
+            `);
             printWindow.document.close();
         } catch (err) {
             console.error('Error generating label:', err);
