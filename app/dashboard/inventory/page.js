@@ -2165,11 +2165,18 @@ export default function InventoryPage() {
                                                                 ✓ {new Date(asset.lastAssetCheck).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                                                             </div>
                                                         )}
-                                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                                            <Button 
+                                                                variant="secondary" 
+                                                                size="sm" 
+                                                                icon={Printer} 
+                                                                onClick={() => handlePrintLabel(asset)} 
+                                                                title="Imprimir Etiqueta"
+                                                                style={{ color: 'var(--primary-color)', borderColor: 'var(--primary-color)', background: 'rgba(37, 99, 235, 0.05)' }}
+                                                            />
                                                             {(asset.status === 'Nuevo' || asset.status === 'Disponible' || asset.status === 'Recuperado') && (
                                                                 <Button variant="ghost" size="sm" icon={UserPlus} onClick={() => handleAssignClick(asset)} title="Asignar" />
                                                             )}
-                                                            <Button variant="ghost" size="sm" icon={Printer} onClick={() => handlePrintLabel(asset)} title="Imprimir Etiqueta" />
                                                             <Button variant="ghost" size="sm" icon={Eye} onClick={() => router.push(`/dashboard/inventory/${asset.id}`)} />
                                                             <Button variant="ghost" size="sm" icon={Edit3} onClick={() => handleEdit(asset)} />
                                                         </div>
