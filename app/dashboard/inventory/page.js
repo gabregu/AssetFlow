@@ -11,8 +11,9 @@ import {
     HardDrive, Package, Trash2, Edit3, Eye, ArrowRight,
     TrendingUp, AlertTriangle, CheckCircle, Upload, Download, History,
     ChevronDown, ChevronUp, Key, UserPlus, Truck, MapPin, Box, User,
-    Layers, Activity, Server
+    Layers, Activity, Server, Printer
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
 import { CountryFilter } from '../../components/layout/CountryFilter';
@@ -333,6 +334,144 @@ export default function InventoryPage() {
     const handleDelete = (id) => {
         if (window.confirm('¿Estás seguro de que deseas eliminar este activo?')) {
             deleteAsset(id);
+        }
+    };
+
+    const handlePrintLabel = async (asset) => {
+        try {
+            const qrDataUrl = await QRCode.toDataURL(asset.serial, {
+                margin: 0,
+                width: 200,
+                color: {
+                    dark: '#000000',
+                    light: '#ffffff'
+                }
+            });
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(\`
+                <html>
+                    <head>
+                        <title>Etiqueta - \${asset.serial}</title>
+                        <style>
+                            @page {
+                                size: 50mm 25mm;
+                                margin: 0;
+                            }
+                            body {
+                                margin: 0;
+                                padding: 0;
+                                font-family: 'Inter', -apple-system, sans-serif;
+                                -webkit-print-color-adjust: exact;
+                            }
+                            .label-container {
+                                width: 50mm;
+                                height: 25mm;
+                                box-sizing: border-box;
+                                padding: 1.5mm;
+                                display: flex;
+                                background: white;
+                                position: relative;
+                                overflow: hidden;
+                            }
+                            .left-side {
+                                flex: 1;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: space-between;
+                                padding-right: 1mm;
+                            }
+                            .header {
+                                display: flex;
+                                align-items: center;
+                                gap: 1.5mm;
+                                margin-bottom: 0.5mm;
+                            }
+                            .type-label {
+                                font-size: 11pt;
+                                font-weight: 800;
+                                color: #1e1b4b;
+                                text-transform: uppercase;
+                                letter-spacing: -0.2mm;
+                            }
+                            .asset-name {
+                                font-size: 7.5pt;
+                                line-height: 1.1;
+                                color: #1f2937;
+                                font-weight: 500;
+                                max-height: 10mm;
+                                overflow: hidden;
+                                margin-bottom: 1mm;
+                            }
+                            .serial-section {
+                                font-size: 8.5pt;
+                                color: #000;
+                            }
+                            .serial-bold {
+                                font-weight: 800;
+                                font-size: 10pt;
+                            }
+                            .right-side {
+                                width: 18mm;
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                border-left: 0.2mm solid #e5e7eb;
+                                padding-left: 1mm;
+                            }
+                            .qr-code {
+                                width: 14mm;
+                                height: 14mm;
+                                margin-bottom: 0.5mm;
+                            }
+                            .footer-id {
+                                font-size: 4.5pt;
+                                text-align: center;
+                                color: #6b7280;
+                                line-height: 1;
+                                text-transform: uppercase;
+                            }
+                            .footer-val {
+                                font-size: 5.5pt;
+                                font-weight: 700;
+                                color: #1f2937;
+                            }
+                            @media print {
+                                .label-container { border: none; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="label-container">
+                            <div class="left-side">
+                                <div class="header">
+                                    <div class="type-label">\${asset.type}</div>
+                                </div>
+                                <div class="asset-name">\${asset.name}</div>
+                                <div class="serial-section">
+                                    Serial: <span class="serial-bold">\${asset.serial}</span>
+                                </div>
+                            </div>
+                            <div class="right-side">
+                                <img class="qr-code" src="\${qrDataUrl}" />
+                                <div class="footer-id">CÓDIGO DE ACTIVO</div>
+                                <div class="footer-val">AST-\${asset.id?.toString().slice(-4) || 'XXXX'}</div>
+                            </div>
+                        </div>
+                        <script>
+                            window.onload = () => {
+                                window.print();
+                                setTimeout(() => window.close(), 500);
+                            };
+                        </script>
+                    </body>
+                </html>
+            \`);
+            printWindow.document.close();
+        } catch (err) {
+            console.error('Error generating label:', err);
+            alert('Error al generar la etiqueta');
         }
     };
 
@@ -2030,6 +2169,7 @@ export default function InventoryPage() {
                                                             {(asset.status === 'Nuevo' || asset.status === 'Disponible' || asset.status === 'Recuperado') && (
                                                                 <Button variant="ghost" size="sm" icon={UserPlus} onClick={() => handleAssignClick(asset)} title="Asignar" />
                                                             )}
+                                                            <Button variant="ghost" size="sm" icon={Printer} onClick={() => handlePrintLabel(asset)} title="Imprimir Etiqueta" />
                                                             <Button variant="ghost" size="sm" icon={Eye} onClick={() => router.push(`/dashboard/inventory/${asset.id}`)} />
                                                             <Button variant="ghost" size="sm" icon={Edit3} onClick={() => handleEdit(asset)} />
                                                         </div>
