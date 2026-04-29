@@ -14,6 +14,7 @@ import {
     Layers, Activity, Server, Printer
 } from 'lucide-react';
 import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode';
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
 import { CountryFilter } from '../../components/layout/CountryFilter';
@@ -339,14 +340,23 @@ export default function InventoryPage() {
 
     const handlePrintLabel = async (asset) => {
         try {
+            // Generar QR
             const qrDataUrl = await QRCode.toDataURL(asset.serial, {
                 margin: 0,
                 width: 200,
-                color: {
-                    dark: '#000000',
-                    light: '#ffffff'
-                }
+                color: { dark: '#000000', light: '#ffffff' }
             });
+
+            // Generar Código de Barras en un Canvas invisible
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, asset.serial, {
+                format: "CODE128",
+                width: 2,
+                height: 40,
+                displayValue: false,
+                margin: 0
+            });
+            const barcodeDataUrl = canvas.toDataURL("image/png");
 
             const printWindow = window.open('', '_blank');
             printWindow.document.write(`
@@ -363,14 +373,14 @@ export default function InventoryPage() {
                                 padding: 0;
                                 font-family: 'Inter', -apple-system, sans-serif;
                                 -webkit-print-color-adjust: exact;
+                                background: white;
                             }
                             .label-container {
                                 width: 50mm;
                                 height: 25mm;
                                 box-sizing: border-box;
-                                padding: 1.5mm;
+                                padding: 1.2mm 2mm;
                                 display: flex;
-                                background: white;
                                 position: relative;
                                 overflow: hidden;
                             }
@@ -379,83 +389,84 @@ export default function InventoryPage() {
                                 display: flex;
                                 flex-direction: column;
                                 justify-content: space-between;
-                                padding-right: 1mm;
-                            }
-                            .header {
-                                display: flex;
-                                align-items: center;
-                                gap: 1.5mm;
-                                margin-bottom: 0.5mm;
+                                padding-right: 1.5mm;
                             }
                             .type-label {
-                                font-size: 11pt;
+                                font-size: 10pt;
                                 font-weight: 800;
-                                color: #1e1b4b;
+                                color: #000;
                                 text-transform: uppercase;
-                                letter-spacing: -0.2mm;
+                                line-height: 1;
+                                margin-bottom: 0.5mm;
                             }
                             .asset-name {
-                                font-size: 7.5pt;
+                                font-size: 6.5pt;
                                 line-height: 1.1;
-                                color: #1f2937;
+                                color: #374151;
                                 font-weight: 500;
-                                max-height: 10mm;
+                                display: -webkit-box;
+                                -webkit-line-clamp: 2;
+                                -webkit-box-orient: vertical;
                                 overflow: hidden;
                                 margin-bottom: 1mm;
                             }
-                            .serial-section {
-                                font-size: 8.5pt;
-                                color: #000;
+                            .barcode-container {
+                                width: 100%;
+                                height: 6mm;
+                                margin-bottom: 0.5mm;
                             }
-                            .serial-bold {
-                                font-weight: 800;
-                                font-size: 10pt;
+                            .barcode-img {
+                                width: 100%;
+                                height: 100%;
+                                object-fit: stretch;
+                            }
+                            .serial-text {
+                                font-size: 8pt;
+                                font-weight: 700;
+                                color: #000;
+                                margin: 0;
                             }
                             .right-side {
-                                width: 18mm;
+                                width: 16mm;
                                 display: flex;
                                 flex-direction: column;
                                 align-items: center;
                                 justify-content: center;
-                                border-left: 0.2mm solid #e5e7eb;
-                                padding-left: 1mm;
+                                border-left: 0.1mm solid #000;
+                                padding-left: 1.5mm;
                             }
                             .qr-code {
-                                width: 14mm;
-                                height: 14mm;
-                                margin-bottom: 0.5mm;
+                                width: 13.5mm;
+                                height: 13.5mm;
+                                margin-bottom: 1mm;
                             }
                             .footer-id {
-                                font-size: 4.5pt;
+                                font-size: 4pt;
                                 text-align: center;
-                                color: #6b7280;
+                                color: #000;
+                                font-weight: 600;
                                 line-height: 1;
-                                text-transform: uppercase;
                             }
                             .footer-val {
-                                font-size: 5.5pt;
-                                font-weight: 700;
-                                color: #1f2937;
-                            }
-                            @media print {
-                                .label-container { border: none; }
+                                font-size: 5pt;
+                                font-weight: 800;
+                                color: #000;
                             }
                         </style>
                     </head>
                     <body>
                         <div class="label-container">
                             <div class="left-side">
-                                <div class="header">
-                                    <div class="type-label">${asset.type}</div>
-                                </div>
+                                <div class="type-label">${asset.type}</div>
                                 <div class="asset-name">${asset.name}</div>
-                                <div class="serial-section">
-                                    Serial: <span class="serial-bold">${asset.serial}</span>
+                                <div class="barcode-container">
+                                    <img class="barcode-img" src="${barcodeDataUrl}" />
                                 </div>
+                                <p class="serial-text">S/N: ${asset.serial}</p>
                             </div>
                             <div class="right-side">
                                 <img class="qr-code" src="${qrDataUrl}" />
-                                <div class="footer-id">CÓDIGO DE ACTIVO</div>
+                                <div class="footer-id">CÓDIGO ACTIVO</div>
                                 <div class="footer-val">AST-${asset.id?.toString().slice(-4) || 'XXXX'}</div>
                             </div>
                         </div>
