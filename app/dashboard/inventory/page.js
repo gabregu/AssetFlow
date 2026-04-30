@@ -368,34 +368,29 @@ export default function InventoryPage() {
                                 size: 50mm 25mm;
                                 margin: 0;
                             }
-                            @media print {
-                                html, body {
-                                    width: 50mm;
-                                    height: 25mm;
-                                    margin: 0;
-                                    padding: 0;
-                                }
-                                /* Ocultar encabezados y pies de página del navegador */
-                                @page { margin: 0; }
-                                body { margin: 0; }
-                            }
-                            body {
-                                margin: 0;
-                                padding: 0;
-                                font-family: 'Inter', -apple-system, sans-serif;
+                            * {
+                                box-sizing: border-box;
                                 -webkit-print-color-adjust: exact;
-                                background: white;
+                            }
+                            html, body {
                                 width: 50mm;
                                 height: 25mm;
+                                margin: 0;
+                                padding: 0;
+                                background: #fff;
                                 overflow: hidden;
+                            }
+                            body {
+                                font-family: 'Inter', -apple-system, sans-serif;
                             }
                             .label-container {
                                 width: 50mm;
                                 height: 25mm;
-                                box-sizing: border-box;
-                                padding: 1.5mm 2.5mm;
+                                padding: 1.5mm 2mm;
                                 display: flex;
-                                position: relative;
+                                position: absolute;
+                                top: 0;
+                                left: 0;
                                 background: white;
                             }
                             .left-side {
@@ -403,42 +398,47 @@ export default function InventoryPage() {
                                 display: flex;
                                 flex-direction: column;
                                 justify-content: space-between;
-                                padding-right: 1.5mm;
+                                padding-right: 2mm;
+                                overflow: hidden;
                             }
                             .type-label {
-                                font-size: 10pt;
-                                font-weight: 800;
+                                font-size: 11pt;
+                                font-weight: 900;
                                 color: #000;
                                 text-transform: uppercase;
                                 line-height: 1;
                                 margin-bottom: 0.5mm;
+                                letter-spacing: -0.2mm;
                             }
                             .asset-name {
-                                font-size: 6.5pt;
+                                font-size: 7pt;
                                 line-height: 1.1;
-                                color: #374151;
-                                font-weight: 500;
+                                color: #000;
+                                font-weight: 600;
                                 display: -webkit-box;
                                 -webkit-line-clamp: 2;
                                 -webkit-box-orient: vertical;
                                 overflow: hidden;
-                                margin-bottom: 1mm;
+                                margin-bottom: 0.5mm;
                             }
                             .barcode-container {
                                 width: 100%;
-                                height: 6mm;
+                                height: 7mm;
                                 margin-bottom: 0.5mm;
+                                display: flex;
+                                align-items: center;
                             }
                             .barcode-img {
                                 width: 100%;
                                 height: 100%;
-                                object-fit: stretch;
+                                object-fit: fill;
                             }
                             .serial-text {
-                                font-size: 8pt;
-                                font-weight: 700;
+                                font-size: 8.5pt;
+                                font-weight: 800;
                                 color: #000;
                                 margin: 0;
+                                white-space: nowrap;
                             }
                             .right-side {
                                 width: 16mm;
@@ -446,24 +446,25 @@ export default function InventoryPage() {
                                 flex-direction: column;
                                 align-items: center;
                                 justify-content: center;
-                                border-left: 0.1mm solid #000;
-                                padding-left: 1.5mm;
+                                border-left: 0.2mm solid #000;
+                                padding-left: 2mm;
                             }
                             .qr-code {
-                                width: 13.5mm;
-                                height: 13.5mm;
+                                width: 13mm;
+                                height: 13mm;
                                 margin-bottom: 1mm;
                             }
                             .footer-id {
-                                font-size: 4pt;
+                                font-size: 4.5pt;
                                 text-align: center;
                                 color: #000;
-                                font-weight: 600;
+                                font-weight: 700;
                                 line-height: 1;
+                                text-transform: uppercase;
                             }
                             .footer-val {
-                                font-size: 5pt;
-                                font-weight: 800;
+                                font-size: 5.5pt;
+                                font-weight: 900;
                                 color: #000;
                             }
                         </style>
