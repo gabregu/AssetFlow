@@ -418,17 +418,27 @@ export default function InventoryPage() {
                                 line-height: 1.1;
                                 font-weight: 600;
                                 display: -webkit-box;
-                                -webkit-line-clamp: 2;
+                                -webkit-line-clamp: 1;
                                 -webkit-box-orient: vertical;
                                 overflow: hidden;
+                                margin-bottom: 0.2mm;
+                            }
+                            .status-badge {
+                                font-size: 5pt;
+                                font-weight: 800;
+                                text-transform: uppercase;
+                                background: #000;
+                                color: #fff;
+                                padding: 0.2mm 0.8mm;
+                                border-radius: 0.4mm;
+                                display: inline-block;
                                 margin-bottom: 0.5mm;
-                                height: 7.5pt;
                             }
                             .barcode-img {
                                 width: 100%;
-                                height: 5.5mm;
+                                height: 5mm;
                                 object-fit: fill;
-                                margin-top: 0.5mm;
+                                margin-top: 0.2mm;
                             }
                             .serial-text {
                                 font-size: 9pt;
@@ -467,7 +477,10 @@ export default function InventoryPage() {
                             <div class="left-side">
                                 <div class="type-label">${asset.type}</div>
                                 <div class="asset-name">${asset.name}</div>
-                                <div style="height: 7mm; margin-top: 1mm;">
+                                <div>
+                                    <span class="status-badge">${asset.status}</span>
+                                </div>
+                                <div style="height: 5mm;">
                                     <img class="barcode-img" src="${barcodeDataUrl}" />
                                 </div>
                                 <p class="serial-text">${asset.serial}</p>
