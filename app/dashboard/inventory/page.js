@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
 import { CountryFilter } from '../../components/layout/CountryFilter';
@@ -340,164 +341,83 @@ export default function InventoryPage() {
 
     const handlePrintLabel = async (asset) => {
         try {
-            // Generar QR
+            // 1. Crear documento PDF de 50mm x 25mm (apaisado)
+            const doc = new jsPDF({
+                orientation: 'l',
+                unit: 'mm',
+                format: [50, 25],
+                putOnlyUsedFonts: true,
+                floatPrecision: 16
+            });
+
+            // 2. Generar QR
             const qrDataUrl = await QRCode.toDataURL(asset.serial, {
                 margin: 0,
                 width: 200,
+                errorCorrectionLevel: 'M',
                 color: { dark: '#000000', light: '#ffffff' }
             });
 
-            // Generar Código de Barras en un Canvas invisible
+            // 3. Generar Código de Barras
             const canvas = document.createElement('canvas');
             JsBarcode(canvas, asset.serial, {
                 format: "CODE128",
-                width: 2,
-                height: 40,
+                width: 4,
+                height: 60,
                 displayValue: false,
                 margin: 0
             });
             const barcodeDataUrl = canvas.toDataURL("image/png");
 
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                    <head>
-                        <title>Etiqueta - ${asset.serial}</title>
-                        <style>
-                            @page {
-                                size: 50mm 25mm;
-                                margin: 0;
-                            }
-                            * {
-                                box-sizing: border-box;
-                                -webkit-print-color-adjust: exact;
-                            }
-                            html, body {
-                                width: 50mm;
-                                height: 25mm;
-                                margin: 0;
-                                padding: 0;
-                                background: #fff;
-                                overflow: hidden;
-                            }
-                            body {
-                                font-family: 'Inter', -apple-system, sans-serif;
-                            }
-                            .label-container {
-                                width: 50mm;
-                                height: 25mm;
-                                padding: 1.5mm 2mm;
-                                display: flex;
-                                position: absolute;
-                                top: 0;
-                                left: 0;
-                                background: white;
-                            }
-                            .left-side {
-                                flex: 1;
-                                display: flex;
-                                flex-direction: column;
-                                justify-content: space-between;
-                                padding-right: 2mm;
-                                overflow: hidden;
-                            }
-                            .type-label {
-                                font-size: 11pt;
-                                font-weight: 900;
-                                color: #000;
-                                text-transform: uppercase;
-                                line-height: 1;
-                                margin-bottom: 0.5mm;
-                                letter-spacing: -0.2mm;
-                            }
-                            .asset-name {
-                                font-size: 7pt;
-                                line-height: 1.1;
-                                color: #000;
-                                font-weight: 600;
-                                display: -webkit-box;
-                                -webkit-line-clamp: 2;
-                                -webkit-box-orient: vertical;
-                                overflow: hidden;
-                                margin-bottom: 0.5mm;
-                            }
-                            .barcode-container {
-                                width: 100%;
-                                height: 7mm;
-                                margin-bottom: 0.5mm;
-                                display: flex;
-                                align-items: center;
-                            }
-                            .barcode-img {
-                                width: 100%;
-                                height: 100%;
-                                object-fit: fill;
-                            }
-                            .serial-text {
-                                font-size: 8.5pt;
-                                font-weight: 800;
-                                color: #000;
-                                margin: 0;
-                                white-space: nowrap;
-                            }
-                            .right-side {
-                                width: 16mm;
-                                display: flex;
-                                flex-direction: column;
-                                align-items: center;
-                                justify-content: center;
-                                border-left: 0.2mm solid #000;
-                                padding-left: 2mm;
-                            }
-                            .qr-code {
-                                width: 13mm;
-                                height: 13mm;
-                                margin-bottom: 1mm;
-                            }
-                            .footer-id {
-                                font-size: 4.5pt;
-                                text-align: center;
-                                color: #000;
-                                font-weight: 700;
-                                line-height: 1;
-                                text-transform: uppercase;
-                            }
-                            .footer-val {
-                                font-size: 5.5pt;
-                                font-weight: 900;
-                                color: #000;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="label-container">
-                            <div class="left-side">
-                                <div class="type-label">${asset.type}</div>
-                                <div class="asset-name">${asset.name}</div>
-                                <div class="barcode-container">
-                                    <img class="barcode-img" src="${barcodeDataUrl}" />
-                                </div>
-                                <p class="serial-text">S/N: ${asset.serial}</p>
-                            </div>
-                            <div class="right-side">
-                                <img class="qr-code" src="${qrDataUrl}" />
-                                <div class="footer-id">CÓDIGO ACTIVO</div>
-                                <div class="footer-val">AST-${asset.id?.toString().slice(-4) || 'XXXX'}</div>
-                            </div>
-                        </div>
-                        <script>
-                            window.onload = () => {
-                                window.print();
-                                setTimeout(() => window.close(), 500);
-                            };
-                        </script>
-                    </body>
-                </html>
-            `);
-            printWindow.document.close();
+            // --- DIBUJAR EN EL PDF ---
+            // Fuente principal
+            doc.setFont("helvetica", "bold");
+            
+            // Tipo de Activo (LAPTOP, etc)
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text(asset.type.toUpperCase(), 3, 7);
+
+            // Nombre / Specs (2 líneas si es necesario)
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7);
+            const splitName = doc.splitTextToSize(asset.name, 28); // 28mm de ancho para texto
+            doc.text(splitName.slice(0, 2), 3, 11);
+
+            // Código de Barras
+            doc.addImage(barcodeDataUrl, 'PNG', 3, 14.5, 28, 6);
+
+            // Serial Text
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8.5);
+            doc.text(`S/N: ${asset.serial}`, 3, 23);
+
+            // Línea divisoria vertical
+            doc.setLineWidth(0.2);
+            doc.line(33, 2, 33, 23);
+
+            // Código QR (Derecha)
+            doc.addImage(qrDataUrl, 'PNG', 34, 3, 14, 14);
+
+            // Footer ID
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(5);
+            doc.text("CÓDIGO ACTIVO", 41, 19, { align: 'center' });
+            doc.setFontSize(6.5);
+            doc.text(`AST-${asset.id?.toString().slice(-4) || 'XXXX'}`, 41, 22.5, { align: 'center' });
+
+            // 4. Abrir en nueva ventana e imprimir
+            const string = doc.output('bloburl');
+            const printWindow = window.open(string, '_blank');
+            if (printWindow) {
+                printWindow.onload = () => {
+                    printWindow.print();
+                };
+            }
+
         } catch (err) {
-            console.error('Error generating label:', err);
-            alert('Error al generar la etiqueta');
+            console.error('Error generating PDF label:', err);
+            alert('Error al generar la etiqueta PDF');
         }
     };
 
