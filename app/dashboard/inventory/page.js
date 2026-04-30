@@ -407,30 +407,35 @@ export default function InventoryPage() {
                                 padding-right: 2mm;
                             }
                             .type-label {
-                                font-size: 11pt;
+                                font-size: 10.5pt;
                                 font-weight: 900;
                                 text-transform: uppercase;
                                 line-height: 1;
-                                margin-bottom: 0.5mm;
+                                margin-bottom: 0.2mm;
                             }
                             .asset-name {
-                                font-size: 7pt;
+                                font-size: 6.8pt;
                                 line-height: 1.1;
                                 font-weight: 600;
                                 display: -webkit-box;
                                 -webkit-line-clamp: 2;
                                 -webkit-box-orient: vertical;
                                 overflow: hidden;
+                                margin-bottom: 0.5mm;
+                                height: 7.5pt;
                             }
                             .barcode-img {
                                 width: 100%;
-                                height: 7mm;
+                                height: 5.5mm;
                                 object-fit: fill;
+                                margin-top: 0.5mm;
                             }
                             .serial-text {
-                                font-size: 8.5pt;
-                                font-weight: 800;
+                                font-size: 9pt;
+                                font-weight: 900;
                                 margin: 0;
+                                margin-top: 0.2mm;
+                                letter-spacing: -0.1mm;
                             }
                             .right-side {
                                 width: 16mm;
@@ -465,7 +470,7 @@ export default function InventoryPage() {
                                 <div style="height: 7mm; margin-top: 1mm;">
                                     <img class="barcode-img" src="${barcodeDataUrl}" />
                                 </div>
-                                <p class="serial-text">S/N: ${asset.serial}</p>
+                                <p class="serial-text">${asset.serial}</p>
                             </div>
                             <div class="right-side">
                                 <img class="qr-code" src="${qrDataUrl}" />
