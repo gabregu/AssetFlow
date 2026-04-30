@@ -368,21 +368,35 @@ export default function InventoryPage() {
                                 size: 50mm 25mm;
                                 margin: 0;
                             }
+                            @media print {
+                                html, body {
+                                    width: 50mm;
+                                    height: 25mm;
+                                    margin: 0;
+                                    padding: 0;
+                                }
+                                /* Ocultar encabezados y pies de página del navegador */
+                                @page { margin: 0; }
+                                body { margin: 0; }
+                            }
                             body {
                                 margin: 0;
                                 padding: 0;
                                 font-family: 'Inter', -apple-system, sans-serif;
                                 -webkit-print-color-adjust: exact;
                                 background: white;
+                                width: 50mm;
+                                height: 25mm;
+                                overflow: hidden;
                             }
                             .label-container {
                                 width: 50mm;
                                 height: 25mm;
                                 box-sizing: border-box;
-                                padding: 1.2mm 2mm;
+                                padding: 1.5mm 2.5mm;
                                 display: flex;
                                 position: relative;
-                                overflow: hidden;
+                                background: white;
                             }
                             .left-side {
                                 flex: 1;
