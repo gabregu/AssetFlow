@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
-import { jsPDF } from 'jspdf';
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
 import { CountryFilter } from '../../components/layout/CountryFilter';
@@ -28,10 +27,12 @@ export default function InventoryPage() {
         tickets, assets, consumables, yubikeys, deliveries, sfdcCases, lastImportedCases, users, currentUser, rates, expenses, loading,
         addTicket, updateTicket, deleteTicket, deleteTickets, addAsset, addAssets, updateAsset, deleteAsset,
         addDelivery, deleteDelivery, deleteDeliveries, updateConsumableStock, updateConsumable, addConsumable, deleteConsumable,
+        addYubikey, updateYubikey, deleteYubikey,
         clearInventory, clearInventoryLaptops, clearInventorySmartphones, updateRates, addExpense, deleteExpense,
         importSfdcCases, clearSfdcCases, removeSfdcCase,
         countryFilter, setCountryFilter, entities = [],
-        login, logout, signup, addUser, deleteUser, updateUser, updatePassword, sendPasswordReset
+        login, logout, signup, addUser, deleteUser, updateUser, updatePassword, sendPasswordReset,
+        onlineUsers, refreshData, setLoading
     } = useStore();
 
 
@@ -1051,8 +1052,21 @@ export default function InventoryPage() {
         }
     };
 
+    const getCountryInitial = (country) => {
+        if (!country) return '?';
+        const c = country.toLowerCase();
+        if (c.includes('argentina')) return 'AR';
+        if (c.includes('chile')) return 'CL';
+        if (c.includes('uruguay')) return 'UY';
+        if (c.includes('colombia')) return 'CO';
+        if (c.includes('peru')) return 'PE';
+        if (c.includes('mexico')) return 'MX';
+        return country.substring(0, 2).toUpperCase();
+    };
+
     // Helper: Apply country filter to assets (same logic as filteredAssets)
     const applyCountryFilter = (assetList) => {
+        if (!assetList) return [];
         if (countryFilter === 'Todos') return assetList;
         return assetList.filter(a => {
             if (a.country) {
