@@ -1052,18 +1052,6 @@ export default function InventoryPage() {
         }
     };
 
-    const getCountryInitial = (country) => {
-        if (!country) return '?';
-        const c = country.toLowerCase();
-        if (c.includes('argentina')) return 'AR';
-        if (c.includes('chile')) return 'CL';
-        if (c.includes('uruguay')) return 'UY';
-        if (c.includes('colombia')) return 'CO';
-        if (c.includes('peru')) return 'PE';
-        if (c.includes('mexico')) return 'MX';
-        return country.substring(0, 2).toUpperCase();
-    };
-
     // Helper: Apply country filter to assets (same logic as filteredAssets)
     const applyCountryFilter = (assetList) => {
         if (!assetList) return [];
