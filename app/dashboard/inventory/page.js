@@ -2744,7 +2744,7 @@ export default function InventoryPage() {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem' }}>
                         <Button type="button" variant="ghost" onClick={closeModal}>Cancelar</Button>
-                        <Button type="submit">{editingAsset ? "Guardar Cambios" : "Registrar Activo"}</Button>
+                        <Button type="submit" loading={loading}>{editingAsset ? "Guardar Cambios" : "Registrar Activo"}</Button>
                     </div>
                 </form>
             </Modal>
