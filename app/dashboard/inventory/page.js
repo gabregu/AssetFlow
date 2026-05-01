@@ -2113,6 +2113,7 @@ export default function InventoryPage() {
                                                 <th onClick={() => handleSort('sfdcCase')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>CASO SFDC <SortIcon column="sfdcCase" /></th>
                                                 <th onClick={() => handleSort('cod')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>COD <SortIcon column="cod" /></th>
                                                 <th onClick={() => handleSort('boxNumber')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>CAJA <SortIcon column="boxNumber" /></th>
+                                                <th onClick={() => handleSort('locationId')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>UBICACIÓN <SortIcon column="locationId" /></th>
                                                 <th onClick={() => handleSort('status')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ESTADO <SortIcon column="status" /></th>
                                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
                                             </tr>
@@ -2189,6 +2190,13 @@ export default function InventoryPage() {
                                                         {asset.boxNumber ? (
                                                             <Badge variant="outline" style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content', borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}>
                                                                 <Box size={12} /> {asset.boxNumber}
+                                                            </Badge>
+                                                        ) : <span style={{ opacity: 0.3 }}>-</span>}
+                                                    </td>
+                                                    <td style={{ padding: '1rem' }}>
+                                                        {asset.locationId ? (
+                                                            <Badge variant="info" style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content', backgroundColor: 'rgba(37, 99, 235, 0.05)', color: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}>
+                                                                <MapPin size={12} /> {asset.locationId}
                                                             </Badge>
                                                         ) : <span style={{ opacity: 0.3 }}>-</span>}
                                                     </td>

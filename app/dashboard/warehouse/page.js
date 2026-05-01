@@ -12,7 +12,11 @@ import {
     Navigation,
     Info,
     History,
-    Trash2
+    Trash2,
+    ShieldCheck,
+    ClipboardCheck,
+    XCircle,
+    Scan
 } from 'lucide-react';
 import { useStore } from '../../../lib/store';
 import { Button } from '../../components/ui/Button';
@@ -34,8 +38,14 @@ export default function WarehousePage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [isMappingMode, setIsMappingMode] = useState(false);
+    const [isAuditMode, setIsAuditMode] = useState(false);
     const [mappingStep, setMappingStep] = useState(1); // 1: Scan Asset, 2: Scan Location
     const [scannedAsset, setScannedAsset] = useState(null);
+    
+    // Audit State
+    const [auditLocation, setAuditLocation] = useState(null);
+    const [scannedAuditAssets, setScannedAuditAssets] = useState([]);
+    const [auditSearchQuery, setAuditSearchQuery] = useState('');
     const [scannedLocation, setScannedLocation] = useState(null);
     
     const [isAddLocationModalOpen, setIsAddLocationModalOpen] = useState(false);
@@ -72,12 +82,61 @@ export default function WarehousePage() {
 
     // Handle Location Scan simulation
     const handleScanLocation = (locationId) => {
+        if (isAuditMode) {
+            const loc = warehouseLocations.find(l => l.id === locationId);
+            setAuditLocation(loc);
+            setScannedAuditAssets([]);
+            return;
+        }
+
         if (mappingStep === 2 && scannedAsset) {
             confirmMapping(scannedAsset.id, locationId);
         } else {
             const loc = warehouseLocations.find(l => l.id === locationId);
             setSelectedLocation(loc);
         }
+    };
+
+    const handleAuditScan = (e) => {
+        e.preventDefault();
+        const asset = assets.find(a => 
+            a.id.toLowerCase() === auditSearchQuery.toLowerCase() || 
+            a.serial.toLowerCase() === auditSearchQuery.toLowerCase()
+        );
+        
+        if (asset) {
+            if (!scannedAuditAssets.find(a => a.id === asset.id)) {
+                setScannedAuditAssets(prev => [...prev, asset]);
+            }
+            setAuditSearchQuery('');
+        } else {
+            alert("Activo no encontrado.");
+        }
+    };
+
+    const finishAudit = async () => {
+        if (!auditLocation) return;
+        
+        const expected = assets.filter(a => a.locationId === auditLocation.id);
+        const matches = scannedAuditAssets.filter(s => expected.find(e => e.id === s.id));
+        const extras = scannedAuditAssets.filter(s => !expected.find(e => e.id === s.id));
+        const missing = expected.filter(e => !scannedAuditAssets.find(s => s.id === e.id));
+
+        if (extras.length > 0 || missing.length > 0) {
+            if (!window.confirm(`La auditoría encontró discrepancias:\n- ${missing.length} Faltantes\n- ${extras.length} Sobrantes\n\n¿Desea finalizar de todos modos?`)) return;
+        }
+
+        // Update last check for found assets
+        const now = new Date().toISOString();
+        for (const asset of scannedAuditAssets) {
+            // We assume mapAssetToLocation or a similar update would be needed here if we want to "fix" extras
+            // For now, just a notification
+        }
+
+        alert(`Auditoría finalizada para ${auditLocation.id}.`);
+        setAuditLocation(null);
+        setScannedAuditAssets([]);
+        setIsAuditMode(false);
     };
 
     const confirmMapping = async (assetId, locationId) => {
@@ -136,10 +195,23 @@ export default function WarehousePage() {
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <Button 
+                        variant={isAuditMode ? "primary" : "outline"} 
+                        icon={ClipboardCheck}
+                        onClick={() => {
+                            setIsAuditMode(!isAuditMode);
+                            setIsMappingMode(false);
+                            setAuditLocation(null);
+                        }}
+                        style={{ borderColor: isAuditMode ? 'transparent' : '#8b5cf6', color: isAuditMode ? 'white' : '#8b5cf6' }}
+                    >
+                        {isAuditMode ? "Cancelar Auditoría" : "Modo Auditoría"}
+                    </Button>
+                    <Button 
                         variant={isMappingMode ? "primary" : "outline"} 
                         icon={ScanLine}
                         onClick={() => {
                             setIsMappingMode(!isMappingMode);
+                            setIsAuditMode(false);
                             setMappingStep(1);
                             setScannedAsset(null);
                         }}
@@ -186,8 +258,21 @@ export default function WarehousePage() {
                                     }}>
                                         {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
                                             const asset = getAssetAtLocation(loc.id);
-                                            const isSelected = selectedLocation?.id === loc.id;
-                                            const isTarget = mappingStep === 2 && isMappingMode;
+                                            const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
+                                            const isTarget = (mappingStep === 2 && isMappingMode) || isAuditMode;
+
+                                            let bgColor = 'var(--surface)';
+                                            let textColor = 'var(--text-main)';
+
+                                            if (asset) {
+                                                bgColor = 'var(--primary-color)';
+                                                textColor = 'white';
+                                            }
+
+                                            if (isAuditMode && auditLocation?.id === loc.id) {
+                                                bgColor = '#8b5cf6';
+                                                textColor = 'white';
+                                            }
 
                                             return (
                                                 <div 
@@ -199,18 +284,18 @@ export default function WarehousePage() {
                                                         flexDirection: 'column',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
-                                                        background: asset ? 'var(--primary-color)' : 'var(--surface)',
-                                                        color: asset ? 'white' : 'var(--text-main)',
+                                                        background: bgColor,
+                                                        color: textColor,
                                                         borderRadius: '8px',
-                                                        border: isSelected ? '2px solid var(--primary-color)' : '1px solid var(--border)',
+                                                        border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : '1px solid var(--border)',
                                                         cursor: 'pointer',
                                                         transition: 'all 0.2s ease',
                                                         fontSize: '0.7rem',
                                                         fontWeight: 700,
                                                         position: 'relative',
-                                                        boxShadow: isSelected ? '0 0 15px rgba(37, 99, 235, 0.3)' : 'none',
-                                                        opacity: isTarget && !asset ? 1 : (isTarget ? 0.5 : 1),
-                                                        animation: isTarget && !asset ? 'pulse 2s infinite' : 'none'
+                                                        boxShadow: isSelected ? `0 0 15px ${isAuditMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(37, 99, 235, 0.3)'}` : 'none',
+                                                        opacity: isTarget && !asset && !isSelected ? 0.7 : 1,
+                                                        animation: isTarget && !asset && !isSelected ? 'pulse 2s infinite' : 'none'
                                                     }}
                                                     title={`${loc.id} ${asset ? `(${asset.name})` : '(Libre)'}`}
                                                 >
@@ -230,13 +315,12 @@ export default function WarehousePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     
                     {/* Scanner Console */}
-                    <Card style={{ padding: '1.5rem', border: isMappingMode ? '2px solid var(--primary-color)' : '1px solid var(--border)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-                            <ScanLine size={18} color={isMappingMode ? "var(--primary-color)" : "inherit"} />
-                            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Consola de Escaneo</h3>
-                        </div>
-
-                        {isMappingMode ? (
+                    {isMappingMode && (
+                        <Card style={{ padding: '1.5rem', border: '2px solid var(--primary-color)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                                <ScanLine size={18} color="var(--primary-color)" />
+                                <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Consola de Mapping</h3>
+                            </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <div style={{ 
                                     padding: '1rem', 
@@ -292,18 +376,92 @@ export default function WarehousePage() {
                                                 autoFocus
                                             />
                                         </div>
-                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                                            Simulación: Ingrese ID y presione Enter.
-                                        </p>
                                     </form>
                                 )}
                             </div>
-                        ) : (
+                        </Card>
+                    )}
+
+                    {isAuditMode && (
+                        <Card style={{ padding: '1.5rem', border: '2px solid #8b5cf6' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                                <ShieldCheck size={18} color="#8b5cf6" />
+                                <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Consola de Auditoría</h3>
+                            </div>
+                            
+                            {!auditLocation ? (
+                                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(139, 92, 246, 0.05)', borderRadius: '12px', border: '1px dashed #8b5cf6' }}>
+                                    <p style={{ fontSize: '0.85rem', color: '#6d28d9', fontWeight: 600 }}>Seleccione un estante en el mapa para iniciar la auditoría.</p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ padding: '0.75rem', background: '#8b5cf6', color: 'white', borderRadius: '8px', textAlign: 'center', fontWeight: 800 }}>
+                                        Auditando: {auditLocation.id}
+                                    </div>
+                                    
+                                    <form onSubmit={handleAuditScan}>
+                                        <div className="search-box">
+                                            <Scan className="search-icon" size={18} />
+                                            <input 
+                                                className="search-input"
+                                                placeholder="Escanee activo físicamente..."
+                                                value={auditSearchQuery}
+                                                onChange={e => setAuditSearchQuery(e.target.value)}
+                                                autoFocus
+                                                style={{ borderColor: '#8b5cf6' }}
+                                            />
+                                        </div>
+                                    </form>
+
+                                    <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {assets.filter(a => a.locationId === auditLocation.id).map(expected => {
+                                            const isFound = scannedAuditAssets.find(s => s.id === expected.id);
+                                            return (
+                                                <div key={expected.id} style={{ 
+                                                    padding: '0.6rem', 
+                                                    borderRadius: '8px', 
+                                                    background: isFound ? 'rgba(34, 197, 94, 0.1)' : 'rgba(0,0,0,0.03)',
+                                                    border: `1px solid ${isFound ? '#22c55e' : 'var(--border)'}`,
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center'
+                                                }}>
+                                                    <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>{expected.name}</div>
+                                                    {isFound ? <CheckCircle2 size={14} color="#22c55e" /> : <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '1px solid #ccc' }} />}
+                                                </div>
+                                            );
+                                        })}
+                                        {scannedAuditAssets.filter(s => s.locationId !== auditLocation.id).map(extra => (
+                                            <div key={extra.id} style={{ 
+                                                padding: '0.6rem', 
+                                                borderRadius: '8px', 
+                                                background: 'rgba(239, 68, 68, 0.1)',
+                                                border: '1px solid #ef4444',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}>
+                                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ef4444' }}>Extra: {extra.name}</div>
+                                                <XCircle size={14} color="#ef4444" />
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <Button fullWidth variant="primary" style={{ background: '#8b5cf6' }} onClick={finishAudit}>
+                                        Finalizar Auditoría
+                                    </Button>
+                                </div>
+                            )}
+                        </Card>
+                    )}
+
+                    {!isMappingMode && !isAuditMode && (
+                        <Card style={{ padding: '1.5rem' }}>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '1rem' }}>
-                                Active el modo escaneo para vincular activos a ubicaciones físicas.
+                                Seleccione una opción arriba para comenzar a operar en el depósito.
                             </p>
-                        )}
-                    </Card>
+                        </Card>
+                    )}
 
                     {/* Selected Location Detail */}
                     {selectedLocation ? (

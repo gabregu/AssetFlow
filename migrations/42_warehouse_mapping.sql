@@ -21,11 +21,13 @@ ALTER TABLE "public"."assets"
 ALTER TABLE "public"."warehouse_locations" ENABLE ROW LEVEL SECURITY;
 
 -- 4. Create basic policies for warehouse_locations
+DROP POLICY IF EXISTS "Allow authenticated read warehouse_locations" ON "public"."warehouse_locations";
 CREATE POLICY "Allow authenticated read warehouse_locations"
 ON "public"."warehouse_locations" FOR SELECT
 TO authenticated
 USING (true);
 
+DROP POLICY IF EXISTS "Allow admin manage warehouse_locations" ON "public"."warehouse_locations";
 CREATE POLICY "Allow admin manage warehouse_locations"
 ON "public"."warehouse_locations" FOR ALL
 TO authenticated
