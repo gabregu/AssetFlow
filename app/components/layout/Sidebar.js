@@ -2,7 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Ticket, Package, Truck, Settings, LogOut, FileText, X, DollarSign, History, Activity, TrendingUp, RefreshCcw } from 'lucide-react';
+import { LayoutDashboard, Ticket, Package, Truck, Settings, LogOut, FileText, X, DollarSign, History, Activity, TrendingUp, RefreshCcw, Map } from 'lucide-react';
 import { useStore } from '../../../lib/store';
 
 import { Logo } from '../ui/Logo';
@@ -21,6 +21,7 @@ export function Sidebar({ isOpen, onClose }) {
         { name: 'Facturación', icon: DollarSign, path: '/dashboard/billing', roles: ['admin', 'Gerencial'] },
         { name: 'Histórico', icon: History, path: '/dashboard/history', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Inventario', icon: Package, path: '/dashboard/inventory', roles: ['admin', 'Administrativo', 'Gerencial'] },
+        { name: 'Mapeo Depósito', icon: Map, path: '/dashboard/warehouse', roles: ['admin', 'Administrativo', 'Gerencial'] },
     ];
 
     const personalItems = [
