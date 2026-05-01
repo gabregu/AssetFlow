@@ -16,8 +16,10 @@ import {
     ShieldCheck,
     ClipboardCheck,
     XCircle,
-    Scan
+    Scan,
+    Printer
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { useStore } from '../../../lib/store';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -189,6 +191,83 @@ export default function WarehousePage() {
             setSelectedLocation(null);
         } else {
             alert("Error al eliminar: " + res.error.message);
+        }
+    };
+
+    const handlePrintLocationLabel = async (location) => {
+        try {
+            const qrDataUrl = await QRCode.toDataURL(location.id, {
+                margin: 0,
+                width: 200,
+                color: { dark: '#000000', light: '#ffffff' }
+            });
+
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            const content = `
+                <html>
+                    <head>
+                        <style>
+                            @page { size: 50mm 25mm; margin: 0; }
+                            * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+                            html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
+                            .label-container {
+                                width: 50mm;
+                                height: 25mm;
+                                padding: 2mm;
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+                                font-family: sans-serif;
+                            }
+                            .qr-side { width: 21mm; height: 21mm; }
+                            .text-side {
+                                flex: 1;
+                                padding-left: 3mm;
+                                display: flex;
+                                flexDirection: column;
+                                justify-content: center;
+                                text-align: left;
+                            }
+                            .loc-title { font-size: 14pt; font-weight: 900; color: #000; margin-bottom: 1mm; }
+                            .loc-region { font-size: 8pt; font-weight: 600; color: #666; text-transform: uppercase; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="label-container">
+                            <img src="${qrDataUrl}" class="qr-side" />
+                            <div class="text-side">
+                                <div class="loc-region">ESTANTERÍA ${location.country}</div>
+                                <div class="loc-title">${location.id}</div>
+                                <div style="font-size: 6pt; opacity: 0.5;">AssetFlow WMS</div>
+                            </div>
+                        </div>
+                        <script>
+                            window.onload = () => {
+                                window.print();
+                                setTimeout(() => window.close(), 500);
+                            };
+                        </script>
+                    </body>
+                </html>
+            `;
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+        } catch (err) {
+            console.error('Print error:', err);
+            alert('Error al generar etiqueta');
         }
     };
 
@@ -498,6 +577,14 @@ export default function WarehousePage() {
                                 }}>
                                     {getAssetAtLocation(selectedLocation.id) ? 'Ocupado' : 'Disponible'}
                                 </div>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    icon={Printer} 
+                                    onClick={() => handlePrintLocationLabel(selectedLocation)}
+                                    title="Imprimir Etiqueta Estantería"
+                                    style={{ marginLeft: '0.5rem', color: 'var(--primary-color)', borderColor: 'var(--primary-color)' }}
+                                />
                             </div>
 
                             {getAssetAtLocation(selectedLocation.id) ? (
