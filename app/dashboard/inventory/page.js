@@ -86,6 +86,7 @@ export default function InventoryPage() {
     const [isYubikeyInventoryExpanded, setIsYubikeyInventoryExpanded] = useState(false);
     const [isInventoryExpanded, setIsInventoryExpanded] = useState(false);
     const [selectedAssets, setSelectedAssets] = useState([]);
+    const [isSaving, setIsSaving] = useState(false);
     const [isPending, startTransition] = useTransition();
 
     // Quick Detail Modal State
@@ -301,7 +302,7 @@ export default function InventoryPage() {
         }
 
         try {
-            setLoading(true);
+            setIsSaving(true);
             if (editingAsset) {
                 await updateAsset(editingAsset.id, { ...newAsset, dateLastUpdate: new Date().toISOString(), updatedBy: currentUser?.name || 'Sistema' });
                 closeModal();
@@ -321,7 +322,7 @@ export default function InventoryPage() {
             console.error('Error saving asset:', error);
             alert('Error al guardar el activo: ' + (error.message || 'Error desconocido'));
         } finally {
-            setLoading(false);
+            setIsSaving(false);
         }
     };
 
@@ -2744,7 +2745,7 @@ export default function InventoryPage() {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem' }}>
                         <Button type="button" variant="ghost" onClick={closeModal}>Cancelar</Button>
-                        <Button type="submit" loading={loading}>{editingAsset ? "Guardar Cambios" : "Registrar Activo"}</Button>
+                        <Button type="submit" loading={isSaving}>{editingAsset ? "Guardar Cambios" : "Registrar Activo"}</Button>
                     </div>
                 </form>
             </Modal>
