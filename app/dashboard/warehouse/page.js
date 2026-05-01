@@ -49,6 +49,7 @@ export default function WarehousePage() {
     const [scannedLocation, setScannedLocation] = useState(null);
     
     const [isAddLocationModalOpen, setIsAddLocationModalOpen] = useState(false);
+    const [isSavingLocation, setIsSavingLocation] = useState(false);
     const [newLoc, setNewLoc] = useState({ id: '', aisle: '', section: '', level: '' });
 
     // Group locations by aisle for the grid, filtered by country
@@ -154,14 +155,30 @@ export default function WarehousePage() {
     const handleAddLocation = async (e) => {
         e.preventDefault();
         if (countryFilter === 'Todos') {
-            alert("Por favor seleccione una región específica primero.");
+            alert("Por favor seleccione una región (País) específica antes de crear una ubicación.");
             return;
         }
-        const fullId = `${newLoc.aisle}-${newLoc.section}-${newLoc.level}`;
-        const res = await addWarehouseLocation({ ...newLoc, id: fullId, country: countryFilter });
-        if (!res.error) {
-            setIsAddLocationModalOpen(false);
-            setNewLoc({ id: '', aisle: '', section: '', level: '' });
+
+        setIsSavingLocation(true);
+        try {
+            const fullId = `${newLoc.aisle}-${newLoc.section}-${newLoc.level}`;
+            const res = await addWarehouseLocation({ ...newLoc, id: fullId, country: countryFilter });
+            
+            if (res.error) {
+                if (res.error.code === '23505') {
+                    alert(`La ubicación ${fullId} ya existe en el sistema.`);
+                } else {
+                    alert("Error al crear ubicación: " + res.error.message);
+                }
+            } else {
+                setIsAddLocationModalOpen(false);
+                setNewLoc({ id: '', aisle: '', section: '', level: '' });
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Ocurrió un error inesperado.");
+        } finally {
+            setIsSavingLocation(false);
         }
     };
 
@@ -571,8 +588,12 @@ export default function WarehousePage() {
                         />
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                        <Button type="button" variant="ghost" onClick={() => setIsAddLocationModalOpen(false)}>Cancelar</Button>
-                        <Button type="submit">Crear Ubicación</Button>
+                        <Button type="button" variant="ghost" onClick={() => setIsAddLocationModalOpen(false)} disabled={isSavingLocation}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" loading={isSavingLocation}>
+                            {isSavingLocation ? 'Creando...' : 'Crear Ubicación'}
+                        </Button>
                     </div>
                 </form>
             </Modal>
