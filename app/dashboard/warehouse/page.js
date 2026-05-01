@@ -17,14 +17,16 @@ import { useStore } from '../../../lib/store';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
+import { CountryFilter } from '../../components/layout/CountryFilter';
 
 export default function WarehousePage() {
     const { 
-        warehouseLocations, 
+        warehouseLocations,
         assets, 
         mapAssetToLocation, 
         addWarehouseLocation,
-        currentUser 
+        currentUser,
+        countryFilter 
     } = useStore();
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -37,15 +39,18 @@ export default function WarehousePage() {
     const [isAddLocationModalOpen, setIsAddLocationModalOpen] = useState(false);
     const [newLoc, setNewLoc] = useState({ id: '', aisle: '', section: '', level: '' });
 
-    // Group locations by aisle for the grid
+    // Group locations by aisle for the grid, filtered by country
     const groupedLocations = useMemo(() => {
         const groups = {};
-        warehouseLocations.forEach(loc => {
+        const filtered = warehouseLocations.filter(loc => 
+            countryFilter === 'Todos' || loc.country === countryFilter
+        );
+        filtered.forEach(loc => {
             if (!groups[loc.aisle]) groups[loc.aisle] = [];
             groups[loc.aisle].push(loc);
         });
         return groups;
-    }, [warehouseLocations]);
+    }, [warehouseLocations, countryFilter]);
 
     // Handle Asset Scan simulation
     const handleScanAsset = (e) => {
@@ -87,8 +92,12 @@ export default function WarehousePage() {
 
     const handleAddLocation = async (e) => {
         e.preventDefault();
+        if (countryFilter === 'Todos') {
+            alert("Por favor seleccione una región específica primero.");
+            return;
+        }
         const fullId = `${newLoc.aisle}-${newLoc.section}-${newLoc.level}`;
-        const res = await addWarehouseLocation({ ...newLoc, id: fullId });
+        const res = await addWarehouseLocation({ ...newLoc, id: fullId, country: countryFilter });
         if (!res.error) {
             setIsAddLocationModalOpen(false);
             setNewLoc({ id: '', aisle: '', section: '', level: '' });
@@ -104,9 +113,14 @@ export default function WarehousePage() {
         <div style={{ padding: '1rem' }}>
             {/* Header / Stats */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem' }}>Mapeo de Depósito</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Control visual y físico de ubicaciones de activos.</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                    <div>
+                        <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem' }}>Mapeo de Depósito</h1>
+                        <p style={{ color: 'var(--text-secondary)' }}>Control visual y físico de ubicaciones de activos.</p>
+                    </div>
+                    <div style={{ transform: 'scale(0.9)', transformOrigin: 'left' }}>
+                        <CountryFilter />
+                    </div>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <Button 

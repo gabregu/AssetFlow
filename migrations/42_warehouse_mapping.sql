@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS "public"."warehouse_locations" (
     "aisle" text NOT NULL, -- Pasillo
     "section" text NOT NULL, -- Sección/Rack
     "level" text NOT NULL, -- Nivel/Altura
+    "country" text NOT NULL, -- Región (Argentina, etc)
     "status" text DEFAULT 'Disponible', -- Disponible, Ocupado, Reservado
     "created_at" timestamp with time zone DEFAULT now()
 );
