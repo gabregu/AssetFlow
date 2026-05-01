@@ -1864,7 +1864,7 @@ export default function InventoryPage() {
                                         name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Nuevo',
                                         date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
                                         modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-',
-                                        eolDate: '', notes: '', sfd_case: '', oem: ''
+                                        eolDate: '', notes: '', sfdcCase: '', oem: '', imei2: '', cod: '', boxNumber: '', country: countryFilter
                                     });
                                     setIsModalOpen(true);
                                 }}
