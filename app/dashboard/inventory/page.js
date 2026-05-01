@@ -282,7 +282,7 @@ export default function InventoryPage() {
         return <span style={{ marginLeft: '4px', color: 'var(--primary-color)' }}>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>;
     };
 
-    const handleCreateOrUpdate = (e) => {
+    const handleCreateOrUpdate = async (e) => {
         e.preventDefault();
 
         // Validar que el asignado no esté vacío
@@ -300,20 +300,28 @@ export default function InventoryPage() {
             }
         }
 
-        if (editingAsset) {
-            updateAsset(editingAsset.id, { ...newAsset, dateLastUpdate: new Date().toISOString(), updatedBy: currentUser.name });
-            closeModal();
-        } else {
-            const serialCreado = newAsset.serial;
-            addAsset({ ...newAsset, dateLastUpdate: new Date().toISOString(), updatedBy: currentUser.name });
-            closeModal();
-            // Mostrar el activo recién creado en la lista
-            setSearchFilter(serialCreado);
-            setStatusFilter(null);
-            setCodFilter(false);
-            setBoxFilter('');
-            setColumnFilters({ status: 'All', type: 'All', assignee: '' });
-            setIsInventoryExpanded(true);
+        try {
+            setLoading(true);
+            if (editingAsset) {
+                await updateAsset(editingAsset.id, { ...newAsset, dateLastUpdate: new Date().toISOString(), updatedBy: currentUser?.name || 'Sistema' });
+                closeModal();
+            } else {
+                const serialCreado = newAsset.serial;
+                await addAsset({ ...newAsset, dateLastUpdate: new Date().toISOString(), updatedBy: currentUser?.name || 'Sistema' });
+                closeModal();
+                // Mostrar el activo recién creado en la lista
+                setSearchFilter(serialCreado);
+                setStatusFilter(null);
+                setCodFilter(false);
+                setBoxFilter('');
+                setColumnFilters({ status: 'All', type: 'All', assignee: '' });
+                setIsInventoryExpanded(true);
+            }
+        } catch (error) {
+            console.error('Error saving asset:', error);
+            alert('Error al guardar el activo: ' + (error.message || 'Error desconocido'));
+        } finally {
+            setLoading(false);
         }
     };
 
