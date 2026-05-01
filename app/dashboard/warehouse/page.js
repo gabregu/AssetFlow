@@ -11,7 +11,8 @@ import {
     AlertTriangle,
     Navigation,
     Info,
-    History
+    History,
+    Trash2
 } from 'lucide-react';
 import { useStore } from '../../../lib/store';
 import { Button } from '../../components/ui/Button';
@@ -25,6 +26,7 @@ export default function WarehousePage() {
         assets, 
         mapAssetToLocation, 
         addWarehouseLocation,
+        deleteWarehouseLocation,
         currentUser,
         countryFilter 
     } = useStore();
@@ -101,6 +103,16 @@ export default function WarehousePage() {
         if (!res.error) {
             setIsAddLocationModalOpen(false);
             setNewLoc({ id: '', aisle: '', section: '', level: '' });
+        }
+    };
+
+    const handleDeleteLocation = async (id) => {
+        if (!window.confirm(`¿Está seguro de eliminar la ubicación ${id}? Esta acción no se puede deshacer.`)) return;
+        const res = await deleteWarehouseLocation(id);
+        if (!res.error) {
+            setSelectedLocation(null);
+        } else {
+            alert("Error al eliminar: " + res.error.message);
         }
     };
 
@@ -337,9 +349,22 @@ export default function WarehousePage() {
                                     <Button variant="outline" size="sm" icon={Maximize2} style={{ marginTop: '0.5rem' }}>Ver Detalle Activo</Button>
                                 </div>
                             ) : (
-                                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>
-                                    <Info size={32} style={{ opacity: 0.2, marginBottom: '0.5rem' }} />
-                                    <p style={{ fontSize: '0.85rem' }}>Esta ubicación está vacía.</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>
+                                        <Info size={32} style={{ opacity: 0.2, marginBottom: '0.5rem' }} />
+                                        <p style={{ fontSize: '0.85rem' }}>Esta ubicación está vacía.</p>
+                                    </div>
+                                    {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
+                                        <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            icon={Trash2} 
+                                            style={{ color: '#ef4444', marginTop: '1rem' }}
+                                            onClick={() => handleDeleteLocation(selectedLocation.id)}
+                                        >
+                                            Eliminar Ubicación
+                                        </Button>
+                                    )}
                                 </div>
                             )}
                         </Card>
