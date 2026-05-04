@@ -12,6 +12,8 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
     // ... inside startScanner ...
     const [scanResult, setScanResult] = useState(null);
     const [cameraError, setCameraError] = useState(false);
+    const [technicalError, setTechnicalError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const fileInputRef = useRef(null);
     const scannerRef = useRef(null); // To store Html5Qrcode instance
 
@@ -134,7 +136,9 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
     const handleError = (err) => {
         console.error("Camera Error:", err);
         setCameraError(true);
-        // Si el error es NotAllowedError, es un tema de permisos explícito
+        // Guardar el mensaje técnico para diagnóstico
+        setTechnicalError(`${err.name}: ${err.message}`);
+        
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
             console.warn("Permiso denegado por el usuario.");
         }
@@ -240,6 +244,12 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
                                         ? "No pudimos acceder a la cámara. Haz clic en el icono del CANDADO arriba y permite el acceso."
                                         : "El navegador bloquea la cámara por seguridad (sin HTTPS)."}
                                 </p>
+
+                                {technicalError && (
+                                    <div style={{ margin: '0.5rem 0 1rem 0', padding: '0.5rem', background: '#fee2e2', borderRadius: '6px', fontSize: '0.65rem', fontFamily: 'monospace', textAlign: 'left', border: '1px solid #f87171' }}>
+                                        <b>Error Técnico:</b> {technicalError}
+                                    </div>
+                                )}
                                 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     <Button 
