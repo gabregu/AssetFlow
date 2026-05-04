@@ -452,7 +452,15 @@ export default function MyDeliveriesPage() {
                     variant="primary" 
                     icon={QrCode} 
                     onClick={() => setIsScannerOpen(true)}
-                    style={{ borderRadius: '50%', width: '56px', height: '56px', padding: 0, display: 'flex', justifyContent: 'center' }}
+                    style={{ 
+                        borderRadius: '12px', 
+                        width: '42px', 
+                        height: '42px', 
+                        padding: 0, 
+                        display: 'flex', 
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                    }}
                     title="Escanear Etiqueta"
                 />
             </div>

@@ -506,7 +506,7 @@ a {
   }
 
   .show-mobile {
-    display: block !important;
+    display: block;
   }
 
   .flex-mobile-column {
