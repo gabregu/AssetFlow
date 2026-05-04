@@ -22,7 +22,7 @@ const secondarySupabase = createClient(
 );
 
 export default function SettingsPage() {
-    const { users, currentUser, deleteUser, updateUser, sendPasswordReset, updatePassword, entities = [], addEntity, deleteEntity, refreshData } = useStore();
+    const { users, currentUser, deleteUser, updateUser, sendPasswordReset, updatePassword, logout, entities = [], addEntity, deleteEntity, refreshData } = useStore();
     const { theme } = useTheme();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [userToEdit, setUserToEdit] = useState(null);
@@ -216,7 +216,6 @@ export default function SettingsPage() {
                             style={{ width: '100%', gap: '0.5rem' }}
                             onClick={async () => {
                                 if (confirm('¿Cerrar sesión de AssetFlow?')) {
-                                    const { logout } = useStore.getState();
                                     await logout();
                                     window.location.href = '/';
                                 }
