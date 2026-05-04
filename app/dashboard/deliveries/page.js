@@ -167,7 +167,8 @@ export default function DeliveriesPage() {
                 date: `${task.date} [${task.time_slot || 'AM'}]`,
                 source: 'Ticket',
                 isSubCase: true,
-                assets: task.assets || []
+                assets: task.assets || [],
+                visitOrder: task.deliveryOrder || 0
             });
         });
 
@@ -194,7 +195,8 @@ export default function DeliveriesPage() {
                     deliveryStatusOriginal: t.deliveryStatus,
                     date: `${t.logistics.date} [${t.logistics.time_slot || 'AM'}]`,
                     source: 'Ticket',
-                    isSubCase: false
+                    isSubCase: false,
+                    visitOrder: t.logistics?.deliveryOrder || 0
                 });
             }
         });
@@ -569,6 +571,116 @@ export default function DeliveriesPage() {
         }
     };
 
+    const handlePrintRouteReport = () => {
+        // Agrupar por conductor y ordenar por visita
+        const drivers = {};
+        
+        sortedAndFilteredDeliveries.forEach(d => {
+            const driverName = d.deliveryPerson || 'Sin Asignar';
+            if (!drivers[driverName]) drivers[driverName] = [];
+            drivers[driverName].push(d);
+        });
+
+        // Ordenar cada grupo por orden de visita
+        Object.keys(drivers).forEach(name => {
+            drivers[name].sort((a, b) => (a.visitOrder || 0) - (b.visitOrder || 0));
+        });
+
+        let iframe = document.getElementById('print-iframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'print-iframe';
+            iframe.style.position = 'absolute'; iframe.style.width = '0'; iframe.style.height = '0'; iframe.style.border = 'none';
+            document.body.appendChild(iframe);
+        }
+
+        const content = `
+            <html>
+                <head>
+                    <title>Reporte de Rutas - AssetFlow</title>
+                    <style>
+                        @page { size: A4; margin: 15mm; }
+                        body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; color: #333; line-height: 1.4; }
+                        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
+                        .logo { font-weight: 800; font-size: 20px; color: #1e3a8a; }
+                        .report-title { font-size: 18px; font-weight: 700; text-transform: uppercase; }
+                        .driver-section { margin-bottom: 40px; page-break-inside: avoid; }
+                        .driver-info { background: #f8fafc; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #3b82f6; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+                        th { background: #f1f5f9; color: #475569; text-transform: uppercase; font-weight: 700; padding: 10px; border: 1px solid #e2e8f0; text-align: left; }
+                        td { padding: 10px; border: 1px solid #e2e8f0; vertical-align: top; }
+                        .order-col { width: 40px; text-align: center; font-weight: 700; background: #f8fafc; }
+                        .obs-col { width: 150px; color: #94a3b8; font-style: italic; }
+                        .footer { margin-top: 50px; font-size: 10px; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+                        .badge { padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; background: #e2e8f0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="logo">AssetFlow LOGISTICS</div>
+                        <div class="report-title">Hoja de Ruta de Conductores</div>
+                        <div style="font-size: 10px; text-align: right;">${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</div>
+                    </div>
+
+                    ${Object.keys(drivers).map(name => `
+                        <div class="driver-section">
+                            <div class="driver-info">
+                                <div style="font-size: 10px; color: #64748b; text-transform: uppercase;">Conductor Asignado</div>
+                                <div style="font-size: 16px; font-weight: 700; color: #1e293b;">${name}</div>
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th class="order-col">#</th>
+                                        <th style="width: 80px;">ID / Servicio</th>
+                                        <th>Destinatario / Dirección</th>
+                                        <th style="width: 100px;">Horario / Estado</th>
+                                        <th class="obs-col">Observaciones / Firma</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${drivers[name].map(d => `
+                                        <tr>
+                                            <td class="order-col">${d.visitOrder || '-'}</td>
+                                            <td>
+                                                <div style="font-weight: 700;">${d.id}</div>
+                                                <div style="font-size: 9px; margin-top: 4px; color: #64748b;">${d.items}</div>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 600;">${d.recipient}</div>
+                                                <div style="margin-top: 4px; color: #475569;">${d.address}</div>
+                                            </td>
+                                            <td>
+                                                <div style="font-weight: 700;">${d.date.split('[')[1]?.replace(']', '') || 'AM'}</div>
+                                                <div style="margin-top: 4px;"><span class="badge">${d.status}</span></div>
+                                            </td>
+                                            <td class="obs-col">
+                                                <div style="border-bottom: 1px dotted #cbd5e1; height: 15px; margin-bottom: 10px;"></div>
+                                                <div style="border-bottom: 1px dotted #cbd5e1; height: 15px;"></div>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `).join('')}
+
+                    <div class="footer">
+                        Este documento es propiedad de AssetFlow. Generado automáticamente por el sistema de gestión logística.
+                    </div>
+                </body>
+            </html>
+        `;
+
+        const doc = iframe.contentWindow.document;
+        doc.open(); doc.write(content); doc.close();
+
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        }, 500);
+    };
+
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
@@ -595,6 +707,7 @@ export default function DeliveriesPage() {
                             Ubicando puntos...
                         </div>
                     )}
+                    <Button icon={Printer} onClick={handlePrintRouteReport} variant="secondary">Imprimir Hoja de Ruta</Button>
                     <Button icon={QrCode} onClick={() => setIsScannerOpen(true)} variant="secondary">Escanear QR</Button>
                     <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Envío</Button>
                 </div>
