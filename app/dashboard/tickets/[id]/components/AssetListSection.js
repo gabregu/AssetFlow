@@ -105,11 +105,14 @@ export default function AssetListSection({
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No hay equipos asignados a este caso.</p>
                 ) : (
                     caseAssets.map((item, idxx) => {
-                        const assetInfo = assets.find(a => a.serial === item.serial);
+                        // Soporte para formato legacy (string) y nuevo (objeto)
+                        const itemSerial = typeof item === 'string' ? item : item.serial;
+                        const assetInfo = assets.find(a => a.serial === itemSerial);
+                        
                         return (
-                            <div key={idxx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                            <div key={`${idxx}-${itemSerial}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '6px', border: '1px solid var(--border)' }}>
                                 <div>
-                                    <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>{assetInfo?.name || 'Hardware'} (S/N: {item.serial})</p>
+                                    <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>{assetInfo?.name || 'Hardware'} (S/N: {itemSerial})</p>
                                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '4px' }}>
                                         <select
                                             className="form-select"

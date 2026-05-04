@@ -78,8 +78,13 @@ export function useTicketDetail() {
         // (editMode o editContact). El simple hecho de tener un caso seleccionado para ver 
         // (selectedCaseIndex !== null) no debería bloquear la carga inicial de los casos.
         const isActivelyEditing = editMode || editContact;
+        
+        // CRITICAL: If we have real DB tasks (New Architecture), we should NOT overwrite 
+        // the UI cases with the legacy 'associatedCases' column from the ticket,
+        // as this causes the "disappearing assets" bug during the background sync.
+        const hasRealTasks = ticketTasks && ticketTasks.length > 0;
 
-        if (needsInitialSync || ((needsBackgroundSync || needsChatSync) && !isActivelyEditing)) {
+        if (needsInitialSync || ((needsBackgroundSync || needsChatSync) && !isActivelyEditing && !hasRealTasks)) {
             console.log("Synchronizing editedData with store ticket:", ticket.id);
             
             let normalizedCases = [...storeCases];
