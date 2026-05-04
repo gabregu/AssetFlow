@@ -487,47 +487,51 @@ export default function DeliveriesPage() {
             const content = `
                 <html>
                     <head>
+                        <meta charset="utf-8">
                         <style>
                             @page { size: 50mm 25mm; margin: 0; }
                             * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
                             html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
                             .label-container {
-                                width: 50mm; height: 25mm; padding: 1.5mm 2.5mm;
+                                width: 50mm; height: 25mm; padding: 1.2mm 2mm;
                                 display: flex; position: absolute; top: 0; left: 0;
-                                font-family: 'Inter', sans-serif;
+                                font-family: 'Helvetica', 'Arial', sans-serif;
                             }
                             .left-side {
                                 flex: 1; display: flex; flex-direction: column;
-                                justify-content: space-between; padding-right: 2mm;
+                                justify-content: space-between; padding-right: 1.5mm;
+                                overflow: hidden;
                             }
                             .ticket-id {
-                                font-size: 8pt; font-weight: 800; color: #000;
-                                margin-bottom: 0.5mm;
+                                font-size: 7.5pt; font-weight: 800; color: #000;
+                                margin-bottom: 0.2mm; line-height: 1;
                             }
                             .recipient-name {
-                                font-size: 9.5pt; font-weight: 900; line-height: 1.1;
+                                font-size: 10pt; font-weight: 900; line-height: 1;
                                 color: #000; text-transform: uppercase;
                                 display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-                                overflow: hidden; margin-bottom: 1mm;
+                                overflow: hidden; margin-bottom: 0.5mm;
                             }
                             .address-text {
-                                font-size: 6.5pt; font-weight: 600; line-height: 1.1;
-                                color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                                font-size: 6.8pt; font-weight: 600; line-height: 1;
+                                color: #111; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+                                overflow: hidden;
                             }
                             .date-text {
-                                font-size: 6pt; font-weight: 700; color: #000;
-                                margin-top: 1mm;
+                                font-size: 6pt; font-weight: 800; color: #000;
+                                margin-top: 0.5mm;
                             }
                             .right-side {
-                                width: 18mm; display: flex; flex-direction: column;
-                                align-items: center; justify-content: center;
-                                border-left: 0.3mm solid #000; padding-left: 2mm;
+                                width: 15mm; display: flex; flex-direction: column;
+                                align-items: center; justify-content: space-between;
+                                border-left: 0.2mm solid #000; padding: 0.5mm 0 0.5mm 1mm;
+                                height: 100%;
                             }
-                            .qr-code { width: 14mm; height: 14mm; margin-bottom: 1mm; }
+                            .qr-code { width: 12.5mm; height: 12.5mm; }
                             .service-type {
-                                font-size: 5pt; font-weight: 900; background: #000;
-                                color: #fff; padding: 0.5mm 1.5mm; border-radius: 0.5mm;
-                                text-transform: uppercase;
+                                font-size: 5.5pt; font-weight: 900; background: #000;
+                                color: #fff; padding: 0.4mm 1.2mm; border-radius: 0.3mm;
+                                text-transform: uppercase; letter-spacing: 0.2mm;
                             }
                         </style>
                     </head>
