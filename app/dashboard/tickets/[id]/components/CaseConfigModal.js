@@ -165,8 +165,8 @@ export default function CaseConfigModal({
                             <Button 
                                 variant="primary" 
                                 style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', fontWeight: 800, borderRadius: '12px' }}
-                                onClick={() => {
-                                    if (logisticsSaveRef.current) logisticsSaveRef.current();
+                                onClick={async () => {
+                                    if (logisticsSaveRef.current) await logisticsSaveRef.current();
                                     setSelectedCaseIndex(null);
                                 }}
                             >

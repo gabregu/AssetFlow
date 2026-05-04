@@ -42,7 +42,8 @@ export default function CaseLogisticsSection({
             date: task.date || '',
             time_slot: task.time_slot || task.timeSlot || 'AM',
             address: task.address || '',
-            deliveryInfo: task.deliveryInfo || task.delivery_info || {}
+            deliveryInfo: task.deliveryInfo || task.delivery_info || {},
+            assigned_to: task.assigned_to || task.assignedTo || ''
         };
         setLocalValues(initialState);
         localStateRef.current = initialState;
@@ -92,13 +93,15 @@ export default function CaseLogisticsSection({
         // Si cambiamos el repartidor, buscamos su UID (assigned_to)
         if (incomingUpdates.delivery_person) {
             const matchedUser = users.find(u => u.name === incomingUpdates.delivery_person);
-            finalUpdates.assigned_to = matchedUser ? (matchedUser.id || matchedUser.uid) : null;
+            const assignedTo = matchedUser ? (matchedUser.id || matchedUser.uid) : null;
+            finalUpdates.assigned_to = assignedTo;
+            absoluteState.assigned_to = assignedTo; // Sincronizar en el estado absoluto
         }
 
         // 1. Actualización visual inmediata, sincronizando el status calculado
         absoluteState.status = currentStatus;
         localStateRef.current = absoluteState;
-        setLocalValues(absoluteState);
+        setLocalValues({ ...absoluteState });
 
         // Siempre grabamos el status final calculado
         finalUpdates.status = currentStatus;
@@ -139,7 +142,13 @@ export default function CaseLogisticsSection({
         };
 
         try {
-            await onUpdateTask(payload);
+            const result = await onUpdateTask(payload);
+            if (result?.error) {
+                alert("Error al guardar los cambios: " + (result.error.message || "Error desconocido"));
+            }
+        } catch (err) {
+            console.error("Save all failed:", err);
+            alert("Error crítico al guardar los cambios.");
         } finally {
             setTimeout(() => setIsSaving(false), 500);
         }
