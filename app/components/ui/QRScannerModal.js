@@ -134,6 +134,27 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
     const handleError = (err) => {
         console.error("Camera Error:", err);
         setCameraError(true);
+        // Si el error es NotAllowedError, es un tema de permisos explícito
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            console.warn("Permiso denegado por el usuario.");
+        }
+    };
+
+    const requestPermissionsAgain = async () => {
+        setCameraError(false);
+        setHasCheckedSupport(false);
+        try {
+            // Intentar pedir permiso manualmente antes de iniciar el scanner
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            stream.getTracks().forEach(track => track.stop()); // Cerrar inmediatamente
+            setHasCameraSupport(true);
+            setHasCheckedSupport(true);
+            startScanner();
+        } catch (err) {
+            console.error("Error al re-solicitar permisos:", err);
+            setCameraError(true);
+            setHasCheckedSupport(true);
+        }
     };
 
     const processResult = (rawText) => {
@@ -214,14 +235,28 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
                             }}>
                                 <Camera size={32} style={{ marginBottom: '0.75rem', opacity: 0.6 }} />
                                 <p style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Cámara no disponible</p>
-                                <p style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
+                                <p style={{ fontSize: '0.85rem', lineHeight: '1.4', marginBottom: '1rem' }}>
                                     {hasCameraSupport
-                                        ? "No pudimos acceder a la cámara. Haz clic en el icono del CANDADO arriba y permite el acceso. (Asegúrate de estar usando assetflow.com.ar sin 'www' si ya diste permiso ahí)."
+                                        ? "No pudimos acceder a la cámara. Haz clic en el icono del CANDADO arriba y permite el acceso."
                                         : "El navegador bloquea la cámara por seguridad (sin HTTPS)."}
                                 </p>
-                                <p style={{ fontSize: '0.85rem', marginTop: '0.5rem', fontWeight: 600 }}>
-                                    ¡No te preocupes! Usa el botón de abajo.
-                                </p>
+                                
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <Button 
+                                        variant="primary" 
+                                        size="sm" 
+                                        onClick={requestPermissionsAgain}
+                                        style={{ fontSize: '0.8rem' }}
+                                    >
+                                        Intentar Pedir Permiso de Nuevo
+                                    </Button>
+                                    
+                                    <div style={{ textAlign: 'left', marginTop: '0.5rem', padding: '0.75rem', background: 'white', borderRadius: '8px', fontSize: '0.75rem' }}>
+                                        <p style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Si no aparece el cartel:</p>
+                                        <p>• <b>Android:</b> Toca los 3 puntos (⋮) > Configuración > Configuración de sitios > Cámara > Permitir.</p>
+                                        <p>• <b>iPhone:</b> Ajustes > Safari > Cámara > Permitir.</p>
+                                    </div>
+                                </div>
                             </div>
                         )
                     ) : (
