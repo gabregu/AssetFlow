@@ -39,6 +39,7 @@ export default function DeliveriesPage() {
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
     const [showMap, setShowMap] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
+    const [driverFilter, setDriverFilter] = useState('All');
 
     const handleBulkDelete = async () => {
         if (!confirm(`¿Estás seguro de eliminar ${selectedIds.length} envíos seleccionados? Esta acción no se puede deshacer.`)) return;
@@ -259,7 +260,9 @@ export default function DeliveriesPage() {
                 // For now, let's keep it simple: strict text match in address.
             }
 
-            return matchesText && matchesStatus && matchesCountry;
+            const matchesDriver = driverFilter === 'All' || (d.deliveryPerson || 'Sin Asignar') === driverFilter;
+
+            return matchesText && matchesStatus && matchesCountry && matchesDriver;
         });
 
         if (sortConfig.key) {
@@ -283,7 +286,15 @@ export default function DeliveriesPage() {
             });
         }
         return result;
-    }, [combinedDeliveries, filter, statusFilter, sortConfig]);
+    }, [combinedDeliveries, filter, statusFilter, sortConfig, countryFilter, driverFilter]);
+
+    const uniqueDrivers = React.useMemo(() => {
+        const drivers = new Set();
+        combinedDeliveries.forEach(d => {
+            if (d.deliveryPerson) drivers.add(d.deliveryPerson);
+        });
+        return Array.from(drivers).sort();
+    }, [combinedDeliveries]);
 
     const inTransitCount = combinedDeliveries.filter(d => d.status === 'En Transito').length;
     const deliveredCount = combinedDeliveries.filter(d => d.status === 'Entregado').length;
@@ -884,8 +895,28 @@ export default function DeliveriesPage() {
                             }}
                         />
                     </div>
-                    {(statusFilter !== 'All' || filter !== '') && (
-                        <Button variant="ghost" size="sm" onClick={() => { setStatusFilter('All'); setFilter(''); }}>Limpiar Filtros</Button>
+                    <select
+                        value={driverFilter}
+                        onChange={(e) => setDriverFilter(e.target.value)}
+                        style={{
+                            padding: '0.6rem 1rem',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border)',
+                            backgroundColor: 'var(--background)',
+                            color: 'var(--text-main)',
+                            outline: 'none',
+                            minWidth: '200px'
+                        }}
+                    >
+                        <option value="All">Todos los Conductores</option>
+                        <option value="Sin Asignar">Sin Asignar</option>
+                        {uniqueDrivers.map(driver => (
+                            <option key={driver} value={driver}>{driver}</option>
+                        ))}
+                    </select>
+
+                    {(statusFilter !== 'All' || filter !== '' || driverFilter !== 'All') && (
+                        <Button variant="ghost" size="sm" onClick={() => { setStatusFilter('All'); setFilter(''); setDriverFilter('All'); }}>Limpiar Filtros</Button>
                     )}
                 </div>
 
