@@ -336,13 +336,22 @@ export default function MyDeliveriesPage() {
 
     const handleScanSuccess = (data) => {
         setIsScannerOpen(false);
-        if (!data || !data.id) {
+        if (!data) {
             showToast('Lectura incorrecta', 'error');
             return;
         }
 
+        // Extraer ID (puede venir como string directo o en un objeto)
+        let scannedText = data.id || data.raw || (typeof data === 'string' ? data : '');
+        
+        // Si el texto es una URL, extraer el ID del final
+        if (scannedText.includes('/dashboard/tickets/')) {
+            const parts = scannedText.split('/');
+            scannedText = parts[parts.length - 1];
+        }
+
         // Buscar el envío en la lista del conductor
-        const targetId = String(data.id);
+        const targetId = String(scannedText).trim();
         const delivery = myAssignedDeliveries.find(d => 
             String(d.id) === targetId || 
             String(d.displayId) === targetId

@@ -454,11 +454,12 @@ export default function DeliveriesPage() {
 
     const handlePrintDeliveryLabel = async (delivery) => {
         try {
-            // URL para el QR (vincular al detalle del ticket)
-            const qrUrl = `${window.location.origin}/dashboard/tickets/${delivery.parentTicketId || delivery.id}`;
-            const qrDataUrl = await QRCode.toDataURL(qrUrl, {
-                margin: 0,
+            // Contenido simplificado para el QR (Solo el ID para que sea más fácil de leer)
+            const qrContent = String(delivery.id);
+            const qrDataUrl = await QRCode.toDataURL(qrContent, {
+                margin: 1,
                 width: 200,
+                errorCorrectionLevel: 'M', // Nivel medio para mayor robustez
                 color: { dark: '#000000', light: '#ffffff' }
             });
 
