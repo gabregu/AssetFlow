@@ -14,15 +14,35 @@ export default function AssetListSection({
     setIsInventorySelectorOpen,
     assetSearchResult,
     setAssetSearchResult,
-    setIsAssetModalOpen
+    setIsAssetModalOpen,
+    updateAsset,
+    currentUser
 }) {
     if (!task) return null;
 
     const caseAssets = task.assets || [];
 
     const handleUnlink = async (idx) => {
+        const item = caseAssets[idx];
         const newAssets = caseAssets.filter((_, i) => i !== idx);
-        await onUpdateTask({ assets: newAssets });
+        
+        try {
+            await onUpdateTask({ assets: newAssets });
+            
+            // Si tenemos el asset en local, desvincularlo también en la tabla Assets
+            const fullAsset = assets.find(a => a.serial === item.serial);
+            if (fullAsset && updateAsset) {
+                await updateAsset(fullAsset.id, {
+                    status: 'Disponible',
+                    assignee: 'Almacén',
+                    notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') + 
+                           `[${new Date().toLocaleDateString()}] Desvinculado de Ticket #${task.ticket_id || 'N/A'}. Regresa a Almacén.`
+                });
+            }
+        } catch (err) {
+            console.error("Unlink error:", err);
+            alert("Error al desvincular el equipo.");
+        }
     };
 
     const handleUpdateType = async (idx, type) => {
@@ -46,7 +66,28 @@ export default function AssetListSection({
             if (task.status === 'Pendiente') {
                 updates.status = 'Para Coordinar';
             }
-            await onUpdateTask(updates);
+            
+            try {
+                await onUpdateTask(updates);
+
+                // Actualizar el activo en la tabla de inventario
+                const fullAsset = assets.find(a => a.serial.toLowerCase() === serial.toLowerCase());
+                if (fullAsset && updateAsset) {
+                    const parentTicketId = task.ticket_id;
+                    const assignee = task.subject?.toLowerCase().includes('recupero') ? 'Almacén' : (currentUser?.name || 'Usuario Final');
+                    
+                    await updateAsset(fullAsset.id, {
+                        status: 'Asignado',
+                        assignee: assignee,
+                        sfdcCase: parentTicketId,
+                        notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') + 
+                               `[${new Date().toLocaleDateString()}] Vinculado a Caso #${task.case_number || task.id} vía Ticket #${parentTicketId || 'N/A'}`
+                    });
+                }
+            } catch (err) {
+                console.error("Link error:", err);
+                alert("Error al vincular el equipo al caso.");
+            }
         }
         setAssetSearchResult(null);
         setSerialQuery('');

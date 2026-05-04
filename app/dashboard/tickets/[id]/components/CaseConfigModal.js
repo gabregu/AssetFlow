@@ -42,6 +42,7 @@ export default function CaseConfigModal({
     addLogisticsTask,
     deleteLogisticsTask,
     handleUpdateTask, // <--- Use from props now
+    updateAsset,
     currentUser
 }) {
     const currentTasks = (ticketTasks && ticketTasks.length > 0) ? ticketTasks : (editedData?.associatedCases || []);
@@ -109,6 +110,8 @@ export default function CaseConfigModal({
                             assetSearchResult={assetSearchResult}
                             setAssetSearchResult={setAssetSearchResult}
                             setIsAssetModalOpen={setIsAssetModalOpen}
+                            updateAsset={updateAsset}
+                            currentUser={currentUser}
                         />
 
                         <AccessoriesSection

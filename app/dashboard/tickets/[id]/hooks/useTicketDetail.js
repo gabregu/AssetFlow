@@ -483,6 +483,7 @@ export function useTicketDetail() {
         unifiedTasks,
         addLogisticsTask,
         updateLogisticsTask,
-        deleteLogisticsTask
+        deleteLogisticsTask,
+        updateAsset
     };
 }

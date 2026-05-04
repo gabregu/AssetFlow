@@ -51,7 +51,8 @@ export default function TicketDetailPage() {
         unifiedTasks,
         addLogisticsTask,
         updateLogisticsTask,
-        deleteLogisticsTask
+        deleteLogisticsTask,
+        updateAsset
     } = useTicketDetail();
 
     const resetSearchStates = () => {
@@ -199,6 +200,7 @@ export default function TicketDetailPage() {
                 ticketTasks={ticketTasks}
                 deleteLogisticsTask={deleteLogisticsTask}
                 handleUpdateTask={handleUpdateTask}
+                updateAsset={updateAsset}
                 currentUser={currentUser}
             />
             
