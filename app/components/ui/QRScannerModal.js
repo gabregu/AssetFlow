@@ -298,8 +298,8 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
                                     
                                     <div style={{ textAlign: 'left', marginTop: '0.5rem', padding: '0.75rem', background: 'white', borderRadius: '8px', fontSize: '0.75rem' }}>
                                         <p style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Si no aparece el cartel:</p>
-                                        <p>• <b>Android:</b> Toca los 3 puntos (⋮) > Configuración > Configuración de sitios > Cámara > Permitir.</p>
-                                        <p>• <b>iPhone:</b> Ajustes > Safari > Cámara > Permitir.</p>
+                                        <p>• <b>Android:</b> Toca los 3 puntos (⋮) {' > '} Configuración {' > '} Configuración de sitios {' > '} Cámara {' > '} Permitir.</p>
+                                        <p>• <b>iPhone:</b> Ajustes {' > '} Safari {' > '} Cámara {' > '} Permitir.</p>
                                     </div>
                                 </div>
                             </div>
