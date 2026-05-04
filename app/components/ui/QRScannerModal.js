@@ -59,37 +59,52 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
     }, [isOpen, hasCameraSupport, cameraError, scanResult]);
 
     const startScanner = async () => {
+        setCameraError(false);
+        
         try {
-            // Prevent multiple instances
+            // Intentar detener cualquier instancia previa antes de empezar
             if (scannerRef.current) {
-                await stopScanner();
+                try { 
+                    if (scannerRef.current.isScanning) await scannerRef.current.stop(); 
+                } catch(e) { console.warn("Error stop pre-scan:", e); }
             }
 
-            const html5QrCode = new Html5Qrcode("reader");
-            scannerRef.current = html5QrCode;
+            const scanner = new Html5Qrcode("reader");
+            scannerRef.current = scanner;
 
-            const config = {
-                fps: 10,
+            const config = { 
+                fps: 15, 
                 qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0,
-                formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-                experimentalFeatures: {
-                    useBarCodeDetectorIfSupported: true
-                }
+                aspectRatio: 1.0
             };
 
-            await html5QrCode.start(
-                { facingMode: "environment" },
-                config,
-                (decodedText, decodedResult) => {
-                    handleScan(decodedText);
-                },
-                (errorMessage) => {
-                    // Ignore minor scan errors
+            // ESTRATEGIA: Intentar primero facingMode environment (Estándar)
+            try {
+                await scanner.start(
+                    { facingMode: "environment" }, 
+                    config, 
+                    (decodedText) => handleScan(decodedText)
+                );
+                console.log("Scanner iniciado con facingMode: environment");
+            } catch (err) {
+                console.warn("Fallo environment mode, intentando enumerar cámaras...", err);
+                
+                // FALLBACK: Enumerar cámaras y elegir la última (generalmente la trasera principal)
+                const devices = await Html5Qrcode.getCameras();
+                if (devices && devices.length > 0) {
+                    const cameraId = devices[devices.length - 1].id;
+                    await scanner.start(
+                        cameraId,
+                        config,
+                        (decodedText) => handleScan(decodedText)
+                    );
+                    console.log("Scanner iniciado con CameraID:", cameraId);
+                } else {
+                    throw new Error("No se encontraron cámaras disponibles.");
                 }
-            );
+            }
         } catch (err) {
-            console.error("Error starting scanner:", err);
+            console.error("Error crítico de cámara:", err);
             handleError(err);
         }
     };
@@ -207,7 +222,7 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
                                 <p style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Cámara no disponible</p>
                                 <p style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
                                     {hasCameraSupport
-                                        ? "No pudimos acceder a la cámara. Revisa los permisos."
+                                        ? "No pudimos acceder a la cámara. Haz clic en el icono del CANDADO arriba y permite el acceso a la cámara."
                                         : "El navegador bloquea la cámara por seguridad (sin HTTPS)."}
                                 </p>
                                 <p style={{ fontSize: '0.85rem', marginTop: '0.5rem', fontWeight: 600 }}>
