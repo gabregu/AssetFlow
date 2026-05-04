@@ -181,18 +181,53 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
 
         setIsLoading(true);
         try {
+            // 1. Crear una imagen para redimensionarla (esto arregla errores de memoria en Android)
+            const bitmap = await createImageBitmap(file);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Redimensionar a un tamaño manejable (max 1200px) manteniendo proporción
+            let width = bitmap.width;
+            let height = bitmap.height;
+            const MAX_SIZE = 1200;
+            
+            if (width > height) {
+                if (width > MAX_SIZE) {
+                    height *= MAX_SIZE / width;
+                    width = MAX_SIZE;
+                }
+            } else {
+                if (height > MAX_SIZE) {
+                    width *= MAX_SIZE / height;
+                    height = MAX_SIZE;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(bitmap, 0, 0, width, height);
+            
+            // 2. Convertir canvas a Blob para que Html5Qrcode lo procese
+            const resizedBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+            const resizedFile = new File([resizedBlob], "scan.jpg", { type: "image/jpeg" });
+
             const html5QrCode = new Html5Qrcode("reader");
-            // scanFile es mucho más potente que jsQR para fotos de cámara
-            const decodedText = await html5QrCode.scanFile(file, true);
+            const decodedText = await html5QrCode.scanFile(resizedFile, false);
+            
             if (decodedText) {
                 processResult(decodedText);
             }
         } catch (err) {
             console.error("Error al leer archivo QR:", err);
-            alert('No se detectó un código QR legible en la imagen. Intenta tomar la foto más de cerca y con buena luz.');
+            // Si el error es específicamente que no encontró el QR, damos un mensaje amigable
+            if (err.toString().includes("No MultiFormat Readers")) {
+                alert('No se pudo encontrar un código QR. Asegúrate de que la etiqueta esté centrada y bien iluminada.');
+            } else {
+                alert(`Error técnico en Android: ${err.message || err.toString()}`);
+            }
         } finally {
             setIsLoading(false);
-            e.target.value = null; // Reset para poder subir la misma foto si falla
+            e.target.value = null;
         }
     };
 
