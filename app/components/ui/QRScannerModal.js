@@ -150,31 +150,25 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
         }
     };
 
-    const handleFileUpload = (e) => {
+    const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                context.drawImage(img, 0, 0);
-                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-                if (code) {
-                    processResult(code.data);
-                } else {
-                    alert('No se detectó un código QR en la imagen.');
-                }
-            };
-            img.src = event.target.result;
-        };
-        reader.readAsDataURL(file);
+        setIsLoading(true);
+        try {
+            const html5QrCode = new Html5Qrcode("reader");
+            // scanFile es mucho más potente que jsQR para fotos de cámara
+            const decodedText = await html5QrCode.scanFile(file, true);
+            if (decodedText) {
+                processResult(decodedText);
+            }
+        } catch (err) {
+            console.error("Error al leer archivo QR:", err);
+            alert('No se detectó un código QR legible en la imagen. Intenta tomar la foto más de cerca y con buena luz.');
+        } finally {
+            setIsLoading(false);
+            e.target.value = null; // Reset para poder subir la misma foto si falla
+        }
     };
 
     const handleClose = () => {
@@ -222,7 +216,7 @@ export const QRScannerModal = ({ isOpen, onClose, onScanSuccess, validationError
                                 <p style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Cámara no disponible</p>
                                 <p style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
                                     {hasCameraSupport
-                                        ? "No pudimos acceder a la cámara. Haz clic en el icono del CANDADO arriba y permite el acceso a la cámara."
+                                        ? "No pudimos acceder a la cámara. Haz clic en el icono del CANDADO arriba y permite el acceso. (Asegúrate de estar usando assetflow.com.ar sin 'www' si ya diste permiso ahí)."
                                         : "El navegador bloquea la cámara por seguridad (sin HTTPS)."}
                                 </p>
                                 <p style={{ fontSize: '0.85rem', marginTop: '0.5rem', fontWeight: 600 }}>
