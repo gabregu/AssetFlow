@@ -9,12 +9,14 @@ import {
     ClipboardList,
     TrendingUp,
     BarChart3,
-    ArrowUpRight
+    ArrowUpRight,
+    QrCode
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Modal } from '@/app/components/ui/Modal';
+import { QRScannerModal } from '@/app/components/ui/QRScannerModal';
 import { useStore } from '../../../lib/store';
 
 export default function MyDeliveriesPage() {
@@ -47,6 +49,7 @@ export default function MyDeliveriesPage() {
     const [optimizedOrder, setOptimizedOrder] = useState([]);
     const [editingOrderId, setEditingOrderId] = useState(null);
     const [editOrderValue, setEditOrderValue] = useState("");
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
     
     // Stats and Toast State
 
@@ -331,6 +334,35 @@ export default function MyDeliveriesPage() {
         }
     };
 
+    const handleScanSuccess = (data) => {
+        setIsScannerOpen(false);
+        if (!data || !data.id) {
+            showToast('Lectura incorrecta', 'error');
+            return;
+        }
+
+        // Buscar el envío en la lista del conductor
+        const targetId = String(data.id);
+        const delivery = myAssignedDeliveries.find(d => 
+            String(d.id) === targetId || 
+            String(d.displayId) === targetId
+        );
+
+        if (delivery) {
+            setSelectedDelivery(delivery);
+            setIsDeliveryModalOpen(true);
+            setDeliveryForm({
+                receivedBy: '',
+                dni: '',
+                notes: '',
+                actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            showToast('Envío encontrado', 'success');
+        } else {
+            showToast(`Envío #${targetId} no asignado o ya entregado`, 'error');
+        }
+    };
+
     const openGoogleMaps = (address) => {
         if (!address) return;
         window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
@@ -407,13 +439,22 @@ export default function MyDeliveriesPage() {
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem' }}>
             {/* Header Mobile-friendly */}
-            <div style={{ marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em' }}>
-                    Mis <span style={{ color: 'var(--primary-color)' }}>Envíos</span>
-                </h1>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem' }}>
-                    Logística y ruta de entregas asignada
-                </p>
+            <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em' }}>
+                        Mis <span style={{ color: 'var(--primary-color)' }}>Envíos</span>
+                    </h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem' }}>
+                        Logística y ruta de entregas asignada
+                    </p>
+                </div>
+                <Button 
+                    variant="primary" 
+                    icon={QrCode} 
+                    onClick={() => setIsScannerOpen(true)}
+                    style={{ borderRadius: '50%', width: '56px', height: '56px', padding: 0, display: 'flex', justifyContent: 'center' }}
+                    title="Escanear Etiqueta"
+                />
             </div>
 
             {/* Stats Bar movida a /dashboard/my-stats */}
@@ -779,6 +820,13 @@ export default function MyDeliveriesPage() {
                     </div>
                 </form>
             </Modal>
+
+            {/* QR Scanner Modal */}
+            <QRScannerModal 
+                isOpen={isScannerOpen}
+                onClose={() => setIsScannerOpen(false)}
+                onScanSuccess={handleScanSuccess}
+            />
 
             {/* Toast Notification */}
             {toast.show && (
