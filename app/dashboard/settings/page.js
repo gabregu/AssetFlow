@@ -151,19 +151,6 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid-responsive-dashboard" style={{ marginBottom: '2.5rem' }}>
-                {/* Visual Settings */}
-                <Card title="Apariencia" action={theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                        Cambia entre el modo día y noche para mayor comodidad visual.
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'var(--background)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                        <div>
-                            <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Modo de Interfaz</span>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>Actual: {theme === 'dark' ? 'Noche' : 'Día'}</p>
-                        </div>
-                        <ThemeToggle />
-                    </div>
-                </Card>
 
                 {/* My Account (Visible to everyone) */}
                 <Card title="Mi Cuenta" action={<Lock size={20} />}>
