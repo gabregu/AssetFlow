@@ -480,7 +480,16 @@ export default function SFDCCasesPage() {
 
         const reader = new FileReader();
         reader.onload = (event) => {
-            let text = event.target.result;
+            const buffer = event.target.result;
+            const decoder = new TextDecoder('utf-8');
+            let text = decoder.decode(buffer);
+
+            // Si detectamos el carácter de reemplazo , re-decodificamos como Latin1
+            if (text.includes('')) {
+                console.log("Detectada codificación no UTF-8 en SFDC. Re-decodificando como ISO-8859-1...");
+                const latinDecoder = new TextDecoder('iso-8859-1');
+                text = latinDecoder.decode(buffer);
+            }
 
             // --- SANITIZACIÓN DE HEADERS CORRUPTOS (Fix para reporte Chile/SFDC) ---
             // El reporte de Chile viene con un error conocido donde "Mailing Country" y "Case Owner Alias"
@@ -691,7 +700,7 @@ export default function SFDCCasesPage() {
 
             e.target.value = null; // Reset input
         };
-        reader.readAsText(file);
+        reader.readAsArrayBuffer(file);
     };
 
 

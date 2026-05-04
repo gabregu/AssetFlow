@@ -37,8 +37,18 @@ export default function TicketsPage() {
 
         const reader = new FileReader();
         reader.onload = async (event) => {
+            const buffer = event.target.result;
+            const decoder = new TextDecoder('utf-8');
+            let text = decoder.decode(buffer);
+
+            // Si detectamos el carácter de reemplazo , re-decodificamos como Latin1
+            if (text.includes('')) {
+                console.log("Detectada codificación no UTF-8 en Tickets. Re-decodificando como ISO-8859-1...");
+                const latinDecoder = new TextDecoder('iso-8859-1');
+                text = latinDecoder.decode(buffer);
+            }
+
             try {
-                let text = event.target.result;
                 if (text.includes('"Mailing Country"wner Alias"')) {
                     text = text.replace('"Mailing Country"wner Alias"', '"Mailing Country","Case Owner Alias"');
                 }
@@ -252,7 +262,7 @@ export default function TicketsPage() {
             }
             e.target.value = null; // reset 
         };
-        reader.readAsText(file);
+        reader.readAsArrayBuffer(file);
     };
 
     const handleSelectAll = (e) => {
