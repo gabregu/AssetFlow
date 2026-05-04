@@ -16,7 +16,8 @@ import {
     ArrowUpDown,
     ArrowRight,
     MessageSquare,
-    RefreshCw
+    RefreshCw,
+    Printer
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -28,6 +29,7 @@ export default function LogisticsHubPage() {
     const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter, currentUser } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [driverFilter, setDriverFilter] = useState('All');
     
     // --- 1. PROCESAR TAREAS ---
     const tasks = useMemo(() => {
@@ -69,7 +71,10 @@ export default function LogisticsHubPage() {
                 // Filtro de Estado
                 const matchesStatus = statusFilter === 'All' || task.status === statusFilter;
 
-                return matchesCountry && matchesText && matchesStatus;
+                // Filtro de Conductor
+                const matchesDriver = driverFilter === 'All' || (task.deliveryPerson || 'Sin Asignar') === driverFilter;
+
+                return matchesCountry && matchesText && matchesStatus && matchesDriver;
             })
             .map(task => {
                 const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
@@ -91,11 +96,27 @@ export default function LogisticsHubPage() {
                     parentAddress,
                     isOutOfSync,
                     hasNewNotes: chat.length > 0,
-                    hasUnreadChat: chat.length > 0 && chat[chat.length - 1].user !== currentUser?.name
+                    hasUnreadChat: chat.length > 0 && chat[chat.length - 1].user !== currentUser?.name,
+                    visitOrder: task.deliveryOrder || 0
                 };
             })
-            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-    }, [logisticsTasks, tickets, searchTerm, statusFilter, countryFilter, currentUser]);
+            .sort((a, b) => {
+                // Si estamos filtrando por conductor, priorizamos el orden de visita
+                if (driverFilter !== 'All') {
+                    return (a.visitOrder || 0) - (b.visitOrder || 0);
+                }
+                // Si no, por fecha de creación (más reciente arriba)
+                return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+            });
+    }, [logisticsTasks, tickets, searchTerm, statusFilter, countryFilter, currentUser, driverFilter]);
+
+    const uniqueDrivers = useMemo(() => {
+        const drivers = new Set();
+        logisticsTasks.forEach(t => {
+            if (t.deliveryPerson) drivers.add(t.deliveryPerson);
+        });
+        return Array.from(drivers).sort();
+    }, [logisticsTasks]);
 
     // --- 2. ACCIONES RÁPIDAS ---
     const handleUpdateStatus = async (id, newStatus) => {
@@ -107,6 +128,97 @@ export default function LogisticsHubPage() {
         if (confirm(`¿Sincronizar dirección con el Servicio? Se cambiará a: ${task.parentAddress}`)) {
             await updateLogisticsTask(task.id, { address: null });
         }
+    };
+
+    const handlePrintRouteReport = () => {
+        // Agrupar por conductor y ordenar por visita
+        const drivers = {};
+        
+        tasks.forEach(d => {
+            const driverName = d.deliveryPerson || 'Sin Asignar';
+            if (!drivers[driverName]) drivers[driverName] = [];
+            drivers[driverName].push(d);
+        });
+
+        // Ordenar cada grupo por orden de visita
+        Object.keys(drivers).forEach(name => {
+            drivers[name].sort((a, b) => (a.visitOrder || 0) - (b.visitOrder || 0));
+        });
+
+        let iframe = document.getElementById('print-iframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'print-iframe';
+            iframe.style.position = 'absolute'; iframe.style.width = '0'; iframe.style.height = '0'; iframe.style.border = 'none';
+            document.body.appendChild(iframe);
+        }
+
+        const content = `
+            <html>
+                <head>
+                    <title>Reporte HUB Global - AssetFlow</title>
+                    <style>
+                        @page { size: A4; margin: 15mm; }
+                        body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; color: #333; line-height: 1.4; }
+                        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; margin-bottom: 20px; }
+                        .logo { font-weight: 800; font-size: 20px; color: #1e3a8a; }
+                        .report-title { font-size: 16px; font-weight: 700; text-transform: uppercase; }
+                        .driver-section { margin-bottom: 40px; page-break-inside: avoid; }
+                        .driver-info { background: #f8fafc; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #3b82f6; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }
+                        th { background: #f1f5f9; color: #475569; text-transform: uppercase; font-weight: 700; padding: 8px; border: 1px solid #e2e8f0; text-align: left; }
+                        td { padding: 8px; border: 1px solid #e2e8f0; vertical-align: top; }
+                        .order-col { width: 30px; text-align: center; font-weight: 700; }
+                        .footer { margin-top: 50px; font-size: 9px; color: #64748b; text-align: center; }
+                        .badge { padding: 2px 4px; border-radius: 3px; font-size: 8px; font-weight: 700; background: #e2e8f0; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="logo">AssetFlow HUB GLOBAL</div>
+                        <div class="report-title">Estado de Tráfico Logístico</div>
+                        <div style="font-size: 10px;">${new Date().toLocaleDateString()}</div>
+                    </div>
+
+                    ${Object.keys(drivers).map(name => `
+                        <div class="driver-section">
+                            <div class="driver-info">
+                                <div style="font-size: 14px; font-weight: 700;">${name}</div>
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th class="order-col">#</th>
+                                        <th>Caso / Cliente</th>
+                                        <th>Dirección</th>
+                                        <th style="width: 80px;">Horario</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${drivers[name].map(d => `
+                                        <tr>
+                                            <td class="order-col">${d.visitOrder || '-'}</td>
+                                            <td>
+                                                <strong>${d.case_number}</strong><br/>
+                                                ${d.displayRequester}
+                                            </td>
+                                            <td>${d.displayAddress}</td>
+                                            <td>${d.date ? d.date.split('T')[0] : 'Pend.'} | ${d.time_slot || 'AM'}</td>
+                                            <td><span class="badge">${d.status}</span></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `).join('')}
+                </body>
+            </html>
+        `;
+
+        const doc = iframe.contentWindow.document;
+        doc.open(); doc.write(content); doc.close();
+        setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 500);
     };
 
     const getStatusVariant = (status) => {
@@ -166,6 +278,27 @@ export default function LogisticsHubPage() {
                         <option value="En Transito">En Tránsito</option>
                         <option value="Entregado">Entregado</option>
                     </select>
+
+                    <select 
+                        value={driverFilter}
+                        onChange={(e) => setDriverFilter(e.target.value)}
+                        style={{
+                            padding: '0.6rem 1rem',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border)',
+                            background: 'var(--surface)',
+                            width: '100%',
+                            minWidth: '180px'
+                        }}
+                    >
+                        <option value="All">Todos los Conductores</option>
+                        <option value="Sin Asignar">Sin Asignar</option>
+                        {uniqueDrivers.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                        ))}
+                    </select>
+
+                    <Button icon={Printer} onClick={handlePrintRouteReport} variant="secondary">Imprimir Hub</Button>
                 </div>
             </div>
 
@@ -284,7 +417,7 @@ export default function LogisticsHubPage() {
                                         <div style={{ width: '24px', height: '24px', background: 'var(--background)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <User size={14} />
                                         </div>
-                                        <div style={{ fontSize: '0.85rem' }}>{task.delivery_person || 'No asignado'}</div>
+                                        <div style={{ fontSize: '0.85rem' }}>{task.deliveryPerson || 'Sin Asignar'}</div>
                                     </div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
