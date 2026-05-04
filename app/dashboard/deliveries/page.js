@@ -7,8 +7,10 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
 import { useStore } from '../../../lib/store';
-import { Plus, Search, Truck, MapPin, Calendar, CheckCircle, Clock, Loader2, Trash2, ChevronDown, ChevronUp, Sun, Moon, Archive, QrCode } from 'lucide-react';
+import { Plus, Search, Truck, MapPin, Calendar, CheckCircle, Clock, Loader2, Trash2, ChevronDown, ChevronUp, Sun, Moon, Archive, QrCode, Printer } from 'lucide-react';
 import { CountryFilter } from '../../components/layout/CountryFilter';
+import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode';
 
 export default function DeliveriesPage() {
     const { 
@@ -450,6 +452,118 @@ export default function DeliveriesPage() {
         }
     };
 
+    const handlePrintDeliveryLabel = async (delivery) => {
+        try {
+            // URL para el QR (vincular al detalle del ticket)
+            const qrUrl = `${window.location.origin}/dashboard/tickets/${delivery.parentTicketId || delivery.id}`;
+            const qrDataUrl = await QRCode.toDataURL(qrUrl, {
+                margin: 0,
+                width: 200,
+                color: { dark: '#000000', light: '#ffffff' }
+            });
+
+            // Barcode para el ID
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, String(delivery.id), {
+                format: "CODE128",
+                width: 2,
+                height: 40,
+                displayValue: false,
+                margin: 0
+            });
+            const barcodeDataUrl = canvas.toDataURL("image/png");
+
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            const content = `
+                <html>
+                    <head>
+                        <style>
+                            @page { size: 50mm 25mm; margin: 0; }
+                            * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+                            html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
+                            .label-container {
+                                width: 50mm; height: 25mm; padding: 1.5mm 2.5mm;
+                                display: flex; position: absolute; top: 0; left: 0;
+                                font-family: 'Inter', sans-serif;
+                            }
+                            .left-side {
+                                flex: 1; display: flex; flex-direction: column;
+                                justify-content: space-between; padding-right: 2mm;
+                            }
+                            .ticket-id {
+                                font-size: 8pt; font-weight: 800; color: #000;
+                                margin-bottom: 0.5mm;
+                            }
+                            .recipient-name {
+                                font-size: 9.5pt; font-weight: 900; line-height: 1.1;
+                                color: #000; text-transform: uppercase;
+                                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+                                overflow: hidden; margin-bottom: 1mm;
+                            }
+                            .address-text {
+                                font-size: 6.5pt; font-weight: 600; line-height: 1.1;
+                                color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                            }
+                            .date-text {
+                                font-size: 6pt; font-weight: 700; color: #000;
+                                margin-top: 1mm;
+                            }
+                            .right-side {
+                                width: 18mm; display: flex; flex-direction: column;
+                                align-items: center; justify-content: center;
+                                border-left: 0.3mm solid #000; padding-left: 2mm;
+                            }
+                            .qr-code { width: 14mm; height: 14mm; margin-bottom: 1mm; }
+                            .service-type {
+                                font-size: 5pt; font-weight: 900; background: #000;
+                                color: #fff; padding: 0.5mm 1.5mm; border-radius: 0.5mm;
+                                text-transform: uppercase;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="label-container">
+                            <div class="left-side">
+                                <div class="ticket-id">TICKET #${delivery.id}</div>
+                                <div class="recipient-name">${delivery.recipient}</div>
+                                <div class="address-text">${delivery.address}</div>
+                                <div class="date-text">📅 ${delivery.date}</div>
+                            </div>
+                            <div class="right-side">
+                                <img class="qr-code" src="${qrDataUrl}" />
+                                <div class="service-type">${delivery.items?.toLowerCase().includes('recupero') ? 'Recupero' : 'Entrega'}</div>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }, 500);
+
+        } catch (err) {
+            console.error('Error printing delivery label:', err);
+            alert('Error al imprimir la etiqueta de envío');
+        }
+    };
+
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
@@ -826,6 +940,16 @@ export default function DeliveriesPage() {
                                                 </td>
                                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            style={{ color: 'var(--primary-color)' }}
+                                                            onClick={() => handlePrintDeliveryLabel(delivery)}
+                                                            title="Imprimir Etiqueta Logística"
+                                                        >
+                                                            <Printer size={18} />
+                                                        </Button>
+
                                                         {delivery.source === 'Ticket' ? (
                                                             <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/tickets/${delivery.id}`)}>Ver Ticket</Button>
                                                         ) : (
