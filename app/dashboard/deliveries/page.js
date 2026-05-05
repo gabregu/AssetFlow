@@ -13,17 +13,17 @@ import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 
 export default function DeliveriesPage() {
-    const { 
-        deliveries, 
-        addDelivery, 
-        deleteDelivery, 
-        deleteDeliveries, 
-        tickets, 
-        deleteTickets, 
-        users, 
-        currentUser, 
+    const {
+        deliveries,
+        addDelivery,
+        deleteDelivery,
+        deleteDeliveries,
+        tickets,
+        deleteTickets,
+        users,
+        currentUser,
         countryFilter,
-        logisticsTasks 
+        logisticsTasks
     } = useStore();
     const router = useRouter();
     const mapRef = useRef(null);
@@ -151,7 +151,7 @@ export default function DeliveriesPage() {
             if (!task || !task.date || task.status === 'Entregado') return;
 
             const parentTicket = tickets.find(t => t.id === task.ticket_id);
-            
+
             items.push({
                 id: task.case_number || `TASK-${task.id?.substring(0, 4)}`,
                 taskId: task.id,
@@ -585,7 +585,7 @@ export default function DeliveriesPage() {
     const handlePrintRouteReport = () => {
         // Agrupar por conductor y ordenar por visita
         const drivers = {};
-        
+
         sortedAndFilteredDeliveries.forEach(d => {
             const driverName = d.deliveryPerson || 'Sin Asignar';
             if (!drivers[driverName]) drivers[driverName] = [];
