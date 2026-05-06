@@ -24,6 +24,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { useStore } from '../../../lib/store';
 import { CountryFilter } from '../../components/layout/CountryFilter';
+import QRCode from 'qrcode';
 
 export default function LogisticsHubPage() {
     const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter, currentUser } = useStore();
@@ -130,15 +131,30 @@ export default function LogisticsHubPage() {
         }
     };
 
-    const handlePrintRouteReport = () => {
+    const handlePrintRouteReport = async () => {
         // Agrupar por conductor y ordenar por visita
         const drivers = {};
+        const qrCodes = {};
         
-        tasks.forEach(d => {
+        // Generar QRs de Google Maps para cada tarea
+        for (const d of tasks) {
             const driverName = d.deliveryPerson || 'Sin Asignar';
             if (!drivers[driverName]) drivers[driverName] = [];
             drivers[driverName].push(d);
-        });
+
+            if (d.displayAddress && d.displayAddress !== 'Sin dirección') {
+                try {
+                    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.displayAddress)}`;
+                    qrCodes[d.id] = await QRCode.toDataURL(googleMapsUrl, {
+                        margin: 1,
+                        width: 100,
+                        errorCorrectionLevel: 'M'
+                    });
+                } catch (err) {
+                    console.error("Error generating Hub QR:", err);
+                }
+            }
+        }
 
         // Ordenar cada grupo por orden de visita
         Object.keys(drivers).forEach(name => {
@@ -169,6 +185,7 @@ export default function LogisticsHubPage() {
                         th { background: #f1f5f9; color: #475569; text-transform: uppercase; font-weight: 700; padding: 8px; border: 1px solid #e2e8f0; text-align: left; }
                         td { padding: 8px; border: 1px solid #e2e8f0; vertical-align: top; }
                         .order-col { width: 30px; text-align: center; font-weight: 700; }
+                        .qr-col { width: 50px; text-align: center; vertical-align: middle; }
                         .footer { margin-top: 50px; font-size: 9px; color: #64748b; text-align: center; }
                         .badge { padding: 2px 4px; border-radius: 3px; font-size: 8px; font-weight: 700; background: #e2e8f0; }
                     </style>
@@ -191,6 +208,7 @@ export default function LogisticsHubPage() {
                                         <th class="order-col">#</th>
                                         <th>Caso / Cliente</th>
                                         <th>Dirección</th>
+                                        <th class="qr-col">Mapa</th>
                                         <th style="width: 80px;">Horario</th>
                                         <th>Estado</th>
                                     </tr>
@@ -201,9 +219,12 @@ export default function LogisticsHubPage() {
                                             <td class="order-col">${d.visitOrder || '-'}</td>
                                             <td>
                                                 <strong>${d.case_number}</strong><br/>
-                                                ${d.displayRequester}
+                                                <span style="font-size: 9px;">${d.displayRequester}</span>
                                             </td>
-                                            <td>${d.displayAddress}</td>
+                                            <td style="font-size: 9px;">${d.displayAddress}</td>
+                                            <td class="qr-col">
+                                                ${qrCodes[d.id] ? `<img src="${qrCodes[d.id]}" style="width: 40px; height: 40px; display: block; margin: 0 auto;" />` : '-'}
+                                            </td>
                                             <td>${d.date ? d.date.split('T')[0] : 'Pend.'} | ${d.time_slot || 'AM'}</td>
                                             <td><span class="badge">${d.status}</span></td>
                                         </tr>
