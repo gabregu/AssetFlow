@@ -514,10 +514,19 @@ export default function WarehousePage() {
                                         color: 'white',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem'
                                     }}>1</div>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                                        {scannedAsset ? `Activo: ${scannedAsset.id}` : "Escanee el Activo"}
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'flex', flexDirection: 'column' }}>
+                                        {scannedAsset ? (
+                                            <>
+                                                <span>Activo: {scannedAsset.id}</span>
+                                                {scannedAsset.locationId && (
+                                                    <span style={{ fontSize: '0.7rem', color: '#f59e0b', marginTop: '0.2rem' }}>
+                                                        Actualmente en: {scannedAsset.locationId}
+                                                    </span>
+                                                )}
+                                            </>
+                                        ) : "Escanee el Activo"}
                                     </span>
-                                    {scannedAsset && <CheckCircle2 size={16} color="#22c55e" />}
+                                    {scannedAsset && <CheckCircle2 size={16} color="#22c55e" style={{ marginLeft: 'auto' }} />}
                                 </div>
 
                                 <div style={{ 
