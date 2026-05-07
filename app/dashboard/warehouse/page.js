@@ -55,6 +55,9 @@ export default function WarehousePage() {
     const [isSavingLocation, setIsSavingLocation] = useState(false);
     const [newLoc, setNewLoc] = useState({ id: '', aisle: '', section: '', level: '' });
 
+    // Helper to normalize IDs for comparison (ignore dashes, quotes, spaces)
+    const normalizeId = (id) => id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
     // Group locations by aisle for the grid, filtered by country
     const groupedLocations = useMemo(() => {
         const groups = {};
@@ -71,9 +74,10 @@ export default function WarehousePage() {
     // Handle Asset Scan simulation
     const handleScanAsset = (e) => {
         e.preventDefault();
+        const searchNorm = normalizeId(searchQuery);
         const asset = assets.find(a => 
-            a.id.toLowerCase() === searchQuery.toLowerCase() || 
-            a.serial.toLowerCase() === searchQuery.toLowerCase()
+            normalizeId(a.id) === searchNorm || 
+            normalizeId(a.serial) === searchNorm
         );
         if (asset) {
             setScannedAsset(asset);
@@ -86,8 +90,9 @@ export default function WarehousePage() {
 
     // Handle Location Scan simulation
     const handleScanLocation = (locationId) => {
+        const searchNorm = normalizeId(locationId);
         const loc = warehouseLocations.find(l => 
-            l.id.toLowerCase() === locationId.toLowerCase()
+            normalizeId(l.id) === searchNorm
         );
 
         if (!loc) {
@@ -116,9 +121,10 @@ export default function WarehousePage() {
 
     const handleAuditScan = (e) => {
         e.preventDefault();
+        const searchNorm = normalizeId(auditSearchQuery);
         const asset = assets.find(a => 
-            a.id.toLowerCase() === auditSearchQuery.toLowerCase() || 
-            a.serial.toLowerCase() === auditSearchQuery.toLowerCase()
+            normalizeId(a.id) === searchNorm || 
+            normalizeId(a.serial) === searchNorm
         );
         
         if (asset) {
@@ -331,14 +337,15 @@ export default function WarehousePage() {
                 <div style={{ flex: 1, maxWidth: '400px', margin: '0 2rem' }}>
                     <form onSubmit={(e) => {
                         e.preventDefault();
+                        const searchNorm = normalizeId(searchQuery);
                         // Global search: first try as location, then as asset
-                        const loc = warehouseLocations.find(l => l.id.toLowerCase() === searchQuery.toLowerCase());
+                        const loc = warehouseLocations.find(l => normalizeId(l.id) === searchNorm);
                         if (loc) {
                             handleScanLocation(loc.id);
                             setSearchQuery('');
                             return;
                         }
-                        const asset = assets.find(a => a.serial.toLowerCase() === searchQuery.toLowerCase() || a.id.toLowerCase() === searchQuery.toLowerCase());
+                        const asset = assets.find(a => normalizeId(a.serial) === searchNorm || normalizeId(a.id) === searchNorm);
                         if (asset) {
                             if (asset.locationId) {
                                 handleScanLocation(asset.locationId);
@@ -348,7 +355,7 @@ export default function WarehousePage() {
                             setSearchQuery('');
                             return;
                         }
-                        alert("No se encontró ubicación ni activo con ese código.");
+                        alert(`No se encontró ubicación ni activo con el código: ${searchQuery}`);
                     }}>
                         <div className="search-box">
                             <ScanLine className="search-icon" size={18} />
