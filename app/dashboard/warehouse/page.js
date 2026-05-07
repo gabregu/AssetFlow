@@ -267,11 +267,13 @@ export default function WarehousePage() {
                                 width: 100%;
                             }
                             .loc-aisle { 
-                                font-size: 10pt; 
+                                font-size: 7.5pt; 
                                 font-weight: 900; 
                                 color: #000; 
                                 text-transform: uppercase;
-                                line-height: 1;
+                                line-height: 1.2;
+                                white-space: nowrap;
+                                letter-spacing: -0.01em;
                             }
                             .loc-details { 
                                 font-size: 8pt; 
