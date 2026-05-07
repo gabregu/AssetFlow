@@ -208,8 +208,8 @@ export default function WarehousePage() {
                 format: "CODE128",
                 displayValue: false,
                 margin: 0,
-                height: 30,
-                width: 1.5
+                height: 40,
+                width: 2.0
             });
             const barcodeDataUrl = canvas.toDataURL("image/png");
 
@@ -240,7 +240,7 @@ export default function WarehousePage() {
                                 justify-content: space-between;
                                 font-family: sans-serif;
                             }
-                            .qr-side { width: 21mm; height: 21mm; }
+                            .qr-side { width: 13mm; height: 13mm; }
                             .text-side {
                                 flex: 1;
                                 padding-left: 4mm;
@@ -266,7 +266,7 @@ export default function WarehousePage() {
                                 word-break: break-word; 
                                 line-height: 1;
                             }
-                            .barcode-img { width: 100%; height: 5mm; margin-top: 1mm; }
+                            .barcode-img { width: 100%; height: 9mm; margin-top: 1.5mm; }
                         </style>
                     </head>
                     <body>
