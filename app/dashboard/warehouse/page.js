@@ -20,6 +20,7 @@ import {
     Printer
 } from 'lucide-react';
 import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode';
 import { useStore } from '../../../lib/store';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -202,6 +203,16 @@ export default function WarehousePage() {
                 color: { dark: '#000000', light: '#ffffff' }
             });
 
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, location.id, {
+                format: "CODE128",
+                displayValue: false,
+                margin: 0,
+                height: 30,
+                width: 1.5
+            });
+            const barcodeDataUrl = canvas.toDataURL("image/png");
+
             let iframe = document.getElementById('print-iframe');
             if (!iframe) {
                 iframe = document.createElement('iframe');
@@ -234,12 +245,14 @@ export default function WarehousePage() {
                                 flex: 1;
                                 padding-left: 3mm;
                                 display: flex;
-                                flexDirection: column;
+                                flex-direction: column;
                                 justify-content: center;
                                 text-align: left;
+                                overflow: hidden;
                             }
-                            .loc-title { font-size: 14pt; font-weight: 900; color: #000; margin-bottom: 1mm; }
-                            .loc-region { font-size: 8pt; font-weight: 600; color: #666; text-transform: uppercase; }
+                            .loc-title { font-size: 12pt; font-weight: 900; color: #000; margin-bottom: 0.5mm; word-break: break-word; line-height: 1.1; }
+                            .loc-region { font-size: 7.5pt; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 0.5mm; line-height: 1.1; }
+                            .barcode-img { width: 100%; height: 5mm; margin-top: 0.5mm; }
                         </style>
                     </head>
                     <body>
@@ -248,7 +261,8 @@ export default function WarehousePage() {
                             <div class="text-side">
                                 <div class="loc-region">ESTANTERÍA ${location.country}</div>
                                 <div class="loc-title">${location.id}</div>
-                                <div style="font-size: 6pt; opacity: 0.5;">AssetFlow WMS</div>
+                                <img src="${barcodeDataUrl}" class="barcode-img" />
+                                <div style="font-size: 5pt; opacity: 0.5; margin-top: 0.5mm;">AssetFlow WMS</div>
                             </div>
                         </div>
                         <script>
