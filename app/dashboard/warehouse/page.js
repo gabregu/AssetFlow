@@ -266,12 +266,18 @@ export default function WarehousePage() {
                                 text-align: center;
                                 width: 100%;
                             }
-                            .loc-title { 
-                                font-size: 9pt; 
-                                font-weight: 800; 
+                            .loc-aisle { 
+                                font-size: 10pt; 
+                                font-weight: 900; 
                                 color: #000; 
-                                margin-bottom: 1mm; 
-                                word-break: break-all; 
+                                text-transform: uppercase;
+                                line-height: 1;
+                            }
+                            .loc-details { 
+                                font-size: 8pt; 
+                                font-weight: 700; 
+                                color: #334155; 
+                                margin-bottom: 1mm;
                                 line-height: 1.1;
                             }
                             .barcode-img { width: 100%; height: 11mm; margin-top: 1mm; object-fit: fill; }
@@ -284,7 +290,8 @@ export default function WarehousePage() {
                                 <img src="${qrDataUrl}" class="qr-side" />
                             </div>
                             <div class="right-side">
-                                <div class="loc-title">${location.id}</div>
+                                <div class="loc-aisle">${location.aisle}</div>
+                                <div class="loc-details">${location.section} - ${location.level}</div>
                                 <img src="${barcodeDataUrl}" class="barcode-img" />
                                 <div style="font-size: 5pt; opacity: 0.4; margin-top: 1mm; font-weight: 600; text-align: right;">AssetFlow WMS</div>
                             </div>
