@@ -360,10 +360,10 @@ export default function InventoryPage() {
             const canvas = document.createElement('canvas');
             JsBarcode(canvas, asset.serial, {
                 format: "CODE128",
-                width: 2,
+                width: 2.5,
                 height: 40,
                 displayValue: false,
-                margin: 0
+                margin: 10
             });
             const barcodeDataUrl = canvas.toDataURL("image/png");
 
@@ -417,21 +417,21 @@ export default function InventoryPage() {
                                 padding-right: 2mm;
                             }
                             .type-label {
-                                font-size: 10.5pt;
+                                font-size: 9pt;
                                 font-weight: 900;
                                 text-transform: uppercase;
                                 line-height: 1;
-                                margin-bottom: 0.2mm;
+                                margin-bottom: 0.1mm;
                             }
                             .asset-name {
-                                font-size: 6.8pt;
+                                font-size: 6pt;
                                 line-height: 1.1;
                                 font-weight: 600;
                                 display: -webkit-box;
                                 -webkit-line-clamp: 1;
                                 -webkit-box-orient: vertical;
                                 overflow: hidden;
-                                margin-bottom: 0.2mm;
+                                margin-bottom: 0.1mm;
                             }
                             .status-badge {
                                 font-size: 5pt;
@@ -467,8 +467,17 @@ export default function InventoryPage() {
                                 padding-left: 2mm;
                             }
                             .qr-code {
-                                width: 13mm;
-                                height: 13mm;
+                                width: 12mm;
+                                height: 12mm;
+                                margin-bottom: 0.5mm;
+                            }
+                            .loc-region {
+                                font-size: 5pt;
+                                font-weight: 800;
+                                color: #64748b;
+                                text-transform: uppercase;
+                                letter-spacing: 0.05em;
+                                margin-bottom: 0.5mm;
                             }
                             .footer-id {
                                 font-size: 4.5pt;
@@ -496,6 +505,7 @@ export default function InventoryPage() {
                                 <p class="serial-text">${asset.serial}</p>
                             </div>
                             <div class="right-side">
+                                <div class="loc-region">${asset.country || 'ARGENTINA'}</div>
                                 <img class="qr-code" src="${qrDataUrl}" />
                                 <div class="footer-id">CÓDIGO ACTIVO</div>
                                 <div class="footer-val">AST-${asset.id?.toString().slice(-4) || 'XXXX'}</div>
