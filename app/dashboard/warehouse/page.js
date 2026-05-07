@@ -86,19 +86,32 @@ export default function WarehousePage() {
 
     // Handle Location Scan simulation
     const handleScanLocation = (locationId) => {
+        const loc = warehouseLocations.find(l => 
+            l.id.toLowerCase() === locationId.toLowerCase()
+        );
+
+        if (!loc) {
+            alert("Ubicación no encontrada: " + locationId);
+            return;
+        }
+
         if (isAuditMode) {
-            const loc = warehouseLocations.find(l => l.id === locationId);
             setAuditLocation(loc);
             setScannedAuditAssets([]);
             return;
         }
 
         if (mappingStep === 2 && scannedAsset) {
-            confirmMapping(scannedAsset.id, locationId);
+            confirmMapping(scannedAsset.id, loc.id);
         } else {
-            const loc = warehouseLocations.find(l => l.id === locationId);
             setSelectedLocation(loc);
         }
+    };
+
+    const handleLocationSearchSubmit = (e) => {
+        e.preventDefault();
+        handleScanLocation(searchQuery);
+        setSearchQuery('');
     };
 
     const handleAuditScan = (e) => {
@@ -337,6 +350,40 @@ export default function WarehousePage() {
                         <CountryFilter />
                     </div>
                 </div>
+                
+                <div style={{ flex: 1, maxWidth: '400px', margin: '0 2rem' }}>
+                    <form onSubmit={(e) => {
+                        e.preventDefault();
+                        // Global search: first try as location, then as asset
+                        const loc = warehouseLocations.find(l => l.id.toLowerCase() === searchQuery.toLowerCase());
+                        if (loc) {
+                            handleScanLocation(loc.id);
+                            setSearchQuery('');
+                            return;
+                        }
+                        const asset = assets.find(a => a.serial.toLowerCase() === searchQuery.toLowerCase() || a.id.toLowerCase() === searchQuery.toLowerCase());
+                        if (asset) {
+                            if (asset.locationId) {
+                                handleScanLocation(asset.locationId);
+                            } else {
+                                alert(`Activo ${asset.serial} encontrado pero no tiene ubicación asignada.`);
+                            }
+                            setSearchQuery('');
+                            return;
+                        }
+                        alert("No se encontró ubicación ni activo con ese código.");
+                    }}>
+                        <div className="search-box">
+                            <ScanLine className="search-icon" size={18} />
+                            <input 
+                                className="search-input"
+                                placeholder="Escanear Ubicación o Activo..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                    </form>
+                </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <Button 
                         variant={isAuditMode ? "primary" : "outline"} 
@@ -508,20 +555,19 @@ export default function WarehousePage() {
                                     <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Escanee la Ubicación</span>
                                 </div>
 
-                                {mappingStep === 1 && (
-                                    <form onSubmit={handleScanAsset} style={{ marginTop: '0.5rem' }}>
-                                        <div className="search-box">
-                                            <Search className="search-icon" size={18} />
-                                            <input 
-                                                className="search-input"
-                                                placeholder="ID o Serial del Activo..."
-                                                value={searchQuery}
-                                                onChange={e => setSearchQuery(e.target.value)}
-                                                autoFocus
-                                            />
-                                        </div>
-                                    </form>
-                                )}
+                                <form onSubmit={mappingStep === 1 ? handleScanAsset : handleLocationSearchSubmit} style={{ marginTop: '0.5rem' }}>
+                                    <div className="search-box">
+                                        <Scan className="search-icon" size={18} color="var(--primary-color)" />
+                                        <input 
+                                            className="search-input"
+                                            placeholder={mappingStep === 1 ? "Scan Activo..." : "Scan Ubicación..."}
+                                            value={searchQuery}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                            autoFocus
+                                            style={{ borderColor: 'var(--primary-color)' }}
+                                        />
+                                    </div>
+                                </form>
                             </div>
                         </Card>
                     )}
