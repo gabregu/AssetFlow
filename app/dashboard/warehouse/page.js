@@ -17,7 +17,8 @@ import {
     ClipboardCheck,
     XCircle,
     Scan,
-    Printer
+    Printer,
+    ExternalLink
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
