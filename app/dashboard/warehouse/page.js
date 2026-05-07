@@ -433,14 +433,16 @@ export default function WarehousePage() {
                                         border: '1px dashed var(--border)'
                                     }}>
                                         {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
-                                            const asset = getAssetAtLocation(loc.id);
+                                            const locationAssets = assets.filter(a => a.locationId === loc.id);
+                                            const assetCount = locationAssets.length;
+                                            const asset = locationAssets[0];
                                             const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
                                             const isTarget = (mappingStep === 2 && isMappingMode) || isAuditMode;
 
                                             let bgColor = 'var(--surface)';
                                             let textColor = 'var(--text-main)';
 
-                                            if (asset) {
+                                            if (assetCount > 0) {
                                                 bgColor = 'var(--primary-color)';
                                                 textColor = 'white';
                                             }
@@ -470,13 +472,22 @@ export default function WarehousePage() {
                                                         fontWeight: 700,
                                                         position: 'relative',
                                                         boxShadow: isSelected ? `0 0 15px ${isAuditMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(37, 99, 235, 0.3)'}` : 'none',
-                                                        opacity: isTarget && !asset && !isSelected ? 0.7 : 1,
-                                                        animation: isTarget && !asset && !isSelected ? 'pulse 2s infinite' : 'none'
+                                                        opacity: isTarget && assetCount === 0 && !isSelected ? 0.7 : 1,
+                                                        animation: isTarget && assetCount === 0 && !isSelected ? 'pulse 2s infinite' : 'none'
                                                     }}
-                                                    title={`${loc.id} ${asset ? `(${asset.name})` : '(Libre)'}`}
+                                                    title={`${loc.id} (${assetCount} activos)`}
                                                 >
                                                     {loc.id.split('-').slice(1).join('-')}
-                                                    {asset && <Box size={12} style={{ marginTop: '2px' }} />}
+                                                    {assetCount > 0 && (
+                                                        <div style={{ 
+                                                            display: 'flex', alignItems: 'center', gap: '2px', marginTop: '2px',
+                                                            background: '#ef4444', color: 'white', padding: '1px 5px', borderRadius: '10px',
+                                                            fontSize: '0.65rem', fontWeight: 900
+                                                        }}>
+                                                            <Box size={10} />
+                                                            <span>{assetCount}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         })}
@@ -579,8 +590,12 @@ export default function WarehousePage() {
                                 </div>
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ padding: '0.75rem', background: '#8b5cf6', color: 'white', borderRadius: '8px', textAlign: 'center', fontWeight: 800 }}>
-                                        Auditando: {auditLocation.id}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: '#8b5cf6', color: 'white', borderRadius: '8px', fontWeight: 800 }}>
+                                        <span>Auditando: {auditLocation.id}</span>
+                                        <div style={{ background: '#ef4444', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <Box size={12} />
+                                            <span>Total: {assets.filter(a => a.locationId === auditLocation.id).length}</span>
+                                        </div>
                                     </div>
                                     
                                     <form onSubmit={handleAuditScan}>
