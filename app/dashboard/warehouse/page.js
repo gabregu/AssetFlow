@@ -253,14 +253,14 @@ export default function WarehousePage() {
                             .label-container {
                                 width: 50mm;
                                 height: 25mm;
-                                padding: 2mm 5mm;
+                                padding: 1.5mm 4mm;
                                 display: flex;
                                 flex-direction: column;
-                                justify-content: center;
+                                justify-content: flex-start;
                                 font-family: sans-serif;
                             }
                             .loc-region { 
-                                font-size: 7pt; 
+                                font-size: 6pt; 
                                 font-weight: 800; 
                                 color: #64748b; 
                                 text-transform: uppercase; 
@@ -268,23 +268,24 @@ export default function WarehousePage() {
                                 margin-bottom: 0.5mm;
                             }
                             .loc-aisle { 
-                                font-size: 8.5pt; 
+                                font-size: 8pt; 
                                 font-weight: 900; 
                                 color: #000; 
                                 text-transform: uppercase;
-                                line-height: 1.1;
+                                line-height: 1.2;
                                 white-space: nowrap;
                                 overflow: hidden;
                                 text-overflow: ellipsis;
                             }
                             .loc-details { 
-                                font-size: 9pt; 
+                                font-size: 8pt; 
                                 font-weight: 700; 
                                 color: #334155; 
-                                margin-bottom: 1mm;
-                                line-height: 1.1;
+                                margin-top: 1.5mm;
+                                margin-bottom: 1.5mm;
+                                line-height: 1.2;
                             }
-                            .barcode-img { width: 100%; height: 13mm; margin-top: 1mm; object-fit: fill; }
+                            .barcode-img { width: 100%; height: 11mm; object-fit: fill; }
                         </style>
                     </head>
                     <body>
@@ -293,7 +294,7 @@ export default function WarehousePage() {
                             <div class="loc-aisle">${location.aisle}</div>
                             <div class="loc-details">${location.section} - ${location.level}</div>
                             <img src="${barcodeDataUrl}" class="barcode-img" />
-                            <div style="font-size: 5pt; opacity: 0.4; margin-top: 0.5mm; font-weight: 600; text-align: right;">AssetFlow WMS</div>
+                            <div style="font-size: 4.5pt; opacity: 0.4; margin-top: 0.5mm; font-weight: 600; text-align: right;">AssetFlow WMS</div>
                         </div>
                         <script>
                             window.onload = () => {
