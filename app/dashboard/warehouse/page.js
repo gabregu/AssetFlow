@@ -663,82 +663,105 @@ export default function WarehousePage() {
                     )}
 
                     {/* Selected Location Detail */}
-                    {selectedLocation ? (
-                        <Card style={{ padding: '1.5rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                                <div>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Ubicación</span>
-                                    <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>{selectedLocation.id}</h3>
+                    {(() => {
+                        if (!selectedLocation) {
+                            return (
+                                <Card style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                    <History size={40} style={{ opacity: 0.1, marginBottom: '1rem' }} />
+                                    <p style={{ fontSize: '0.85rem' }}>Seleccione una ubicación en el mapa para ver sus detalles.</p>
+                                </Card>
+                            );
+                        }
+                        const locationAssets = assets.filter(a => a.locationId === selectedLocation.id);
+                        return (
+                            <Card style={{ padding: '1.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                                    <div>
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Ubicación</span>
+                                        <h3 style={{ fontSize: '1.4rem', fontWeight: 800 }}>{selectedLocation.id}</h3>
+                                    </div>
+                                    <div style={{ 
+                                        padding: '0.25rem 0.75rem', 
+                                        borderRadius: '20px', 
+                                        fontSize: '0.7rem', 
+                                        fontWeight: 700,
+                                        background: locationAssets.length > 0 ? 'rgba(37, 99, 235, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                                        color: locationAssets.length > 0 ? 'var(--primary-color)' : '#22c55e'
+                                    }}>
+                                        {locationAssets.length > 0 ? 'Ocupado' : 'Disponible'}
+                                    </div>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        icon={Printer} 
+                                        onClick={() => handlePrintLocationLabel(selectedLocation)}
+                                        title="Imprimir Etiqueta Estantería"
+                                        style={{ marginLeft: '0.5rem', color: 'var(--primary-color)', borderColor: 'var(--primary-color)' }}
+                                    />
                                 </div>
-                                <div style={{ 
-                                    padding: '0.25rem 0.75rem', 
-                                    borderRadius: '20px', 
-                                    fontSize: '0.7rem', 
-                                    fontWeight: 700,
-                                    background: getAssetAtLocation(selectedLocation.id) ? 'rgba(37, 99, 235, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                                    color: getAssetAtLocation(selectedLocation.id) ? 'var(--primary-color)' : '#22c55e'
-                                }}>
-                                    {getAssetAtLocation(selectedLocation.id) ? 'Ocupado' : 'Disponible'}
-                                </div>
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    icon={Printer} 
-                                    onClick={() => handlePrintLocationLabel(selectedLocation)}
-                                    title="Imprimir Etiqueta Estantería"
-                                    style={{ marginLeft: '0.5rem', color: 'var(--primary-color)', borderColor: 'var(--primary-color)' }}
-                                />
-                            </div>
 
-                            {getAssetAtLocation(selectedLocation.id) ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1rem', background: 'var(--background)', borderRadius: '12px' }}>
-                                        <div style={{ width: '40px', height: '40px', background: 'rgba(37, 99, 235, 0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Box size={24} color="var(--primary-color)" />
+                                {locationAssets.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div style={{ maxHeight: '350px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.5rem' }}>
+                                            {locationAssets.map(asset => (
+                                                <div key={asset.id} style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1rem', background: 'var(--background)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                                    <div style={{ width: '40px', height: '40px', background: 'rgba(37, 99, 235, 0.1)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Box size={24} color="var(--primary-color)" />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <h4 style={{ fontSize: '0.85rem', fontWeight: 800, margin: 0 }}>{asset.name}</h4>
+                                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '4px' }}>
+                                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                                ID: {asset.id}
+                                                            </span>
+                                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', background: 'rgba(0,0,0,0.05)', padding: '2px 6px', borderRadius: '4px' }}>
+                                                                S/N: {asset.serial || 'N/A'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        icon={ExternalLink} 
+                                                        onClick={() => window.open(`/dashboard/inventory?id=${asset.id}`, '_blank')}
+                                                        title="Ver Detalle Activo"
+                                                    />
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div>
-                                            <p style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0 }}>{getAssetAtLocation(selectedLocation.id).name}</p>
-                                            <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0 }}>ID: {getAssetAtLocation(selectedLocation.id).id}</p>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--background)', padding: '1rem', borderRadius: '12px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                                <span>Mapeado el:</span>
+                                                <span style={{ fontWeight: 600 }}>{locationAssets[0].dateMapped ? new Date(locationAssets[0].dateMapped).toLocaleDateString() : 'N/A'}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span>Por:</span>
+                                                <span style={{ fontWeight: 600 }}>{locationAssets[0].updatedBy || 'N/A'}</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                            <span>Mapeado el:</span>
-                                            <span>{new Date(getAssetAtLocation(selectedLocation.id).dateMapped).toLocaleDateString()}</span>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>
+                                            <Info size={32} style={{ opacity: 0.2, marginBottom: '0.5rem' }} />
+                                            <p style={{ fontSize: '0.85rem' }}>Esta ubicación está vacía.</p>
                                         </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <span>Por:</span>
-                                            <span>{getAssetAtLocation(selectedLocation.id).updatedBy}</span>
-                                        </div>
+                                        {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                icon={Trash2} 
+                                                style={{ color: '#ef4444', marginTop: '1rem' }}
+                                                onClick={() => handleDeleteLocation(selectedLocation.id)}
+                                            >
+                                                Eliminar Ubicación
+                                            </Button>
+                                        )}
                                     </div>
-                                    <Button variant="outline" size="sm" icon={Maximize2} style={{ marginTop: '0.5rem' }}>Ver Detalle Activo</Button>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>
-                                        <Info size={32} style={{ opacity: 0.2, marginBottom: '0.5rem' }} />
-                                        <p style={{ fontSize: '0.85rem' }}>Esta ubicación está vacía.</p>
-                                    </div>
-                                    {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            icon={Trash2} 
-                                            style={{ color: '#ef4444', marginTop: '1rem' }}
-                                            onClick={() => handleDeleteLocation(selectedLocation.id)}
-                                        >
-                                            Eliminar Ubicación
-                                        </Button>
-                                    )}
-                                </div>
-                            )}
-                        </Card>
-                    ) : (
-                        <Card style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                            <History size={40} style={{ opacity: 0.1, marginBottom: '1rem' }} />
-                            <p style={{ fontSize: '0.85rem' }}>Seleccione una ubicación en el mapa para ver sus detalles.</p>
-                        </Card>
-                    )}
+                                )}
+                            </Card>
+                        );
+                    })()}
                 </div>
             </div>
 
