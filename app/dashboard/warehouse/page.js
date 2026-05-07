@@ -243,26 +243,40 @@ export default function WarehousePage() {
                             .qr-side { width: 21mm; height: 21mm; }
                             .text-side {
                                 flex: 1;
-                                padding-left: 3mm;
+                                padding-left: 4mm;
                                 display: flex;
                                 flex-direction: column;
                                 justify-content: center;
                                 text-align: left;
                                 overflow: hidden;
                             }
-                            .loc-title { font-size: 12pt; font-weight: 900; color: #000; margin-bottom: 0.5mm; word-break: break-word; line-height: 1.1; }
-                            .loc-region { font-size: 7.5pt; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 0.5mm; line-height: 1.1; }
-                            .barcode-img { width: 100%; height: 5mm; margin-top: 0.5mm; }
+                            .loc-region { 
+                                font-size: 8pt; 
+                                font-weight: 800; 
+                                color: #64748b; 
+                                text-transform: uppercase; 
+                                margin-bottom: 0.5mm; 
+                                letter-spacing: 0.05em;
+                            }
+                            .loc-title { 
+                                font-size: 13pt; 
+                                font-weight: 900; 
+                                color: #000; 
+                                margin-bottom: 1mm; 
+                                word-break: break-word; 
+                                line-height: 1;
+                            }
+                            .barcode-img { width: 100%; height: 5mm; margin-top: 1mm; }
                         </style>
                     </head>
                     <body>
                         <div class="label-container">
                             <img src="${qrDataUrl}" class="qr-side" />
                             <div class="text-side">
-                                <div class="loc-region">ESTANTERÍA ${location.country}</div>
+                                <div class="loc-region">${location.country}</div>
                                 <div class="loc-title">${location.id}</div>
                                 <img src="${barcodeDataUrl}" class="barcode-img" />
-                                <div style="font-size: 5pt; opacity: 0.5; margin-top: 0.5mm;">AssetFlow WMS</div>
+                                <div style="font-size: 5pt; opacity: 0.4; margin-top: 1mm; font-weight: 600;">AssetFlow WMS</div>
                             </div>
                         </div>
                         <script>
