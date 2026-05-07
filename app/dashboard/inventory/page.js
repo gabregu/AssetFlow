@@ -360,8 +360,8 @@ export default function InventoryPage() {
             const canvas = document.createElement('canvas');
             JsBarcode(canvas, asset.serial, {
                 format: "CODE128",
-                width: 2.5,
-                height: 40,
+                width: 3.0,
+                height: 60,
                 displayValue: false,
                 margin: 10
             });
@@ -404,34 +404,37 @@ export default function InventoryPage() {
                                 height: 25mm;
                                 padding: 1.5mm 2mm;
                                 display: flex;
-                                position: absolute;
-                                top: 0;
-                                left: 0;
+                                flex-direction: column;
                                 font-family: sans-serif;
                             }
-                            .left-side {
-                                flex: 1;
+                            .top-section {
                                 display: flex;
-                                flex-direction: column;
                                 justify-content: space-between;
-                                padding-right: 2mm;
+                                margin-bottom: 0.5mm;
+                            }
+                            .top-left {
+                                flex: 1;
+                                padding-right: 1mm;
+                            }
+                            .top-right {
+                                text-align: right;
                             }
                             .type-label {
-                                font-size: 9pt;
+                                font-size: 8pt;
                                 font-weight: 900;
                                 text-transform: uppercase;
                                 line-height: 1;
-                                margin-bottom: 0.1mm;
+                                margin-bottom: 0.5mm;
                             }
                             .asset-name {
-                                font-size: 6pt;
+                                font-size: 5.5pt;
                                 line-height: 1.1;
                                 font-weight: 600;
                                 display: -webkit-box;
                                 -webkit-line-clamp: 1;
                                 -webkit-box-orient: vertical;
                                 overflow: hidden;
-                                margin-bottom: 0.1mm;
+                                margin-bottom: 0.5mm;
                             }
                             .status-badge {
                                 font-size: 5pt;
@@ -442,37 +445,9 @@ export default function InventoryPage() {
                                 padding: 0.2mm 0.8mm;
                                 border-radius: 0.4mm;
                                 display: inline-block;
-                                margin-bottom: 0.5mm;
-                            }
-                            .barcode-img {
-                                width: 100%;
-                                height: 5mm;
-                                object-fit: fill;
-                                margin-top: 0.2mm;
-                            }
-                            .serial-text {
-                                font-size: 9pt;
-                                font-weight: 900;
-                                margin: 0;
-                                margin-top: 0.2mm;
-                                letter-spacing: -0.1mm;
-                            }
-                            .right-side {
-                                width: 16mm;
-                                display: flex;
-                                flex-direction: column;
-                                align-items: center;
-                                justify-content: center;
-                                border-left: 0.2mm solid #000;
-                                padding-left: 2mm;
-                            }
-                            .qr-code {
-                                width: 12mm;
-                                height: 12mm;
-                                margin-bottom: 0.5mm;
                             }
                             .loc-region {
-                                font-size: 5pt;
+                                font-size: 6pt;
                                 font-weight: 800;
                                 color: #64748b;
                                 text-transform: uppercase;
@@ -480,35 +455,53 @@ export default function InventoryPage() {
                                 margin-bottom: 0.5mm;
                             }
                             .footer-id {
-                                font-size: 4.5pt;
-                                text-align: center;
+                                font-size: 5pt;
                                 font-weight: 700;
-                                line-height: 1;
+                                line-height: 1.2;
                             }
                             .footer-val {
-                                font-size: 5.5pt;
+                                font-size: 6pt;
                                 font-weight: 900;
+                            }
+                            .barcode-section {
+                                flex: 1;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: flex-end;
+                                align-items: center;
+                            }
+                            .barcode-img {
+                                width: 100%;
+                                height: 9mm;
+                                object-fit: fill;
+                            }
+                            .serial-text {
+                                font-size: 8pt;
+                                font-weight: 900;
+                                margin: 0;
+                                margin-top: 0.5mm;
+                                letter-spacing: 0.5mm;
+                                text-align: center;
                             }
                         </style>
                     </head>
                     <body>
                         <div class="label-container">
-                            <div class="left-side">
-                                <div class="type-label">${asset.type}</div>
-                                <div class="asset-name">${asset.name}</div>
-                                <div>
+                            <div class="top-section">
+                                <div class="top-left">
+                                    <div class="type-label">${asset.type}</div>
+                                    <div class="asset-name">${asset.name}</div>
                                     <span class="status-badge">${asset.status}</span>
                                 </div>
-                                <div style="height: 5mm;">
-                                    <img class="barcode-img" src="${barcodeDataUrl}" />
+                                <div class="top-right">
+                                    <div class="loc-region">${asset.country || 'ARGENTINA'}</div>
+                                    <div class="footer-id">CÓDIGO ACTIVO</div>
+                                    <div class="footer-val">AST-${asset.id?.toString().slice(-4) || 'XXXX'}</div>
                                 </div>
-                                <p class="serial-text">${asset.serial}</p>
                             </div>
-                            <div class="right-side">
-                                <div class="loc-region">${asset.country || 'ARGENTINA'}</div>
-                                <img class="qr-code" src="${qrDataUrl}" />
-                                <div class="footer-id">CÓDIGO ACTIVO</div>
-                                <div class="footer-val">AST-${asset.id?.toString().slice(-4) || 'XXXX'}</div>
+                            <div class="barcode-section">
+                                <img class="barcode-img" src="${barcodeDataUrl}" />
+                                <p class="serial-text">${asset.serial}</p>
                             </div>
                         </div>
                     </body>
