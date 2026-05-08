@@ -92,7 +92,8 @@ export default function TicketActionButtons({
                                 }
 
                                 const mailtoUrl = `mailto:${toEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                                window.open(mailtoUrl, '_self');
+                                // Usar location.href es más compatible en Mac/Safari que window.open
+                                window.location.href = mailtoUrl;
                             }}
                         >
                             Email SYCOMP
