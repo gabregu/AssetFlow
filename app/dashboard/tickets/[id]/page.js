@@ -94,6 +94,7 @@ export default function TicketDetailPage() {
                         setEditedData={setEditedData}
                         handleUpdate={handleUpdate}
                         ticket={ticket}
+                        unifiedTasks={unifiedTasks}
                     />
 
                     <div className="grid-mobile-single" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem', alignItems: 'start' }}>
@@ -112,6 +113,7 @@ export default function TicketDetailPage() {
                                 setAddressStatus={setAddressStatus}
                                 validateAddress={validateAddress}
                                 isLoaded={isLoaded}
+                                unifiedTasks={unifiedTasks}
                             />
 
                             <AssociatedCasesCard 

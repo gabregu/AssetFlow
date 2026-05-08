@@ -21,7 +21,8 @@ export default function TicketHeader({
     addressStatus,
     setAddressStatus,
     validateAddress,
-    isLoaded
+    isLoaded,
+    unifiedTasks
 }) {
     return (
         <Card style={{ height: 'auto' }}>
@@ -114,6 +115,7 @@ export default function TicketHeader({
                 setAddressStatus={setAddressStatus}
                 validateAddress={validateAddress}
                 isLoaded={isLoaded}
+                unifiedTasks={unifiedTasks}
             />
         </Card>
     );

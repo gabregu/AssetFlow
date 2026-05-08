@@ -19,7 +19,8 @@ export default function ContactInfoSection({
     addressStatus,
     setAddressStatus,
     validateAddress,
-    isLoaded
+    isLoaded,
+    unifiedTasks
 }) {
     const isEditing = editMode || editContact;
 
@@ -211,9 +212,28 @@ export default function ContactInfoSection({
                 </div>
             </div>
 
+            {/* SYCOMP CASE Row */}
+            <div className="form-group" style={{ gridColumn: 'span 2', marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>SYCOMP CASE</label>
+                <div style={{ position: 'relative' }}>
+                    <Hash size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                    <input
+                        className="form-input"
+                        style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
+                        disabled={!isEditing}
+                        value={editedData.logistics?.sycompCase || ''}
+                        placeholder="Registra aquí el caso de Sycomp recibido por correo..."
+                        onChange={e => setEditedData({
+                            ...editedData,
+                            logistics: { ...(editedData.logistics || {}), sycompCase: e.target.value }
+                        })}
+                    />
+                </div>
+            </div>
+
             {/* Contact Actions Row */}
-            {!isEditing && (editedData.logistics?.email || editedData.logistics?.phone) && (
-                <div style={{ gridColumn: 'span 2', display: 'flex', gap: '0.5rem', marginTop: '4px' }}>
+            {!isEditing && (
+                <div style={{ gridColumn: 'span 2', display: 'flex', gap: '0.5rem', marginTop: '4px', flexWrap: 'wrap' }}>
                     {editedData.logistics?.email && (
                         <button
                             onClick={() => window.open(`https://slack.com/app_redirect?channel=${encodeURIComponent(editedData.logistics.email)}`, '_blank')}

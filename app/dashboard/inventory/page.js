@@ -979,48 +979,109 @@ export default function InventoryPage() {
             filteredDocs = filteredDocs.filter(a => a.name === exportSettings.value);
         }
 
-        // 1. Filtrar Hardware en Almacén (Usando la lista filtrada por país y filtros extras)
-        // Note: For regular exports, we typically only export what's NOT assigned yet if in Warehouse view, 
-        // but if the user wants "All", maybe they want everything. 
-        // Let's keep the "Warehouse" logic (Not assigned) but if it's a specific filter, maybe show all.
-        const hardwareData = filteredDocs
-            .filter(a => exportSettings.mode !== 'all' || (a.assignee === 'Almacén' && a.status !== 'Asignado'))
-            .map(a => ({
-                "Tipo": "Hardware",
-                "Nombre del Equipo": a.name,
-                "Serial / ID": a.serial,
-                "Estado": a.status,
-                "COD": a.cod || '-',
-                "Vendor": a.vendor || '-',
-                "Modelo": a.hardwareSpec || '-',
-                "Orden de Compra": a.purchaseOrder || '-',
-                "Notas": a.notes || '-',
-                "Ubicación": a.country || 'N/A',
-                "Actualizado Por": a.updatedBy || 'Sistema',
-                "Fecha Actualización": a.dateLastUpdate ? new Date(a.dateLastUpdate).toLocaleDateString() : '-',
-                "Caja": a.boxNumber || '-'
+        // 1. Filtrar Hardware
+        let hardwareData;
+        if (exportSettings.mode === 'all') {
+            // MODO ADMINISTRATIVO: Exportar TODO con columnas de base de datos
+            hardwareData = filteredDocs.map(a => ({
+                "id": a.id,
+                "name": a.name,
+                "type": a.type,
+                "serial": a.serial,
+                "status": a.status,
+                "assignee": a.assignee,
+                "date": a.date,
+                "notes": a.notes,
+                "country": a.country,
+                "box_number": a.box_number || a.boxNumber,
+                "cod": a.cod,
+                "imei": a.imei,
+                "imei_2": a.imei_2 || a.imei2,
+                "sfdc_case": a.sfdc_case || a.sfdcCase,
+                "purchase_order": a.purchase_order || a.purchaseOrder,
+                "vendor": a.vendor,
+                "hardware_spec": a.hardware_spec || a.hardwareSpec,
+                "model_number": a.model_number || a.modelNumber,
+                "part_number": a.part_number || a.partNumber,
+                "eol_date": a.eol_date || a.eolDate,
+                "oem": a.oem,
+                "updated_by": a.updated_by || a.updatedBy,
+                "date_last_update": a.date_last_update || a.dateLastUpdate,
+                "last_asset_check": a.last_asset_check || a.lastAssetCheck,
+                "location_id": a.location_id || a.locationId,
+                "date_mapped": a.date_mapped || a.dateMapped,
+                "add_by_user": a.add_by_user || a.addByUser
             }));
+        } else {
+            // MODO ESTÁNDAR: Solo lo que está en Almacén (o filtros específicos)
+            hardwareData = filteredDocs
+                .filter(a => (a.assignee === 'Almacén' || a.assignee === 'En Almacén') && a.status !== 'Asignado')
+                .map(a => ({
+                    "Tipo": "Hardware",
+                    "Nombre del Equipo": a.name,
+                    "Serial / ID": a.serial,
+                    "Estado": a.status,
+                    "COD": a.cod || '-',
+                    "Vendor": a.vendor || '-',
+                    "Modelo": a.hardwareSpec || '-',
+                    "Orden de Compra": a.purchaseOrder || '-',
+                    "Notas": a.notes || '-',
+                    "Ubicación": a.country || 'N/A',
+                    "Actualizado Por": a.updatedBy || 'Sistema',
+                    "Fecha Actualización": a.dateLastUpdate ? new Date(a.dateLastUpdate).toLocaleDateString() : '-',
+                    "Caja": a.boxNumber || '-'
+                }));
+        }
 
-        // 2. Filtrar Yubikeys Disponibles
-        const yubikeyData = filteredYubis
-            .filter(y => exportSettings.mode !== 'all' || (y.status === 'Nuevo' || y.status === 'Disponible'))
-            .map(y => ({
-                "Tipo": "Security Key",
-                "Modelo": y.type,
-                "Serial": y.serial,
-                "Estado": y.status,
-                "Ubicación": y.country || 'N/A',
-                "Agregado Por": y.add_by_user || '-',
-                "Fecha de Alta": new Date(y.created_at).toLocaleDateString()
+        // 2. Filtrar Yubikeys
+        let yubikeyData;
+        if (exportSettings.mode === 'all') {
+            yubikeyData = filteredYubis.map(y => ({
+                "id": y.id,
+                "name": y.name,
+                "model": y.model,
+                "type": y.type,
+                "serial": y.serial,
+                "status": y.status,
+                "assignee": y.assignee,
+                "country": y.country,
+                "stock": y.stock,
+                "created_at": y.created_at,
+                "add_by_user": y.add_by_user
             }));
+        } else {
+            yubikeyData = filteredYubis
+                .filter(y => y.status === 'Nuevo' || y.status === 'Disponible')
+                .map(y => ({
+                    "Tipo": "Security Key",
+                    "Modelo": y.type,
+                    "Serial": y.serial,
+                    "Estado": y.status,
+                    "Ubicación": y.country || 'N/A',
+                    "Agregado Por": y.add_by_user || '-',
+                    "Fecha de Alta": new Date(y.created_at).toLocaleDateString()
+                }));
+        }
 
         // 3. Filtrar Accesorios (Stock)
-        const accessoryData = filteredCons.map(c => ({
-            "Artículo": c.name,
-            "Categoría": c.category,
-            "Stock Actual": c.stock,
-            "Estado del Stock": c.stock > 10 ? 'Suficiente' : c.stock > 0 ? 'Bajo' : 'Agotado'
-        }));
+        const accessoryData = filteredCons.map(c => {
+            if (exportSettings.mode === 'all') {
+                return {
+                    "id": c.id,
+                    "name": c.name,
+                    "category": c.category,
+                    "stock": c.stock,
+                    "country": c.country,
+                    "created_at": c.created_at
+                };
+            }
+            return {
+                "Artículo": c.name,
+                "Categoría": c.category,
+                "Stock Actual": c.stock,
+                "Estado del Stock": c.stock > 10 ? 'Suficiente' : c.stock > 0 ? 'Bajo' : 'Agotado'
+            };
+        });
 
         // Crear Libro de Excel
         const wb = XLSX.utils.book_new();
@@ -1028,9 +1089,14 @@ export default function InventoryPage() {
         // Agregar Hoja de Hardware
         if (hardwareData.length > 0) {
             const wsHardware = XLSX.utils.json_to_sheet(hardwareData);
-            const wscols = [
-                { wch: 10 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 }
-            ];
+            
+            // Auto-width adjustment simple logic
+            const wscols = exportSettings.mode === 'all' 
+                ? Object.keys(hardwareData[0]).map(() => ({ wch: 20 }))
+                : [
+                    { wch: 10 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 }
+                ];
+            
             wsHardware['!cols'] = wscols;
             XLSX.utils.book_append_sheet(wb, wsHardware, "Equipos");
         }
@@ -1038,12 +1104,18 @@ export default function InventoryPage() {
         // Agregar Hoja de Security Keys
         if (yubikeyData.length > 0) {
             const wsYubikeys = XLSX.utils.json_to_sheet(yubikeyData);
+            if (exportSettings.mode === 'all' && yubikeyData[0]) {
+                wsYubikeys['!cols'] = Object.keys(yubikeyData[0]).map(() => ({ wch: 18 }));
+            }
             XLSX.utils.book_append_sheet(wb, wsYubikeys, "Security Keys");
         }
 
         // Agregar Hoja de Accesorios
         if (accessoryData.length > 0 && exportSettings.mode === 'all') { // Only export accessories in "All" mode
             const wsAccessories = XLSX.utils.json_to_sheet(accessoryData);
+            if (exportSettings.mode === 'all' && accessoryData[0]) {
+                wsAccessories['!cols'] = Object.keys(accessoryData[0]).map(() => ({ wch: 18 }));
+            }
             XLSX.utils.book_append_sheet(wb, wsAccessories, "Accesorios");
         }
 
