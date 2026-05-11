@@ -799,7 +799,7 @@ export default function SFDCCasesPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }} className="hide-mobile">
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Button icon={Plus} onClick={() => setIsManualModalOpen(true)}>
+                        <Button icon={Plus} onClick={() => setIsManualModalOpen(true)} style={{ backgroundColor: '#10b981', color: 'white' }}>
                             Nuevo Servicio
                         </Button>
                         <input
