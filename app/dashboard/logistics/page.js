@@ -144,10 +144,11 @@ export default function LogisticsHubPage() {
 
             if (d.displayAddress && d.displayAddress !== 'Sin dirección') {
                 try {
-                    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(d.displayAddress)}`;
-                    qrCodes[d.id] = await QRCode.toDataURL(googleMapsUrl, {
+                    // Nuevo diseño: QR apunta al registro en la app para el conductor
+                    const qrContent = `${window.location.origin}/dashboard/my-deliveries?scan=${d.case_number || d.id}`;
+                    qrCodes[d.id] = await QRCode.toDataURL(qrContent, {
                         margin: 1,
-                        width: 100,
+                        width: 150,
                         errorCorrectionLevel: 'M'
                     });
                 } catch (err) {
@@ -183,11 +184,26 @@ export default function LogisticsHubPage() {
                         .driver-info { background: #f8fafc; padding: 10px 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #3b82f6; }
                         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }
                         th { background: #f1f5f9; color: #475569; text-transform: uppercase; font-weight: 700; padding: 8px; border: 1px solid #e2e8f0; text-align: left; }
-                        td { padding: 8px; border: 1px solid #e2e8f0; vertical-align: top; }
-                        .order-col { width: 30px; text-align: center; font-weight: 700; }
-                        .qr-col { width: 50px; text-align: center; vertical-align: middle; }
+                        td { padding: 12px 8px; border: 1px solid #e2e8f0; vertical-align: middle; }
+                        .order-col { width: 30px; text-align: center; font-weight: 800; font-size: 14px; background: #f8fafc; }
+                        .qr-col { width: 80px; text-align: center; vertical-align: middle; padding: 15px 5px !important; }
                         .footer { margin-top: 50px; font-size: 9px; color: #64748b; text-align: center; }
                         .badge { padding: 2px 4px; border-radius: 3px; font-size: 8px; font-weight: 700; background: #e2e8f0; }
+                        .qr-wrapper {
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            gap: 4px;
+                        }
+                        .qr-order-badge {
+                            background: #000;
+                            color: #fff;
+                            font-size: 10px;
+                            font-weight: 900;
+                            padding: 2px 6px;
+                            border-radius: 4px;
+                            width: fit-content;
+                        }
                     </style>
                 </head>
                 <body>
@@ -223,7 +239,12 @@ export default function LogisticsHubPage() {
                                             </td>
                                             <td style="font-size: 9px;">${d.displayAddress}</td>
                                             <td class="qr-col">
-                                                ${qrCodes[d.id] ? `<img src="${qrCodes[d.id]}" style="width: 40px; height: 40px; display: block; margin: 0 auto;" />` : '-'}
+                                                ${qrCodes[d.id] ? `
+                                                    <div class="qr-wrapper">
+                                                        <div class="qr-order-badge">ORDEN ${d.visitOrder || '-'}</div>
+                                                        <img src="${qrCodes[d.id]}" style="width: 65px; height: 65px; display: block;" />
+                                                    </div>
+                                                ` : '-'}
                                             </td>
                                             <td>${d.date ? d.date.split('T')[0] : 'Pend.'} | ${d.time_slot || 'AM'}</td>
                                             <td><span class="badge">${d.status}</span></td>
