@@ -298,6 +298,8 @@ export default function TicketsPage() {
         try {
             const ticketData = {
                 ...newTicket,
+                subject: newTicket.subject ? newTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : '',
+                requester: newTicket.requester ? newTicket.requester.trim().replace(/[\r\n\t]+/g, ' ') : '',
                 logistics: {
                     method: '',
                     deliveryPerson: ''
