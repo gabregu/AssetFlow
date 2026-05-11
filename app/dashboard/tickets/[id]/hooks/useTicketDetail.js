@@ -247,15 +247,22 @@ export function useTicketDetail() {
         });
     };
 
-    const handleUpdate = () => {
+    const handleUpdate = async () => {
         let statusUpdate = editedData.status;
         if (editedData.status === 'Abierto' || editedData.status === 'Pendiente') {
             statusUpdate = 'En Progreso';
         }
         const dataToUpdate = { ...editedData, status: statusUpdate };
-        updateTicket(ticket.id, dataToUpdate);
-        setEditedData(dataToUpdate);
-        setEditMode(false);
+        
+        console.log("handleUpdate calling updateTicket with:", dataToUpdate);
+        const success = await updateTicket(ticket.id, dataToUpdate);
+        
+        if (success !== false) { // updateTicket returns false on error
+            setEditedData(dataToUpdate);
+            setEditMode(false);
+            return true;
+        }
+        return false;
     };
 
     const handleDelete = () => {

@@ -52,9 +52,9 @@ export default function TicketHeader({
                     {!editMode && !editContact ? (
                         <Button variant="ghost" size="sm" onClick={() => setEditContact(true)}>Editar Información</Button>
                     ) : editContact ? (
-                        <Button size="sm" icon={Save} onClick={() => {
-                            handleUpdate();
-                            setEditContact(false);
+                        <Button size="sm" icon={Save} onClick={async () => {
+                            const success = await handleUpdate();
+                            if (success) setEditContact(false);
                         }}>Guardar</Button>
                     ) : null}
                 </div>
