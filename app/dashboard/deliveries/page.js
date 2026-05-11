@@ -507,7 +507,7 @@ export default function DeliveriesPage() {
                             * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
                             html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
                             .label-container {
-                                width: 50mm; height: 25mm; padding: 1.2mm 2mm;
+                                width: 50mm; height: 25mm; padding: 0.8mm 1.5mm;
                                 display: flex; position: absolute; top: 0; left: 0;
                                 font-family: 'Helvetica', 'Arial', sans-serif;
                             }
@@ -537,11 +537,11 @@ export default function DeliveriesPage() {
                             }
                             .right-side {
                                 width: 15mm; display: flex; flex-direction: column;
-                                align-items: center; justify-content: space-between;
-                                padding: 0.5mm 0 0.5mm 0;
+                                align-items: center; justify-content: flex-start;
+                                padding: 0.2mm 0; gap: 0.4mm;
                                 height: 100%;
                             }
-                            .qr-code { width: 12.5mm; height: 12.5mm; }
+                            .qr-code { width: 11.5mm; height: 11.5mm; }
                             .service-type {
                                 font-size: 5.5pt; font-weight: 900; background: #000;
                                 color: #fff; padding: 0.4mm 1.2mm; border-radius: 0.3mm;
@@ -550,11 +550,11 @@ export default function DeliveriesPage() {
                             }
                             .order-badge {
                                 background: #fff; color: #000;
-                                min-width: 8mm; height: 8mm;
-                                border-radius: 1.5mm;
+                                min-width: 7.5mm; height: 7.5mm;
+                                border-radius: 1.2mm;
                                 display: flex; align-items: center; justify-content: center;
-                                font-size: 14pt; font-weight: 900;
-                                margin-bottom: 0.5mm; line-height: 1;
+                                font-size: 13pt; font-weight: 900;
+                                margin-bottom: 0.3mm; line-height: 1;
                             }
                             .operation-label {
                                 font-size: 5.5pt; font-weight: 900;
