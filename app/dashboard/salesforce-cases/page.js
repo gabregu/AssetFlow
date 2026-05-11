@@ -372,25 +372,27 @@ export default function SFDCCasesPage() {
         }
 
         try {
+            const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t]+/g, ' ') : str;
+            
             const ticketData = {
                 ...manualTicket,
-                subject: manualTicket.subject ? manualTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : '',
-                requester: manualTicket.requester ? manualTicket.requester.trim().replace(/[\r\n\t]+/g, ' ') : '',
+                subject: clean(manualTicket.subject),
+                requester: clean(manualTicket.requester),
                 associatedCases: manualTicket.caseNumber && manualTicket.caseNumber.trim() !== '' ? [{
-                    caseNumber: manualTicket.caseNumber.trim().replace(/[\r\n\t]+/g, ''),
-                    subject: manualTicket.subject ? manualTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : '',
+                    caseNumber: clean(manualTicket.caseNumber).replace(/\s/g, ''),
+                    subject: clean(manualTicket.subject),
                     logistics: {
-                        address: manualTicket.address || manualTicket.country ? `${manualTicket.address}, ${manualTicket.country} ${manualTicket.zipCode}`.trim() : '',
-                        phone: manualTicket.phone || '',
-                        email: manualTicket.email || '',
+                        address: manualTicket.address || manualTicket.country ? `${clean(manualTicket.address)}, ${clean(manualTicket.country)} ${clean(manualTicket.zipCode)}`.trim() : '',
+                        phone: clean(manualTicket.phone),
+                        email: clean(manualTicket.email),
                         method: '',
                         status: 'Pendiente'
                     }
                 }] : [],
                 logistics: {
-                    address: manualTicket.address || manualTicket.country ? `${manualTicket.address}, ${manualTicket.country} ${manualTicket.zipCode}`.trim() : '',
-                    phone: manualTicket.phone || '',
-                    email: manualTicket.email || '',
+                    address: manualTicket.address || manualTicket.country ? `${clean(manualTicket.address)}, ${clean(manualTicket.country)} ${clean(manualTicket.zipCode)}`.trim() : '',
+                    phone: clean(manualTicket.phone),
+                    email: clean(manualTicket.email),
                     type: manualTicket.type,
                     method: '',
                     deliveryPerson: ''

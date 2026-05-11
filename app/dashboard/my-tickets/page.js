@@ -163,13 +163,15 @@ export default function MyTicketsPage() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
+        const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t]+/g, ' ') : str;
+        
         const ticketData = {
             ...newTicket,
-            subject: newTicket.subject ? newTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : '',
-            requester: newTicket.requester ? newTicket.requester.trim().replace(/[\r\n\t]+/g, ' ') : '',
+            subject: clean(newTicket.subject),
+            requester: clean(newTicket.requester),
             associatedCases: newTicket.caseNumber && newTicket.caseNumber.trim() !== '' ? [{
-                caseNumber: newTicket.caseNumber.trim().replace(/[\r\n\t]+/g, ''),
-                subject: newTicket.subject ? newTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : ''
+                caseNumber: clean(newTicket.caseNumber).replace(/\s/g, ''),
+                subject: clean(newTicket.subject)
             }] : [],
             logistics: {
                 ...newTicket.logistics,
