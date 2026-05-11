@@ -362,17 +362,20 @@ export default function SFDCCasesPage() {
         }
     };
 
+    const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
     const handleCreateManual = async (e) => {
-        e.preventDefault();
-        console.log("handleCreateManual called with:", manualTicket);
+        if (e) e.preventDefault();
         
         if (!manualTicket.subject || !manualTicket.requester) {
             showToast("Por favor completa el Asunto y Solicitante", "error");
+            alert("Por favor completa el Asunto y Solicitante");
             return;
         }
 
+        setIsSubmittingManual(true);
         try {
-            const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t]+/g, ' ') : str;
+            const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t\0]+/g, ' ') : str;
             
             const ticketData = {
                 ...manualTicket,
@@ -413,6 +416,9 @@ export default function SFDCCasesPage() {
         } catch (error) {
             console.error("Error creating manual ticket:", error);
             showToast("Error al crear el servicio: " + (error.message || "Error desconocido"), "error");
+            alert("Error del sistema al guardar: " + (error.message || JSON.stringify(error)) + "\nPor favor avísale a soporte.");
+        } finally {
+            setIsSubmittingManual(false);
         }
     };
 
@@ -1409,8 +1415,10 @@ export default function SFDCCasesPage() {
                     </div>
 
                     <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-                        <Button type="button" variant="secondary" onClick={() => setIsManualModalOpen(false)} style={{ flex: 1 }}>Cancelar</Button>
-                        <Button type="submit" onClick={handleCreateManual} style={{ flex: 1 }}>Crear Servicio</Button>
+                        <Button type="button" variant="secondary" onClick={() => setIsManualModalOpen(false)} style={{ flex: 1 }} disabled={isSubmittingManual}>Cancelar</Button>
+                        <Button type="button" onClick={handleCreateManual} style={{ flex: 1 }} disabled={isSubmittingManual}>
+                            {isSubmittingManual ? 'Procesando...' : 'Crear Servicio'}
+                        </Button>
                     </div>
                 </form>
             </Modal>
