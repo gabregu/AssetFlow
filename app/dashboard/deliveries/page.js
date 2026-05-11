@@ -1117,7 +1117,7 @@ export default function DeliveriesPage() {
                                                         </Button>
 
                                                         {delivery.source === 'Ticket' ? (
-                                                            <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/tickets/${delivery.id}`)}>Ver Ticket</Button>
+                                                            <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/tickets/${delivery.parentTicketId || delivery.id}`)}>Ver Ticket</Button>
                                                         ) : (
                                                             <Button
                                                                 variant="ghost"
