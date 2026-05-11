@@ -17,7 +17,7 @@ import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { Modal } from '@/app/components/ui/Modal';
 import { QRScannerModal } from '@/app/components/ui/QRScannerModal';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useStore } from '../../../lib/store';
 
 export default function MyDeliveriesPage() {
@@ -30,7 +30,6 @@ export default function MyDeliveriesPage() {
         refreshData
     } = useStore();
 
-    const searchParams = useSearchParams();
     const router = useRouter();
     
     // Identidad del usuario para filtrado (Definida a nivel de componente para evitar ReferenceErrors)
@@ -46,39 +45,7 @@ export default function MyDeliveriesPage() {
         return () => window.removeEventListener('focus', handleFocus);
     }, []);
 
-    // Procesar escaneo automático desde URL (vía QR)
-    useEffect(() => {
-        const scanId = searchParams.get('scan');
-        if (scanId && myAssignedDeliveries.length > 0) {
-            // Intentar encontrar el ticket
-            const targetId = String(scanId).trim();
-            const delivery = myAssignedDeliveries.find(d => 
-                String(d.id) === targetId || 
-                String(d.displayId) === targetId
-            );
 
-            if (delivery) {
-                // Pequeño delay para asegurar que el estado está listo y no hay colisiones visuales
-                setTimeout(() => {
-                    setSelectedDelivery(delivery);
-                    setIsDeliveryModalOpen(true);
-                    setDeliveryForm(prev => ({
-                        ...prev,
-                        receivedBy: '',
-                        dni: '',
-                        notes: '',
-                        actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    }));
-                    showToast('Envío identificado desde QR', 'success');
-                    
-                    // Limpiar la URL sin recargar la página
-                    const newParams = new URLSearchParams(searchParams);
-                    newParams.delete('scan');
-                    router.replace(`/dashboard/my-deliveries${newParams.toString() ? `?${newParams.toString()}` : ''}`);
-                }, 500);
-            }
-        }
-    }, [searchParams, myAssignedDeliveries.length]); // Solo cuando cambian los parámetros o la lista de entregas
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('En Transito'); // Solo activos por defecto
@@ -280,6 +247,42 @@ export default function MyDeliveriesPage() {
                 return acc;
             }, {});
     }, [myAssignedDeliveries]);
+
+    // Procesar escaneo automático desde URL (vía QR) - Movido aquí para evitar ReferenceError
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        
+        const params = new URLSearchParams(window.location.search);
+        const scanId = params.get('scan');
+        
+        if (scanId && myAssignedDeliveries.length > 0) {
+            const targetId = String(scanId).trim();
+            const delivery = myAssignedDeliveries.find(d => 
+                String(d.id) === targetId || 
+                String(d.displayId) === targetId
+            );
+
+            if (delivery) {
+                setTimeout(() => {
+                    setSelectedDelivery(delivery);
+                    setIsDeliveryModalOpen(true);
+                    setDeliveryForm(prev => ({
+                        ...prev,
+                        receivedBy: '',
+                        dni: '',
+                        notes: '',
+                        actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    }));
+                    showToast('Envío identificado desde QR', 'success');
+                    
+                    // Limpiar la URL
+                    params.delete('scan');
+                    const newQuery = params.toString();
+                    router.replace(window.location.pathname + (newQuery ? `?${newQuery}` : ''));
+                }, 500);
+            }
+        }
+    }, [myAssignedDeliveries.length]);
 
     const handleUpdateOrder = async (delivery, newValue) => {
         const orderNum = parseInt(newValue);
