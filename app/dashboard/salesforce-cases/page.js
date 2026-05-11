@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useStore } from '../../../lib/store';
-import { Filter, Search, ArrowRight, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Filter, Search, ArrowRight, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 import { useRef, useMemo } from 'react';
 import { CountryFilter } from '../../components/layout/CountryFilter';
 
@@ -23,6 +23,10 @@ export default function SFDCCasesPage() {
 
     // New State for Delivery/Collection Filter
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION'
+
+    // Manual Creation State
+    const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+    const [manualTicket, setManualTicket] = useState({ caseNumber: '', subject: '', requester: '', priority: 'Media', status: 'Abierto' });
 
     const fileInputRef = useRef(null);
 
@@ -355,6 +359,34 @@ export default function SFDCCasesPage() {
             alert(msg); // Fallback alert ensures user sees the error
         } finally {
             setIsCreating(false);
+        }
+    };
+
+    const handleCreateManual = async (e) => {
+        e.preventDefault();
+        try {
+            const ticketData = {
+                ...manualTicket,
+                subject: manualTicket.subject ? manualTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : '',
+                requester: manualTicket.requester ? manualTicket.requester.trim().replace(/[\r\n\t]+/g, ' ') : '',
+                associatedCases: manualTicket.caseNumber && manualTicket.caseNumber.trim() !== '' ? [{
+                    caseNumber: manualTicket.caseNumber.trim().replace(/[\r\n\t]+/g, ''),
+                    subject: manualTicket.subject ? manualTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : ''
+                }] : [],
+                logistics: {
+                    method: '',
+                    deliveryPerson: ''
+                }
+            };
+            const createdTicket = await addTicket(ticketData);
+            setIsManualModalOpen(false);
+            setManualTicket({ caseNumber: '', subject: '', requester: '', priority: 'Media', status: 'Abierto' });
+            if (createdTicket?.id) {
+                router.push(`/dashboard/tickets/${createdTicket.id}`);
+            }
+        } catch (error) {
+            console.error("Error creating manual ticket:", error);
+            showToast("Error al crear el servicio: " + (error.message || "Error desconocido"), "error");
         }
     };
 
@@ -766,7 +798,10 @@ export default function SFDCCasesPage() {
                     {/* Mobile optimized buttons if needed, or just let regular flex handle it */}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }} className="hide-mobile">
-                    <div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Button icon={Plus} onClick={() => setIsManualModalOpen(true)}>
+                            Nuevo Servicio
+                        </Button>
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -1232,6 +1267,56 @@ export default function SFDCCasesPage() {
                         </button>
                     </div>
                 </div>
+            </Modal>
+            <Modal isOpen={isManualModalOpen} onClose={() => setIsManualModalOpen(false)} title="Crear Nuevo Servicio">
+                <form onSubmit={handleCreateManual} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="form-group">
+                        <label className="form-label">Número de Caso SFDC (Opcional)</label>
+                        <input
+                            className="form-input"
+                            placeholder="Ej: 03102345"
+                            value={manualTicket.caseNumber}
+                            onChange={e => setManualTicket({ ...manualTicket, caseNumber: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Asunto</label>
+                        <input
+                            required
+                            className="form-input"
+                            placeholder="Ej: Problema con monitor"
+                            value={manualTicket.subject}
+                            onChange={e => setManualTicket({ ...manualTicket, subject: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Solicitante</label>
+                        <input
+                            required
+                            className="form-input"
+                            placeholder="Nombre del empleado"
+                            value={manualTicket.requester}
+                            onChange={e => setManualTicket({ ...manualTicket, requester: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Prioridad</label>
+                        <select
+                            className="form-select"
+                            value={manualTicket.priority}
+                            onChange={e => setManualTicket({ ...manualTicket, priority: e.target.value })}
+                        >
+                            <option value="Baja">Baja</option>
+                            <option value="Media">Media</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Crítica">Crítica</option>
+                        </select>
+                    </div>
+                    <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+                        <Button type="button" variant="secondary" onClick={() => setIsManualModalOpen(false)} style={{ flex: 1 }}>Cancelar</Button>
+                        <Button type="submit" style={{ flex: 1 }}>Crear Servicio</Button>
+                    </div>
+                </form>
             </Modal>
         </div>
     );
