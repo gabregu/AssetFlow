@@ -295,18 +295,23 @@ export default function TicketsPage() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
-        const ticketData = {
-            ...newTicket,
-            logistics: {
-                method: '',
-                deliveryPerson: ''
+        try {
+            const ticketData = {
+                ...newTicket,
+                logistics: {
+                    method: '',
+                    deliveryPerson: ''
+                }
+            };
+            const createdTicket = await addTicket(ticketData);
+            setIsModalOpen(false);
+            setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
+            if (createdTicket?.id) {
+                router.push(`/dashboard/tickets/${createdTicket.id}`);
             }
-        };
-        const createdTicket = await addTicket(ticketData);
-        setIsModalOpen(false);
-        setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
-        if (createdTicket?.id) {
-            router.push(`/dashboard/tickets/${createdTicket.id}`);
+        } catch (error) {
+            console.error("Error creating ticket:", error);
+            alert("Error al crear el servicio: " + (error.message || "Error desconocido"));
         }
     };
 
