@@ -169,7 +169,10 @@ export default function CaseConfigModal({
                                 variant="primary" 
                                 style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', fontWeight: 800, borderRadius: '12px' }}
                                 onClick={async () => {
-                                    if (logisticsSaveRef.current) await logisticsSaveRef.current();
+                                    if (logisticsSaveRef.current) {
+                                        const result = await logisticsSaveRef.current();
+                                        if (result?.error) return; // No cerrar si hubo error
+                                    }
                                     setSelectedCaseIndex(null);
                                 }}
                             >

@@ -406,40 +406,44 @@ export function useTicketDetail() {
 
     const handleUpdateTask = async (partialData) => {
         const currentTask = (selectedCaseIndex !== null && unifiedTasks) ? unifiedTasks[selectedCaseIndex] : null;
-        if (!currentTask) return;
+        if (!currentTask) return { error: { message: "No task selected" } };
         
-        if (currentTask.id) {
-            // Nueva arquitectura: actualización directa en DB
-            // 2. Automación: Si se edita un caso asociado, el ticket general pasa a "En Progreso"
-            if (ticket.status === 'Abierto' || ticket.status === 'Pendiente') {
-                await updateTicket(ticket.id, { status: 'En Progreso' });
-            }
-            await updateLogisticsTask(currentTask.id, partialData);
-        } else {
-            // 2. Automación: Si se edita un caso asociado, el ticket general pasa a "En Progreso"
-            if (ticket.status === 'Abierto' || ticket.status === 'Pendiente') {
-                await updateTicket(ticket.id, { status: 'En Progreso' });
-            }
+        console.log("handleUpdateTask called with:", partialData, "for task:", currentTask.id || currentTask.caseNumber);
 
-            const updatedCases = editedData.associatedCases.map((c, idx) => {
-                if (idx === selectedCaseIndex) {
-                    // Mantener estructura legacy para tickets viejos (pero unificada)
-                    const newLogistics = { ...(c.logistics || {}) };
-                    const updatedCase = { ...c, ...partialData };
-
-                    Object.keys(partialData).forEach(key => {
-                        newLogistics[key] = partialData[key];
-                    });
-
-                    return { ...updatedCase, logistics: newLogistics };
+        try {
+            if (currentTask.id) {
+                // Nueva arquitectura: actualización directa en DB
+                if (ticket.status === 'Abierto' || ticket.status === 'Pendiente') {
+                    await updateTicket(ticket.id, { status: 'En Progreso' });
                 }
-                return c;
-            });
-            setEditedData(prev => ({ ...prev, associatedCases: updatedCases }));
-            
-            // AUTO GUARDAR EN DB (Incluso para arquitectura Legacy si se edita individualmente)
-            // Esto asegura que si el usuario sale y vuelve a entrar, los cambios persistan.
-            await updateTicket(ticket.id, { associatedCases: updatedCases });
+                return await updateLogisticsTask(currentTask.id, partialData);
+            } else {
+                // Legacy
+                if (ticket.status === 'Abierto' || ticket.status === 'Pendiente') {
+                    await updateTicket(ticket.id, { status: 'En Progreso' });
+                }
+
+                const updatedCases = editedData.associatedCases.map((c, idx) => {
+                    if (idx === selectedCaseIndex) {
+                        const newLogistics = { ...(c.logistics || {}) };
+                        const updatedCase = { ...c, ...partialData };
+
+                        Object.keys(partialData).forEach(key => {
+                            newLogistics[key] = partialData[key];
+                        });
+
+                        return { ...updatedCase, logistics: newLogistics };
+                    }
+                    return c;
+                });
+                setEditedData(prev => ({ ...prev, associatedCases: updatedCases }));
+                
+                const success = await updateTicket(ticket.id, { associatedCases: updatedCases });
+                return success ? { data: true } : { error: { message: "Error al actualizar ticket" } };
+            }
+        } catch (err) {
+            console.error("handleUpdateTask exception:", err);
+            return { error: err };
         }
     };
 

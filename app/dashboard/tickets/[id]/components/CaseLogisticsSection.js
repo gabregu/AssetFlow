@@ -17,6 +17,24 @@ export default function CaseLogisticsSection({
 
     const [localValues, setLocalValues] = React.useState({});
     const localStateRef = React.useRef({});
+    
+    // Inicialización inmediata para evitar problemas si se guarda muy rápido
+    if (Object.keys(localStateRef.current).length === 0 && task) {
+        const initial = {
+            status: task.status || 'Pendiente',
+            method: task.method || '',
+            delivery_person: task.delivery_person || task.deliveryPerson || '',
+            coordinated_by: task.coordinated_by || task.coordinatedBy || '',
+            tracking_number: task.tracking_number || task.trackingNumber || '',
+            date: task.date || '',
+            time_slot: task.time_slot || task.timeSlot || 'AM',
+            address: task.address || '',
+            deliveryInfo: task.deliveryInfo || task.delivery_info || {},
+            assigned_to: task.assigned_to || task.assignedTo || ''
+        };
+        localStateRef.current = initial;
+        // setLocalValues(initial); // No se puede llamar set durante render, se hace en useEffect
+    }
     const [isSaving, setIsSaving] = React.useState(false);
     const [isStatusOpen, setIsStatusOpen] = useState(false);
     const statusDropdownRef = useRef(null);
@@ -107,10 +125,14 @@ export default function CaseLogisticsSection({
     };
 
     // Función de guardado COMPLETO: envía el estado local total a la DB de una vez
-    // Ideal para usarse al cerrar el modal (para no perder cambios)
     const saveAll = async () => {
         const state = localStateRef.current;
-        if (!state || Object.keys(state).length === 0) return;
+        console.log("saveAll triggered in CaseLogisticsSection. Current state:", state);
+        
+        if (!state || Object.keys(state).length === 0) {
+            console.warn("saveAll aborted: state is empty");
+            return { data: true }; // Nada que guardar es éxito
+        }
 
         setIsSaving(true);
         let currentStatus = state.status || task.status || 'Pendiente';
@@ -134,21 +156,28 @@ export default function CaseLogisticsSection({
             deliveryInfo: state.deliveryInfo,
         };
 
+        console.log("Sending saveAll payload:", payload);
+
         try {
             const result = await onUpdateTask(payload);
+            console.log("saveAll result:", result);
+            
             if (result?.error) {
                 alert("Error al guardar los cambios: " + (result.error.message || "Error desconocido"));
+                return result;
             }
+            return result;
         } catch (err) {
             console.error("Save all failed:", err);
             alert("Error crítico al guardar los cambios.");
+            return { error: err };
         } finally {
-            setTimeout(() => setIsSaving(false), 500);
+            setIsSaving(false);
         }
     };
 
-    // Exponer saveAll al padre vía ref
-    if (saveRef) saveRef.current = saveAll;
+    // Exponer saveAll al padre vía ref de forma robusta
+    React.useImperativeHandle(saveRef, () => saveAll);
 
     return (
         <div style={{ marginTop: '0.5rem' }}>
