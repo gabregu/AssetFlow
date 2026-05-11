@@ -1408,7 +1408,7 @@ export default function SFDCCasesPage() {
 
                     <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                         <Button type="button" variant="secondary" onClick={() => setIsManualModalOpen(false)} style={{ flex: 1 }}>Cancelar</Button>
-                        <Button type="submit" style={{ flex: 1 }}>Crear Servicio</Button>
+                        <Button type="submit" onClick={handleCreateManual} style={{ flex: 1 }}>Crear Servicio</Button>
                     </div>
                 </form>
             </Modal>
