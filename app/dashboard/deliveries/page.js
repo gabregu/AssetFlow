@@ -549,7 +549,9 @@ export default function DeliveriesPage() {
                                 display: flex; flex-direction: column; align-items: center; gap: 0.2mm;
                             }
                             .confirma-text {
-                                font-size: 3.2pt; font-weight: 600; opacity: 0.9;
+                                font-size: 4.2pt; font-weight: 800; background: #fff; 
+                                color: #000; padding: 0.2mm 0.8mm; border-radius: 0.2mm;
+                                margin-bottom: 0.3mm;
                             }
                         </style>
                     </head>
