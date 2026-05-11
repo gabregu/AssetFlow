@@ -5,15 +5,18 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
 import { ServiceMap } from '../../components/ui/ServiceMap';
-import { Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload } from 'lucide-react';
+import { Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { CountryFilter } from '../../components/layout/CountryFilter';
 import { getStatusVariant } from './constants';
+import { Modal } from '../../components/ui/Modal';
 
 export default function TicketsPage() {
     const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks } = useStore();
     const fileInputRef = useRef(null);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+    const router = useRouter();
 
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
@@ -25,6 +28,10 @@ export default function TicketsPage() {
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', requester: '' });
     const [selectedTickets, setSelectedTickets] = useState([]);
+    
+    // Manual Creation State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
 
     const [showMap, setShowMap] = useState(false);
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
@@ -286,6 +293,23 @@ export default function TicketsPage() {
         }
     };
 
+    const handleCreate = async (e) => {
+        e.preventDefault();
+        const ticketData = {
+            ...newTicket,
+            logistics: {
+                method: '',
+                deliveryPerson: ''
+            }
+        };
+        const createdTicket = await addTicket(ticketData);
+        setIsModalOpen(false);
+        setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
+        if (createdTicket?.id) {
+            router.push(`/dashboard/tickets/${createdTicket.id}`);
+        }
+    };
+
     const handleSort = (key) => {
         let direction = 'asc';
         if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -498,6 +522,9 @@ export default function TicketsPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Button icon={Plus} onClick={() => setIsModalOpen(true)}>
+                            Nuevo Servicio
+                        </Button>
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -986,6 +1013,48 @@ export default function TicketsPage() {
                     </table>
                 </div>
             </Card>
+
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Ticket">
+                <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="form-group">
+                        <label className="form-label">Asunto</label>
+                        <input
+                            required
+                            className="form-input"
+                            placeholder="Ej: Problema con monitor"
+                            value={newTicket.subject}
+                            onChange={e => setNewTicket({ ...newTicket, subject: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Solicitante</label>
+                        <input
+                            required
+                            className="form-input"
+                            placeholder="Nombre del empleado"
+                            value={newTicket.requester}
+                            onChange={e => setNewTicket({ ...newTicket, requester: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Prioridad</label>
+                        <select
+                            className="form-select"
+                            value={newTicket.priority}
+                            onChange={e => setNewTicket({ ...newTicket, priority: e.target.value })}
+                        >
+                            <option value="Baja">Baja</option>
+                            <option value="Media">Media</option>
+                            <option value="Alta">Alta</option>
+                            <option value="Crítica">Crítica</option>
+                        </select>
+                    </div>
+                    <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+                        <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} style={{ flex: 1 }}>Cancelar</Button>
+                        <Button type="submit" style={{ flex: 1 }}>Crear Servicio</Button>
+                    </div>
+                </form>
+            </Modal>
         </div >
     );
 }
