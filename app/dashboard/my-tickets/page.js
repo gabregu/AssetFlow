@@ -29,7 +29,7 @@ export default function MyTicketsPage() {
     const [isMapOpen, setIsMapOpen] = useState(false);
 
     // Data State
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '' });
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', requester: '' });
@@ -163,9 +163,14 @@ export default function MyTicketsPage() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
-        // Al crear desde "Mis Servicios", auto-asignar al usuario actual
         const ticketData = {
             ...newTicket,
+            subject: newTicket.subject ? newTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : '',
+            requester: newTicket.requester ? newTicket.requester.trim().replace(/[\r\n\t]+/g, ' ') : '',
+            associatedCases: newTicket.caseNumber && newTicket.caseNumber.trim() !== '' ? [{
+                caseNumber: newTicket.caseNumber.trim().replace(/[\r\n\t]+/g, ''),
+                subject: newTicket.subject ? newTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : ''
+            }] : [],
             logistics: {
                 ...newTicket.logistics,
                 method: 'Repartidor Propio',
@@ -174,7 +179,7 @@ export default function MyTicketsPage() {
         };
         const createdTicket = await addTicket(ticketData);
         setIsModalOpen(false);
-        setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
+        setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '' });
         if (createdTicket?.id) {
             router.push(`/dashboard/tickets/${createdTicket.id}`);
         }
@@ -695,6 +700,15 @@ export default function MyTicketsPage() {
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Ticket">
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="form-group">
+                        <label className="form-label">Número de Caso SFDC (Opcional)</label>
+                        <input
+                            className="form-input"
+                            placeholder="Ej: 03102345"
+                            value={newTicket.caseNumber}
+                            onChange={e => setNewTicket({ ...newTicket, caseNumber: e.target.value })}
+                        />
+                    </div>
                     <div className="form-group">
                         <label className="form-label">Asunto</label>
                         <input

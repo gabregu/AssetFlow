@@ -31,7 +31,7 @@ export default function TicketsPage() {
     
     // Manual Creation State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '' });
 
     const [showMap, setShowMap] = useState(false);
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
@@ -300,6 +300,10 @@ export default function TicketsPage() {
                 ...newTicket,
                 subject: newTicket.subject ? newTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : '',
                 requester: newTicket.requester ? newTicket.requester.trim().replace(/[\r\n\t]+/g, ' ') : '',
+                associatedCases: newTicket.caseNumber && newTicket.caseNumber.trim() !== '' ? [{
+                    caseNumber: newTicket.caseNumber.trim().replace(/[\r\n\t]+/g, ''),
+                    subject: newTicket.subject ? newTicket.subject.trim().replace(/[\r\n\t]+/g, ' ') : ''
+                }] : [],
                 logistics: {
                     method: '',
                     deliveryPerson: ''
@@ -307,7 +311,7 @@ export default function TicketsPage() {
             };
             const createdTicket = await addTicket(ticketData);
             setIsModalOpen(false);
-            setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
+            setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '' });
             if (createdTicket?.id) {
                 router.push(`/dashboard/tickets/${createdTicket.id}`);
             }
@@ -1023,6 +1027,15 @@ export default function TicketsPage() {
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Ticket">
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="form-group">
+                        <label className="form-label">Número de Caso SFDC (Opcional)</label>
+                        <input
+                            className="form-input"
+                            placeholder="Ej: 03102345"
+                            value={newTicket.caseNumber}
+                            onChange={e => setNewTicket({ ...newTicket, caseNumber: e.target.value })}
+                        />
+                    </div>
                     <div className="form-group">
                         <label className="form-label">Asunto</label>
                         <input
