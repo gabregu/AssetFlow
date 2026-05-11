@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { Timer, LogOut } from 'lucide-react';
 
 // Configuration
-const INACTIVITY_LIMIT_MS = 15 * 60 * 1000; // 15 minutos de inactividad
+const INACTIVITY_LIMIT_MS = 60 * 60 * 1000; // 1 hora de inactividad
 const WARNING_DURATION_MS = 30 * 1000;        // 30 segundos de aviso
 const STORAGE_KEY = 'assetflow_last_activity';
 
