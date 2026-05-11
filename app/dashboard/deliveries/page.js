@@ -467,8 +467,8 @@ export default function DeliveriesPage() {
 
     const handlePrintDeliveryLabel = async (delivery) => {
         try {
-            // Contenido simplificado para el QR (Solo el ID para que sea más fácil de leer)
-            const qrContent = String(delivery.id);
+            // Contenido dinámico para el QR: URL que lleva al conductor directo al registro
+            const qrContent = `${window.location.origin}/dashboard/my-deliveries?scan=${delivery.id}`;
             const qrDataUrl = await QRCode.toDataURL(qrContent, {
                 margin: 1,
                 width: 200,
@@ -545,7 +545,11 @@ export default function DeliveriesPage() {
                             .service-type {
                                 font-size: 5.5pt; font-weight: 900; background: #000;
                                 color: #fff; padding: 0.4mm 1.2mm; border-radius: 0.3mm;
-                                text-transform: uppercase; letter-spacing: 0.2mm;
+                                text-transform: uppercase; letter-spacing: 0.1mm;
+                                display: flex; flex-direction: column; align-items: center; gap: 0.2mm;
+                            }
+                            .confirma-text {
+                                font-size: 3.2pt; font-weight: 600; opacity: 0.9;
                             }
                         </style>
                     </head>
@@ -559,7 +563,10 @@ export default function DeliveriesPage() {
                             </div>
                             <div class="right-side">
                                 <img class="qr-code" src="${qrDataUrl}" />
-                                <div class="service-type">${delivery.items?.toLowerCase().includes('recupero') ? 'Recupero' : 'Entrega'}</div>
+                                <div class="service-type">
+                                    <span class="confirma-text">Confirma tu</span>
+                                    ${delivery.items?.toLowerCase().includes('recupero') ? 'Recupero' : 'Entrega'}
+                                </div>
                             </div>
                         </div>
                     </body>
