@@ -798,6 +798,7 @@ export default function MyDeliveriesPage() {
                         )}
 
                         {/* Fecha y Hora Auto-detectada */}
+                        <div style={{ 
                             background: 'var(--surface-active)', 
                             borderRadius: 'var(--radius-md)', 
                             padding: '0.75rem',
