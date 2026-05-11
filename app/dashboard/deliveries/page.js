@@ -1085,22 +1085,42 @@ export default function DeliveriesPage() {
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                                        <Badge variant={getStatusVariant(delivery.ticketStatus)} style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
-                                                            S: {delivery.ticketStatus || 'N/A'}
-                                                        </Badge>
-                                                        {delivery.deliveryStatusOriginal && (
-                                                            <Badge
-                                                                variant={
-                                                                    delivery.deliveryStatusOriginal === 'Entregado' ? 'success' :
-                                                                        delivery.deliveryStatusOriginal === 'En Transito' ? 'info' :
-                                                                            delivery.deliveryStatusOriginal === 'Para Coordinar' ? 'warning' :
-                                                                                'default'
-                                                                }
-                                                                style={{ fontSize: '0.7rem', padding: '2px 6px' }}
-                                                            >
-                                                                E: {delivery.deliveryStatusOriginal}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                                            <Badge variant={getStatusVariant(delivery.ticketStatus)} style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
+                                                                S: {delivery.ticketStatus || 'N/A'}
                                                             </Badge>
+                                                            {delivery.deliveryStatusOriginal && (
+                                                                <Badge
+                                                                    variant={
+                                                                        delivery.deliveryStatusOriginal === 'Entregado' ? 'success' :
+                                                                            delivery.deliveryStatusOriginal === 'En Transito' ? 'info' :
+                                                                                delivery.deliveryStatusOriginal === 'Para Coordinar' ? 'warning' :
+                                                                                    'default'
+                                                                    }
+                                                                    style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                                                                >
+                                                                    E: {delivery.deliveryStatusOriginal}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+
+                                                        {delivery.visitOrder > 0 && (
+                                                            <div style={{ 
+                                                                background: 'var(--primary-color)', 
+                                                                color: 'white',
+                                                                width: '28px',
+                                                                height: '28px',
+                                                                borderRadius: '8px',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                fontWeight: 900,
+                                                                fontSize: '1rem',
+                                                                boxShadow: '0 4px 10px rgba(37, 99, 235, 0.2)'
+                                                            }} title="Orden en Hoja de Ruta">
+                                                                {delivery.visitOrder}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </td>
