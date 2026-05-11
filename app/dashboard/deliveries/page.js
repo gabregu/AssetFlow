@@ -538,7 +538,7 @@ export default function DeliveriesPage() {
                             .right-side {
                                 width: 15mm; display: flex; flex-direction: column;
                                 align-items: center; justify-content: space-between;
-                                border-left: 0.2mm solid #000; padding: 0.5mm 0 0.5mm 1mm;
+                                padding: 0.5mm 0 0.5mm 0;
                                 height: 100%;
                             }
                             .qr-code { width: 12.5mm; height: 12.5mm; }
@@ -549,9 +549,10 @@ export default function DeliveriesPage() {
                                 display: flex; flex-direction: column; align-items: center; gap: 0.2mm;
                             }
                             .confirma-text {
-                                font-size: 4.2pt; font-weight: 800; background: #fff; 
-                                color: #000; padding: 0.2mm 0.8mm; border-radius: 0.2mm;
-                                margin-bottom: 0.3mm;
+                                font-size: 3.8pt; font-weight: 900; background: #fff; 
+                                color: #000; padding: 0.3mm 0.6mm; border-radius: 0.2mm;
+                                margin-bottom: 0.4mm; display: block; width: 100%;
+                                text-align: center; line-height: 0.95;
                             }
                         </style>
                     </head>
@@ -566,7 +567,7 @@ export default function DeliveriesPage() {
                             <div class="right-side">
                                 <img class="qr-code" src="${qrDataUrl}" />
                                 <div class="service-type">
-                                    <span class="confirma-text">Confirma tu</span>
+                                    <span class="confirma-text">CONFIRMA<br/>TU</span>
                                     ${delivery.items?.toLowerCase().includes('recupero') ? 'Recupero' : 'Entrega'}
                                 </div>
                             </div>

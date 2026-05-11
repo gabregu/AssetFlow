@@ -263,6 +263,7 @@ export default function MyDeliveriesPage() {
             );
 
             if (delivery) {
+                // Reducido delay para mayor velocidad de respuesta
                 setTimeout(() => {
                     setSelectedDelivery(delivery);
                     setIsDeliveryModalOpen(true);
@@ -279,7 +280,7 @@ export default function MyDeliveriesPage() {
                     params.delete('scan');
                     const newQuery = params.toString();
                     router.replace(window.location.pathname + (newQuery ? `?${newQuery}` : ''));
-                }, 500);
+                }, 100);
             }
         }
     }, [myAssignedDeliveries.length]);
@@ -385,10 +386,19 @@ export default function MyDeliveriesPage() {
         // Extraer ID (puede venir como string directo o en un objeto)
         let scannedText = data.id || data.raw || (typeof data === 'string' ? data : '');
         
-        // Si el texto es una URL, extraer el ID del final
+        // Si el texto es una URL, extraer el ID (soporta /tickets/ID o ?scan=ID)
         if (scannedText.includes('/dashboard/tickets/')) {
             const parts = scannedText.split('/');
             scannedText = parts[parts.length - 1];
+        } else if (scannedText.includes('?scan=')) {
+            try {
+                const url = new URL(scannedText);
+                scannedText = url.searchParams.get('scan') || scannedText;
+            } catch (e) {
+                // Fallback si no es una URL válida pero contiene el parámetro
+                const match = scannedText.match(/[?&]scan=([^&]+)/);
+                if (match) scannedText = match[1];
+            }
         }
 
         // Buscar el envío en la lista del conductor
