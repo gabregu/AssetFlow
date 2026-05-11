@@ -781,8 +781,23 @@ export default function MyDeliveriesPage() {
             >
                 <form onSubmit={handleDeliverySubmit}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {/* Nombre del Destinatario/Requester */}
+                        {selectedDelivery?.requester && (
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '0.5rem',
+                                color: 'var(--accent-primary)',
+                                fontWeight: 700,
+                                fontSize: '1.1rem',
+                                padding: '0.2rem 0.5rem'
+                            }}>
+                                <User size={18} />
+                                {selectedDelivery.requester}
+                            </div>
+                        )}
+
                         {/* Fecha y Hora Auto-detectada */}
-                        <div style={{ 
                             background: 'var(--surface-active)', 
                             borderRadius: 'var(--radius-md)', 
                             padding: '0.75rem',
