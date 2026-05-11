@@ -19,11 +19,13 @@ export default function DeliveriesPage() {
         deleteDelivery,
         deleteDeliveries,
         tickets,
+        updateTicket,
         deleteTickets,
         users,
         currentUser,
         countryFilter,
-        logisticsTasks
+        logisticsTasks,
+        updateLogisticsTask
     } = useStore();
     const router = useRouter();
     const mapRef = useRef(null);
@@ -462,6 +464,24 @@ export default function DeliveriesPage() {
             }
         } else {
             alert("Lectura incorrecta o código QR inválido.");
+        }
+    };
+
+    const handleUpdateOrder = async (delivery, newOrder) => {
+        const orderVal = parseInt(newOrder, 10) || 0;
+        try {
+            if (delivery.isSubCase) {
+                await updateLogisticsTask(delivery.taskId, { deliveryOrder: orderVal });
+            } else if (delivery.source === 'Ticket') {
+                const ticket = tickets.find(t => t.id === delivery.id);
+                if (ticket) {
+                    await updateTicket(ticket.id, { 
+                        logistics: { ...(ticket.logistics || {}), deliveryOrder: orderVal } 
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error updating visit order:", error);
         }
     };
 
@@ -1105,23 +1125,38 @@ export default function DeliveriesPage() {
                                                             )}
                                                         </div>
 
-                                                        {delivery.visitOrder > 0 && (
-                                                            <div style={{ 
-                                                                background: 'var(--primary-color)', 
-                                                                color: 'white',
-                                                                width: '28px',
-                                                                height: '28px',
-                                                                borderRadius: '8px',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                fontWeight: 900,
-                                                                fontSize: '1rem',
-                                                                boxShadow: '0 4px 10px rgba(37, 99, 235, 0.2)'
-                                                            }} title="Orden en Hoja de Ruta">
-                                                                {delivery.visitOrder}
-                                                            </div>
-                                                        )}
+                                                        <div style={{ position: 'relative' }}>
+                                                            <input
+                                                                type='number'
+                                                                min='0'
+                                                                defaultValue={delivery.visitOrder || 0}
+                                                                onBlur={(e) => handleUpdateOrder(delivery, e.target.value)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        handleUpdateOrder(delivery, e.target.value);
+                                                                        e.target.blur();
+                                                                    }
+                                                                }}
+                                                                style={{
+                                                                    width: '32px',
+                                                                    height: '32px',
+                                                                    borderRadius: '8px',
+                                                                    border: '2px solid var(--primary-color)',
+                                                                    background: (delivery.visitOrder && delivery.visitOrder > 0) ? 'var(--primary-color)' : 'transparent',
+                                                                    color: (delivery.visitOrder && delivery.visitOrder > 0) ? 'white' : 'var(--primary-color)',
+                                                                    textAlign: 'center',
+                                                                    fontWeight: 900,
+                                                                    fontSize: '1rem',
+                                                                    appearance: 'none',
+                                                                    MozAppearance: 'textfield',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.2s',
+                                                                    outline: 'none',
+                                                                    boxShadow: (delivery.visitOrder && delivery.visitOrder > 0) ? '0 4px 10px rgba(37, 99, 235, 0.2)' : 'none'
+                                                                }}
+                                                                title='Editar Orden de Visita'
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
