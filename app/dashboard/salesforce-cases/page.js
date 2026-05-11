@@ -364,6 +364,13 @@ export default function SFDCCasesPage() {
 
     const handleCreateManual = async (e) => {
         e.preventDefault();
+        console.log("handleCreateManual called with:", manualTicket);
+        
+        if (!manualTicket.subject || !manualTicket.requester) {
+            showToast("Por favor completa el Asunto y Solicitante", "error");
+            return;
+        }
+
         try {
             const ticketData = {
                 ...manualTicket,
@@ -389,10 +396,16 @@ export default function SFDCCasesPage() {
                     deliveryPerson: ''
                 }
             };
+            
+            console.log("Submitting ticketData:", ticketData);
             const createdTicket = await addTicket(ticketData);
+            console.log("Created ticket:", createdTicket);
+            
             setIsManualModalOpen(false);
             setManualTicket({ caseNumber: '', subject: '', requester: '', priority: 'Media', status: 'Abierto', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
+            
             if (createdTicket?.id) {
+                showToast("Servicio creado correctamente", "success");
                 router.push(`/dashboard/tickets/${createdTicket.id}`);
             }
         } catch (error) {
@@ -1293,7 +1306,6 @@ export default function SFDCCasesPage() {
                     <div className="form-group">
                         <label className="form-label">Asunto</label>
                         <input
-                            required
                             className="form-input"
                             placeholder="Ej: Problema con monitor"
                             value={manualTicket.subject}
@@ -1303,7 +1315,6 @@ export default function SFDCCasesPage() {
                     <div className="form-group">
                         <label className="form-label">Solicitante</label>
                         <input
-                            required
                             className="form-input"
                             placeholder="Nombre del empleado"
                             value={manualTicket.requester}
