@@ -293,10 +293,20 @@ export default function TicketsPage() {
         }
     };
 
+    const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
     const handleCreate = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
+        
+        if (!newTicket.subject || !newTicket.requester) {
+            showToast("Por favor completa el Asunto y Solicitante", "error");
+            alert("Por favor completa el Asunto y Solicitante");
+            return;
+        }
+
+        setIsSubmittingManual(true);
         try {
-            const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t]+/g, ' ') : str;
+            const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t\0]+/g, ' ') : str;
             
             const ticketData = {
                 ...newTicket,
@@ -304,22 +314,37 @@ export default function TicketsPage() {
                 requester: clean(newTicket.requester),
                 associatedCases: newTicket.caseNumber && newTicket.caseNumber.trim() !== '' ? [{
                     caseNumber: clean(newTicket.caseNumber).replace(/\s/g, ''),
-                    subject: clean(newTicket.subject)
+                    subject: clean(newTicket.subject),
+                    logistics: {
+                        address: newTicket.address || newTicket.country ? `${clean(newTicket.address)}, ${clean(newTicket.country)} ${clean(newTicket.zipCode)}`.trim() : '',
+                        phone: clean(newTicket.phone),
+                        email: clean(newTicket.email),
+                        method: '',
+                        status: 'Pendiente'
+                    }
                 }] : [],
                 logistics: {
+                    address: newTicket.address || newTicket.country ? `${clean(newTicket.address)}, ${clean(newTicket.country)} ${clean(newTicket.zipCode)}`.trim() : '',
+                    phone: clean(newTicket.phone),
+                    email: clean(newTicket.email),
+                    type: newTicket.type,
                     method: '',
                     deliveryPerson: ''
                 }
             };
             const createdTicket = await addTicket(ticketData);
             setIsModalOpen(false);
-            setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '' });
+            setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
             if (createdTicket?.id) {
+                showToast("Servicio creado correctamente", "success");
                 router.push(`/dashboard/tickets/${createdTicket.id}`);
             }
         } catch (error) {
             console.error("Error creating ticket:", error);
-            alert("Error al crear el servicio: " + (error.message || "Error desconocido"));
+            showToast("Error al crear el servicio: " + (error.message || "Error desconocido"), "error");
+            alert("Error del sistema al guardar: " + (error.message || JSON.stringify(error)) + "\nPor favor avísale a soporte.");
+        } finally {
+            setIsSubmittingManual(false);
         }
     };
 
