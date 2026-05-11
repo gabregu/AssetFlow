@@ -548,11 +548,18 @@ export default function DeliveriesPage() {
                                 text-transform: uppercase; letter-spacing: 0.1mm;
                                 display: flex; flex-direction: column; align-items: center; gap: 0.2mm;
                             }
-                            .confirma-text {
-                                font-size: 3.8pt; font-weight: 900; background: #fff; 
-                                color: #000; padding: 0.3mm 0.6mm; border-radius: 0.2mm;
-                                margin-bottom: 0.4mm; display: block; width: 100%;
-                                text-align: center; line-height: 0.95;
+                            .order-badge {
+                                background: #fff; color: #000;
+                                min-width: 8mm; height: 8mm;
+                                border-radius: 1.5mm;
+                                display: flex; align-items: center; justify-content: center;
+                                font-size: 14pt; font-weight: 900;
+                                margin-bottom: 0.5mm; line-height: 1;
+                            }
+                            .operation-label {
+                                font-size: 5.5pt; font-weight: 900;
+                                color: #fff; text-transform: uppercase;
+                                letter-spacing: 0.2mm;
                             }
                         </style>
                     </head>
@@ -567,8 +574,8 @@ export default function DeliveriesPage() {
                             <div class="right-side">
                                 <img class="qr-code" src="${qrDataUrl}" />
                                 <div class="service-type">
-                                    <span class="confirma-text">CONFIRMA<br/>TU</span>
-                                    ${delivery.items?.toLowerCase().includes('recupero') ? 'Recupero' : 'Entrega'}
+                                    <div class="order-badge">${delivery.visitOrder || '1'}</div>
+                                    <div class="operation-label">${delivery.items?.toLowerCase().includes('recupero') ? 'Recupero' : 'Entrega'}</div>
                                 </div>
                             </div>
                         </div>
