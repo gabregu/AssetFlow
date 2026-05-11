@@ -58,8 +58,7 @@ export default function CaseLogisticsSection({
 
     const isRelational = !!task.id;
 
-    const updateLogistics = async (updatesOrField, valueIfSingle) => {
-        setIsSaving(true);
+    const updateLogistics = (updatesOrField, valueIfSingle) => {
         let incomingUpdates = {};
         if (typeof updatesOrField === 'string') {
             incomingUpdates[updatesOrField] = valueIfSingle;
@@ -102,15 +101,9 @@ export default function CaseLogisticsSection({
         absoluteState.status = currentStatus;
         localStateRef.current = absoluteState;
         setLocalValues({ ...absoluteState });
-
-        // Siempre grabamos el status final calculado
-        finalUpdates.status = currentStatus;
-
-        try {
-            await onUpdateTask(finalUpdates);
-        } finally {
-            setTimeout(() => setIsSaving(false), 500);
-        }
+        
+        // El autoguardado ha sido removido. 
+        // Los datos se guardarán solo al llamar a saveAll() (botón azul).
     };
 
     // Función de guardado COMPLETO: envía el estado local total a la DB de una vez
