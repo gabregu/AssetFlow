@@ -31,7 +31,7 @@ export default function TicketsPage() {
     
     // Manual Creation State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '' });
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
 
     const [showMap, setShowMap] = useState(false);
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
@@ -535,7 +535,7 @@ export default function TicketsPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Button icon={Plus} onClick={() => setIsModalOpen(true)}>
+                        <Button icon={Plus} onClick={() => setIsModalOpen(true)} style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6', color: 'white' }}>
                             Nuevo Servicio
                         </Button>
                         <input
@@ -1027,7 +1027,7 @@ export default function TicketsPage() {
                 </div>
             </Card>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Ticket">
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Servicio">
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="form-group">
                         <label className="form-label">Número de Caso SFDC (Opcional)</label>
@@ -1041,7 +1041,6 @@ export default function TicketsPage() {
                     <div className="form-group">
                         <label className="form-label">Asunto</label>
                         <input
-                            required
                             className="form-input"
                             placeholder="Ej: Problema con monitor"
                             value={newTicket.subject}
@@ -1051,7 +1050,6 @@ export default function TicketsPage() {
                     <div className="form-group">
                         <label className="form-label">Solicitante</label>
                         <input
-                            required
                             className="form-input"
                             placeholder="Nombre del empleado"
                             value={newTicket.requester}
@@ -1071,9 +1069,83 @@ export default function TicketsPage() {
                             <option value="Crítica">Crítica</option>
                         </select>
                     </div>
+
+                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '1rem' }}>Datos Logísticos (Opcional)</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="form-group">
+                                <label className="form-label">Tipo de Servicio</label>
+                                <select
+                                    className="form-select"
+                                    value={newTicket.type}
+                                    onChange={e => setNewTicket({ ...newTicket, type: e.target.value })}
+                                >
+                                    <option value="Entrega">Entrega</option>
+                                    <option value="Recolección">Recolección</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">País</label>
+                                <select
+                                    className="form-select"
+                                    value={newTicket.country}
+                                    onChange={e => setNewTicket({ ...newTicket, country: e.target.value })}
+                                >
+                                    <option value="">Seleccionar País...</option>
+                                    <option value="Argentina">Argentina</option>
+                                    <option value="Chile">Chile</option>
+                                    <option value="Colombia">Colombia</option>
+                                    <option value="Costa Rica">Costa Rica</option>
+                                    <option value="Uruguay">Uruguay</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                            <label className="form-label">Dirección (Mailing Street)</label>
+                            <input
+                                className="form-input"
+                                placeholder="Ej: Av. Siempreviva 742"
+                                value={newTicket.address}
+                                onChange={e => setNewTicket({ ...newTicket, address: e.target.value })}
+                            />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                            <div className="form-group">
+                                <label className="form-label">Código Postal</label>
+                                <input
+                                    className="form-input"
+                                    placeholder="Ej: 1414"
+                                    value={newTicket.zipCode}
+                                    onChange={e => setNewTicket({ ...newTicket, zipCode: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Teléfono (Mobile)</label>
+                                <input
+                                    className="form-input"
+                                    placeholder="Ej: +54 9 11..."
+                                    value={newTicket.phone}
+                                    onChange={e => setNewTicket({ ...newTicket, phone: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                            <label className="form-label">Email</label>
+                            <input
+                                type="email"
+                                className="form-input"
+                                placeholder="Ej: usuario@empresa.com"
+                                value={newTicket.email}
+                                onChange={e => setNewTicket({ ...newTicket, email: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
                     <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-                        <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} style={{ flex: 1 }}>Cancelar</Button>
-                        <Button type="submit" style={{ flex: 1 }}>Crear Servicio</Button>
+                        <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} style={{ flex: 1 }} disabled={isSubmittingManual}>Cancelar</Button>
+                        <Button type="button" onClick={handleCreate} style={{ flex: 1 }} disabled={isSubmittingManual}>
+                            {isSubmittingManual ? 'Procesando...' : 'Crear Servicio'}
+                        </Button>
                     </div>
                 </form>
             </Modal>
