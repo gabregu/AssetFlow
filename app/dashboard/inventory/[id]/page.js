@@ -53,10 +53,12 @@ export default function AssetDetailPage() {
         e.preventDefault();
         try {
             setIsSaving(true);
+            const now = new Date().toISOString();
             await updateAsset(asset.id, { 
                 ...editData, 
-                dateLastUpdate: new Date().toISOString(), 
-                updatedBy: currentUser?.name || 'Sistema' 
+                dateLastUpdate: now, 
+                updatedBy: currentUser?.name || 'Sistema',
+                lastAssetCheck: now
             });
             setIsModalOpen(false);
         } catch (error) {

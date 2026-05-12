@@ -137,10 +137,14 @@ export default function InventoryPage() {
             selectedAssets.forEach(id => {
                 const assetStr = assets.find(a => a.id === id);
                 if (assetStr) {
+                    const now = new Date().toISOString();
                     updateAsset(id, { 
                         ...assetStr, 
                         assignee: 'Baja de Equipo',
-                        boxNumber: bulkBoxNumber || assetStr.boxNumber
+                        boxNumber: bulkBoxNumber || assetStr.boxNumber,
+                        dateLastUpdate: now,
+                        updatedBy: currentUser.name,
+                        lastAssetCheck: now
                     });
                 }
             });
@@ -155,7 +159,14 @@ export default function InventoryPage() {
             selectedAssets.forEach(id => {
                 const assetStr = assets.find(a => a.id === id);
                 if (assetStr) {
-                    updateAsset(id, { ...assetStr, boxNumber: bulkBoxNumber });
+                    const now = new Date().toISOString();
+                    updateAsset(id, { 
+                        ...assetStr, 
+                        boxNumber: bulkBoxNumber,
+                        dateLastUpdate: now,
+                        updatedBy: currentUser.name,
+                        lastAssetCheck: now
+                    });
                 }
             });
             setSelectedAssets([]);
@@ -323,12 +334,25 @@ export default function InventoryPage() {
 
         try {
             setIsSaving(true);
+            const now = new Date().toISOString();
+            const updatedBy = currentUser?.name || 'Sistema';
+
             if (editingAsset) {
-                await updateAsset(editingAsset.id, { ...newAsset, dateLastUpdate: new Date().toISOString(), updatedBy: currentUser?.name || 'Sistema' });
+                await updateAsset(editingAsset.id, { 
+                    ...newAsset, 
+                    dateLastUpdate: now, 
+                    updatedBy: updatedBy,
+                    lastAssetCheck: now 
+                });
                 closeModal();
             } else {
                 const serialCreado = newAsset.serial;
-                await addAsset({ ...newAsset, dateLastUpdate: new Date().toISOString(), updatedBy: currentUser?.name || 'Sistema' });
+                await addAsset({ 
+                    ...newAsset, 
+                    dateLastUpdate: now, 
+                    updatedBy: updatedBy,
+                    lastAssetCheck: now 
+                });
                 closeModal();
                 // Mostrar el activo recién creado en la lista
                 setSearchFilter(serialCreado);
@@ -640,11 +664,14 @@ export default function InventoryPage() {
         addTicket(newTicket);
 
         // 2. Actualizar Activo
+        const now = new Date().toISOString();
         updateAsset(assigningAsset.id, {
+            ...assigningAsset,
             status: 'Asignado',
             assignee: assignmentData.userName,
-            dateLastUpdate: new Date().toISOString(),
-            updatedBy: currentUser.name
+            dateLastUpdate: now,
+            updatedBy: currentUser.name,
+            lastAssetCheck: now
         });
 
         alert(`Asignado con éxito. Se ha creado el ticket para ${assignmentData.userName}.`);
