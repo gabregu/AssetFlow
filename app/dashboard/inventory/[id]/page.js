@@ -12,14 +12,60 @@ import {
     ShoppingCart, Info, FileText, Smartphone as ImeiIcon,
     ArrowRight, Key, Box
 } from 'lucide-react';
+import { Modal } from '../../../components/ui/Modal';
 import Link from 'next/link';
 
 export default function AssetDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const { assets, tickets, deleteAsset, currentUser } = useStore();
+    const { assets, tickets, updateAsset, deleteAsset, currentUser, entities = [] } = useStore();
+
+    const [isModalOpen, setIsModalOpen] = React.useState(false);
+    const [isSaving, setIsSaving] = React.useState(false);
+    const [editData, setEditData] = React.useState(null);
 
     const asset = assets.find(a => a.id === params.id || a.serial === params.id);
+
+    // Helpers para limpieza de datos (mismo que en el inventario principal)
+    const cleanInput = (val) => {
+        if (typeof val !== 'string') return val;
+        return val.replace(/[\r\n\t]+/g, ' ');
+    };
+
+    const handleFieldChange = (field, value, shouldClean = true) => {
+        const cleanedValue = shouldClean ? cleanInput(value) : value;
+        setEditData(prev => ({ ...prev, [field]: cleanedValue }));
+    };
+
+    const handlePaste = (field, e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text');
+        const cleanedValue = pastedData.replace(/[\r\n\t]+/g, ' ').trim();
+        setEditData(prev => ({ ...prev, [field]: cleanedValue }));
+    };
+
+    const handleEditClick = () => {
+        setEditData({ ...asset });
+        setIsModalOpen(true);
+    };
+
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        try {
+            setIsSaving(true);
+            await updateAsset(asset.id, { 
+                ...editData, 
+                dateLastUpdate: new Date().toISOString(), 
+                updatedBy: currentUser?.name || 'Sistema' 
+            });
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('Error updating asset:', error);
+            alert('Error al actualizar el activo');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     if (!asset) {
         return (
@@ -84,7 +130,7 @@ export default function AssetDetailPage() {
                     </div>
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
-                    <Button variant="outline" icon={Edit3}>Editar Datos</Button>
+                    <Button variant="outline" icon={Edit3} onClick={handleEditClick}>Editar Datos</Button>
                     {currentUser?.role === 'admin' && (
                         <Button variant="danger" icon={Trash2} onClick={handleDelete}>Dar de Baja</Button>
                     )}
@@ -379,6 +425,151 @@ export default function AssetDetailPage() {
                     </Card>
                 </div>
             </div>
+            
+            {/* Modal de Edición */}
+            <Modal 
+                isOpen={isModalOpen} 
+                onClose={() => setIsModalOpen(false)} 
+                title="Editar Datos del Activo"
+            >
+                {editData && (
+                    <form onSubmit={handleUpdate}>
+                        <div className="form-group">
+                            <label className="form-label">Nombre del Modelo / Descripción</label>
+                            <input
+                                required
+                                className="form-input"
+                                value={editData.name}
+                                onChange={e => handleFieldChange('name', e.target.value)}
+                                onPaste={e => handlePaste('name', e)}
+                            />
+                        </div>
+
+                        <div className="grid-responsive-2">
+                            <div className="form-group">
+                                <label className="form-label">Tipo de Activo</label>
+                                <select
+                                    className="form-select"
+                                    value={editData.type}
+                                    onChange={e => setEditData({ ...editData, type: e.target.value })}
+                                >
+                                    <option value="Laptop">Laptop</option>
+                                    <option value="Smartphone">Smartphone</option>
+                                    <option value="Tablet">Tablet</option>
+                                    <option value="Security keys">Security keys</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Número de Serie (S/N)</label>
+                                <input
+                                    required
+                                    className="form-input"
+                                    value={editData.serial}
+                                    onChange={e => handleFieldChange('serial', e.target.value)}
+                                    onPaste={e => handlePaste('serial', e)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid-responsive-2">
+                            <div className="form-group">
+                                <label className="form-label">Estado</label>
+                                <select
+                                    className="form-select"
+                                    value={editData.status}
+                                    onChange={e => setEditData({ ...editData, status: e.target.value })}
+                                >
+                                    <option value="Nuevo">Nuevo</option>
+                                    <option value="Asignado">Asignado</option>
+                                    <option value="Recuperado">Recuperado</option>
+                                    <option value="En Reparación">En Reparación</option>
+                                    <option value="Dañado">Dañado</option>
+                                    <option value="EOL">EOL</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">País</label>
+                                <select
+                                    className="form-select"
+                                    value={editData.country || 'Argentina'}
+                                    onChange={e => setEditData({ ...editData, country: e.target.value })}
+                                >
+                                    {entities.map(ent => <option key={ent.id} value={ent.name}>{ent.name}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid-responsive-2">
+                            <div className="form-group">
+                                <label className="form-label">Orden de Compra (PO)</label>
+                                <input
+                                    className="form-input"
+                                    value={editData.purchaseOrder || ''}
+                                    onChange={e => handleFieldChange('purchaseOrder', e.target.value)}
+                                    onPaste={e => handlePaste('purchaseOrder', e)}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">SFDC Case</label>
+                                <input
+                                    className="form-input"
+                                    value={editData.sfdcCase || ''}
+                                    onChange={e => handleFieldChange('sfdcCase', e.target.value)}
+                                    onPaste={e => handlePaste('sfdcCase', e)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid-responsive-2">
+                            <div className="form-group">
+                                <label className="form-label">Modelo Técnico</label>
+                                <input
+                                    className="form-input"
+                                    value={editData.modelNumber || ''}
+                                    onChange={e => handleFieldChange('modelNumber', e.target.value)}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Part Number</label>
+                                <input
+                                    className="form-input"
+                                    value={editData.partNumber || ''}
+                                    onChange={handleFieldChange.bind(null, 'partNumber')}
+                                    onPaste={e => handlePaste('partNumber', e)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Hardware Spec</label>
+                            <input
+                                className="form-input"
+                                value={editData.hardwareSpec || ''}
+                                onChange={e => handleFieldChange('hardwareSpec', e.target.value)}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Notas</label>
+                            <textarea
+                                className="form-textarea"
+                                rows="3"
+                                value={editData.notes || ''}
+                                onChange={e => handleFieldChange('notes', e.target.value, false)}
+                            />
+                        </div>
+
+                        <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+                            <Button type="submit" style={{ flex: 1 }} disabled={isSaving}>
+                                {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                            </Button>
+                            <Button variant="ghost" onClick={() => setIsModalOpen(false)} style={{ flex: 1 }}>
+                                Cancelar
+                            </Button>
+                        </div>
+                    </form>
+                )}
+            </Modal>
         </div>
     );
 }
