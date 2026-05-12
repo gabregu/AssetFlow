@@ -214,7 +214,10 @@ export default function TicketDetailPage() {
                 }}
                 inventorySearchQuery={inventorySearchQuery}
                 setInventorySearchQuery={setInventorySearchQuery}
-                assets={assets}
+                assets={assets.filter(a => {
+                    const ticketCountry = ticket?.logistics?.country;
+                    return !ticketCountry || a.country === ticketCountry;
+                })}
                 task={(selectedCaseIndex !== null && (ticketTasks && ticketTasks.length > 0 ? ticketTasks : (editedData?.associatedCases || []))[selectedCaseIndex]) || null}
                 onUpdateTask={handleUpdateTask}
             />

@@ -192,7 +192,10 @@ export function useTicketDetail() {
         const isStandard = subject.includes('standard');
         const isDeveloper = subject.includes('development') || subject.includes('developer') || subject.includes('max') || subject.includes('pro max');
 
+        const ticketCountry = ticket?.logistics?.country;
+
         return assets.filter(asset => {
+            if (ticketCountry && asset.country !== ticketCountry) return false;
             if (asset.assignee !== 'Almacén') return false;
             if (!targetStatuses.includes(asset.status)) return false;
             if (isWindows) {
@@ -274,11 +277,37 @@ export function useTicketDetail() {
 
     const handleAssetSearch = () => {
         if (!serialQuery.trim()) return;
-        const found = assets.find(a => a.serial.toLowerCase() === serialQuery.toLowerCase());
+        
+        // Get ticket region from logistics
+        const ticketCountry = ticket?.logistics?.country;
+        const normalizedQuery = serialQuery.toLowerCase();
+
+        // Search for the asset in the specific region
+        const found = assets.find(a => 
+            a.serial.toLowerCase() === normalizedQuery && 
+            (!ticketCountry || a.country === ticketCountry)
+        );
+
         if (found) {
-            setAssetSearchResult({ name: found.name, type: found.type, status: found.status, serial: found.serial });
+            setAssetSearchResult({ 
+                name: found.name, 
+                type: found.type, 
+                status: found.status, 
+                serial: found.serial,
+                region: found.country
+            });
         } else {
-            setAssetSearchResult('not_found');
+            // Check if it exists in another region for better UX feedback
+            const inOtherRegion = assets.find(a => a.serial.toLowerCase() === normalizedQuery);
+            if (inOtherRegion) {
+                setAssetSearchResult({
+                    status: 'wrong_region',
+                    region: inOtherRegion.country,
+                    serial: inOtherRegion.serial
+                });
+            } else {
+                setAssetSearchResult('not_found');
+            }
         }
     };
 
@@ -325,7 +354,7 @@ export function useTicketDetail() {
     };
 
     const handleLinkAsset = () => {
-        if (assetSearchResult && assetSearchResult !== 'not_found') {
+        if (assetSearchResult && assetSearchResult !== 'not_found' && assetSearchResult.status !== 'wrong_region') {
             const currentAssets = editedData.associatedAssets || [];
             const serialToLink = assetSearchResult.serial;
             const isAlreadyLinked = currentAssets.some(item => (typeof item === 'string' ? item : item.serial) === serialToLink);

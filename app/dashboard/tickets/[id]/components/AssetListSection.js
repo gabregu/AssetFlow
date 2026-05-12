@@ -189,6 +189,18 @@ export default function AssetListSection({
                     <Button size="sm" variant="secondary" onClick={() => setIsAssetModalOpen(true)}>Dar de Alta Manual</Button>
                 </div>
             )}
+            
+            {assetSearchResult && assetSearchResult.status === 'wrong_region' && (
+                <div style={{ marginTop: '0.5rem', padding: '0.8rem', border: '1px dashed #f59e0b', borderRadius: '8px', background: '#fffbeb' }}>
+                    <p style={{ color: '#b45309', fontSize: '0.85rem', margin: '0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>⚠️</span> 
+                        <span>
+                            El equipo <strong>{assetSearchResult.serial}</strong> pertenece a la región <strong>{assetSearchResult.region}</strong>. 
+                            Solo puedes vincular equipos de la región actual.
+                        </span>
+                    </p>
+                </div>
+            )}
 
             {assetSearchResult && assetSearchResult !== 'not_found' && (
                 <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
