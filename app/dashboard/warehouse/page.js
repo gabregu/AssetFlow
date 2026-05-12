@@ -57,7 +57,16 @@ export default function WarehousePage() {
     const [newLoc, setNewLoc] = useState({ id: '', aisle: '', section: '', level: '' });
 
     // Helper to normalize IDs for comparison (ignore dashes, quotes, spaces)
-    const normalizeId = (id) => id.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    const normalizeId = (id) => {
+        if (!id) return '';
+        let normalized = id.toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        // Lenovo Fix: al escanear cajas de Lenovo se agrega una 'S' al principio.
+        // Si el string empieza con 's' y es largo (como un serial), quitamos la 's'.
+        if (normalized.startsWith('s') && normalized.length > 7) {
+            return normalized.substring(1);
+        }
+        return normalized;
+    };
 
     // Group locations by aisle for the grid, filtered by country
     const groupedLocations = useMemo(() => {

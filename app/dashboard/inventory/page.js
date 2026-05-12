@@ -196,10 +196,14 @@ export default function InventoryPage() {
 
     const filteredAssets = React.useMemo(() => {
         const lowerSearch = searchFilter.toLowerCase();
+        // Lenovo Fix: permitimos buscar por el serial sin la 'S' inicial si se escanea la caja
+        const searchWithoutS = (lowerSearch.startsWith('s') && lowerSearch.length > 7) ? lowerSearch.substring(1) : lowerSearch;
+
         let result = assets.filter(a => {
             const matchesSearch = !lowerSearch ||
                 a.name.toLowerCase().includes(lowerSearch) ||
                 a.serial.toLowerCase().includes(lowerSearch) ||
+                a.serial.toLowerCase().includes(searchWithoutS) ||
                 a.assignee.toLowerCase().includes(lowerSearch) ||
                 (a.cod && a.cod.toLowerCase().includes(lowerSearch));
 
@@ -302,7 +306,14 @@ export default function InventoryPage() {
     };
 
     const handleFieldChange = (field, value, shouldClean = true) => {
-        const cleanedValue = shouldClean ? cleanInput(value) : value;
+        let cleanedValue = shouldClean ? cleanInput(value) : value;
+        // Lenovo Fix: al escanear la caja el serial viene con una 'S' extra
+        if (field === 'serial' && typeof cleanedValue === 'string') {
+            const trimmed = cleanedValue.trim();
+            if (trimmed.toUpperCase().startsWith('S') && trimmed.length > 7) {
+                cleanedValue = trimmed.substring(1);
+            }
+        }
         setNewAsset(prev => ({ ...prev, [field]: cleanedValue }));
     };
 
