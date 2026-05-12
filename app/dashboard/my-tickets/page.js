@@ -391,7 +391,7 @@ export default function MyTicketsPage() {
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Servicios</h1>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Casos</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Gestiona tus tareas asignadas y reporta entregas.</p>
                 </div>
                 <div style={{ padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', color: '#3b82f6' }}>
@@ -441,7 +441,7 @@ export default function MyTicketsPage() {
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <Button variant="secondary" icon={Route} onClick={() => setIsOptimizationModalOpen(true)}>Optimizar Ruta</Button>
                     <Button variant="secondary" icon={MapIcon} onClick={() => setIsMapOpen(true)}>Ver Mapa</Button>
-                    <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Servicio</Button>
+                    <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Caso</Button>
                 </div>
             </div>
 
@@ -467,7 +467,7 @@ export default function MyTicketsPage() {
                             />
                         </div>
                         <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 500 }}>
-                            Total Servicios: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{sortedAndFilteredTickets.length}</span>
+                            Total Casos: <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>{sortedAndFilteredTickets.length}</span>
                         </div>
                         {(columnFilters.status !== 'All' || filter !== '') && (
                             <Button variant="ghost" size="sm" onClick={() => {
@@ -700,7 +700,7 @@ export default function MyTicketsPage() {
                 </div>
             </Card>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Ticket">
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Caso">
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="form-group">
                         <label className="form-label">Número de Caso SFDC (Opcional)</label>
@@ -746,13 +746,13 @@ export default function MyTicketsPage() {
                     </div>
                     <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                         <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} style={{ flex: 1 }}>Cancelar</Button>
-                        <Button type="submit" style={{ flex: 1 }}>Crear Servicio</Button>
+                        <Button type="submit" style={{ flex: 1 }}>Crear Caso</Button>
                     </div>
                 </form>
             </Modal>
 
             {/* Service Map Modal */}
-            <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} title="Mapa de Servicios" maxWidth="900px">
+            <Modal isOpen={isMapOpen} onClose={() => setIsMapOpen(false)} title="Mapa de Casos" maxWidth="900px">
                 <ServiceMap tickets={sortedAndFilteredTickets} />
                 <div style={{ marginTop: '1rem', textAlign: 'right' }}>
                     <Button variant="secondary" onClick={() => setIsMapOpen(false)}>Cerrar</Button>

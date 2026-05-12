@@ -750,7 +750,7 @@ export default function SFDCCasesPage() {
                 
                 // Opcional: También los guardamos en el store como respaldo por si acaso 
                 // pero si se crearon servicios, quizás el usuario prefiere que ya no aparezcan en "Casos SFDC"
-                // El comportamiento anterior de "Crear Servicios" era removerlos de SFDC_CASOS al crearlos.
+                // El comportamiento anterior de "Crear Casos" era removerlos de SFDC_CASOS al crearlos.
                 // Así que aquí NO llamamos a importSfdcCases si queremos que sea directo.
                 // Sin embargo, para mantener coherencia con el estado global, los importamos y la función procesadora los quitará si es necesario.
                 // Pero como processCasesToTickets corre asíncrono, mejor importarlos primero.
@@ -831,8 +831,8 @@ export default function SFDCCasesPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }} className="hide-mobile">
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Button icon={Plus} onClick={() => setIsManualModalOpen(true)} style={{ backgroundColor: '#10b981', color: 'white' }}>
-                            Nuevo Servicio
+                        <Button icon={Plus} onClick={() => setIsManualModalOpen(true)} style={{ backgroundColor: '#8b5cf6', color: 'white' }}>
+                            Nuevo Caso
                         </Button>
                         <input
                             type="file"
@@ -1186,7 +1186,7 @@ export default function SFDCCasesPage() {
                 </div>
             </Card>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Servicio desde SFDC">
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Caso desde SFDC">
                 <div /* Changed from form to div to avoid validation issues */ >
                     {/* Resumen del Caso Original - Compacto y Visual */}
                     <div style={{
@@ -1300,7 +1300,7 @@ export default function SFDCCasesPage() {
                     </div>
                 </div>
             </Modal>
-            <Modal isOpen={isManualModalOpen} onClose={() => setIsManualModalOpen(false)} title="Crear Nuevo Servicio">
+            <Modal isOpen={isManualModalOpen} onClose={() => setIsManualModalOpen(false)} title="Crear Nuevo Caso">
                 <form onSubmit={handleCreateManual} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="form-group">
                         <label className="form-label">Número de Caso SFDC (Opcional)</label>
@@ -1417,7 +1417,7 @@ export default function SFDCCasesPage() {
                     <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                         <Button type="button" variant="secondary" onClick={() => setIsManualModalOpen(false)} style={{ flex: 1 }} disabled={isSubmittingManual}>Cancelar</Button>
                         <Button type="button" onClick={handleCreateManual} style={{ flex: 1 }} disabled={isSubmittingManual}>
-                            {isSubmittingManual ? 'Procesando...' : 'Crear Servicio'}
+                            {isSubmittingManual ? 'Procesando...' : 'Crear Caso'}
                         </Button>
                     </div>
                 </form>

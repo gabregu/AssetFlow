@@ -48,9 +48,9 @@ export default function TicketsPage() {
             const decoder = new TextDecoder('utf-8');
             let text = decoder.decode(buffer);
 
-            // Si detectamos el carÃƒÂ¡cter de reemplazo , re-decodificamos como Latin1
+            // Si detectamos el carácter de reemplazo , re-decodificamos como Latin1
             if (text.includes('')) {
-                console.log("Detectada codificaciÃƒÂ³n no UTF-8 en Tickets. Re-decodificando como ISO-8859-1...");
+                console.log("Detectada codificación no UTF-8 en Tickets. Re-decodificando como ISO-8859-1...");
                 const latinDecoder = new TextDecoder('iso-8859-1');
                 text = latinDecoder.decode(buffer);
             }
@@ -111,13 +111,13 @@ export default function TicketsPage() {
 
                     const mailingCountry = getVal(rowValues, 'Mailing Country') || '';
                     if (!mailingCountry) {
-                        alert(`Error en fila ${i + 2}: Falta "Mailing Country". Abortando importaciÃƒÂ³n.`);
+                        alert(`Error en fila ${i + 2}: Falta "Mailing Country". Abortando importación.`);
                         return;
                     }
 
-                    // CÃƒÂ¡lculo de Age basado en fecha de apertura (Copiado de salesforce-cases/page.js para consistencia)
+                    // Cálculo de Age basado en fecha de apertura (Copiado de salesforce-cases/page.js para consistencia)
                     const openedRaw = getVal(rowValues, 'Date/Time Opened');
-                    let ageDisplay = '0 dÃƒÂ­as';
+                    let ageDisplay = '0 días';
                     let openedDisplay = openedRaw;
 
                     if (openedRaw) {
@@ -126,7 +126,7 @@ export default function TicketsPage() {
                             const now = new Date();
                             const diffTime = Math.abs(now - openedDate);
                             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                            ageDisplay = diffDays === 1 ? '1 dÃƒÂ­a' : `${diffDays} dÃƒÂ­as`;
+                            ageDisplay = diffDays === 1 ? '1 día' : `${diffDays} días`;
                             openedDisplay = openedDate.toLocaleDateString(); // Solo fecha
                         }
                     }
@@ -152,7 +152,7 @@ export default function TicketsPage() {
                     });
                 }
                 
-                // --- INTEGRACION: Importar tambiÃƒÂ©n como casos SFDC ---
+                // --- INTEGRACION: Importar también como casos SFDC ---
                 if (newCases.length > 0) {
                     await importSfdcCases(newCases);
                 }
@@ -200,7 +200,7 @@ export default function TicketsPage() {
                                                   updatedNotes.some(n => n.includes(c.caseNumber));
                                                   
                             if (!alreadyExists) {
-                                const msg = `Ã¢â‚¬Â¢ Caso Adicional Agregado via CSV: [SFDC-${c.caseNumber}] ${c.subject}`;
+                                const msg = `• Caso Adicional Agregado via CSV: [SFDC-${c.caseNumber}] ${c.subject}`;
                                 updatedNotes.push(msg);
                                 addedToExisting++;
                                 casesProcessed++;
@@ -223,8 +223,8 @@ export default function TicketsPage() {
 
                         if (additionalCases.length > 0) {
                             subject += ` (+ ${additionalCases.length} casos agrupados)`;
-                            const siblingNotes = additionalCases.map(s => `Ã¢â‚¬Â¢ Caso Adicional: [SFDC-${s.caseNumber}] ${s.subject}`).join('\n');
-                            internalNotes.push(`=== AUTOMATIZACIÃƒâ€œN: CASOS AGRUPADOS (CSV) ===\nSe importaron mÃƒÂºltiples casos para ${mainCase.requestedFor}:\n${siblingNotes}`);
+                            const siblingNotes = additionalCases.map(s => `• Caso Adicional: [SFDC-${s.caseNumber}] ${s.subject}`).join('\n');
+                            internalNotes.push(`=== AUTOMATIZACIÓN: CASOS AGRUPADOS (CSV) ===\nSe importaron múltiples casos para ${mainCase.requestedFor}:\n${siblingNotes}`);
                         }
 
                         const newTicketData = {
@@ -261,7 +261,7 @@ export default function TicketsPage() {
                     }
                 }
 
-                showToast(`ImportaciÃƒÂ³n completa: ${casesProcessed} casos procesados. ${ticketsCreated} servicios nuevos y ${ticketsUpdated} actualizados.`, 'success');
+                showToast(`Importación completa: ${casesProcessed} casos procesados. ${ticketsCreated} servicios nuevos y ${ticketsUpdated} actualizados.`, 'success');
 
             } catch (err) {
                 console.error("Error procesando CSV:", err);
@@ -287,7 +287,7 @@ export default function TicketsPage() {
     };
 
     const handleBulkDelete = () => {
-        if (confirm(`Ã‚Â¿EstÃƒÂ¡s seguro de que deseas eliminar ${selectedTickets.length} tickets seleccionados?`)) {
+        if (confirm(`¿Estás seguro de que deseas eliminar ${selectedTickets.length} tickets seleccionados?`)) {
             deleteTickets(selectedTickets);
             setSelectedTickets([]);
         }
@@ -342,7 +342,7 @@ export default function TicketsPage() {
         } catch (error) {
             console.error("Error creating ticket:", error);
             showToast("Error al crear el servicio: " + (error.message || "Error desconocido"), "error");
-            alert("Error del sistema al guardar: " + (error.message || JSON.stringify(error)) + "\nPor favor avÃƒÂ­sale a soporte.");
+            alert("Error del sistema al guardar: " + (error.message || JSON.stringify(error)) + "\nPor favor avísale a soporte.");
         } finally {
             setIsSubmittingManual(false);
         }
@@ -490,8 +490,8 @@ export default function TicketsPage() {
         return { delivery: deliveryCount, collection: collectionCount, newHire: newHireCount };
     }, [tickets, countryFilter, sfdcCases]);
 
-    // EstadÃƒÂ­sticas para las tarjetas KPI
-    // EstadÃƒÂ­sticas para las tarjetas KPI
+    // Estadísticas para las tarjetas KPI
+    // Estadísticas para las tarjetas KPI
     const stats = React.useMemo(() => {
         // Filter by country first
         const filteredByCountry = tickets.filter(t => {
@@ -526,7 +526,7 @@ export default function TicketsPage() {
     const mapItems = React.useMemo(() => {
         if (!showMap) return [];
         
-        // FunciÃ³n auxiliar para obtener el estado logÃ­stico mÃ¡s reciente (idÃ©ntica a la de la tabla)
+        // Función auxiliar para obtener el estado logístico más reciente (idéntica a la de la tabla)
         const getAggregatedInfo = (ticket) => {
             const tasks = (logisticsTasks || []).filter(tk => String(tk.ticket_id) === String(ticket.id));
             const legacyCases = ticket.associatedCases || [];
@@ -565,7 +565,7 @@ export default function TicketsPage() {
             };
         });
 
-        // 2. Tareas logÃ­sticas sueltas (filtradas manualmente para el mapa)
+        // 2. Tareas logísticas sueltas (filtradas manualmente para el mapa)
         const searchVal = (filter || "").toLowerCase();
         const activeTasks = (logisticsTasks || [])
             .filter(task => !["Resuelto", "Cancelado", "Entregado"].includes(task.status))
@@ -595,7 +595,7 @@ export default function TicketsPage() {
             })
             .map(task => ({
                 id: `task-${task.id}`,
-                subject: task.case_number ? `Caso ${task.case_number}` : `Tarea LogÃ­stica ${task.id}`,
+                subject: task.case_number ? `Caso ${task.case_number}` : `Tarea Logística ${task.id}`,
                 logistics: {
                     address: task.address || tickets.find(t => String(t.id) === String(task.ticket_id))?.logistics?.address,
                     status: task.status,
@@ -609,8 +609,8 @@ export default function TicketsPage() {
 
 
     const SortIcon = ({ column }) => {
-        if (sortConfig.key !== column) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>Ã¢â€ â€¢</span>;
-        return <span style={{ marginLeft: '4px', color: 'var(--primary-color)' }}>{sortConfig.direction === 'asc' ? 'Ã¢â€ â€˜' : 'Ã¢â€ â€œ'}</span>;
+        if (sortConfig.key !== column) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
+        return <span style={{ marginLeft: '4px', color: 'var(--primary-color)' }}>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>;
     };
 
     return (
@@ -637,7 +637,7 @@ export default function TicketsPage() {
             )}
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>GestiÃƒÂ³n de Servicios</h1>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Casos</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Gestiona y resuelve las incidencias reportadas.</p>
                     <div style={{ marginTop: '1rem' }}>
                         <CountryFilter />
@@ -646,7 +646,7 @@ export default function TicketsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <Button icon={Plus} onClick={() => setIsModalOpen(true)} style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6', color: 'white' }}>
-                            Nuevo Servicio
+                            Nuevo Caso
                         </Button>
                         <input
                             type="file"
@@ -783,9 +783,9 @@ export default function TicketsPage() {
 
 
             <Card>
-                {/* FILTROS TIPO DE PEDIDO (ENTREGA, RECOLECCIÃƒâ€œN, NEW HIRE) */}
+                {/* FILTROS TIPO DE PEDIDO (ENTREGA, RECOLECCIÓN, NEW HIRE) */}
                 <div className="grid-responsive-3" style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                    {/* BOTÃƒâ€œN VERDE (ENTREGA) */}
+                    {/* BOTÓN VERDE (ENTREGA) */}
                     <button
                         onClick={() => setFilterType(filterType === 'DELIVERY' ? 'ALL' : 'DELIVERY')}
                         style={{
@@ -818,7 +818,7 @@ export default function TicketsPage() {
                         </div>
                     </button>
 
-                    {/* BOTÃƒâ€œN NARANJA (RECOLECCIÃƒâ€œN) */}
+                    {/* BOTÓN NARANJA (RECOLECCIÓN) */}
                     <button
                         onClick={() => setFilterType(filterType === 'COLLECTION' ? 'ALL' : 'COLLECTION')}
                         style={{
@@ -851,7 +851,7 @@ export default function TicketsPage() {
                         </div>
                     </button>
 
-                    {/* BOTÃƒâ€œN ROJO (NEW HIRE) */}
+                    {/* BOTÓN ROJO (NEW HIRE) */}
                     <button
                         onClick={() => setFilterType(filterType === 'NEW_HIRE' ? 'ALL' : 'NEW_HIRE')}
                         style={{
@@ -1137,10 +1137,10 @@ export default function TicketsPage() {
                 </div>
             </Card>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Servicio">
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Caso">
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="form-group">
-                        <label className="form-label">NÃƒÂºmero de Caso SFDC (Opcional)</label>
+                        <label className="form-label">Número de Caso SFDC (Opcional)</label>
                         <input
                             className="form-input"
                             placeholder="Ej: 03102345"
@@ -1176,12 +1176,12 @@ export default function TicketsPage() {
                             <option value="Baja">Baja</option>
                             <option value="Media">Media</option>
                             <option value="Alta">Alta</option>
-                            <option value="CrÃƒÂ­tica">CrÃƒÂ­tica</option>
+                            <option value="Crítica">Crítica</option>
                         </select>
                     </div>
 
                     <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '0.5rem' }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '1rem' }}>Datos LogÃƒÂ­sticos (Opcional)</h3>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '1rem' }}>Datos Logísticos (Opcional)</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             <div className="form-group">
                                 <label className="form-label">Tipo de Servicio</label>
@@ -1191,17 +1191,17 @@ export default function TicketsPage() {
                                     onChange={e => setNewTicket({ ...newTicket, type: e.target.value })}
                                 >
                                     <option value="Entrega">Entrega</option>
-                                    <option value="RecolecciÃƒÂ³n">RecolecciÃƒÂ³n</option>
+                                    <option value="Recolección">Recolección</option>
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">PaÃƒÂ­s</label>
+                                <label className="form-label">País</label>
                                 <select
                                     className="form-select"
                                     value={newTicket.country}
                                     onChange={e => setNewTicket({ ...newTicket, country: e.target.value })}
                                 >
-                                    <option value="">Seleccionar PaÃƒÂ­s...</option>
+                                    <option value="">Seleccionar País...</option>
                                     <option value="Argentina">Argentina</option>
                                     <option value="Chile">Chile</option>
                                     <option value="Colombia">Colombia</option>
@@ -1211,7 +1211,7 @@ export default function TicketsPage() {
                             </div>
                         </div>
                         <div className="form-group" style={{ marginTop: '1rem' }}>
-                            <label className="form-label">DirecciÃƒÂ³n (Mailing Street)</label>
+                            <label className="form-label">Dirección (Mailing Street)</label>
                             <input
                                 className="form-input"
                                 placeholder="Ej: Av. Siempreviva 742"
@@ -1221,7 +1221,7 @@ export default function TicketsPage() {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                             <div className="form-group">
-                                <label className="form-label">CÃƒÂ³digo Postal</label>
+                                <label className="form-label">Código Postal</label>
                                 <input
                                     className="form-input"
                                     placeholder="Ej: 1414"
@@ -1230,7 +1230,7 @@ export default function TicketsPage() {
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">TelÃƒÂ©fono (Mobile)</label>
+                                <label className="form-label">Teléfono (Mobile)</label>
                                 <input
                                     className="form-input"
                                     placeholder="Ej: +54 9 11..."
@@ -1254,7 +1254,7 @@ export default function TicketsPage() {
                     <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                         <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} style={{ flex: 1 }} disabled={isSubmittingManual}>Cancelar</Button>
                         <Button type="button" onClick={handleCreate} style={{ flex: 1 }} disabled={isSubmittingManual}>
-                            {isSubmittingManual ? 'Procesando...' : 'Crear Servicio'}
+                            {isSubmittingManual ? 'Procesando...' : 'Crear Caso'}
                         </Button>
                     </div>
                 </form>
