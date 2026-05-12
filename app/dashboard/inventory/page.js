@@ -2825,7 +2825,7 @@ export default function InventoryPage() {
                                 style={{ paddingLeft: '2.5rem' }}
                                 placeholder="Ej: 102"
                                 value={newAsset.boxNumber || ''}
-                                onChange={e => setNewAsset({ ...newAsset, boxNumber: e.target.value })}
+                                onChange={e => handleFieldChange('boxNumber', e.target.value)}
                             />
                         </div>
                     </div>
@@ -2837,7 +2837,7 @@ export default function InventoryPage() {
                             rows="3"
                             placeholder="Información extra sobre el activo..."
                             value={newAsset.notes}
-                            onChange={e => setNewAsset({ ...newAsset, notes: e.target.value })}
+                            onChange={e => handleFieldChange('notes', e.target.value, false)}
                         />
                     </div>
 
