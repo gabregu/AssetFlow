@@ -286,12 +286,20 @@ export default function InventoryPage() {
     // Helper para limpiar entradas (especialmente útil para copiar y pegar de Excel/Salesforce)
     const cleanInput = (val) => {
         if (typeof val !== 'string') return val;
-        // Eliminar tabulaciones y saltos de línea, pero permitir espacios simples
-        return val.replace(/[\r\n\t]+/g, ' ').trim();
+        // Reemplazar tabulaciones y saltos de línea por espacios (pero NO trim() para permitir escribir espacios)
+        return val.replace(/[\r\n\t]+/g, ' ');
     };
 
     const handleFieldChange = (field, value, shouldClean = true) => {
         const cleanedValue = shouldClean ? cleanInput(value) : value;
+        setNewAsset(prev => ({ ...prev, [field]: cleanedValue }));
+    };
+
+    const handlePaste = (field, e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text');
+        // Al pegar sí limpiamos agresivamente (incluyendo trim)
+        const cleanedValue = pastedData.replace(/[\r\n\t]+/g, ' ').trim();
         setNewAsset(prev => ({ ...prev, [field]: cleanedValue }));
     };
 
@@ -2610,6 +2618,7 @@ export default function InventoryPage() {
                             placeholder="Ej: MacBook Pro 16 M3"
                             value={newAsset.name}
                             onChange={e => handleFieldChange('name', e.target.value)}
+                            onPaste={e => handlePaste('name', e)}
                         />
                     </div>
 
@@ -2635,11 +2644,7 @@ export default function InventoryPage() {
                                 placeholder="SN-123456"
                                 value={newAsset.serial}
                                 onChange={e => handleFieldChange('serial', e.target.value)}
-                                onPaste={e => {
-                                    // Limpieza inmediata en el evento de pegado
-                                    const pastedData = e.clipboardData.getData('text');
-                                    handleFieldChange('serial', pastedData);
-                                }}
+                                onPaste={e => handlePaste('serial', e)}
                             />
                         </div>
                     </div>
@@ -2736,6 +2741,7 @@ export default function InventoryPage() {
                                 placeholder="PO-XXXX"
                                 value={newAsset.purchaseOrder}
                                 onChange={e => handleFieldChange('purchaseOrder', e.target.value)}
+                                onPaste={e => handlePaste('purchaseOrder', e)}
                             />
                         </div>
                         <div className="form-group">
@@ -2754,6 +2760,7 @@ export default function InventoryPage() {
                                 placeholder="Case #..."
                                 value={newAsset.sfdcCase || ''}
                                 onChange={e => handleFieldChange('sfdcCase', e.target.value)}
+                                onPaste={e => handlePaste('sfdcCase', e)}
                             />
                         </div>
                         <div className="form-group">
@@ -2792,6 +2799,7 @@ export default function InventoryPage() {
                                 placeholder="Ej: Z15S005DW"
                                 value={newAsset.partNumber}
                                 onChange={e => handleFieldChange('partNumber', e.target.value)}
+                                onPaste={e => handlePaste('partNumber', e)}
                             />
                         </div>
                     </div>
