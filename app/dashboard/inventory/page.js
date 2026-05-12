@@ -696,6 +696,7 @@ export default function InventoryPage() {
             case 'Laptop': return Laptop;
             case 'Smartphone': return Smartphone;
             case 'Tablet': return Smartphone;
+            case 'Otros': return Layers;
             case 'Security keys': return Key;
             default: return Laptop;
         }
@@ -860,6 +861,7 @@ export default function InventoryPage() {
                         'smartphone': 'Smartphone', 'phone': 'Smartphone', 'celular': 'Smartphone', 'movil': 'Smartphone',
                         'tablet': 'Tablet', 'ipad': 'Tablet',
                         'monitor': 'Monitor', 'display': 'Monitor',
+                        'otros': 'Otros', 'otro': 'Otros',
                         'key': 'Security keys', 'security key': 'Security keys', 'yubikey': 'Security keys'
                     };
                     const lowerType = (asset.type || '').toLowerCase().trim();
@@ -1222,8 +1224,8 @@ export default function InventoryPage() {
     const dañados = allAssetsNonAssigned.filter(a => ['Dañado', 'EOL', 'Rota', 'De Baja'].includes(a.status)).length;
     const destructionCount = allAssetsNonAssigned.filter(a => a.cod && a.cod.trim() !== '').length;
 
-    const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 3 : 0);
-    const deviceTypes = ['Laptop', 'Smartphone', 'Tablet'];
+    const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 4 : 0);
+    const deviceTypes = ['Laptop', 'Smartphone', 'Tablet', 'Otros'];
 
     const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
 
@@ -2671,6 +2673,7 @@ export default function InventoryPage() {
                                 <option value="Laptop">Laptop</option>
                                 <option value="Smartphone">Smartphone</option>
                                 <option value="Tablet">Tablet</option>
+                                <option value="Otros">Otros</option>
                                 <option value="Security keys">Security keys</option>
                             </select>
                         </div>
