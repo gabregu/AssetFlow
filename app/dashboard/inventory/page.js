@@ -283,6 +283,18 @@ export default function InventoryPage() {
         return <span style={{ marginLeft: '4px', color: 'var(--primary-color)' }}>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>;
     };
 
+    // Helper para limpiar entradas (especialmente útil para copiar y pegar de Excel/Salesforce)
+    const cleanInput = (val) => {
+        if (typeof val !== 'string') return val;
+        // Eliminar tabulaciones y saltos de línea, pero permitir espacios simples
+        return val.replace(/[\r\n\t]+/g, ' ').trim();
+    };
+
+    const handleFieldChange = (field, value, shouldClean = true) => {
+        const cleanedValue = shouldClean ? cleanInput(value) : value;
+        setNewAsset(prev => ({ ...prev, [field]: cleanedValue }));
+    };
+
     const handleCreateOrUpdate = async (e) => {
         e.preventDefault();
 
@@ -2597,7 +2609,7 @@ export default function InventoryPage() {
                             className="form-input"
                             placeholder="Ej: MacBook Pro 16 M3"
                             value={newAsset.name}
-                            onChange={e => setNewAsset({ ...newAsset, name: e.target.value })}
+                            onChange={e => handleFieldChange('name', e.target.value)}
                         />
                     </div>
 
@@ -2622,7 +2634,12 @@ export default function InventoryPage() {
                                 className="form-input"
                                 placeholder="SN-123456"
                                 value={newAsset.serial}
-                                onChange={e => setNewAsset({ ...newAsset, serial: e.target.value })}
+                                onChange={e => handleFieldChange('serial', e.target.value)}
+                                onPaste={e => {
+                                    // Limpieza inmediata en el evento de pegado
+                                    const pastedData = e.clipboardData.getData('text');
+                                    handleFieldChange('serial', pastedData);
+                                }}
                             />
                         </div>
                     </div>
@@ -2670,7 +2687,7 @@ export default function InventoryPage() {
                                     className="form-input"
                                     placeholder="Nombre del asignado..."
                                     value={newAsset.assignee}
-                                    onChange={e => setNewAsset({ ...newAsset, assignee: e.target.value })}
+                                    onChange={e => handleFieldChange('assignee', e.target.value)}
                                     style={{ marginTop: '0.5rem' }}
                                 />
                             )}
@@ -2718,7 +2735,7 @@ export default function InventoryPage() {
                                 className="form-input"
                                 placeholder="PO-XXXX"
                                 value={newAsset.purchaseOrder}
-                                onChange={e => setNewAsset({ ...newAsset, purchaseOrder: e.target.value })}
+                                onChange={e => handleFieldChange('purchaseOrder', e.target.value)}
                             />
                         </div>
                         <div className="form-group">
@@ -2727,7 +2744,7 @@ export default function InventoryPage() {
                                 className="form-input"
                                 placeholder="Fabricante..."
                                 value={newAsset.oem || ''}
-                                onChange={e => setNewAsset({ ...newAsset, oem: e.target.value })}
+                                onChange={e => handleFieldChange('oem', e.target.value)}
                             />
                         </div>
                         <div className="form-group">
@@ -2736,7 +2753,7 @@ export default function InventoryPage() {
                                 className="form-input"
                                 placeholder="Case #..."
                                 value={newAsset.sfdcCase || ''}
-                                onChange={e => setNewAsset({ ...newAsset, sfdcCase: e.target.value })}
+                                onChange={e => handleFieldChange('sfdcCase', e.target.value)}
                             />
                         </div>
                         <div className="form-group">
@@ -2745,7 +2762,7 @@ export default function InventoryPage() {
                                 className="form-input"
                                 placeholder="358900..."
                                 value={newAsset.imei || ''}
-                                onChange={e => setNewAsset({ ...newAsset, imei: e.target.value })}
+                                onChange={e => handleFieldChange('imei', e.target.value)}
                             />
                         </div>
                         <div className="form-group">
@@ -2754,7 +2771,7 @@ export default function InventoryPage() {
                                 className="form-input"
                                 placeholder="358900..."
                                 value={newAsset.imei2 || ''}
-                                onChange={e => setNewAsset({ ...newAsset, imei2: e.target.value })}
+                                onChange={e => handleFieldChange('imei2', e.target.value)}
                             />
                         </div>
                     </div>
@@ -2765,7 +2782,7 @@ export default function InventoryPage() {
                                 className="form-input"
                                 placeholder="Ej: A2485"
                                 value={newAsset.modelNumber}
-                                onChange={e => setNewAsset({ ...newAsset, modelNumber: e.target.value })}
+                                onChange={e => handleFieldChange('modelNumber', e.target.value)}
                             />
                         </div>
                         <div className="form-group">
@@ -2774,7 +2791,7 @@ export default function InventoryPage() {
                                 className="form-input"
                                 placeholder="Ej: Z15S005DW"
                                 value={newAsset.partNumber}
-                                onChange={e => setNewAsset({ ...newAsset, partNumber: e.target.value })}
+                                onChange={e => handleFieldChange('partNumber', e.target.value)}
                             />
                         </div>
                     </div>
@@ -2785,7 +2802,7 @@ export default function InventoryPage() {
                             className="form-input"
                             placeholder="M2 / 8CPU / 8GPU / 24GB / 512GB"
                             value={newAsset.hardwareSpec}
-                            onChange={e => setNewAsset({ ...newAsset, hardwareSpec: e.target.value })}
+                            onChange={e => handleFieldChange('hardwareSpec', e.target.value)}
                         />
                     </div>
 
