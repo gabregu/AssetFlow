@@ -99,24 +99,18 @@ export default function BillingPage() {
             const isDateMatch = ticketDate.getMonth() === selectedMonth && ticketDate.getFullYear() === selectedYear;
             const isStatusMatch = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
 
-            let isCountryMatch = true;
-            if (countryFilter !== 'Todos') {
-                // Try to determine country from address
-                if (ticket.logistics?.address && ticket.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
-                    isCountryMatch = true;
-                } else {
-                    // Try SFDC match
-                    const sfdcMatch = ticket.subject.match(/SFDC-(\d+)/);
-                    if (sfdcMatch) {
-                        const caseNum = sfdcMatch[1];
-                        const sfdcCase = sfdcCases?.find(c => c.caseNumber === caseNum);
-                        if (sfdcCase && sfdcCase.country) {
-                            isCountryMatch = sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase());
-                        } else {
-                            isCountryMatch = false;
-                        }
-                    } else {
-                        isCountryMatch = false;
+            let isCountryMatch = false;
+            // Try to determine country from address
+            if (String(ticket.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase())) {
+                isCountryMatch = true;
+            } else {
+                // Try SFDC match
+                const sfdcMatch = String(ticket.subject || '').match(/SFDC-(\d+)/);
+                if (sfdcMatch) {
+                    const caseNum = sfdcMatch[1];
+                    const sfdcCase = sfdcCases?.find(c => c.caseNumber === caseNum);
+                    if (sfdcCase && sfdcCase.country) {
+                        isCountryMatch = sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase());
                     }
                 }
             }
@@ -160,10 +154,10 @@ export default function BillingPage() {
             );
 
             if (!hasRelatedTasks) {
-                const isDelivery = moveType.toLowerCase().includes('entrega') || moveType.toLowerCase().includes('alta');
-                const isRecovery = moveType.toLowerCase().includes('recupero') || moveType.toLowerCase().includes('retiro') || moveType.toLowerCase().includes('baja');
+                const isDelivery = String(moveType || '').toLowerCase().includes('entrega') || String(moveType || '').toLowerCase().includes('alta');
+                const isRecovery = String(moveType || '').toLowerCase().includes('recupero') || String(moveType || '').toLowerCase().includes('retiro') || String(moveType || '').toLowerCase().includes('baja');
 
-                if (method === 'Repartidor Propio' || method === 'Envío Interno' || method.includes('Propio')) {
+                if (String(method || '').includes('Repartidor Propio') || String(method || '').includes('Envío Interno') || String(method || '').includes('Propio')) {
                     const driver = ticket.logistics?.deliveryPerson || '';
                     if (driver) {
                         if (!driverPayments[driver]) driverPayments[driver] = { count: 0, total: 0, deliveries: 0, recoveries: 0 };
@@ -173,7 +167,7 @@ export default function BillingPage() {
                         if (isRecovery) driverPayments[driver].recoveries += 1;
                     }
                     totalDriverCost += logisticCost;
-                } else if (method === 'Andreani' || method === 'Correo Argentino' || method.includes('Correo')) {
+                } else if (String(method || '').includes('Andreani') || String(method || '').includes('Correo Argentino') || String(method || '').includes('Correo')) {
                     totalPostalCost += logisticCost;
                 }
             }

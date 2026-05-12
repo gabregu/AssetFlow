@@ -54,20 +54,20 @@ export default function LogisticsHubPage() {
                 const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
                 
                 // Filtro de País
-                const matchesCountry = countryFilter === 'Todos' || 
-                    (task.address || '').toLowerCase().includes(countryFilter.toLowerCase()) ||
-                    (parentTicket?.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase());
+                const matchesCountry = 
+                    String(task.address || '').toLowerCase().includes(countryFilter.toLowerCase()) ||
+                    String(parentTicket?.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase());
 
                 // Filtro de Texto
                 const displayAddress = task.address || parentTicket?.logistics?.address || '';
                 const displayRequester = parentTicket?.requester || '';
 
                 const matchesText = 
-                    (task.case_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    displayRequester.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    displayAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    (task.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    (task.delivery_person || '').toLowerCase().includes(searchTerm.toLowerCase());
+                    String(task.case_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    String(displayRequester || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    String(displayAddress || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    String(task.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    String(task.delivery_person || '').toLowerCase().includes(searchTerm.toLowerCase());
 
                 // Filtro de Estado
                 const matchesStatus = statusFilter === 'All' || task.status === statusFilter;

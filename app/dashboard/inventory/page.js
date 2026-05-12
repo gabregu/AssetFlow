@@ -1199,7 +1199,6 @@ export default function InventoryPage() {
     // Helper: Apply country filter to assets (same logic as filteredAssets)
     const applyCountryFilter = (assetList) => {
         if (!assetList) return [];
-        if (countryFilter === 'Todos') return assetList;
         return assetList.filter(a => {
             if (a.country) {
                 return a.country.toLowerCase().includes(countryFilter.toLowerCase());
@@ -1268,7 +1267,7 @@ export default function InventoryPage() {
         });
 
         // COD count specifically (Global)
-        statusCounts['COD'] = allAssetsForGlobalCounts.filter(a => a.cod && a.cod.trim() !== '').length;
+        statusCounts['COD'] = allAssetsForGlobalCounts.filter(a => String(a.cod || '').trim() !== '').length;
 
         return { countsByType: typeCounts, totalCountsByType: totalTypeCounts, countsByStatus: statusCounts };
     }, [allAssetsNonAssigned, selectedDeviceType, assets, countryFilter]);
@@ -1276,8 +1275,8 @@ export default function InventoryPage() {
     const availableBoxes = React.useMemo(() => {
         const boxes = new Set();
         applyCountryFilter(assets).forEach(a => {
-            if (a.boxNumber && a.boxNumber.trim() !== '') {
-                boxes.add(a.boxNumber.trim().toUpperCase());
+            if (String(a.boxNumber || '').trim() !== '') {
+                boxes.add(String(a.boxNumber || '').trim().toUpperCase());
             }
         });
         return Array.from(boxes).sort((a, b) => {
@@ -1304,10 +1303,10 @@ export default function InventoryPage() {
         if (!yubikeySearchFilter) return true;
         const searchLower = yubikeySearchFilter.toLowerCase();
         return (
-            y.serial?.toLowerCase().includes(searchLower) ||
-            y.type?.toLowerCase().includes(searchLower) ||
-            y.assignee?.toLowerCase().includes(searchLower) ||
-            y.status?.toLowerCase().includes(searchLower)
+            String(y.serial || '').toLowerCase().includes(searchLower) ||
+            String(y.type || '').toLowerCase().includes(searchLower) ||
+            String(y.assignee || '').toLowerCase().includes(searchLower) ||
+            String(y.status || '').toLowerCase().includes(searchLower)
         );
     });
 
@@ -1379,7 +1378,7 @@ export default function InventoryPage() {
             <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-                        Inventario por Cliente {countryFilter !== 'Todos' ? ` - ${countryFilter}` : ''}
+                        Inventario por Cliente: {countryFilter}
                     </h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Control de activos de hardware y stock de consumibles.</p>
                 </div>

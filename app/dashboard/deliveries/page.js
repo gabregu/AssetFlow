@@ -251,15 +251,8 @@ export default function DeliveriesPage() {
             const matchesStatus = statusFilter === 'All' || d.status === statusFilter;
 
             // Simple country filter based on address or hardcoded logic
-            let matchesCountry = true;
-            if (countryFilter !== 'Todos') {
-                // Heuristic: check if address contains country name or specific cities
-                const countryLower = countryFilter.toLowerCase();
-                matchesCountry = address.includes(countryLower);
-
-                // Specific logic for 'Argentina' as default if no country specified? 
-                // For now, let's keep it simple: strict text match in address.
-            }
+            const countryLower = String(countryFilter || '').toLowerCase();
+            const matchesCountry = countryLower === '' || address.includes(countryLower);
 
             const matchesDriver = driverFilter === 'All' || (d.deliveryPerson || 'Sin Asignar') === driverFilter;
 

@@ -57,21 +57,21 @@ export default function SFDCCasesPage() {
                 if (isServiceClosed) return false;
             }
 
-            const status = (c.status || '').toLowerCase();
+            const status = String(c.status || '').toLowerCase();
             const isActiveStatus = status.includes('new') || status.includes('progress') || status.includes('hold') || status.includes('waiting') || status.includes('escalated');
 
             // Si el caso en SFDC está en estado cerrado/finalizado, también lo ocultamos
             if (!isActiveStatus) return false;
 
-            const matchesText = c.subject.toLowerCase().includes(filter.toLowerCase()) ||
-                c.requestedFor.toLowerCase().includes(filter.toLowerCase()) ||
-                c.caseNumber.toLowerCase().includes(filter.toLowerCase());
+            const matchesText = String(c.subject || '').toLowerCase().includes(filter.toLowerCase()) ||
+                String(c.requestedFor || '').toLowerCase().includes(filter.toLowerCase()) ||
+                String(c.caseNumber || '').toLowerCase().includes(filter.toLowerCase());
 
-            const matchesCountry = countryFilter === 'Todos' || (c.country && c.country.toLowerCase() === countryFilter.toLowerCase());
+            const matchesCountry = (c.country && c.country.toLowerCase() === countryFilter.toLowerCase());
 
             // Helper New Hire
             const isNewHire = (c) => {
-                const subject = c.subject.toLowerCase();
+                const subject = String(c.subject || '').toLowerCase();
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 let futureStart = false;
@@ -87,9 +87,9 @@ export default function SFDCCasesPage() {
 
             let matchesType = true;
             if (filterType === 'DELIVERY') {
-                matchesType = !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding') && !isNewHire(c);
+                matchesType = !String(c.subject || '').toLowerCase().includes('collection') && !String(c.subject || '').toLowerCase().includes('offboarding') && !isNewHire(c);
             } else if (filterType === 'COLLECTION') {
-                matchesType = c.subject.toLowerCase().includes('collection') || c.subject.toLowerCase().includes('offboarding');
+                matchesType = String(c.subject || '').toLowerCase().includes('collection') || String(c.subject || '').toLowerCase().includes('offboarding');
             } else if (filterType === 'NEW_HIRE') {
                 matchesType = isNewHire(c);
             }
@@ -101,14 +101,14 @@ export default function SFDCCasesPage() {
     // Metrics for Buttons (Including NEW HIRE filter)
     const statsByType = useMemo(() => {
         const relevantCases = sfdcCases.filter(c =>
-            countryFilter === 'Todos' || (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()))
+            (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()))
         );
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         const isNewHire = (c) => {
-            const subject = c.subject.toLowerCase();
+            const subject = String(c.subject || '').toLowerCase();
             let futureStart = false;
             if (c.startDate) {
                 const start = new Date(c.startDate);
@@ -121,8 +121,8 @@ export default function SFDCCasesPage() {
         };
 
         return {
-            delivery: relevantCases.filter(c => !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding') && !isNewHire(c)).length,
-            collection: relevantCases.filter(c => c.subject.toLowerCase().includes('collection') || c.subject.toLowerCase().includes('offboarding')).length,
+            delivery: relevantCases.filter(c => !String(c.subject || '').toLowerCase().includes('collection') && !String(c.subject || '').toLowerCase().includes('offboarding') && !isNewHire(c)).length,
+            collection: relevantCases.filter(c => String(c.subject || '').toLowerCase().includes('collection') || String(c.subject || '').toLowerCase().includes('offboarding')).length,
             newHire: relevantCases.filter(c => isNewHire(c)).length
         };
     }, [sfdcCases, countryFilter]);

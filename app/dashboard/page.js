@@ -129,10 +129,9 @@ export default function Dashboard() {
     }, [tickets, countryFilter, sfdcCases]);
 
     const filteredAssets = React.useMemo(() => {
-        if (countryFilter === 'Todos') return assets;
         return assets.filter(a =>
             a.country ? a.country.toLowerCase().includes(countryFilter.toLowerCase())
-                : a.notes?.includes(countryFilter)
+                : String(a.notes || '').includes(countryFilter)
         );
     }, [assets, countryFilter]);
 

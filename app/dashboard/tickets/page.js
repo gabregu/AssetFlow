@@ -466,25 +466,21 @@ export default function TicketsPage() {
         const activeTickets = tickets.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado');
 
         const filteredByCountry = activeTickets.filter(t => {
-            if (countryFilter === 'Todos') return true;
-            // Reuse simplistic check or the complex one? Let's use simplified for perf, or copy complex if needed.
-            // Complex matchesCountry logic from above is better but harder to extract inside useMemo without refactor.
-            // Let's copy-paste the core logic for consistency.
             let matchesCountry = false;
-            if (t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
+            if (String(t.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
             else {
-                const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
+                const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
                 if (sfdcMatch) {
                     const caseNum = sfdcMatch[1];
                     const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
-                    if (sfdcCase && sfdcCase.country && sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
+                    if (sfdcCase && String(sfdcCase.country || '').toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
                 }
             }
             return matchesCountry;
         });
 
         const isNewHire = (t) => {
-            const isNewHireSubject = t.subject.toLowerCase().includes('new hire') || t.subject.toLowerCase().includes('nuevo ingreso');
+            const isNewHireSubject = String(t.subject || '').toLowerCase().includes('new hire') || String(t.subject || '').toLowerCase().includes('nuevo ingreso');
             let isFutureDate = false;
             if (t.logistics?.date) {
                 const today = new Date();
@@ -497,8 +493,8 @@ export default function TicketsPage() {
             return isNewHireSubject || isFutureDate;
         };
 
-        const deliveryCount = filteredByCountry.filter(t => !t.subject.toLowerCase().includes('collection') && !t.subject.toLowerCase().includes('offboarding') && !isNewHire(t)).length;
-        const collectionCount = filteredByCountry.filter(t => t.subject.toLowerCase().includes('collection') || t.subject.toLowerCase().includes('offboarding')).length;
+        const deliveryCount = filteredByCountry.filter(t => !String(t.subject || '').toLowerCase().includes('collection') && !String(t.subject || '').toLowerCase().includes('offboarding') && !isNewHire(t)).length;
+        const collectionCount = filteredByCountry.filter(t => String(t.subject || '').toLowerCase().includes('collection') || String(t.subject || '').toLowerCase().includes('offboarding')).length;
         const newHireCount = filteredByCountry.filter(t => isNewHire(t)).length;
 
         return { delivery: deliveryCount, collection: collectionCount, newHire: newHireCount };
@@ -509,18 +505,17 @@ export default function TicketsPage() {
     const stats = React.useMemo(() => {
         // Filter by country first
         const filteredByCountry = tickets.filter(t => {
-            if (countryFilter === 'Todos') return true;
             let matchesCountry = false;
             // 1. Try Address
-            if (t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
+            if (String(t.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase())) {
                 matchesCountry = true;
             } else {
                 // 2. Try SFDC Link
-                const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
+                const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
                 if (sfdcMatch) {
                     const caseNum = sfdcMatch[1];
                     const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
-                    if (sfdcCase && sfdcCase.country && sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase())) {
+                    if (sfdcCase && String(sfdcCase.country || '').toLowerCase().includes(countryFilter.toLowerCase())) {
                         matchesCountry = true;
                     }
                 }

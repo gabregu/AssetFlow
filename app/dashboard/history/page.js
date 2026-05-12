@@ -35,11 +35,11 @@ export default function HistoryPage() {
 
     const sortedAndFilteredTickets = useMemo(() => {
         let result = historicalTickets.filter(t => {
-            const matchesSearch = t.subject.toLowerCase().includes(filter.toLowerCase()) ||
-                t.requester.toLowerCase().includes(filter.toLowerCase()) ||
-                t.id.toLowerCase().includes(filter.toLowerCase());
+            const matchesSearch = String(t.subject || '').toLowerCase().includes(filter.toLowerCase()) ||
+                String(t.requester || '').toLowerCase().includes(filter.toLowerCase()) ||
+                String(t.id || '').toLowerCase().includes(filter.toLowerCase());
 
-            const matchesRequester = !columnFilters.requester || t.requester.toLowerCase().includes(columnFilters.requester.toLowerCase());
+            const matchesRequester = !columnFilters.requester || String(t.requester || '').toLowerCase().includes(columnFilters.requester.toLowerCase());
 
             let matchesMonth = true;
             if (selectedMonth !== 'All') {
@@ -49,23 +49,17 @@ export default function HistoryPage() {
                 matchesMonth = ticketMonth === selectedMonth;
             }
 
-            let matchesCountry = true;
-            if (countryFilter !== 'Todos') {
-                // Try to determine country
-                if (t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
-                    matchesCountry = true;
-                } else {
-                    const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
-                    if (sfdcMatch) {
-                        const caseNum = sfdcMatch[1];
-                        const sfdcCase = sfdcCases?.find(c => c.caseNumber === caseNum);
-                        if (sfdcCase && sfdcCase.country) {
-                            matchesCountry = sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase());
-                        } else {
-                            matchesCountry = false;
-                        }
-                    } else {
-                        matchesCountry = false;
+            let matchesCountry = false;
+            // Try to determine country
+            if (String(t.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase())) {
+                matchesCountry = true;
+            } else {
+                const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
+                if (sfdcMatch) {
+                    const caseNum = sfdcMatch[1];
+                    const sfdcCase = sfdcCases?.find(c => c.caseNumber === caseNum);
+                    if (sfdcCase && String(sfdcCase.country || '').toLowerCase().includes(countryFilter.toLowerCase())) {
+                        matchesCountry = true;
                     }
                 }
             }
