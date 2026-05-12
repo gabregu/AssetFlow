@@ -4,7 +4,7 @@ import { Globe, ChevronDown, Building2 } from 'lucide-react';
 
 export const CountryFilter = () => {
     const { countryFilter, setCountryFilter, entities = [] } = useStore();
-    const countries = ['Todos', ...entities.map(e => e.name)];
+    const countries = entities.map(e => e.name);
 
     return (
         <div style={{ padding: '0 0.5rem', marginBottom: '1.5rem' }}>
@@ -46,7 +46,7 @@ export const CountryFilter = () => {
                 >
                     {countries.map(country => (
                         <option key={country} value={country}>
-                            {country === 'Todos' ? '🌍 Todos los Clientes' : country}
+                            {country}
                         </option>
                     ))}
                 </select>

@@ -26,7 +26,7 @@ import { useStore } from '../../../lib/store';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
-import { CountryFilter } from '../../components/layout/CountryFilter';
+
 
 export default function WarehousePage() {
     const { 
@@ -338,7 +338,7 @@ export default function WarehousePage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
                     <div>
                         <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem' }}>Mapeo de Depósito</h1>
-                        <p style={{ color: 'var(--text-secondary)' }}>Control visual y físico de activos de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
+                        <p style={{ color: 'var(--text-secondary)' }}>Control visual y físico de activos de cliente {countryFilter}.</p>
                     </div>
                 </div>
                 

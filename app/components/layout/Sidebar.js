@@ -1,7 +1,7 @@
 "use client";
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Ticket, Package, Truck, Settings, LogOut, FileText, X, DollarSign, History, Activity, TrendingUp, RefreshCcw, Map } from 'lucide-react';
 import { useStore } from '../../../lib/store';
 
@@ -11,6 +11,7 @@ import { CountryFilter } from './CountryFilter';
 
 export function Sidebar({ isOpen, onClose }) {
     const pathname = usePathname();
+    const router = useRouter();
     const { currentUser, logout, onlineUsers, refreshData } = useStore();
     const [isRefreshing, setIsRefreshing] = React.useState(false);
 
@@ -85,25 +86,34 @@ export function Sidebar({ isOpen, onClose }) {
     return (
         <aside className={`sidebar-container ${isOpen ? 'open' : ''}`} style={{
             width: '260px',
-            height: '100dvh', // Use dvh for better mobile support
-            maxHeight: '100vh', // Fallback
+            height: '100dvh',
+            maxHeight: '100vh',
             backgroundColor: 'var(--surface)',
             borderRight: '1px solid var(--border)',
             display: 'flex',
             flexDirection: 'column',
             position: 'sticky',
             top: 0,
-            zIndex: 1000 // Ensure it stays on top
+            zIndex: 1000
         }}>
             <div style={{ padding: '2rem', borderBottom: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Logo size="small" />
-                    <button className="show-mobile" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                        <X size={24} />
+                    <button onClick={onClose} style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <X size={20} />
                     </button>
                 </div>
+                
                 {currentUser && (
-                    <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                    <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1rem' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', margin: 0, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser.name}</p>
                             <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{currentUser.role}</p>
@@ -113,7 +123,10 @@ export function Sidebar({ isOpen, onClose }) {
                         </div>
                     </div>
                 )}
-                <CountryFilter />
+
+                <div style={{ marginTop: '0.5rem' }}>
+                    <CountryFilter />
+                </div>
             </div>
 
             <nav style={{ 

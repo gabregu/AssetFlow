@@ -5,8 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
 import { Search, Eye, History, Filter, ArrowUpRight } from 'lucide-react';
-import { CountryFilter } from '../../components/layout/CountryFilter';
-import Link from 'next/link';
+import { getStatusVariant } from '../tickets/constants';
 import { useRouter } from 'next/navigation';
 
 export default function HistoryPage() {
@@ -45,7 +44,7 @@ export default function HistoryPage() {
             let matchesMonth = true;
             if (selectedMonth !== 'All') {
                 const rawDate = t.deliveryCompletedDate || t.closedDate || t.date;
-                const d = new Date((rawDate && !rawDate.includes('T') ? rawDate + 'T00:00:00' : rawDate));
+                const d = new Date((rawDate && typeof rawDate === 'string' && !rawDate.includes('T') ? rawDate + 'T00:00:00' : rawDate));
                 const ticketMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
                 matchesMonth = ticketMonth === selectedMonth;
             }
@@ -106,7 +105,7 @@ export default function HistoryPage() {
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Histórico de Servicios</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Repositorio de todos los casos resueltos y cerrados de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>Repositorio de todos los casos resueltos y cerrados de cliente {countryFilter}.</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }} className="hide-mobile">
                     <div style={{ padding: '0.75rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: '50%', color: '#22c55e' }}>

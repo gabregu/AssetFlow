@@ -17,7 +17,7 @@ import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
-import { CountryFilter } from '../../components/layout/CountryFilter';
+
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
 import { Camera } from 'lucide-react';
 
@@ -1541,8 +1541,7 @@ export default function InventoryPage() {
                             <Button 
                                 size="sm" 
                                 icon={Plus} 
-                                disabled={countryFilter === 'Todos'}
-                                title={countryFilter === 'Todos' ? "Selecciona una región específica para añadir items" : "Añadir Security Key"}
+                                title="Añadir Security Key"
                                 onClick={() => setIsAddYubikeyModalOpen(true)}
                             >
                                 Añadir Security Key
@@ -1989,8 +1988,7 @@ export default function InventoryPage() {
                         {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
                             <Button
                                 icon={Plus}
-                                disabled={countryFilter === 'Todos'}
-                                title={countryFilter === 'Todos' ? "Selecciona una región específica para añadir activos" : "Añadir nuevo equipo"}
+                                title="Añadir nuevo equipo"
                                 onClick={() => {
                                     setEditingAsset(null);
                                     setNewAsset({
@@ -2132,9 +2130,7 @@ export default function InventoryPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <div style={{ width: '4px', height: '24px', background: 'var(--primary-color)', borderRadius: '4px' }}></div>
                                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
-                                    {(searchFilter !== '' || statusFilter !== null || selectedDeviceType !== null || codFilter || countryFilter !== 'Todos') 
-                                        ? (countryFilter === 'Todos' ? 'Equipos Seleccionados' : `Inventario: ${countryFilter}`) 
-                                        : 'Inventario Global de Activos'}
+                                    Inventario: {countryFilter}
                                 </h3>
                                 <Badge variant="info" style={{ fontSize: '0.85rem', padding: '0.2rem 0.5rem' }}>{filteredAssets.length}</Badge>
                             </div>
@@ -2397,8 +2393,7 @@ export default function InventoryPage() {
                             <Button 
                                 size="sm" 
                                 icon={Plus} 
-                                disabled={countryFilter === 'Todos'}
-                                title={countryFilter === 'Todos' ? "Selecciona una región específica para añadir artículos" : "Añadir nuevo artículo"}
+                                title="Añadir nuevo artículo"
                                 onClick={() => setIsAddAccessoryModalOpen(true)}
                             >
                                 Añadir Artículo

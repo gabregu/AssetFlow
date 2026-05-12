@@ -23,7 +23,7 @@ import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { useStore } from '../../../lib/store';
-import { CountryFilter } from '../../components/layout/CountryFilter';
+
 import QRCode from 'qrcode';
 
 export default function LogisticsHubPage() {
@@ -282,7 +282,7 @@ export default function LogisticsHubPage() {
                         <Activity className="text-primary-500" />
                         Tráfico de Logística (Hub Global)
                     </h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Gestión centralizada de todas las entregas y retiros de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>Gestión centralizada de todas las entregas y retiros de cliente {countryFilter}.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }} className="flex-mobile-column">
                     <div style={{ position: 'relative' }}>

@@ -7,7 +7,7 @@ import { Modal } from '../../components/ui/Modal';
 import { useStore } from '../../../lib/store';
 import { Filter, Search, ArrowRight, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 import { useRef, useMemo } from 'react';
-import { CountryFilter } from '../../components/layout/CountryFilter';
+
 
 import { useRouter } from 'next/navigation';
 
@@ -829,7 +829,7 @@ export default function SFDCCasesPage() {
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Casos Salesforce (SFDC)</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Importar y gestionar casos Salesforce de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>Importar y gestionar casos Salesforce de cliente {countryFilter}.</p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch', marginTop: '1rem' }} className="show-mobile">
                     {/* Mobile optimized buttons if needed, or just let regular flex handle it */}

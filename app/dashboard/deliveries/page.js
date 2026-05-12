@@ -8,7 +8,6 @@ import { Modal } from '../../components/ui/Modal';
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
 import { useStore } from '../../../lib/store';
 import { Plus, Search, Truck, MapPin, Calendar, CheckCircle, Clock, Loader2, Trash2, ChevronDown, ChevronUp, Sun, Moon, Archive, QrCode, Printer } from 'lucide-react';
-import { CountryFilter } from '../../components/layout/CountryFilter';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 
@@ -155,7 +154,7 @@ export default function DeliveriesPage() {
             const parentTicket = tickets.find(t => t.id === task.ticket_id);
 
             items.push({
-                id: task.case_number || `TASK-${task.id?.substring(0, 4)}`,
+                id: task.case_number || `TASK-${task.id?.substring(0, 8) || task.id}`,
                 taskId: task.id,
                 parentTicketId: task.ticket_id,
                 recipient: parentTicket?.requester || 'Destinatario Desconocido',
@@ -699,7 +698,7 @@ export default function DeliveriesPage() {
                                                 <div style="margin-top: 4px; color: #475569;">${d.address}</div>
                                             </td>
                                             <td>
-                                                <div style="font-weight: 700;">${d.date.split('[')[1]?.replace(']', '') || 'AM'}</div>
+                                                <div style="font-weight: 700;">${(d.date || '').split('[')[1]?.replace(']', '') || 'AM'}</div>
                                                 <div style="margin-top: 4px;"><span class="badge">${d.status}</span></div>
                                             </td>
                                             <td class="obs-col">
@@ -734,7 +733,7 @@ export default function DeliveriesPage() {
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Envíos</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Logística avanzada de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>Logística avanzada de cliente {countryFilter}.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }} className="flex-mobile-column">
                     {currentUser?.role === 'Administrador' && selectedIds.length > 0 && (
@@ -1035,8 +1034,9 @@ export default function DeliveriesPage() {
                                                             <div style={{ backgroundColor: dateColor, width: '8px', height: '8px', borderRadius: '50%' }}></div>
                                                             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                                                 {(() => {
-                                                                    if (!delivery.date || delivery.date === 'A Confirmar') return 'Por Confirmar';
-                                                                    const cleanDate = delivery.date.split(' ')[0]; // Extraer 'YYYY-MM-DD'
+                                                                    if (!delivery.date || delivery.date === 'A Confirmar' || delivery.date === 'No definida') return 'Por Confirmar';
+                                                                    const cleanDate = (delivery.date || '').split(' ')[0]; // Extraer 'YYYY-MM-DD'
+                                                                    if (!cleanDate) return 'Sin Fecha';
                                                                     return new Date(cleanDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                                                                 })()}
                                                             </span>

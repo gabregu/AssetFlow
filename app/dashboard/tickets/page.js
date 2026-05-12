@@ -8,7 +8,6 @@ import { ServiceMap } from '../../components/ui/ServiceMap';
 import { Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CountryFilter } from '../../components/layout/CountryFilter';
 import { getStatusVariant } from './constants';
 import { Modal } from '../../components/ui/Modal';
 
@@ -422,11 +421,10 @@ export default function TicketsPage() {
                 if (t.logistics?.date) {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    const ticketDate = new Date(t.logistics.date);
-                    if (!isNaN(ticketDate.getTime())) {
-                        ticketDate.setHours(0, 0, 0, 0);
-                        if (ticketDate > today) isFutureDate = true;
-                    }
+                    const rawDate = t.deliveryCompletedDate || t.closedDate || t.date;
+                    const ticketDate = new Date((rawDate && typeof rawDate === 'string' && !rawDate.includes('T') ? rawDate + 'T00:00:00' : rawDate));
+                    ticketDate.setHours(0, 0, 0, 0);
+                    if (ticketDate > today) isFutureDate = true;
                 }
                 return isNewHireSubject || isFutureDate;
             };
@@ -491,11 +489,10 @@ export default function TicketsPage() {
             if (t.logistics?.date) {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                const ticketDate = new Date(t.logistics.date);
-                if (!isNaN(ticketDate.getTime())) {
-                    ticketDate.setHours(0, 0, 0, 0);
-                    if (ticketDate > today) isFutureDate = true;
-                }
+                const rawDate = t.deliveryCompletedDate || t.closedDate || t.date;
+                const ticketDate = new Date((rawDate && typeof rawDate === 'string' && !rawDate.includes('T') ? rawDate + 'T00:00:00' : rawDate));
+                ticketDate.setHours(0, 0, 0, 0);
+                if (ticketDate > today) isFutureDate = true;
             }
             return isNewHireSubject || isFutureDate;
         };
@@ -655,12 +652,12 @@ export default function TicketsPage() {
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Casos</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Gestiona y resuelve las incidencias reportadas de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>Gestiona y resuelve las incidencias reportadas de cliente {countryFilter}.</p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <Button icon={Plus} onClick={() => {
-                            setNewTicket({ ...newTicket, country: countryFilter !== 'Todos' ? countryFilter : '' });
+                            setNewTicket({ ...newTicket, country: countryFilter });
                             setIsModalOpen(true);
                         }} style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6', color: 'white' }}>
                             Nuevo Caso

@@ -193,7 +193,7 @@ export default function Dashboard() {
                 <div>
                     <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>Hola, {currentUser?.name || 'Usuario'}</h1>
                     <p style={{ color: 'var(--text-secondary)', margin: '0.25rem 0 0', fontSize: '0.9rem' }}>
-                        Bienvenido al panel central de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.
+                        Bienvenido al panel central de cliente {countryFilter}.
                     </p>
                 </div>
             </div>
