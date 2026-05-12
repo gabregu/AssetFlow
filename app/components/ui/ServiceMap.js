@@ -83,15 +83,7 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
     }, []);
 
     useEffect(() => {
-        // Debug logging
-        console.log('ServiceMap: Rendering', {
-            ticketsCount: tickets.length,
-            isLoaded,
-            hasApiKey: !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-        });
-
         if (loadError) {
-            console.error('ServiceMap: Load Error', loadError);
             setInitError(loadError.message);
         }
 
@@ -102,7 +94,7 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
             const geocoder = new window.google.maps.Geocoder();
             const newMarkers = [];
 
-            // 1. Add Drivers (Instant, no geocoding needed)
+            // 1. Add Drivers
             if (drivers && drivers.length > 0) {
                 drivers.forEach(d => {
                     if (d.location_latitude && d.location_longitude) {
@@ -114,12 +106,12 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                             type: 'driver',
                             details: d,
                             icon: {
-                                path: "M1 3h14v2H1zm16 8H1V5h12v2h4v4zM1 18h2.5c0 1.93 1.57 3.5 3.5 3.5S10.5 19.93 10.5 18h3c0 1.93 1.57 3.5 3.5 3.5s3.5-1.57 3.5-3.5H23v-6l-3-4h-5V5c0-1.1-.9-2-2-2H1c-1.1 0-2 .9-2 2v13h2zm6 0c0 .83-.67 1.5-1.5 1.5S4 18.83 4 18s.67-1.5 1.5-1.5 1.5.67 1.5 1.5zm11.5 1.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM17 9h4l1.3 2H17V9z", // Simple Truck Path
-                                fillColor: "#3E2723", // Dark Brown (single color)
+                                path: "M1 3h14v2H1zm16 8H1V5h12v2h4v4zM1 18h2.5c0 1.93 1.57 3.5 3.5 3.5S10.5 19.93 10.5 18h3c0 1.93 1.57 3.5 3.5 3.5s3.5-1.57 3.5-3.5H23v-6l-3-4h-5V5c0-1.1-.9-2-2-2H1c-1.1 0-2 .9-2 2v13h2zm6 0c0 .83-.67 1.5-1.5 1.5S4 18.83 4 18s.67-1.5 1.5-1.5 1.5.67 1.5 1.5zm11.5 1.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM17 9h4l1.3 2H17V9z",
+                                fillColor: "#3E2723",
                                 fillOpacity: 1,
-                                strokeColor: "#3E2723", // Same as fill
-                                strokeWeight: 1, // Slight stroke for weight
-                                scale: 1.6, // Larger size
+                                strokeColor: "#3E2723",
+                                strokeWeight: 1,
+                                scale: 1.6,
                                 anchor: new window.google.maps.Point(0, 20)
                             }
                         });
@@ -127,7 +119,7 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                 });
             }
 
-            // 2. Geocode Tickets (if any)
+            // 2. Geocode Tickets
             const validTickets = tickets.filter(t => t.logistics?.address && t.logistics.address.length > 5);
 
             for (const ticket of validTickets) {
@@ -139,13 +131,12 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                         });
                     });
 
-                    const status = ticket.deliveryStatus || 'Pendiente';
-                    let markerColor = "#3b82f6"; // Default Blue (Pendiente)
+                    const status = ticket.logistics?.status || ticket.deliveryStatus || ticket.status || 'Pendiente';
+                    let markerColor = "#3b82f6"; // Default Blue
 
-                    if (status === 'Para Coordinar') markerColor = "#f97316"; // Orange
-                    else if (status === 'En Transito') markerColor = "#06b6d4"; // Cyan
-                    else if (status === 'Entregado') markerColor = "#22c55e"; // Green
-                    else markerColor = "#3b82f6"; // Pendiente
+                    if (status === 'Para Coordinar') markerColor = "#f97316";
+                    else if (status === 'En Transito') markerColor = "#06b6d4";
+                    else if (status === 'Entregado') markerColor = "#22c55e";
 
                     newMarkers.push({
                         id: ticket.id,
@@ -188,7 +179,7 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
     }
 
     if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
-        return <div style={{ padding: '2rem', color: 'orange' }}>Falta API Key. Reinicia el servidor si acabas de agregarla.</div>;
+        return <div style={{ padding: '2rem', color: 'orange' }}>Falta API Key.</div>;
     }
 
     if (!isLoaded) {
@@ -258,24 +249,38 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                             ) : (
                                 <>
                                     <h4 style={{ margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold' }}>#{selectedMarker.details.id}</h4>
-                                    <div style={{
-                                        marginBottom: '6px',
-                                        padding: '2px 6px',
-                                        borderRadius: '4px',
-                                        background: selectedMarker.details.logistics?.deliveryPerson ? '#dcfce7' : '#fee2e2',
-                                        color: selectedMarker.details.logistics?.deliveryPerson ? '#166534' : '#991b1b',
-                                        fontSize: '10px',
-                                        fontWeight: '700',
-                                        display: 'inline-block'
-                                    }}>
-                                        {selectedMarker.details.logistics?.deliveryPerson ? `Estad: ASIGNADO` : 'Estado: PENDIENTE'}
-                                    </div>
+                                    {(() => {
+                                        const status = selectedMarker.details.logistics?.status || selectedMarker.details.status || 'Pendiente';
+                                        let bg = '#eff6ff';
+                                        let color = '#3b82f6';
+                                        let text = status.toUpperCase();
+
+                                        if (status === 'Para Coordinar') { bg = '#fff7ed'; color = '#f97316'; }
+                                        else if (status === 'En Transito') { bg = '#ecfeff'; color = '#06b6d4'; }
+                                        else if (status === 'Entregado') { bg = '#f0fdf4'; color = '#22c55e'; }
+
+                                        return (
+                                            <div style={{
+                                                marginBottom: '6px',
+                                                padding: '2px 8px',
+                                                borderRadius: '4px',
+                                                background: bg,
+                                                color: color,
+                                                fontSize: '10px',
+                                                fontWeight: '800',
+                                                display: 'inline-block',
+                                                border: `1px solid ${color}33`
+                                            }}>
+                                                ESTADO: {text}
+                                            </div>
+                                        );
+                                    })()}
                                     <p style={{ margin: '0 0 5px 0', fontSize: '12px' }}>{selectedMarker.details.subject}</p>
                                     <p style={{ margin: '0 0 5px 0', fontSize: '11px', color: '#666' }}>📍 {selectedMarker.details.logistics?.address}</p>
                                     {selectedMarker.details.logistics?.deliveryPerson && (
                                         <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 600 }}>👤 Conductor: {selectedMarker.details.logistics.deliveryPerson}</p>
                                     )}
-                                    <a href={`/dashboard/tickets/${selectedMarker.details.id}`} style={{ display: 'block', marginTop: '8px', fontSize: '12px', color: '#2563eb' }}>Ver Ticket</a>
+                                    <a href={`/dashboard/tickets/${selectedMarker.details.id.replace('task-', '')}`} style={{ display: 'block', marginTop: '8px', fontSize: '12px', color: '#2563eb' }}>Ver Ticket</a>
                                 </>
                             )}
                         </div>
@@ -288,7 +293,7 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                 gap: '1.5rem',
                 justifyContent: 'center',
                 padding: '12px',
-                marginTop: '-1px', // Collapse border
+                marginTop: '-1px',
                 backgroundColor: '#f8fafc',
                 borderTop: '1px solid #e2e8f0',
                 borderBottomLeftRadius: '8px',

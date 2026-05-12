@@ -2185,7 +2185,7 @@ export default function InventoryPage() {
                                                 <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
                                                 <th onClick={() => handleSort('country')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>PAÍS <SortIcon column="country" /></th>
                                                 <th onClick={() => handleSort('assignee')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>USUARIO <SortIcon column="assignee" /></th>
-                                                <th onClick={() => handleSort('sfdcCase')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>CASO SFDC <SortIcon column="sfdcCase" /></th>
+                                                <th onClick={() => handleSort('sfdcCase')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>CASO <SortIcon column="sfdcCase" /></th>
                                                 <th onClick={() => handleSort('cod')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>COD <SortIcon column="cod" /></th>
                                                 <th onClick={() => handleSort('boxNumber')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>CAJA <SortIcon column="boxNumber" /></th>
                                                 <th onClick={() => handleSort('locationId')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>UBICACIÓN <SortIcon column="locationId" /></th>
@@ -2731,7 +2731,7 @@ export default function InventoryPage() {
                             />
                         </div>
                         <div className="form-group">
-                            <label className="form-label">SFDC Case</label>
+                            <label className="form-label">CASO</label>
                             <input
                                 className="form-input"
                                 placeholder="Case #..."
