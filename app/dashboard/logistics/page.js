@@ -282,10 +282,7 @@ export default function LogisticsHubPage() {
                         <Activity className="text-primary-500" />
                         Tráfico de Logística (Hub Global)
                     </h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Gestión centralizada de todas las entregas y retiros del sistema.</p>
-                    <div style={{ marginTop: '1rem' }}>
-                        <CountryFilter />
-                    </div>
+                    <p style={{ color: 'var(--text-secondary)' }}>Gestión centralizada de todas las entregas y retiros de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }} className="flex-mobile-column">
                     <div style={{ position: 'relative' }}>

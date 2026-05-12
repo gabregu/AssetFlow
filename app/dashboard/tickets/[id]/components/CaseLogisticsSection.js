@@ -470,20 +470,20 @@ export default function CaseLogisticsSection({
                         </h5>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                             <div className="form-group">
-                                <label className="form-label" style={{ fontSize: '0.75rem', opacity: 0.8 }}>Recibido por</label>
+                                <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-color)' }}>Recibido por</label>
                                 <input
                                     className="form-input"
-                                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                                    style={{ padding: '0.6rem 0.875rem', fontSize: '1.1rem', fontWeight: 800, border: '2px solid var(--primary-color)', background: 'rgba(37, 99, 235, 0.02)' }}
                                     value={localValues.deliveryInfo?.receivedBy || ''}
                                     onChange={e => updateLogistics('deliveryInfo', { ...(localValues.deliveryInfo || {}), receivedBy: e.target.value })}
                                     placeholder="Nombre completo"
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label" style={{ fontSize: '0.75rem', opacity: 0.8 }}>DNI</label>
+                                <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-color)' }}>DNI</label>
                                 <input
                                     className="form-input"
-                                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                                    style={{ padding: '0.6rem 0.875rem', fontSize: '1.1rem', fontWeight: 800, border: '2px solid var(--primary-color)', background: 'rgba(37, 99, 235, 0.02)' }}
                                     value={localValues.deliveryInfo?.dni || ''}
                                     onChange={e => updateLogistics('deliveryInfo', { ...(localValues.deliveryInfo || {}), dni: e.target.value })}
                                     placeholder="DNI"

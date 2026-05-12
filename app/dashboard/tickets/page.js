@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useRef } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -102,6 +102,12 @@ export default function TicketsPage() {
                 };
 
                 const newCases = [];
+                
+                // --- NUEVO: Permitir Sobrescribir Región ---
+                let overrideRegion = false;
+                if (countryFilter !== 'Todos') {
+                    overrideRegion = confirm(`¿Deseas asignar todos los casos importados a la región "${countryFilter}"?\n\n(Aceptar = Usar "${countryFilter}" / Cancelar = Usar país del CSV)`);
+                }
                 for (let i = 0; i < rows.length; i++) {
                     const rowValues = rows[i];
                     if (!rowValues || rowValues.length === 0) continue;
@@ -137,7 +143,7 @@ export default function TicketsPage() {
                         requestedFor: getVal(rowValues, 'Requested For') || 'Desconocido',
                         priority: getVal(rowValues, 'Priority') || 'Medium',
                         status: getVal(rowValues, 'Status') || 'New',
-                        country: mailingCountry,
+                        country: overrideRegion ? countryFilter : mailingCountry,
                         mailingStreet: getVal(rowValues, 'Mailing Street') || '',
                         mobile: getVal(rowValues, 'Mobile') || '',
                         email: getVal(rowValues, 'Contact: Email') || '',
@@ -333,6 +339,7 @@ export default function TicketsPage() {
                 }
             };
             const createdTicket = await addTicket(ticketData);
+            console.log("Manual ticket created:", createdTicket);
             setIsModalOpen(false);
             setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
             if (createdTicket?.id) {
@@ -372,22 +379,32 @@ export default function TicketsPage() {
             // Filtrado por Pais (Link with SFDC Case)
             let matchesCountry = true;
             if (countryFilter !== 'Todos') {
-                let foundCountry = false;
+                let foundCountryMatch = false;
 
-                // 1. Try Address
-                if (t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
-                    matchesCountry = true;
-                    foundCountry = true;
+                // 0. Prioridad ABSOLUTA: Campo explícito 'country' (Isolation)
+                if (t.country) {
+                    if (t.country.toLowerCase() === countryFilter.toLowerCase()) {
+                        matchesCountry = true;
+                    } else {
+                        matchesCountry = false; // Si TIENE country y no coincide, NO lo mostramos aunque la direccion diga otra cosa
+                    }
+                    foundCountryMatch = true;
                 }
 
-                if (!foundCountry) {
-                    // 2. Try SFDC match
+                // 1. Fallback: Solo si NO tiene el campo explicito 'country', buscamos en la direccion
+                if (!foundCountryMatch && t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
+                    matchesCountry = true;
+                    foundCountryMatch = true;
+                }
+
+                if (!foundCountryMatch) {
+                    // 2. Fallback 2: Buscar en el caso SFDC
                     const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
                     if (sfdcMatch) {
                         const caseNum = sfdcMatch[1];
                         const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
                         if (sfdcCase && sfdcCase.country) {
-                            matchesCountry = sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase());
+                            matchesCountry = sfdcCase.country.toLowerCase() === countryFilter.toLowerCase();
                         } else {
                             matchesCountry = false;
                         }
@@ -638,14 +655,14 @@ export default function TicketsPage() {
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Casos</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Gestiona y resuelve las incidencias reportadas.</p>
-                    <div style={{ marginTop: '1rem' }}>
-                        <CountryFilter />
-                    </div>
+                    <p style={{ color: 'var(--text-secondary)' }}>Gestiona y resuelve las incidencias reportadas de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <Button icon={Plus} onClick={() => setIsModalOpen(true)} style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6', color: 'white' }}>
+                        <Button icon={Plus} onClick={() => {
+                            setNewTicket({ ...newTicket, country: countryFilter !== 'Todos' ? countryFilter : '' });
+                            setIsModalOpen(true);
+                        }} style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6', color: 'white' }}>
                             Nuevo Caso
                         </Button>
                         <input
@@ -1146,6 +1163,11 @@ export default function TicketsPage() {
                             placeholder="Ej: 03102345"
                             value={newTicket.caseNumber}
                             onChange={e => setNewTicket({ ...newTicket, caseNumber: e.target.value })}
+                            onPaste={e => {
+                                e.preventDefault();
+                                const text = e.clipboardData.getData('text').replace(/[\r\n\t]+/g, ' ').trim();
+                                setNewTicket({ ...newTicket, caseNumber: text });
+                            }}
                         />
                     </div>
                     <div className="form-group">
@@ -1155,6 +1177,11 @@ export default function TicketsPage() {
                             placeholder="Ej: Problema con monitor"
                             value={newTicket.subject}
                             onChange={e => setNewTicket({ ...newTicket, subject: e.target.value })}
+                            onPaste={e => {
+                                e.preventDefault();
+                                const text = e.clipboardData.getData('text').replace(/[\r\n\t]+/g, ' ').trim();
+                                setNewTicket({ ...newTicket, subject: text });
+                            }}
                         />
                     </div>
                     <div className="form-group">
@@ -1164,6 +1191,11 @@ export default function TicketsPage() {
                             placeholder="Nombre del empleado"
                             value={newTicket.requester}
                             onChange={e => setNewTicket({ ...newTicket, requester: e.target.value })}
+                            onPaste={e => {
+                                e.preventDefault();
+                                const text = e.clipboardData.getData('text').replace(/[\r\n\t]+/g, ' ').trim();
+                                setNewTicket({ ...newTicket, requester: text });
+                            }}
                         />
                     </div>
                     <div className="form-group">
@@ -1194,19 +1226,17 @@ export default function TicketsPage() {
                                     <option value="Recolección">Recolección</option>
                                 </select>
                             </div>
-                            <div className="form-group">
-                                <label className="form-label">País</label>
+                             <div className="form-group">
+                                <label className="form-label">Cliente</label>
                                 <select
                                     className="form-select"
                                     value={newTicket.country}
                                     onChange={e => setNewTicket({ ...newTicket, country: e.target.value })}
                                 >
-                                    <option value="">Seleccionar País...</option>
-                                    <option value="Argentina">Argentina</option>
-                                    <option value="Chile">Chile</option>
-                                    <option value="Colombia">Colombia</option>
-                                    <option value="Costa Rica">Costa Rica</option>
-                                    <option value="Uruguay">Uruguay</option>
+                                    <option value="">Seleccionar Cliente...</option>
+                                    {entities.map(e => (
+                                        <option key={e.id} value={e.name}>{e.name}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
@@ -1217,6 +1247,11 @@ export default function TicketsPage() {
                                 placeholder="Ej: Av. Siempreviva 742"
                                 value={newTicket.address}
                                 onChange={e => setNewTicket({ ...newTicket, address: e.target.value })}
+                                onPaste={e => {
+                                    e.preventDefault();
+                                    const text = e.clipboardData.getData('text').replace(/[\r\n\t]+/g, ' ').trim();
+                                    setNewTicket({ ...newTicket, address: text });
+                                }}
                             />
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>

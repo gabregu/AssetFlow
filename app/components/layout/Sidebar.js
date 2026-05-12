@@ -7,6 +7,7 @@ import { useStore } from '../../../lib/store';
 
 import { Logo } from '../ui/Logo';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { CountryFilter } from './CountryFilter';
 
 export function Sidebar({ isOpen, onClose }) {
     const pathname = usePathname();
@@ -102,7 +103,7 @@ export function Sidebar({ isOpen, onClose }) {
                     </button>
                 </div>
                 {currentUser && (
-                    <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <div style={{ marginTop: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1.5rem' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', margin: 0, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentUser.name}</p>
                             <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{currentUser.role}</p>
@@ -112,6 +113,7 @@ export function Sidebar({ isOpen, onClose }) {
                         </div>
                     </div>
                 )}
+                <CountryFilter />
             </div>
 
             <nav style={{ 

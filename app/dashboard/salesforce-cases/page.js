@@ -67,7 +67,7 @@ export default function SFDCCasesPage() {
                 c.requestedFor.toLowerCase().includes(filter.toLowerCase()) ||
                 c.caseNumber.toLowerCase().includes(filter.toLowerCase());
 
-            const matchesCountry = countryFilter === 'Todos' || (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()));
+            const matchesCountry = countryFilter === 'Todos' || (c.country && c.country.toLowerCase() === countryFilter.toLowerCase());
 
             // Helper New Hire
             const isNewHire = (c) => {
@@ -642,6 +642,12 @@ export default function SFDCCasesPage() {
             const rows = data.slice(1);
 
             const newCases = [];
+            
+            // --- NUEVO: Permitir Sobrescribir Región ---
+            let overrideRegion = false;
+            if (countryFilter !== 'Todos') {
+                overrideRegion = confirm(`¿Deseas asignar todos los casos importados a la región "${countryFilter}"?\n\n(Aceptar = Usar "${countryFilter}" / Cancelar = Usar país del CSV)`);
+            }
 
             // Helper to get value by header name
             const getVal = (rowValues, colName) => {
@@ -699,7 +705,7 @@ export default function SFDCCasesPage() {
                     caseOwner: getVal(rowValues, 'Case Owner Alias') || '',
                     age: ageDisplay, // Age calculada
                     description: getVal(rowValues, 'Description') || '',
-                    country: getVal(rowValues, 'Mailing Country') || ''
+                    country: overrideRegion ? countryFilter : (getVal(rowValues, 'Mailing Country') || '')
                 };
 
                 // --- VALIDACIÓN ESTRICTA DE PAÍS ---
@@ -823,10 +829,7 @@ export default function SFDCCasesPage() {
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Casos Salesforce (SFDC)</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Importar y gestionar casos provenientes de Salesforce.</p>
-                    <div style={{ marginTop: '1rem' }}>
-                        <CountryFilter />
-                    </div>
+                    <p style={{ color: 'var(--text-secondary)' }}>Importar y gestionar casos Salesforce de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'stretch', marginTop: '1rem' }} className="show-mobile">
                     {/* Mobile optimized buttons if needed, or just let regular flex handle it */}
@@ -1097,7 +1100,7 @@ export default function SFDCCasesPage() {
                                     />
                                 </th>
                                 <Th id="caseNumber" width="100px">Case #</Th>
-                                <th style={{ padding: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.8rem', width: '50px' }}>País</th>
+                                <th style={{ padding: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.8rem', width: '50px' }}>Cliente</th>
                                 <Th id="status">Status</Th>
                                 <Th id="age">Age</Th>
                                 <Th id="dateOpened">Opened</Th>
@@ -1360,13 +1363,13 @@ export default function SFDCCasesPage() {
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Región</label>
+                                <label className="form-label">Cliente</label>
                                 <select
                                     className="form-select"
                                     value={manualTicket.country}
                                     onChange={e => setManualTicket({ ...manualTicket, country: e.target.value })}
                                 >
-                                    <option value="">Seleccionar Región...</option>
+                                    <option value="">Seleccionar Cliente...</option>
                                     {entities.map(e => (
                                         <option key={e.id} value={e.name}>{e.name}</option>
                                     ))}

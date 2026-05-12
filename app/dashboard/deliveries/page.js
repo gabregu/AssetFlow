@@ -733,11 +733,8 @@ export default function DeliveriesPage() {
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Envíos (Actualizado)</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Logística avanzada con posicionamiento geográfico real.</p>
-                    <div style={{ marginTop: '1rem' }}>
-                        <CountryFilter />
-                    </div>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Envíos</h1>
+                    <p style={{ color: 'var(--text-secondary)' }}>Logística avanzada de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }} className="flex-mobile-column">
                     {currentUser?.role === 'Administrador' && selectedIds.length > 0 && (

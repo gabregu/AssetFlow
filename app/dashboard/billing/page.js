@@ -309,10 +309,7 @@ export default function BillingPage() {
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.875rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>Facturación ({currency})</h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Análisis financiero en {currency === 'USD' ? 'Dólares Estadounidenses' : 'Pesos Argentinos'}.</p>
-                    <div style={{ marginTop: '0.5rem' }}>
-                        <CountryFilter />
-                    </div>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Análisis financiero de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`} en {currency === 'USD' ? 'Dólares Estadounidenses' : 'Pesos Argentinos'}.</p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '1.5rem' }} className="flex-mobile-column">

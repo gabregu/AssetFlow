@@ -1319,7 +1319,7 @@ export default function InventoryPage() {
                     <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Serial / ID</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Usuario</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Estado</th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>País</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Región</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Agregado Por</th>
                     <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Fecha Alta</th>
                 </tr>
@@ -1379,12 +1379,9 @@ export default function InventoryPage() {
             <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
-                        Gestión de Inventario {countryFilter !== 'Todos' ? ` - ${countryFilter}` : ''}
+                        Inventario por Cliente {countryFilter !== 'Todos' ? ` - ${countryFilter}` : ''}
                     </h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Control de activos de hardware y stock de consumibles.</p>
-                    <div style={{ marginTop: '1rem' }}>
-                        <CountryFilter />
-                    </div>
                 </div>
 
                 <div className="flex-mobile-column" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
@@ -2538,7 +2535,7 @@ export default function InventoryPage() {
                                 <Search className="search-icon" size={20} />
                                 <input
                                     type="text"
-                                    placeholder="Buscar por Modelo, Serial o País..."
+                                    placeholder="Buscar por Modelo, Serial o Región..."
                                     className="search-input"
                                     value={yubikeySearchFilter}
                                     onChange={(e) => setYubikeySearchFilter(e.target.value)}
@@ -2555,7 +2552,7 @@ export default function InventoryPage() {
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>MODELO</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>SERIAL</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
-                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>PAÍS</th>
+                                            <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>CLIENTE</th>
                                             <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
                                         </tr>
                                     </thead>
@@ -2739,7 +2736,7 @@ export default function InventoryPage() {
                             )}
                         </div>
                         <div className="form-group">
-                            <label className="form-label">País</label>
+                            <label className="form-label">Cliente</label>
                             <select
                                 className="form-select"
                                 value={newAsset.country || 'Argentina'}
@@ -3174,7 +3171,7 @@ export default function InventoryPage() {
                         </select>
                     </div>
                     <div className="form-group">
-                        <label className="form-label">País</label>
+                        <label className="form-label">Región</label>
                         <select
                             className="form-select"
                             value={selectedYubikey ? selectedYubikey.country : newYubikey.country}
@@ -3259,6 +3256,7 @@ export default function InventoryPage() {
                                     <option value="Laptop">Laptop</option>
                                     <option value="Smartphone">Smartphone</option>
                                     <option value="Tablet">Tablet</option>
+                                    <option value="Otros">Otros</option>
                                     <option value="Security keys">Security Key</option>
                                 </select>
                             )}

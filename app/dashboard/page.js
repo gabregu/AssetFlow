@@ -192,9 +192,10 @@ export default function Dashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem', gap: '1rem', flexWrap: 'wrap' }}>
                 <div>
                     <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>Hola, {currentUser?.name || 'Usuario'}</h1>
-                    <p style={{ color: 'var(--text-secondary)', margin: '0.25rem 0 0', fontSize: '0.9rem' }}>Aquí tienes un resumen de la actividad de hoy en AssetFlow.</p>
+                    <p style={{ color: 'var(--text-secondary)', margin: '0.25rem 0 0', fontSize: '0.9rem' }}>
+                        Bienvenido al panel central de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.
+                    </p>
                 </div>
-                <CountryFilter />
             </div>
 
             {/* ── Quick Actions ─────────────────────────────────────────── */}

@@ -106,10 +106,7 @@ export default function HistoryPage() {
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Histórico de Servicios</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Repositorio de todos los casos resueltos y cerrados.</p>
-                    <div style={{ marginTop: '1rem' }}>
-                        <CountryFilter />
-                    </div>
+                    <p style={{ color: 'var(--text-secondary)' }}>Repositorio de todos los casos resueltos y cerrados de {countryFilter === 'Todos' ? 'todos los clientes' : `cliente ${countryFilter}`}.</p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem' }} className="hide-mobile">
                     <div style={{ padding: '0.75rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', borderRadius: '50%', color: '#22c55e' }}>

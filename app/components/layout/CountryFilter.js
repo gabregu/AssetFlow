@@ -1,51 +1,52 @@
 import React from 'react';
 import { useStore } from '../../../lib/store';
-import { Globe, ChevronDown } from 'lucide-react';
+import { Globe, ChevronDown, Building2 } from 'lucide-react';
 
 export const CountryFilter = () => {
     const { countryFilter, setCountryFilter, entities = [] } = useStore();
     const countries = ['Todos', ...entities.map(e => e.name)];
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ padding: '0 0.5rem', marginBottom: '1.5rem' }}>
             <div style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '0.5rem', 
-                background: 'var(--surface)', 
-                border: '1px solid var(--border)', 
-                padding: '0.4rem 0.75rem', 
-                borderRadius: '10px',
-                color: 'var(--text-secondary)'
+                marginBottom: '0.6rem',
+                color: 'var(--text-secondary)',
+                padding: '0 0.5rem'
             }}>
-                <Globe size={16} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Regiones:</span>
+                <Building2 size={14} />
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cliente / Entorno</span>
             </div>
             
-            <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div style={{ position: 'relative' }}>
                 <select
                     value={countryFilter}
                     onChange={(e) => setCountryFilter(e.target.value)}
                     style={{
-                        padding: '0.5rem 2.5rem 0.5rem 1rem',
-                        borderRadius: '10px',
+                        width: '100%',
+                        padding: '0.75rem 2.5rem 0.75rem 1rem',
+                        borderRadius: '12px',
                         border: '1px solid var(--border)',
-                        background: 'var(--surface)',
+                        background: 'var(--background)',
                         color: 'var(--text-main)',
                         fontSize: '0.9rem',
                         fontWeight: 600,
                         cursor: 'pointer',
                         appearance: 'none',
                         WebkitAppearance: 'none',
-                        minWidth: '160px',
                         transition: 'all 0.2s ease',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                        outline: 'none'
                     }}
                     className="hover-card"
+                    onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
+                    onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
                 >
                     {countries.map(country => (
                         <option key={country} value={country}>
-                            {country === 'Todos' ? '🌍 Todas las Regiones' : country}
+                            {country === 'Todos' ? '🌍 Todos los Clientes' : country}
                         </option>
                     ))}
                 </select>
@@ -57,7 +58,7 @@ export const CountryFilter = () => {
                     pointerEvents: 'none',
                     color: 'var(--text-secondary)'
                 }}>
-                    <ChevronDown size={14} />
+                    <ChevronDown size={16} />
                 </div>
             </div>
         </div>
