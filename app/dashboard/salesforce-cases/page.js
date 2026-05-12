@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 
 export default function SFDCCasesPage() {
     const router = useRouter();
-    const { sfdcCases, tickets, logisticsTasks, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter } = useStore();
+    const { sfdcCases, tickets, logisticsTasks, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter, entities = [] } = useStore();
     const [filter, setFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCase, setSelectedCase] = useState(null);
@@ -372,8 +372,10 @@ export default function SFDCCasesPage() {
             alert("Por favor completa el Asunto y Solicitante");
             return;
         }
-
+        
+        if (isSubmittingManual) return;
         setIsSubmittingManual(true);
+        console.log("handleCreateManual: Starting submission...");
         try {
             const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t\0]+/g, ' ') : str;
             
@@ -1358,18 +1360,16 @@ export default function SFDCCasesPage() {
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">País</label>
+                                <label className="form-label">Región</label>
                                 <select
                                     className="form-select"
                                     value={manualTicket.country}
                                     onChange={e => setManualTicket({ ...manualTicket, country: e.target.value })}
                                 >
-                                    <option value="">Seleccionar País...</option>
-                                    <option value="Argentina">Argentina</option>
-                                    <option value="Chile">Chile</option>
-                                    <option value="Colombia">Colombia</option>
-                                    <option value="Costa Rica">Costa Rica</option>
-                                    <option value="Uruguay">Uruguay</option>
+                                    <option value="">Seleccionar Región...</option>
+                                    {entities.map(e => (
+                                        <option key={e.id} value={e.name}>{e.name}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
