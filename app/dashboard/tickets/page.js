@@ -365,58 +365,56 @@ export default function TicketsPage() {
     const sortedAndFilteredTickets = React.useMemo(() => {
         // ... (existing filter/sort logic remains same)
         let result = tickets.filter(t => {
-            const matchesSearch = t.subject.toLowerCase().includes(filter.toLowerCase()) ||
-                t.requester.toLowerCase().includes(filter.toLowerCase()) ||
-                t.id.toLowerCase().includes(filter.toLowerCase());
+            const matchesSearch = String(t.subject || '').toLowerCase().includes(filter.toLowerCase()) ||
+                String(t.requester || '').toLowerCase().includes(filter.toLowerCase()) ||
+                String(t.id || '').toLowerCase().includes(filter.toLowerCase());
 
             const matchesStatus = columnFilters.status === 'All' || t.status === columnFilters.status;
-            const matchesRequester = !columnFilters.requester || t.requester.toLowerCase().includes(columnFilters.requester.toLowerCase());
+            const matchesRequester = !columnFilters.requester || String(t.requester || '').toLowerCase().includes(columnFilters.requester.toLowerCase());
 
             // Excluir Resueltos de esta vista
             const isNotResolved = t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado';
 
             // Filtrado por Pais (Link with SFDC Case)
-            let matchesCountry = true;
-            if (countryFilter !== 'Todos') {
-                let foundCountryMatch = false;
+            let matchesCountry = false;
+            let foundCountryMatch = false;
 
-                // 0. Prioridad ABSOLUTA: Campo explícito 'country' (Isolation)
-                if (t.country) {
-                    if (t.country.toLowerCase() === countryFilter.toLowerCase()) {
-                        matchesCountry = true;
-                    } else {
-                        matchesCountry = false; // Si TIENE country y no coincide, NO lo mostramos aunque la direccion diga otra cosa
-                    }
-                    foundCountryMatch = true;
-                }
-
-                // 1. Fallback: Solo si NO tiene el campo explicito 'country', buscamos en la direccion
-                if (!foundCountryMatch && t.logistics?.address && t.logistics.address.toLowerCase().includes(countryFilter.toLowerCase())) {
+            // 0. Prioridad ABSOLUTA: Campo explícito 'country' (Isolation)
+            if (t.country) {
+                if (String(t.country).toLowerCase() === countryFilter.toLowerCase()) {
                     matchesCountry = true;
-                    foundCountryMatch = true;
+                } else {
+                    matchesCountry = false; // Si TIENE country y no coincide, NO lo mostramos aunque la direccion diga otra cosa
                 }
+                foundCountryMatch = true;
+            }
 
-                if (!foundCountryMatch) {
-                    // 2. Fallback 2: Buscar en el caso SFDC
-                    const sfdcMatch = t.subject.match(/SFDC-(\d+)/);
-                    if (sfdcMatch) {
-                        const caseNum = sfdcMatch[1];
-                        const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
-                        if (sfdcCase && sfdcCase.country) {
-                            matchesCountry = sfdcCase.country.toLowerCase() === countryFilter.toLowerCase();
-                        } else {
-                            matchesCountry = false;
-                        }
+            // 1. Fallback: Solo si NO tiene el campo explicito 'country', buscamos en la direccion
+            if (!foundCountryMatch && String(t.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase())) {
+                matchesCountry = true;
+                foundCountryMatch = true;
+            }
+
+            if (!foundCountryMatch) {
+                // 2. Fallback 2: Buscar en el caso SFDC
+                const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
+                if (sfdcMatch) {
+                    const caseNum = sfdcMatch[1];
+                    const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
+                    if (sfdcCase && sfdcCase.country) {
+                        matchesCountry = String(sfdcCase.country).toLowerCase() === countryFilter.toLowerCase();
                     } else {
                         matchesCountry = false;
                     }
+                } else {
+                    matchesCountry = false;
                 }
             }
 
             // Filtrado por Tipo (Delivery, Collection, New Hire)
             // Helper New Hire
             const isNewHire = (t) => {
-                const isNewHireSubject = t.subject.toLowerCase().includes('new hire') || t.subject.toLowerCase().includes('nuevo ingreso');
+                const isNewHireSubject = String(t.subject || '').toLowerCase().includes('new hire') || String(t.subject || '').toLowerCase().includes('nuevo ingreso');
                 let isFutureDate = false;
                 if (t.logistics?.date) {
                     const today = new Date();
@@ -431,9 +429,9 @@ export default function TicketsPage() {
 
             let matchesType = true;
             if (filterType === 'DELIVERY') {
-                matchesType = !t.subject.toLowerCase().includes('collection') && !t.subject.toLowerCase().includes('offboarding') && !isNewHire(t);
+                matchesType = !String(t.subject || '').toLowerCase().includes('collection') && !String(t.subject || '').toLowerCase().includes('offboarding') && !isNewHire(t);
             } else if (filterType === 'COLLECTION') {
-                matchesType = t.subject.toLowerCase().includes('collection') || t.subject.toLowerCase().includes('offboarding');
+                matchesType = String(t.subject || '').toLowerCase().includes('collection') || String(t.subject || '').toLowerCase().includes('offboarding');
             } else if (filterType === 'NEW_HIRE') {
                 matchesType = isNewHire(t);
             }
