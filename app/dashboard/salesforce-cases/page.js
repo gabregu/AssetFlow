@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 
 export default function SFDCCasesPage() {
     const router = useRouter();
-    const { sfdcCases, tickets, logisticsTasks, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter, entities = [] } = useStore();
+    const { sfdcCases, tickets, logisticsTasks, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter, getClientName, entities = [] } = useStore();
     const [filter, setFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCase, setSelectedCase] = useState(null);
