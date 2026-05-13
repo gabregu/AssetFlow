@@ -18,7 +18,8 @@ import {
     XCircle,
     Scan,
     Printer,
-    ExternalLink
+    ExternalLink,
+    Edit3
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
@@ -35,6 +36,7 @@ export default function WarehousePage() {
         mapAssetToLocation, 
         addWarehouseLocation,
         deleteWarehouseLocation,
+        renameWarehouseGroup,
         currentUser,
         countryFilter 
     } = useStore();
@@ -428,8 +430,24 @@ export default function WarehousePage() {
                             {Object.entries(groupedLocations).map(([aisle, locations]) => (
                                 <div key={aisle} style={{ flex: '1', minWidth: '200px' }}>
                                     <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>Grupo {aisle}</span>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--primary-color)', background: 'rgba(37, 99, 235, 0.05)', padding: '2px 8px', borderRadius: '12px', fontWeight: 900 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span>Grupo {aisle}</span>
+                                            {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="xs" 
+                                                    icon={Edit3} 
+                                                    onClick={() => {
+                                                        const newName = prompt(`Ingrese el nuevo nombre para el grupo "${aisle}":`, aisle);
+                                                        if (newName && newName !== aisle) {
+                                                            renameWarehouseGroup(aisle, newName.toUpperCase());
+                                                        }
+                                                    }}
+                                                    style={{ padding: '2px', height: '20px', width: '20px', opacity: 0.5 }}
+                                                />
+                                            )}
+                                        </div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--primary-color)', background: 'rgba(37, 99, 235, 0.05)', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>
                                             {assets.filter(a => locations.some(loc => loc.id === a.locationId)).length} Equipos
                                         </span>
                                     </h3>
