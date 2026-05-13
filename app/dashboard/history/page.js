@@ -5,7 +5,6 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
 import { Search, Eye, History, Filter, ArrowUpRight } from 'lucide-react';
-import { getStatusVariant } from '../tickets/constants';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 

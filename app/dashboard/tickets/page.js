@@ -536,18 +536,23 @@ export default function TicketsPage() {
                                      (task.case_number || "").toLowerCase().includes(searchVal);
                 
                 let matchesCountry = true;
+                let forceSycomp = false;
+                
                 if (countryFilter !== "Todos") {
-                   const expectedClient = getClientName(countryFilter);
-            const matchesCountry = expectedClient === 'Todos' || (c.country && c.country.toLowerCase() === countryFilter.toLowerCase());
-            
-            // Si el cliente es Sycomp-SRV, forzamos mostrar los casos que sabemos que le pertenecen
-            let forceSycomp = false;
-            if (expectedClient === 'Sycomp-SRV' && (String(c.subject || '').includes('1053') || String(c.subject || '').includes('1055') || String(c.subject || '').includes('1056'))) {
-                forceSycomp = true;
-            }
-                    if (!matchesCountry) {
-                        const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
-                        if (parentTicket?.logistics?.address?.toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
+                    const expectedClient = getClientName(countryFilter);
+                    // Chequeo por país de la tarea
+                    matchesCountry = (task.country && task.country.toLowerCase() === countryFilter.toLowerCase());
+                    
+                    const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
+
+                    // Caso especial Sycomp-SRV
+                    if (expectedClient === 'Sycomp-SRV' && parentTicket && (String(parentTicket.subject || '').includes('1053') || String(parentTicket.subject || '').includes('1055') || String(parentTicket.subject || '').includes('1056'))) {
+                        forceSycomp = true;
+                    }
+
+                    // Si no coincide el país, vemos si el ticket padre es del cliente
+                    if (!matchesCountry && parentTicket?.client === expectedClient) {
+                        matchesCountry = true;
                     }
                 }
 
