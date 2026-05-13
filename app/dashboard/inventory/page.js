@@ -550,7 +550,7 @@ export default function InventoryPage() {
                                 </div>
                                 <div class="top-right">
                                     <div class="loc-region">${asset.country || 'ARGENTINA'}</div>
-                                    <div class="footer-id">CÓDIGO ACTIVO</div>
+                                    <div class="footer-id">${asset.locationId || '-'}</div>
                                     <div class="footer-val">AST-${asset.id?.toString().slice(-4) || 'XXXX'}</div>
                                 </div>
                             </div>
