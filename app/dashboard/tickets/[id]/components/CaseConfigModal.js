@@ -70,6 +70,7 @@ export default function CaseConfigModal({
                 phone: ticket.logistics?.phone || '',
                 email: ticket.logistics?.email || '',
                 address: currentTask.address || ticket.logistics?.address || '',
+                deliveryPerson: currentTask.deliveryPerson || currentTask.delivery_person || '',
                 type: currentTask.method === 'Recupero' ? 'Recupero' : 'Entrega',
                 deliveryInfo: currentTask.deliveryInfo || null
             },
