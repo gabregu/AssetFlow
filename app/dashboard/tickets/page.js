@@ -12,7 +12,7 @@ import { getStatusVariant } from './constants';
 import { Modal } from '../../components/ui/Modal';
 
 export default function TicketsPage() {
-    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks } = useStore();
+    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks, entities } = useStore();
     const fileInputRef = useRef(null);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const router = useRouter();
