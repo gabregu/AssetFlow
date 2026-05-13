@@ -236,7 +236,7 @@ export default function BillingPage() {
             currency: currencyKey,
             selectedExchangeRate: exchangeRate  // Cotización histórica del mes seleccionado
         };
-    }, [tickets, selectedMonth, selectedYear, rates, globalAssets, expenses, sfdcCases, countryFilter]);
+    }, [tickets, selectedMonth, selectedYear, rates, globalAssets, expenses, countryFilter]);
 
     const handleSaveRates = (e) => {
         e.preventDefault();
