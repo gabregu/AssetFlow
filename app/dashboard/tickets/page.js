@@ -400,7 +400,7 @@ export default function TicketsPage() {
                 const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
                 if (sfdcMatch) {
                     const caseNum = sfdcMatch[1];
-                    const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
+                    const sfdcCase = sfdcCases.find(c => c?.caseNumber === caseNum);
                     if (sfdcCase && sfdcCase.country) {
                         matchesCountry = String(sfdcCase.country).toLowerCase() === countryFilter.toLowerCase();
                     } else {
@@ -470,7 +470,7 @@ export default function TicketsPage() {
                 const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
                 if (sfdcMatch) {
                     const caseNum = sfdcMatch[1];
-                    const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
+                    const sfdcCase = sfdcCases.find(c => c?.caseNumber === caseNum);
                     if (sfdcCase && String(sfdcCase.country || '').toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
                 }
             }
@@ -512,7 +512,7 @@ export default function TicketsPage() {
                 const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
                 if (sfdcMatch) {
                     const caseNum = sfdcMatch[1];
-                    const sfdcCase = sfdcCases.find(c => c.caseNumber === caseNum);
+                    const sfdcCase = sfdcCases.find(c => c?.caseNumber === caseNum);
                     if (sfdcCase && String(sfdcCase.country || '').toLowerCase().includes(countryFilter.toLowerCase())) {
                         matchesCountry = true;
                     }
@@ -1042,8 +1042,8 @@ export default function TicketsPage() {
                                     )}
                                     <td style={{ padding: '1rem', fontWeight: 500 }}>{ticket.id}</td>
                                     <td style={{ padding: '1rem' }}>
-                                        <div style={{ fontWeight: 500 }}>{ticket.subject}</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Prioridad: {ticket.priority}</div>
+                                        <div style={{ fontWeight: 500 }}>{String(ticket.subject || 'Sin Asunto')}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Prioridad: {String(ticket.priority || 'Normal')}</div>
                                         {ticket.logistics?.address && (
                                             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
                                                 <Map size={12} /> {ticket.logistics.address}
@@ -1053,12 +1053,12 @@ export default function TicketsPage() {
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
-                                                {ticket.requester.charAt(0)}
+                                                {String(ticket.requester || '?').charAt(0)}
                                             </div>
-                                            {ticket.requester}
+                                            {ticket.requester || 'Sin Solicitante'}
                                         </div>
                                     </td>
-                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{ticket.date}</td>
+                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{String(ticket.date || '')}</td>
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                                             {(() => {
