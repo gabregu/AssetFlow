@@ -23,6 +23,7 @@ export default function DeliveriesPage() {
         users,
         currentUser,
         countryFilter,
+        getClientName,
         logisticsTasks,
         updateLogisticsTask
     } = useStore();
@@ -170,7 +171,8 @@ export default function DeliveriesPage() {
                 source: 'Ticket',
                 isSubCase: true,
                 assets: task.assets || [],
-                visitOrder: task.deliveryOrder || 0
+                visitOrder: task.deliveryOrder || 0,
+                client: parentTicket?.client
             });
         });
 
@@ -198,7 +200,8 @@ export default function DeliveriesPage() {
                     date: `${t.logistics.date} [${t.logistics.time_slot || 'AM'}]`,
                     source: 'Ticket',
                     isSubCase: false,
-                    visitOrder: t.logistics?.deliveryOrder || 0
+                    visitOrder: t.logistics?.deliveryOrder || 0,
+                    client: t.client
                 });
             }
         });
@@ -250,9 +253,9 @@ export default function DeliveriesPage() {
                 address.includes(searchTerm);
             const matchesStatus = statusFilter === 'All' || d.status === statusFilter;
 
-            // Simple country filter based on address or hardcoded logic
-            const countryLower = String(countryFilter || '').toLowerCase();
-            const matchesCountry = countryLower === '' || address.includes(countryLower);
+            // Filtrado por Cliente (campo explícito)
+            const expectedClient = getClientName(countryFilter);
+            const matchesCountry = d.client === expectedClient;
 
             const matchesDriver = driverFilter === 'All' || (d.deliveryPerson || 'Sin Asignar') === driverFilter;
 

@@ -11,7 +11,7 @@ import Link from 'next/link';
 
 export default function HistoryPage() {
     const router = useRouter();
-    const { tickets, currentUser, countryFilter, sfdcCases } = useStore();
+    const { tickets, currentUser, countryFilter, getClientName } = useStore();
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ requester: '' });
@@ -50,20 +50,9 @@ export default function HistoryPage() {
                 matchesMonth = ticketMonth === selectedMonth;
             }
 
-            let matchesCountry = false;
-            // Try to determine country
-            if (String(t.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase())) {
-                matchesCountry = true;
-            } else {
-                const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
-                if (sfdcMatch) {
-                    const caseNum = sfdcMatch[1];
-                    const sfdcCase = sfdcCases?.find(c => c?.caseNumber === caseNum);
-                    if (sfdcCase && String(sfdcCase.country || '').toLowerCase().includes(countryFilter.toLowerCase())) {
-                        matchesCountry = true;
-                    }
-                }
-            }
+            // Filtrado por Cliente (campo explícito)
+            const expectedClient = getClientName(countryFilter);
+            const matchesCountry = t.client === expectedClient;
 
             return matchesSearch && matchesRequester && matchesMonth && matchesCountry;
         });

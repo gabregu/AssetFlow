@@ -107,7 +107,7 @@ const USER_COLORS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#22
 
 export default function Dashboard() {
     const router = useRouter();
-    const { tickets, assets, currentUser, users, countryFilter, sfdcCases } = useStore();
+    const { tickets, assets, currentUser, users, countryFilter, getClientName } = useStore();
 
     useEffect(() => {
         if (currentUser?.role === 'Conductor') router.push('/dashboard/my-tickets');
@@ -115,18 +115,9 @@ export default function Dashboard() {
 
     // ── Filtered data ──────────────────────────────────────────────────────
     const filteredTickets = React.useMemo(() => {
-        if (countryFilter === 'Todos') return tickets;
-        return tickets.filter(t => {
-            if (t.logistics?.address && String(t.logistics.address).toLowerCase().includes(String(countryFilter).toLowerCase())) return true;
-            const subject = String(t.subject || '');
-            const m = subject.match(/SFDC-(\d+)/);
-            if (m) {
-                const sc = sfdcCases?.find(c => String(c.caseNumber) === m[1]);
-                if (sc?.country && String(sc.country).toLowerCase().includes(String(countryFilter).toLowerCase())) return true;
-            }
-            return false;
-        });
-    }, [tickets, countryFilter, sfdcCases]);
+        const expectedClient = getClientName(countryFilter);
+        return tickets.filter(t => t.client === expectedClient);
+    }, [tickets, countryFilter]);
 
     const filteredAssets = React.useMemo(() => {
         return assets.filter(a =>

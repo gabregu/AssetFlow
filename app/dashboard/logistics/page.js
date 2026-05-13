@@ -27,7 +27,7 @@ import { useStore } from '../../../lib/store';
 import QRCode from 'qrcode';
 
 export default function LogisticsHubPage() {
-    const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter, currentUser } = useStore();
+    const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter, getClientName, currentUser } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [driverFilter, setDriverFilter] = useState('All');
@@ -53,10 +53,9 @@ export default function LogisticsHubPage() {
 
                 const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
                 
-                // Filtro de País
-                const matchesCountry = 
-                    String(task.address || '').toLowerCase().includes(countryFilter.toLowerCase()) ||
-                    String(parentTicket?.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase());
+                // Filtro de Cliente (via ticket padre)
+                const expectedClient = getClientName(countryFilter);
+                const matchesCountry = parentTicket?.client === expectedClient;
 
                 // Filtro de Texto
                 const displayAddress = task.address || parentTicket?.logistics?.address || '';

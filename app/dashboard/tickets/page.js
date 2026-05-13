@@ -12,7 +12,7 @@ import { getStatusVariant } from './constants';
 import { Modal } from '../../components/ui/Modal';
 
 export default function TicketsPage() {
-    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks, entities } = useStore();
+    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks, entities, getClientName } = useStore();
     const fileInputRef = useRef(null);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const router = useRouter();
@@ -375,41 +375,9 @@ export default function TicketsPage() {
             // Excluir Resueltos de esta vista
             const isNotResolved = t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado';
 
-            // Filtrado por Pais (Link with SFDC Case)
-            let matchesCountry = false;
-            let foundCountryMatch = false;
-
-            // 0. Prioridad ABSOLUTA: Campo explícito 'country' (Isolation)
-            if (t.country) {
-                if (String(t.country).toLowerCase() === countryFilter.toLowerCase()) {
-                    matchesCountry = true;
-                } else {
-                    matchesCountry = false; // Si TIENE country y no coincide, NO lo mostramos aunque la direccion diga otra cosa
-                }
-                foundCountryMatch = true;
-            }
-
-            // 1. Fallback: Solo si NO tiene el campo explicito 'country', buscamos en la direccion
-            if (!foundCountryMatch && String(t.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase())) {
-                matchesCountry = true;
-                foundCountryMatch = true;
-            }
-
-            if (!foundCountryMatch) {
-                // 2. Fallback 2: Buscar en el caso SFDC
-                const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
-                if (sfdcMatch) {
-                    const caseNum = sfdcMatch[1];
-                    const sfdcCase = sfdcCases.find(c => c?.caseNumber === caseNum);
-                    if (sfdcCase && sfdcCase.country) {
-                        matchesCountry = String(sfdcCase.country).toLowerCase() === countryFilter.toLowerCase();
-                    } else {
-                        matchesCountry = false;
-                    }
-                } else {
-                    matchesCountry = false;
-                }
-            }
+            // Filtrado por Cliente (campo explícito)
+            const expectedClient = getClientName(countryFilter);
+            const matchesCountry = t.client === expectedClient;
 
             // Filtrado por Tipo (Delivery, Collection, New Hire)
             // Helper New Hire
@@ -463,19 +431,8 @@ export default function TicketsPage() {
         // But `tickets` here includes all statuses. We usually care about active tickets for these counts.
         const activeTickets = tickets.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado');
 
-        const filteredByCountry = activeTickets.filter(t => {
-            let matchesCountry = false;
-            if (String(t.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
-            else {
-                const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
-                if (sfdcMatch) {
-                    const caseNum = sfdcMatch[1];
-                    const sfdcCase = sfdcCases.find(c => c?.caseNumber === caseNum);
-                    if (sfdcCase && String(sfdcCase.country || '').toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
-                }
-            }
-            return matchesCountry;
-        });
+        const expectedClient = getClientName(countryFilter);
+        const filteredByCountry = activeTickets.filter(t => t.client === expectedClient);
 
         const isNewHire = (t) => {
             const isNewHireSubject = String(t.subject || '').toLowerCase().includes('new hire') || String(t.subject || '').toLowerCase().includes('nuevo ingreso');
@@ -501,25 +458,9 @@ export default function TicketsPage() {
     // Estadísticas para las tarjetas KPI
     // Estadísticas para las tarjetas KPI
     const stats = React.useMemo(() => {
-        // Filter by country first
-        const filteredByCountry = tickets.filter(t => {
-            let matchesCountry = false;
-            // 1. Try Address
-            if (String(t.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase())) {
-                matchesCountry = true;
-            } else {
-                // 2. Try SFDC Link
-                const sfdcMatch = String(t.subject || '').match(/SFDC-(\d+)/);
-                if (sfdcMatch) {
-                    const caseNum = sfdcMatch[1];
-                    const sfdcCase = sfdcCases.find(c => c?.caseNumber === caseNum);
-                    if (sfdcCase && String(sfdcCase.country || '').toLowerCase().includes(countryFilter.toLowerCase())) {
-                        matchesCountry = true;
-                    }
-                }
-            }
-            return matchesCountry;
-        });
+        // Filter by client field
+        const expectedClient = getClientName(countryFilter);
+        const filteredByCountry = tickets.filter(t => t.client === expectedClient);
 
         return {
             total: filteredByCountry.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado').length,
@@ -527,7 +468,7 @@ export default function TicketsPage() {
             enProgreso: filteredByCountry.filter(t => t.status === 'En Progreso').length,
             pendientes: filteredByCountry.filter(t => t.status === 'Pendiente').length
         };
-    }, [tickets, countryFilter, sfdcCases]);
+    }, [tickets, countryFilter]);
 
         // Items para el mapa (respetando filtros activos de la tabla)
     const mapItems = React.useMemo(() => {

@@ -11,7 +11,7 @@ import { generateTicketPDF } from '../../../lib/pdf-generator';
 
 export default function ReportsPage() {
     const router = useRouter();
-    const { tickets, assets, currentUser } = useStore();
+    const { tickets, assets, currentUser, countryFilter, getClientName } = useStore();
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ requester: '' });
@@ -19,8 +19,12 @@ export default function ReportsPage() {
 
     // Filtrar casos que son de interés para "Informes" (por ahora igual que histórico)
     const informativeTickets = useMemo(() => {
-        return tickets.filter(t => t.status === 'Resuelto' || t.status === 'Cerrado' || t.status === 'Servicio Facturado' || t.status === 'Caso SFDC Cerrado');
-    }, [tickets]);
+        const expectedClient = getClientName(countryFilter);
+        return tickets.filter(t => 
+            (t.client === expectedClient) && 
+            (t.status === 'Resuelto' || t.status === 'Cerrado' || t.status === 'Servicio Facturado' || t.status === 'Caso SFDC Cerrado')
+        );
+    }, [tickets, countryFilter]);
 
     const handleSort = (key) => {
         let direction = 'asc';

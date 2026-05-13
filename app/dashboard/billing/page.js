@@ -27,7 +27,7 @@ import { calculateTicketFinancials, resolveTicketServiceDetails, calculateTaskFi
 import Link from 'next/link';
 
 export default function BillingPage() {
-    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, sfdcCases, countryFilter, logisticsTasks } = useStore();
+    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, countryFilter, getClientName, logisticsTasks } = useStore();
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [isRatesModalOpen, setIsRatesModalOpen] = useState(false);
@@ -99,21 +99,9 @@ export default function BillingPage() {
             const isDateMatch = ticketDate.getMonth() === selectedMonth && ticketDate.getFullYear() === selectedYear;
             const isStatusMatch = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
 
-            let isCountryMatch = false;
-            // Try to determine country from address
-            if (String(ticket.logistics?.address || '').toLowerCase().includes(countryFilter.toLowerCase())) {
-                isCountryMatch = true;
-            } else {
-                // Try SFDC match
-                const sfdcMatch = String(ticket.subject || '').match(/SFDC-(\d+)/);
-                if (sfdcMatch) {
-                    const caseNum = sfdcMatch[1];
-                    const sfdcCase = sfdcCases?.find(c => c.caseNumber === caseNum);
-                    if (sfdcCase && sfdcCase.country) {
-                        isCountryMatch = sfdcCase.country.toLowerCase().includes(countryFilter.toLowerCase());
-                    }
-                }
-            }
+            // Filtrado por Cliente (campo explícito)
+            const expectedClient = getClientName(countryFilter);
+            const isCountryMatch = ticket.client === expectedClient;
 
             return isDateMatch && isStatusMatch && isCountryMatch;
         });
