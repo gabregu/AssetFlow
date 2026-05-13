@@ -293,9 +293,9 @@ export default function DeliveriesPage() {
         return Array.from(drivers).sort();
     }, [combinedDeliveries]);
 
-    const inTransitCount = combinedDeliveries.filter(d => d.status === 'En Transito').length;
-    const deliveredCount = combinedDeliveries.filter(d => d.status === 'Entregado').length;
-    const pendingCount = combinedDeliveries.filter(d => d.status === 'Pendiente').length;
+    const inTransitCount = sortedAndFilteredDeliveries.filter(d => d.status === 'En Transito').length;
+    const deliveredCount = sortedAndFilteredDeliveries.filter(d => d.status === 'Entregado').length;
+    const pendingCount = sortedAndFilteredDeliveries.filter(d => d.status === 'Pendiente').length;
 
     const SortIcon = ({ column }) => {
         if (sortConfig.key !== column) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
@@ -357,8 +357,14 @@ export default function DeliveriesPage() {
             setIsGeocoding(false);
         };
 
-        geocodeAll();
     }, [googleLoaded, combinedDeliveries]);
+    
+    // Puntos que deben ser visibles según los filtros actuales
+    const visiblePoints = React.useMemo(() => {
+        return geocodedPoints.filter(p => 
+            sortedAndFilteredDeliveries.some(s => s.id === p.id)
+        );
+    }, [geocodedPoints, sortedAndFilteredDeliveries]);
 
     // Inicializar Google Map y Marcadores
     useEffect(() => {
@@ -376,7 +382,7 @@ export default function DeliveriesPage() {
         googleMap.current = new window.google.maps.Map(mapRef.current, mapOptions);
         const bounds = new window.google.maps.LatLngBounds();
 
-        geocodedPoints.forEach(d => {
+        visiblePoints.forEach(d => {
             let color = '#3b82f6'; // Default Blue (Pendiente)
             if (d.deliveryStatusOriginal === 'Entregado') color = '#22c55e';
             else if (d.deliveryStatusOriginal === 'En Transito') color = '#06b6d4';
@@ -435,11 +441,11 @@ export default function DeliveriesPage() {
             bounds.extend(d.coords);
         });
 
-        if (geocodedPoints.length > 0) {
+        if (visiblePoints.length > 0) {
             googleMap.current.fitBounds(bounds, { padding: 50 });
         }
 
-    }, [googleLoaded, geocodedPoints]);
+    }, [googleLoaded, visiblePoints]);
 
     const handleCreate = (e) => {
         e.preventDefault();
@@ -853,7 +859,7 @@ export default function DeliveriesPage() {
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Badge variant="outline" style={{ fontSize: '0.7rem' }}>Ubicaciones Reales: {geocodedPoints.length}</Badge>
+                        <Badge variant="outline" style={{ fontSize: '0.7rem' }}>Ubicaciones Reales: {visiblePoints.length}</Badge>
                         <Button
                             variant="ghost"
                             size="sm"
