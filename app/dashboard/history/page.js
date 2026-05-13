@@ -52,7 +52,7 @@ export default function HistoryPage() {
 
             // Filtrado por Cliente (campo explícito)
             const expectedClient = getClientName(countryFilter);
-            const matchesCountry = t.client === expectedClient;
+            const matchesCountry = expectedClient === 'Todos' || t.client === expectedClient;
 
             return matchesSearch && matchesRequester && matchesMonth && matchesCountry;
         });
@@ -67,7 +67,7 @@ export default function HistoryPage() {
             });
         }
         return result;
-    }, [historicalTickets, filter, sortConfig, columnFilters, countryFilter, sfdcCases]);
+    }, [historicalTickets, filter, sortConfig, columnFilters, countryFilter]);
 
     const getStatusVariant = (status) => {
         switch (status) {
@@ -252,7 +252,14 @@ export default function HistoryPage() {
                                                 <tr key={`${ticket.id}-${index}`} style={{ borderBottom: '1px solid var(--border)' }} className="table-row-hover">
                                                     <td style={{ padding: '1rem', fontWeight: 500, color: 'var(--text-secondary)' }}>{ticket.id}</td>
                                                     <td style={{ padding: '1rem' }}>
-                                                        <div style={{ fontWeight: 500 }}>{String(ticket.subject || 'Sin Asunto')}</div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <div style={{ fontWeight: 500 }}>{String(ticket.subject || 'Sin Asunto')}</div>
+                                                            {ticket.client && (
+                                                                <Badge variant="secondary" style={{ fontSize: '0.65rem', padding: '2px 6px', opacity: 0.8 }}>
+                                                                    {ticket.client}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
