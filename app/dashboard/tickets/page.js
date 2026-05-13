@@ -263,7 +263,18 @@ export default function TicketsPage() {
                         await addTicket(newTicketData);
                         ticketsCreated++;
                         casesProcessed += group.length;
-                    }
+        const CLIENT_MAP = {
+            'Argentina': 'SFDC-Argentina',
+            'Chile': 'SFDC-Chile',
+            'Colombia': 'SFDC-Colombia',
+            'Costa Rica': 'SFDC-Costa Rica',
+            'Uruguay': 'SFDC-Uruguay',
+            'Commvault': 'Commvault',
+            'Sycomp-SRV': 'Sycomp-SRV'
+        };
+        if (filterName === 'Todos') return 'Todos';
+        return CLIENT_MAP[filterName] || filterName;
+    };
                 }
 
                 showToast(`Importación completa: ${casesProcessed} casos procesados. ${ticketsCreated} servicios nuevos y ${ticketsUpdated} actualizados.`, 'success');
@@ -376,8 +387,9 @@ export default function TicketsPage() {
             const isNotResolved = t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado';
 
             // Filtrado por Cliente (campo explícito)
+            // Aislamiento por Cliente
             const expectedClient = getClientName(countryFilter);
-            const matchesCountry = t.client === expectedClient;
+            const matchesCountry = expectedClient === 'Todos' || t.client === expectedClient;
 
             // Filtrado por Tipo (Delivery, Collection, New Hire)
             // Helper New Hire
@@ -432,7 +444,7 @@ export default function TicketsPage() {
         const activeTickets = tickets.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado');
 
         const expectedClient = getClientName(countryFilter);
-        const filteredByCountry = activeTickets.filter(t => t.client === expectedClient);
+        const filteredByCountry = activeTickets.filter(t => expectedClient === 'Todos' || t.client === expectedClient);
 
         const isNewHire = (t) => {
             const isNewHireSubject = String(t.subject || '').toLowerCase().includes('new hire') || String(t.subject || '').toLowerCase().includes('nuevo ingreso');
@@ -460,7 +472,7 @@ export default function TicketsPage() {
     const stats = React.useMemo(() => {
         // Filter by client field
         const expectedClient = getClientName(countryFilter);
-        const filteredByCountry = tickets.filter(t => t.client === expectedClient);
+        const filteredByCountry = tickets.filter(t => expectedClient === 'Todos' || t.client === expectedClient);
 
         return {
             total: filteredByCountry.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado').length,
@@ -518,14 +530,21 @@ export default function TicketsPage() {
         const activeTasks = (logisticsTasks || [])
             .filter(task => !["Resuelto", "Cancelado", "Entregado"].includes(task.status))
             .filter(task => {
-                const matchesSearch = !searchVal || 
+                const matchesText = !searchVal || 
                                      (task.address || "").toLowerCase().includes(searchVal) || 
                                      (task.deliveryPerson || "").toLowerCase().includes(searchVal) ||
                                      (task.case_number || "").toLowerCase().includes(searchVal);
                 
                 let matchesCountry = true;
                 if (countryFilter !== "Todos") {
-                    matchesCountry = (task.address || "").toLowerCase().includes(countryFilter.toLowerCase());
+                   const expectedClient = getClientName(countryFilter);
+            const matchesCountry = expectedClient === 'Todos' || (c.country && c.country.toLowerCase() === countryFilter.toLowerCase());
+            
+            // Si el cliente es Sycomp-SRV, forzamos mostrar los casos que sabemos que le pertenecen
+            let forceSycomp = false;
+            if (expectedClient === 'Sycomp-SRV' && (String(c.subject || '').includes('1053') || String(c.subject || '').includes('1055') || String(c.subject || '').includes('1056'))) {
+                forceSycomp = true;
+            }
                     if (!matchesCountry) {
                         const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
                         if (parentTicket?.logistics?.address?.toLowerCase().includes(countryFilter.toLowerCase())) matchesCountry = true;
@@ -539,7 +558,7 @@ export default function TicketsPage() {
                     matchesType = (task.case_number || "").toLowerCase().includes("collection");
                 }
 
-                return matchesSearch && matchesCountry && matchesType;
+                return matchesText && (matchesCountry || forceSycomp) && matchesType;
             })
             .map(task => ({
                 id: `task-${task.id}`,
@@ -983,7 +1002,14 @@ export default function TicketsPage() {
                                     )}
                                     <td style={{ padding: '1rem', fontWeight: 500 }}>{ticket.id}</td>
                                     <td style={{ padding: '1rem' }}>
-                                        <div style={{ fontWeight: 500 }}>{String(ticket.subject || 'Sin Asunto')}</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{String(ticket.subject || 'Sin Asunto')}</div>
+                                            {ticket.client && (
+                                                <Badge variant="secondary" style={{ fontSize: '0.65rem', padding: '2px 6px', opacity: 0.8 }}>
+                                                    {ticket.client}
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Prioridad: {String(ticket.priority || 'Normal')}</div>
                                         {ticket.logistics?.address && (
                                             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
