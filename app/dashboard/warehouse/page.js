@@ -301,7 +301,7 @@ export default function WarehousePage() {
                     <body>
                         <div class="label-container">
                             <div class="loc-region">${location.country}</div>
-                            <div class="loc-aisle">${location.aisle}</div>
+                            <div class="loc-aisle">GRUPO ${location.aisle}</div>
                             <div class="loc-details">${location.section} - ${location.level}</div>
                             <img src="${barcodeDataUrl}" class="barcode-img" />
                             <div style="font-size: 4.5pt; opacity: 0.4; margin-top: 0.5mm; font-weight: 600; text-align: right;">AssetFlow WMS</div>
@@ -427,8 +427,11 @@ export default function WarehousePage() {
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3rem' }}>
                             {Object.entries(groupedLocations).map(([aisle, locations]) => (
                                 <div key={aisle} style={{ flex: '1', minWidth: '200px' }}>
-                                    <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                                        Pasillo {aisle}
+                                    <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>Grupo {aisle}</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--primary-color)', background: 'rgba(37, 99, 235, 0.05)', padding: '2px 8px', borderRadius: '12px', fontWeight: 900 }}>
+                                            {assets.filter(a => locations.some(loc => loc.id === a.locationId)).length} Equipos
+                                        </span>
                                     </h3>
                                     <div style={{ 
                                         display: 'grid', 
@@ -780,7 +783,7 @@ export default function WarehousePage() {
                 <form onSubmit={handleAddLocation}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                         <div className="form-group">
-                            <label className="form-label">Pasillo (Aisle)</label>
+                            <label className="form-label">Grupo (Categoría)</label>
                             <input 
                                 className="form-input" 
                                 placeholder="Ej: B" 
