@@ -509,14 +509,13 @@ export default function TicketsPage() {
             return { status: latest.status, deliveryPerson: latest.deliveryPerson };
         };
 
-        // 1. Tickets filtrados por la UI
+        // 1. Tickets filtrados por la UI (Los que ya pasaron por sortedAndFilteredTickets)
         const activeFilteredTickets = sortedAndFilteredTickets.filter(t => 
             ["En Progreso", "Abierto", "Pendiente"].includes(t.status)
         ).map(t => {
             const agg = getAggregatedInfo(t);
             return {
                 ...t,
-                // Inyectamos el estado y conductor real para que ServiceMap los use
                 logistics: {
                     ...t.logistics,
                     status: agg.status,
@@ -525,46 +524,10 @@ export default function TicketsPage() {
             };
         });
 
-        // 2. Tareas logísticas sueltas (filtradas manualmente para el mapa)
-        const searchVal = (filter || "").toLowerCase();
+        // 2. Tareas logísticas de los tickets filtrados (Para asegurar que se vean todos los puntos de esos tickets)
         const activeTasks = (logisticsTasks || [])
             .filter(task => !["Resuelto", "Cancelado", "Entregado"].includes(task.status))
-            .filter(task => {
-                const matchesText = !searchVal || 
-                                     (task.address || "").toLowerCase().includes(searchVal) || 
-                                     (task.deliveryPerson || "").toLowerCase().includes(searchVal) ||
-                                     (task.case_number || "").toLowerCase().includes(searchVal);
-                
-                let matchesCountry = true;
-                let forceSycomp = false;
-                
-                if (countryFilter !== "Todos") {
-                    const expectedClient = getClientName(countryFilter);
-                    // Chequeo por país de la tarea
-                    matchesCountry = (task.country && task.country.toLowerCase() === countryFilter.toLowerCase());
-                    
-                    const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
-
-                    // Caso especial Sycomp-SRV
-                    if (expectedClient === 'Sycomp-SRV' && parentTicket && (String(parentTicket.subject || '').includes('1053') || String(parentTicket.subject || '').includes('1055') || String(parentTicket.subject || '').includes('1056'))) {
-                        forceSycomp = true;
-                    }
-
-                    // Si no coincide el país, vemos si el ticket padre es del cliente
-                    if (!matchesCountry && parentTicket?.client === expectedClient) {
-                        matchesCountry = true;
-                    }
-                }
-
-                let matchesType = true;
-                if (filterType === "DELIVERY") {
-                    matchesType = ! (task.case_number || "").toLowerCase().includes("collection");
-                } else if (filterType === "COLLECTION") {
-                    matchesType = (task.case_number || "").toLowerCase().includes("collection");
-                }
-
-                return matchesText && (matchesCountry || forceSycomp) && matchesType;
-            })
+            .filter(task => sortedAndFilteredTickets.some(t => String(t.id) === String(task.ticket_id)))
             .map(task => ({
                 id: `task-${task.id}`,
                 subject: task.case_number ? `Caso ${task.case_number}` : `Tarea Logística ${task.id}`,
@@ -577,7 +540,7 @@ export default function TicketsPage() {
             }));
 
         return [...activeFilteredTickets, ...activeTasks];
-    }, [sortedAndFilteredTickets, filter, showMap, tickets, countryFilter, filterType, logisticsTasks]);
+    }, [sortedAndFilteredTickets, showMap, tickets, logisticsTasks]);
 
 
     const SortIcon = ({ column }) => {
@@ -734,7 +697,11 @@ export default function TicketsPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             {users && (
                                 <Badge variant="default" style={{ background: 'var(--primary-color)', color: 'white', fontSize: '0.7rem' }}>
-                                    {users.filter(u => u.tracking_enabled && u.location_latitude).length} Conductor(es) Activo(s)
+                                    {users.filter(u => 
+                                        u.tracking_enabled && 
+                                        u.location_latitude && 
+                                        mapItems.some(item => item.logistics?.deliveryPerson === u.name)
+                                    ).length} Conductor(es) Activo(s)
                                 </Badge>
                             )}
                             {showMap ? <ChevronUp size={20} style={{ color: 'var(--text-secondary)' }} /> : <ChevronDown size={20} style={{ color: 'var(--text-secondary)' }} />}
@@ -745,7 +712,11 @@ export default function TicketsPage() {
                         <div style={{ borderRadius: 0, overflow: 'hidden' }}>
                             <ServiceMap
                                 tickets={mapItems}
-                                drivers={users ? users.filter(u => u.tracking_enabled && u.location_latitude) : []}
+                                drivers={users ? users.filter(u => 
+                                    u.tracking_enabled && 
+                                    u.location_latitude &&
+                                    mapItems.some(item => item.logistics?.deliveryPerson === u.name)
+                                ) : []}
                             />
                         </div>
                     )}
