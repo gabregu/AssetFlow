@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
-import { ExternalLink, Check } from 'lucide-react';
+import { ExternalLink, Check, Plus } from 'lucide-react';
 
 const TrackingBadge = ({ method, trackingNumber, isSelected }) => {
     const [copied, setCopied] = React.useState(false);
@@ -161,6 +161,36 @@ export default function AssociatedCasesCard({
                 )}
 
                 {/* La sección de "Otros casos" ha sido eliminada ya que ahora se vinculan automáticamente en el hook useTicketDetail */}
+            </div>
+            
+            <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    icon={Plus} 
+                    onClick={async () => {
+                        const randomId = `CAS-MANUAL-${Math.floor(Math.random() * 900000) + 100000}`;
+                        const newTask = {
+                            ticketId: ticket.id,
+                            caseNumber: randomId,
+                            subject: "Caso Asociado Manual",
+                            status: "Para Coordinar",
+                            method: "Pendiente",
+                            assets: [],
+                            accessories: { backpack: false, screenFilter: false, filterSize: '14"' }
+                        };
+                        
+                        if (addLogisticsTask) {
+                            const result = await addLogisticsTask(newTask);
+                            if (result && !result.error) {
+                                const newIndex = (ticketTasks?.length || 0);
+                                setSelectedCaseIndex(newIndex);
+                            }
+                        }
+                    }}
+                >
+                    Creación de caso asociado
+                </Button>
             </div>
             
             <style jsx>{`

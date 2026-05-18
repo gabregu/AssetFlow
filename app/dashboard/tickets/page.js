@@ -263,18 +263,6 @@ export default function TicketsPage() {
                         await addTicket(newTicketData);
                         ticketsCreated++;
                         casesProcessed += group.length;
-        const CLIENT_MAP = {
-            'Argentina': 'SFDC-Argentina',
-            'Chile': 'SFDC-Chile',
-            'Colombia': 'SFDC-Colombia',
-            'Costa Rica': 'SFDC-Costa Rica',
-            'Uruguay': 'SFDC-Uruguay',
-            'Commvault': 'Commvault',
-            'Sycomp-SRV': 'Sycomp-SRV'
-        };
-        if (filterName === 'Todos') return 'Todos';
-        return CLIENT_MAP[filterName] || filterName;
-    };
                 }
 
                 showToast(`Importación completa: ${casesProcessed} casos procesados. ${ticketsCreated} servicios nuevos y ${ticketsUpdated} actualizados.`, 'success');

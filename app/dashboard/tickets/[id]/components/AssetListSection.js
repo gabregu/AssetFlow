@@ -137,6 +137,20 @@ export default function AssetListSection({
                                             <option value="Security Key">Security Key</option>
                                         </select>
                                     </div>
+                                    <div style={{ marginTop: '4px' }}>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="N° Caso Relacionado (Opcional)"
+                                            style={{ fontSize: '0.75rem', padding: '2px 6px', height: '26px', width: '100%', maxWidth: '200px' }}
+                                            value={item.related_case || ''}
+                                            onChange={async (e) => {
+                                                const newAssets = [...caseAssets];
+                                                newAssets[idxx] = { ...newAssets[idxx], related_case: e.target.value };
+                                                await onUpdateTask({ assets: newAssets });
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                                 <Button 
                                     variant="ghost" 

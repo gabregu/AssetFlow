@@ -283,7 +283,7 @@ export default function SFDCCasesPage() {
                     phone: finalTicket.logistics?.phone || '',
                     email: finalTicket.logistics?.email || '',
                     method: '',
-                    status: 'Pendiente'
+                    status: 'Para Coordinar'
                 }
             }];
 

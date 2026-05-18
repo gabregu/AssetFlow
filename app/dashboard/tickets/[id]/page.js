@@ -129,6 +129,7 @@ export default function TicketDetailPage() {
                                 resetSearchStates={resetSearchStates}
                                 ticketTasks={ticketTasks}
                                 unifiedTasks={unifiedTasks}
+                                addLogisticsTask={addLogisticsTask}
                             />
 
                             <InstructionsCard
