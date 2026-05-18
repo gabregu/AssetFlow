@@ -28,6 +28,7 @@ export default function CaseConfigModal({
     setAssetSearchResult,
     assets,
     yubikeys,
+    consumables,
     users,
     setIsInventorySelectorOpen,
     isAssetModalOpen,
@@ -43,6 +44,7 @@ export default function CaseConfigModal({
     deleteLogisticsTask,
     handleUpdateTask, // <--- Use from props now
     updateAsset,
+    updateConsumableStock,
     currentUser
 }) {
     const currentTasks = (ticketTasks && ticketTasks.length > 0) ? ticketTasks : (editedData?.associatedCases || []);
@@ -118,6 +120,9 @@ export default function CaseConfigModal({
                         <AccessoriesSection
                             task={currentTask}
                             onUpdateTask={handleUpdateTask}
+                            consumables={consumables}
+                            ticketCountry={currentTask.country || ticket?.logistics?.country || 'Argentina'}
+                            updateConsumableStock={updateConsumableStock}
                         />
 
                         <YubiKeySection

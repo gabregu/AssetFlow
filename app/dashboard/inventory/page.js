@@ -60,7 +60,7 @@ export default function InventoryPage() {
     });
 
     const [newAccessory, setNewAccessory] = useState({
-        name: '', category: 'Accesorio', stock: 0
+        name: '', category: 'Accesorio', stock: 0, barcode: ''
     });
 
     const [newAsset, setNewAsset] = useState({
@@ -703,7 +703,10 @@ export default function InventoryPage() {
     const handleAdjustStock = async (e) => {
         e.preventDefault();
         if (selectedConsumable) {
-            await updateConsumableStock(selectedConsumable.id, stockChange);
+            await updateConsumable(selectedConsumable.id, {
+                stock: stockChange,
+                barcode: selectedConsumable.barcode || ''
+            });
             setIsConsumableModalOpen(false);
             setStockChange(0);
             setSelectedConsumable(null);
@@ -753,7 +756,7 @@ export default function InventoryPage() {
             await addConsumable(accessoryWithCountry);
             
             alert("Paso 3: Artículo insertado. Cerrando modal...");
-            setNewAccessory({ name: '', category: 'Accesorio', stock: 0 });
+            setNewAccessory({ name: '', category: 'Accesorio', stock: 0, barcode: '' });
             setIsAddAccessoryModalOpen(false);
             
         } catch (error) {
@@ -3036,10 +3039,10 @@ export default function InventoryPage() {
             </Modal>
 
             {/* Modal para Editar Stock */}
-            <Modal isOpen={isConsumableModalOpen} onClose={() => setIsConsumableModalOpen(false)} title="Editar Stock de Consumible">
+            <Modal isOpen={isConsumableModalOpen} onClose={() => setIsConsumableModalOpen(false)} title="Editar Accesorio / Consumible">
                 <form onSubmit={handleAdjustStock}>
                     <p style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-                        Editando stock para: <strong>{selectedConsumable?.name}</strong>
+                        Editando artículo: <strong>{selectedConsumable?.name}</strong>
                         <br />
                         <span style={{ color: 'var(--text-secondary)' }}>Stock Actual: {selectedConsumable?.stock} unidades</span>
                     </p>
@@ -3057,6 +3060,17 @@ export default function InventoryPage() {
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
                             Ingrese la cantidad total real que hay en inventario.
                         </p>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">Código de Barras</label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Escanee o ingrese el código de barras"
+                            value={selectedConsumable?.barcode || ''}
+                            onChange={(e) => setSelectedConsumable({ ...selectedConsumable, barcode: e.target.value })}
+                        />
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
@@ -3101,6 +3115,16 @@ export default function InventoryPage() {
                             className="form-input"
                             value={newAccessory.stock}
                             onChange={e => setNewAccessory({ ...newAccessory, stock: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Código de Barras</label>
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Escanee o ingrese el código de barras"
+                            value={newAccessory.barcode || ''}
+                            onChange={e => setNewAccessory({ ...newAccessory, barcode: e.target.value })}
                         />
                     </div>
 

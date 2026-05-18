@@ -43,6 +43,7 @@ export default function TicketDetailPage() {
         handleCreateAsset,
         updateTicket,
         assets,
+        consumables,
         yubikeys,
         users,
         currentUser,
@@ -52,7 +53,8 @@ export default function TicketDetailPage() {
         addLogisticsTask,
         updateLogisticsTask,
         deleteLogisticsTask,
-        updateAsset
+        updateAsset,
+        updateConsumableStock
     } = useTicketDetail();
 
     const resetSearchStates = () => {
@@ -189,6 +191,7 @@ export default function TicketDetailPage() {
                 setSerialQuery={setSerialQuery}
                 setAssetSearchResult={setAssetSearchResult}
                 assets={assets}
+                consumables={consumables}
                 yubikeys={yubikeys}
                 users={users}
                 setIsInventorySelectorOpen={setIsInventorySelectorOpen}
@@ -203,6 +206,7 @@ export default function TicketDetailPage() {
                 deleteLogisticsTask={deleteLogisticsTask}
                 handleUpdateTask={handleUpdateTask}
                 updateAsset={updateAsset}
+                updateConsumableStock={updateConsumableStock}
                 currentUser={currentUser}
             />
             

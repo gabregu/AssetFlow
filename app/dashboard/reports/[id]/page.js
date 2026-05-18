@@ -198,6 +198,26 @@ export default function ReportDetailPage() {
                                             </div>
                                         );
                                     })}
+                                    {/* Custom/Inventory Linked Accessories */}
+                                    {Object.keys(ticket.accessories || {}).map(key => {
+                                        const legacyKeys = ['backpack', 'screenFilter', 'filterSize', 'mouse', 'keyboard', 'headset', 'charger', 'padlock'];
+                                        if (legacyKeys.includes(key) || !ticket.accessories[key]) return null;
+                                        return (
+                                            <div key={key} style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                padding: '0.6rem',
+                                                background: 'white',
+                                                border: '1px solid var(--primary-color)',
+                                                borderRadius: '10px',
+                                            }}>
+                                                <Package size={12} color="var(--primary-color)" />
+                                                <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{key}</span>
+                                                <CheckCircle2 size={12} color="var(--success-color)" style={{ marginLeft: 'auto' }} />
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>

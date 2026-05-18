@@ -519,6 +519,7 @@ export function useTicketDetail() {
         toggleAccessory,
         updateTicket,
         assets,
+        consumables,
         yubikeys,
         users,
         currentUser,
@@ -529,6 +530,7 @@ export function useTicketDetail() {
         addLogisticsTask,
         updateLogisticsTask,
         deleteLogisticsTask,
-        updateAsset
+        updateAsset,
+        updateConsumableStock
     };
 }
