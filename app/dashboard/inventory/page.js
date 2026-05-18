@@ -585,11 +585,16 @@ export default function InventoryPage() {
 
     const handlePrintConsumableLabel = async (item) => {
         try {
-            const qrDataUrl = await QRCode.toDataURL(item.name, {
-                margin: 0,
-                width: 150,
-                color: { dark: '#000000', light: '#ffffff' }
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, item.barcode || item.name || '00000000', {
+                format: "CODE128",
+                width: 2.0,
+                height: 40,
+                displayValue: true,
+                fontSize: 10,
+                margin: 0
             });
+            const barcodeDataUrl = canvas.toDataURL("image/png");
 
             // Crear un iframe oculto para imprimir
             let iframe = document.getElementById('print-iframe');
@@ -626,19 +631,11 @@ export default function InventoryPage() {
                             .label-container {
                                 width: 50mm;
                                 height: 25mm;
-                                padding: 2mm;
-                                display: flex;
-                                align-items: center;
-                                justify-content: space-between;
-                                font-family: sans-serif;
-                            }
-                            .info-section {
-                                flex: 1;
-                                padding-right: 2mm;
+                                padding: 1.5mm 2mm;
                                 display: flex;
                                 flex-direction: column;
-                                justify-content: center;
-                                height: 100%;
+                                justify-content: space-between;
+                                font-family: sans-serif;
                             }
                             .category-label {
                                 font-size: 6.5pt;
@@ -646,40 +643,42 @@ export default function InventoryPage() {
                                 color: #64748b;
                                 text-transform: uppercase;
                                 letter-spacing: 0.05em;
-                                margin-bottom: 1mm;
+                                margin-bottom: 0.5mm;
                             }
                             .item-name {
-                                font-size: 8pt;
+                                font-size: 7.5pt;
                                 font-weight: 800;
                                 color: #000000;
-                                line-height: 1.2;
+                                line-height: 1.1;
                                 word-break: break-word;
                                 display: -webkit-box;
-                                -webkit-line-clamp: 3;
+                                -webkit-line-clamp: 2;
                                 -webkit-box-orient: vertical;
                                 overflow: hidden;
+                                margin-bottom: 1mm;
                             }
-                            .qr-section {
-                                width: 21mm;
-                                height: 21mm;
+                            .barcode-section {
+                                width: 100%;
+                                height: 10mm;
                                 display: flex;
                                 align-items: center;
                                 justify-content: center;
                             }
-                            .qr-img {
-                                width: 20mm;
-                                height: 20mm;
+                            .barcode-img {
+                                max-width: 100%;
+                                max-height: 100%;
+                                object-fit: contain;
                             }
                         </style>
                     </head>
                     <body>
                         <div class="label-container">
-                            <div class="info-section">
+                            <div>
                                 <div class="category-label">${item.category || 'ACCESORIO'}</div>
                                 <div class="item-name">${item.name}</div>
                             </div>
-                            <div class="qr-section">
-                                <img class="qr-img" src="${qrDataUrl}" />
+                            <div class="barcode-section">
+                                <img class="barcode-img" src="${barcodeDataUrl}" />
                             </div>
                         </div>
                     </body>
