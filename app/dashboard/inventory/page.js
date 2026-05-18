@@ -67,7 +67,8 @@ export default function InventoryPage() {
         name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Nuevo',
         date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
         modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
-        eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina', cod: '', boxNumber: ''
+        eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina', cod: '', boxNumber: '',
+        locationId: ''
     });
     const [bulkBoxNumber, setBulkBoxNumber] = useState('');
     const [replacementSerial, setReplacementSerial] = useState('');
@@ -388,7 +389,8 @@ export default function InventoryPage() {
             name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Disponible',
             date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
             modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
-            eolDate: '', notes: '', sfdcCase: '', oem: '', cod: '', boxNumber: '', country: 'Argentina'
+            eolDate: '', notes: '', sfdcCase: '', oem: '', cod: '', boxNumber: '', country: 'Argentina',
+            locationId: ''
         });
     };
 
@@ -2856,17 +2858,33 @@ export default function InventoryPage() {
                         />
                     </div>
 
-                    <div className="form-group">
-                        <label className="form-label">Número de Caja</label>
-                        <div style={{ position: 'relative' }}>
-                            <Box size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                            <input
-                                className="form-input"
-                                style={{ paddingLeft: '2.5rem' }}
-                                placeholder="Ej: 102"
-                                value={newAsset.boxNumber || ''}
-                                onChange={e => handleFieldChange('boxNumber', e.target.value)}
-                            />
+                    <div className="grid-responsive-2">
+                        <div className="form-group">
+                            <label className="form-label">Número de Caja</label>
+                            <div style={{ position: 'relative' }}>
+                                <Box size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                <input
+                                    className="form-input"
+                                    style={{ paddingLeft: '2.5rem' }}
+                                    placeholder="Ej: 102"
+                                    value={newAsset.boxNumber || ''}
+                                    onChange={e => handleFieldChange('boxNumber', e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Ubicación</label>
+                            <div style={{ position: 'relative' }}>
+                                <MapPin size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                <input
+                                    className="form-input"
+                                    style={{ paddingLeft: '2.5rem' }}
+                                    placeholder="Ej: MBA-H-ING-15 o empleado"
+                                    value={newAsset.locationId || ''}
+                                    onChange={e => handleFieldChange('locationId', e.target.value)}
+                                />
+                            </div>
                         </div>
                     </div>
 

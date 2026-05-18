@@ -10,7 +10,7 @@ import {
     Calendar, User, History, Tag, ExternalLink,
     AlertCircle, CheckCircle, Clock, Trash2, Edit3,
     ShoppingCart, Info, FileText, Smartphone as ImeiIcon,
-    ArrowRight, Key, Box
+    ArrowRight, Key, Box, MapPin
 } from 'lucide-react';
 import { Modal } from '../../../components/ui/Modal';
 import Link from 'next/link';
@@ -549,6 +549,36 @@ export default function AssetDetailPage() {
                                 value={editData.hardwareSpec || ''}
                                 onChange={e => handleFieldChange('hardwareSpec', e.target.value)}
                             />
+                        </div>
+
+                        <div className="grid-responsive-2">
+                            <div className="form-group">
+                                <label className="form-label">Número de Caja</label>
+                                <div style={{ position: 'relative' }}>
+                                    <Box size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                    <input
+                                        className="form-input"
+                                        style={{ paddingLeft: '2.5rem' }}
+                                        placeholder="Ej: 102"
+                                        value={editData.boxNumber || ''}
+                                        onChange={e => handleFieldChange('boxNumber', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Ubicación</label>
+                                <div style={{ position: 'relative' }}>
+                                    <MapPin size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                    <input
+                                        className="form-input"
+                                        style={{ paddingLeft: '2.5rem' }}
+                                        placeholder="Ej: MBA-H-ING-15 o empleado"
+                                        value={editData.locationId || ''}
+                                        onChange={e => handleFieldChange('locationId', e.target.value)}
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <div className="form-group">
