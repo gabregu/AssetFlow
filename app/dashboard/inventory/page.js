@@ -581,6 +581,125 @@ export default function InventoryPage() {
         }
     };
 
+    const handlePrintConsumableLabel = async (item) => {
+        try {
+            const qrDataUrl = await QRCode.toDataURL(item.name, {
+                margin: 0,
+                width: 150,
+                color: { dark: '#000000', light: '#ffffff' }
+            });
+
+            // Crear un iframe oculto para imprimir
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            const content = `
+                <html>
+                    <head>
+                        <style>
+                            @page {
+                                size: 50mm 25mm;
+                                margin: 0;
+                            }
+                            * {
+                                box-sizing: border-box;
+                                -webkit-print-color-adjust: exact;
+                            }
+                            html, body {
+                                width: 50mm;
+                                height: 25mm;
+                                margin: 0;
+                                padding: 0;
+                                background: #fff;
+                                overflow: hidden;
+                            }
+                            .label-container {
+                                width: 50mm;
+                                height: 25mm;
+                                padding: 2mm;
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+                                font-family: sans-serif;
+                            }
+                            .info-section {
+                                flex: 1;
+                                padding-right: 2mm;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: center;
+                                height: 100%;
+                            }
+                            .category-label {
+                                font-size: 6.5pt;
+                                font-weight: 800;
+                                color: #64748b;
+                                text-transform: uppercase;
+                                letter-spacing: 0.05em;
+                                margin-bottom: 1mm;
+                            }
+                            .item-name {
+                                font-size: 8pt;
+                                font-weight: 800;
+                                color: #000000;
+                                line-height: 1.2;
+                                word-break: break-word;
+                                display: -webkit-box;
+                                -webkit-line-clamp: 3;
+                                -webkit-box-orient: vertical;
+                                overflow: hidden;
+                            }
+                            .qr-section {
+                                width: 21mm;
+                                height: 21mm;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            .qr-img {
+                                width: 20mm;
+                                height: 20mm;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="label-container">
+                            <div class="info-section">
+                                <div class="category-label">${item.category || 'ACCESORIO'}</div>
+                                <div class="item-name">${item.name}</div>
+                            </div>
+                            <div class="qr-section">
+                                <img class="qr-img" src="${qrDataUrl}" />
+                            </div>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }, 500);
+
+        } catch (err) {
+            console.error('Error printing consumable label:', err);
+            alert('Error al imprimir la etiqueta del accesorio');
+        }
+    };
+
     const handleAdjustStock = async (e) => {
         e.preventDefault();
         if (selectedConsumable) {
@@ -2453,7 +2572,15 @@ export default function InventoryPage() {
                                             </Badge>
                                         </td>
                                         <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                                <Button 
+                                                    variant="secondary" 
+                                                    size="sm" 
+                                                    icon={Printer} 
+                                                    onClick={() => handlePrintConsumableLabel(item)} 
+                                                    title="Imprimir Etiqueta"
+                                                    style={{ color: 'var(--primary-color)', borderColor: 'var(--primary-color)', background: 'rgba(37, 99, 235, 0.05)' }}
+                                                />
                                                 <Button variant="ghost" size="sm" icon={Edit3} onClick={() => {
                                                     setSelectedConsumable(item);
                                                     setStockChange(item.stock);
