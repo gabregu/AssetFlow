@@ -130,6 +130,7 @@ export default function TicketDetailPage() {
                                 ticketTasks={ticketTasks}
                                 unifiedTasks={unifiedTasks}
                                 addLogisticsTask={addLogisticsTask}
+                                deleteLogisticsTask={deleteLogisticsTask}
                             />
 
                             <InstructionsCard

@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
-import { ExternalLink, Check, Plus } from 'lucide-react';
+import { ExternalLink, Check, Plus, Trash2 } from 'lucide-react';
 
 const TrackingBadge = ({ method, trackingNumber, isSelected }) => {
     const [copied, setCopied] = React.useState(false);
@@ -148,9 +148,28 @@ export default function AssociatedCasesCard({
                                 </div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem', marginLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
-                                <span style={{ fontSize: '0.72rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                                <span style={{ fontSize: '0.72rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)', whiteSpace: 'nowrap', marginBottom: 'auto' }}>
                                     {isSelected ? '▲ Configurando' : 'Clic para configurar'}
                                 </span>
+                                {task.id && (
+                                    <button 
+                                        onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm(`¿Seguro que deseas eliminar el caso ${task.caseNumber}?`)) {
+                                                if (deleteLogisticsTask) await deleteLogisticsTask(task.id);
+                                                if (selectedCaseIndex === index) setSelectedCaseIndex(null);
+                                            }
+                                        }}
+                                        style={{ 
+                                            background: 'transparent', border: 'none', color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--accent-red, #ef4444)', 
+                                            cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center',
+                                            borderRadius: '4px'
+                                        }}
+                                        title="Eliminar caso"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     );
