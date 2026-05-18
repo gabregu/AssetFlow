@@ -39,6 +39,8 @@ export default function InventoryPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isConsumableModalOpen, setIsConsumableModalOpen] = useState(false);
     const [isAddAccessoryModalOpen, setIsAddAccessoryModalOpen] = useState(false);
+    const [isBarcodeScanModalOpen, setIsBarcodeScanModalOpen] = useState(false);
+    const [quickScanCode, setQuickScanCode] = useState('');
     const [editingAsset, setEditingAsset] = useState(null);
     const [selectedConsumable, setSelectedConsumable] = useState(null);
     const [stockChange, setStockChange] = useState(0);
@@ -710,6 +712,24 @@ export default function InventoryPage() {
             setIsConsumableModalOpen(false);
             setStockChange(0);
             setSelectedConsumable(null);
+        }
+    };
+
+    const handleQuickScanSubmit = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (!quickScanCode) return;
+        
+        const codeToFind = quickScanCode.trim().toLowerCase();
+        const found = consumables.find(c => c.barcode && c.barcode.trim().toLowerCase() === codeToFind);
+        
+        if (found) {
+            setSelectedConsumable(found);
+            setStockChange(found.stock);
+            setIsConsumableModalOpen(true);
+            setIsBarcodeScanModalOpen(false);
+            setQuickScanCode('');
+        } else {
+            alert(`No se encontró ningún artículo con el código de barras "${quickScanCode}".`);
         }
     };
 
@@ -2513,14 +2533,25 @@ export default function InventoryPage() {
                     title="Inventario de Consumibles"
                     action={
                         (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
-                            <Button 
-                                size="sm" 
-                                icon={Plus} 
-                                title="Añadir nuevo artículo"
-                                onClick={() => setIsAddAccessoryModalOpen(true)}
-                            >
-                                Añadir Artículo
-                            </Button>
+                            <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                <Button 
+                                    size="sm" 
+                                    icon={Camera} 
+                                    variant="ghost"
+                                    title="Escanear rápidamente un accesorio"
+                                    onClick={() => setIsBarcodeScanModalOpen(true)}
+                                >
+                                    Escanear
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    icon={Plus} 
+                                    title="Añadir nuevo artículo"
+                                    onClick={() => setIsAddAccessoryModalOpen(true)}
+                                >
+                                    Añadir Artículo
+                                </Button>
+                            </div>
                         )
                     }
                 >
@@ -3076,6 +3107,33 @@ export default function InventoryPage() {
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
                         <Button type="button" variant="ghost" onClick={() => setIsConsumableModalOpen(false)}>Cancelar</Button>
                         <Button type="submit">Actualizar Stock</Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Modal para Escaneo Rápido de Código de Barras */}
+            <Modal isOpen={isBarcodeScanModalOpen} onClose={() => setIsBarcodeScanModalOpen(false)} title="Escanear Artículo">
+                <form onSubmit={handleQuickScanSubmit}>
+                    <p style={{ marginBottom: '1.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                        Escanee el código de barras con el lector físico o ingréselo manualmente. El sistema abrirá automáticamente el editor de stock para el artículo encontrado.
+                    </p>
+
+                    <div className="form-group">
+                        <label className="form-label">Código de Barras</label>
+                        <input
+                            type="text"
+                            required
+                            autoFocus
+                            className="form-input"
+                            placeholder="Escanee o ingrese el código..."
+                            value={quickScanCode}
+                            onChange={(e) => setQuickScanCode(e.target.value)}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem' }}>
+                        <Button type="button" variant="ghost" onClick={() => setIsBarcodeScanModalOpen(false)}>Cancelar</Button>
+                        <Button type="submit">Buscar y Editar</Button>
                     </div>
                 </form>
             </Modal>
