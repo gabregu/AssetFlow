@@ -40,15 +40,18 @@ const TrackingBadge = ({ method, trackingNumber }) => {
     const handleTrack = (e) => {
         e.stopPropagation();
         
+        // Clean tracking number (remove "TN:" or "TN" prefix if any)
+        const cleanTN = String(trackingNumber).trim().replace(/^(tn:?\s*)/i, '').trim();
+        
         // Copy to clipboard
-        navigator.clipboard.writeText(trackingNumber.trim());
+        navigator.clipboard.writeText(cleanTN);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
         
         // Open URL
         const url = isCorreoArgentino 
             ? 'https://www.correoargentino.com.ar/formularios/e-commerce'
-            : `https://seguimiento.andreani.com/envio/${trackingNumber.trim()}`;
+            : `https://seguimiento.andreani.com/envio/${cleanTN}`;
         
         window.open(url, '_blank');
     };
