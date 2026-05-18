@@ -320,7 +320,7 @@ export default function DeliveriesPage() {
 
             // Filtrado por Cliente (campo explícito)
             const expectedClient = getClientName(countryFilter);
-            const matchesCountry = d.client === expectedClient;
+            const matchesCountry = expectedClient === 'Todos' || d.client === expectedClient;
 
             const matchesDriver = driverFilter === 'All' || (d.deliveryPerson || 'Sin Asignar') === driverFilter;
 
