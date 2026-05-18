@@ -263,7 +263,8 @@ export default function TicketsPage() {
                         await addTicket(newTicketData);
                         ticketsCreated++;
                         casesProcessed += group.length;
-                }
+                    }
+                } // This closes the for (const key of Object.keys(groupedCases)) loop
 
                 showToast(`Importación completa: ${casesProcessed} casos procesados. ${ticketsCreated} servicios nuevos y ${ticketsUpdated} actualizados.`, 'success');
 
