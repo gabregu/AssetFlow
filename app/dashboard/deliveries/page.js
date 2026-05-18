@@ -622,31 +622,11 @@ export default function DeliveriesPage() {
                                 margin-top: 0.5mm;
                             }
                             .right-side {
-                                width: 15mm; display: flex; flex-direction: column;
-                                align-items: center; justify-content: flex-start;
-                                padding: 0.2mm 0; gap: 0.4mm;
+                                width: 22mm; display: flex;
+                                align-items: center; justify-content: center;
                                 height: 100%;
                             }
-                            .qr-code { width: 11.5mm; height: 11.5mm; }
-                            .service-type {
-                                font-size: 5.5pt; font-weight: 900; background: #000;
-                                color: #fff; padding: 0.4mm 1.2mm; border-radius: 0.3mm;
-                                text-transform: uppercase; letter-spacing: 0.1mm;
-                                display: flex; flex-direction: column; align-items: center; gap: 0.2mm;
-                            }
-                            .order-badge {
-                                background: #fff; color: #000;
-                                min-width: 7.5mm; height: 7.5mm;
-                                border-radius: 1.2mm;
-                                display: flex; align-items: center; justify-content: center;
-                                font-size: 13pt; font-weight: 900;
-                                margin-bottom: 0.3mm; line-height: 1;
-                            }
-                            .operation-label {
-                                font-size: 5.5pt; font-weight: 900;
-                                color: #fff; text-transform: uppercase;
-                                letter-spacing: 0.2mm;
-                            }
+                            .qr-code { width: 22mm; height: 22mm; }
                         </style>
                     </head>
                     <body>
@@ -659,10 +639,6 @@ export default function DeliveriesPage() {
                             </div>
                             <div class="right-side">
                                 <img class="qr-code" src="${qrDataUrl}" />
-                                <div class="service-type">
-                                    <div class="order-badge">${delivery.visitOrder || '1'}</div>
-                                    <div class="operation-label">${delivery.items?.toLowerCase().includes('recupero') ? 'Recupero' : 'Entrega'}</div>
-                                </div>
                             </div>
                         </div>
                     </body>
