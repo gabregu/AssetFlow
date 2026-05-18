@@ -2584,7 +2584,14 @@ export default function InventoryPage() {
                                                 <div style={{ padding: '0.5rem', backgroundColor: 'var(--background)', borderRadius: '10px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
                                                     <Package size={18} />
                                                 </div>
-                                                <span style={{ fontWeight: 600 }}>{item.name}</span>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontWeight: 600 }}>{item.name}</span>
+                                                    {item.barcode && (
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace', marginTop: '0.2rem' }}>
+                                                            Código: {item.barcode}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{item.category}</td>
