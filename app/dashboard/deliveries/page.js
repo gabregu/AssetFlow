@@ -7,9 +7,71 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
 import { useStore } from '../../../lib/store';
-import { Plus, Search, Truck, MapPin, Calendar, CheckCircle, Clock, Loader2, Trash2, ChevronDown, ChevronUp, Sun, Moon, Archive, QrCode, Printer } from 'lucide-react';
+import { Plus, Search, Truck, MapPin, Calendar, CheckCircle, Clock, Loader2, Trash2, ChevronDown, ChevronUp, Sun, Moon, Archive, QrCode, Printer, ExternalLink, Check } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+
+const TrackingBadge = ({ method, trackingNumber }) => {
+    const [copied, setCopied] = React.useState(false);
+    if (!method || !trackingNumber) return null;
+    
+    const isCorreoArgentino = String(method).toLowerCase().includes('correo argentino') || String(method).toLowerCase().trim() === 'correo';
+    const isAndreani = String(method).toLowerCase().includes('andreani');
+    
+    if (!isCorreoArgentino && !isAndreani) return null;
+
+    const handleTrack = (e) => {
+        e.stopPropagation();
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(trackingNumber.trim());
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        
+        // Open URL
+        const url = isCorreoArgentino 
+            ? 'https://www.correoargentino.com.ar/formularios/e-commerce'
+            : `https://seguimiento.andreani.com/envio/${trackingNumber.trim()}`;
+        
+        window.open(url, '_blank');
+    };
+
+    return (
+        <span 
+            onClick={handleTrack}
+            title={isCorreoArgentino ? `Copiar TN: ${trackingNumber} e ir a Correo Argentino` : `Ir a seguimiento de Andreani: ${trackingNumber}`}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '2px 6px',
+                background: copied ? 'rgba(16, 185, 129, 0.1)' : 'rgba(37, 99, 235, 0.08)',
+                border: `1px solid ${copied ? 'rgba(16, 185, 129, 0.3)' : 'rgba(37, 99, 235, 0.2)'}`,
+                color: copied ? '#10b981' : '#2563eb',
+                borderRadius: '4px',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                marginLeft: '6px',
+                userSelect: 'none'
+            }}
+            className="tracking-badge-hover"
+        >
+            {copied ? (
+                <>
+                    <Check size={10} strokeWidth={3} />
+                    <span>¡TN Copiado!</span>
+                </>
+            ) : (
+                <>
+                    <span>TN: {trackingNumber}</span>
+                    <ExternalLink size={10} strokeWidth={2.5} />
+                </>
+            )}
+        </span>
+    );
+};
 
 export default function DeliveriesPage() {
     const {
@@ -1083,8 +1145,11 @@ export default function DeliveriesPage() {
                                                             );
                                                         } else if (hasMethod) {
                                                             return (
-                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', fontWeight: 600 }}>
-                                                                    {delivery.courier}{hasTracking ? ` / ${delivery.trackingNumber}` : ''}
+                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', fontWeight: 600, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+                                                                    <span>{delivery.courier}</span>
+                                                                    {hasTracking && (
+                                                                        <TrackingBadge method={delivery.courier} trackingNumber={delivery.trackingNumber} />
+                                                                    )}
                                                                 </div>
                                                             );
                                                         }
@@ -1230,6 +1295,13 @@ export default function DeliveriesPage() {
                 onClose={() => setIsScannerOpen(false)}
                 onScanSuccess={handleScanSuccess}
             />
+            
+            <style jsx>{`
+                .tracking-badge-hover:hover {
+                    filter: brightness(0.95);
+                    transform: scale(1.02);
+                }
+            `}</style>
         </div>
     );
 }

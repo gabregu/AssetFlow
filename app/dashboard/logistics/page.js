@@ -17,7 +17,9 @@ import {
     ArrowRight,
     MessageSquare,
     RefreshCw,
-    Printer
+    Printer,
+    ExternalLink,
+    Check
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -25,6 +27,68 @@ import { Button } from '@/app/components/ui/Button';
 import { useStore } from '../../../lib/store';
 
 import QRCode from 'qrcode';
+
+const TrackingBadge = ({ method, trackingNumber }) => {
+    const [copied, setCopied] = React.useState(false);
+    if (!method || !trackingNumber) return null;
+    
+    const isCorreoArgentino = String(method).toLowerCase().includes('correo argentino') || String(method).toLowerCase().trim() === 'correo';
+    const isAndreani = String(method).toLowerCase().includes('andreani');
+    
+    if (!isCorreoArgentino && !isAndreani) return null;
+
+    const handleTrack = (e) => {
+        e.stopPropagation();
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(trackingNumber.trim());
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        
+        // Open URL
+        const url = isCorreoArgentino 
+            ? 'https://www.correoargentino.com.ar/formularios/e-commerce'
+            : `https://seguimiento.andreani.com/envio/${trackingNumber.trim()}`;
+        
+        window.open(url, '_blank');
+    };
+
+    return (
+        <span 
+            onClick={handleTrack}
+            title={isCorreoArgentino ? `Copiar TN: ${trackingNumber} e ir a Correo Argentino` : `Ir a seguimiento de Andreani: ${trackingNumber}`}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '2px 6px',
+                background: copied ? 'rgba(16, 185, 129, 0.1)' : 'rgba(37, 99, 235, 0.08)',
+                border: `1px solid ${copied ? 'rgba(16, 185, 129, 0.3)' : 'rgba(37, 99, 235, 0.2)'}`,
+                color: copied ? '#10b981' : '#2563eb',
+                borderRadius: '4px',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                marginLeft: '6px',
+                userSelect: 'none'
+            }}
+            className="tracking-badge-hover"
+        >
+            {copied ? (
+                <>
+                    <Check size={10} strokeWidth={3} />
+                    <span>¡TN Copiado!</span>
+                </>
+            ) : (
+                <>
+                    <span>TN: {trackingNumber}</span>
+                    <ExternalLink size={10} strokeWidth={2.5} />
+                </>
+            )}
+        </span>
+    );
+};
 
 export default function LogisticsHubPage() {
     const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter, getClientName, currentUser } = useStore();
@@ -462,8 +526,11 @@ export default function LogisticsHubPage() {
                                     <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: 500 }}>
                                         {task.date ? new Date(task.date + 'T00:00:00').toLocaleDateString() : 'Por coordinar'}
                                     </div>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                                        {task.time_slot || 'AM'} | {task.method || 'Propio'}
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                                        <span>{task.time_slot || 'AM'} | {task.method || 'Propio'}</span>
+                                        {task.tracking_number && (
+                                            <TrackingBadge method={task.method} trackingNumber={task.tracking_number} />
+                                        )}
                                     </div>
                                 </td>
                                 <td style={{ padding: '1rem', textAlign: 'center' }}>
@@ -490,6 +557,10 @@ export default function LogisticsHubPage() {
             <style jsx>{`
                 .hover-row:hover {
                     background-color: var(--background);
+                }
+                .tracking-badge-hover:hover {
+                    filter: brightness(0.95);
+                    transform: scale(1.02);
                 }
             `}</style>
         </div>

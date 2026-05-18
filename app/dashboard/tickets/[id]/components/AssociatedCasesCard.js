@@ -1,8 +1,79 @@
-'use client';
-
+import React from 'react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
+import { ExternalLink, Check } from 'lucide-react';
+
+const TrackingBadge = ({ method, trackingNumber, isSelected }) => {
+    const [copied, setCopied] = React.useState(false);
+    if (!method || !trackingNumber) return null;
+    
+    const isCorreoArgentino = String(method).toLowerCase().includes('correo argentino') || String(method).toLowerCase().trim() === 'correo';
+    const isAndreani = String(method).toLowerCase().includes('andreani');
+    
+    if (!isCorreoArgentino && !isAndreani) return null;
+
+    const handleTrack = (e) => {
+        e.stopPropagation();
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(trackingNumber.trim());
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        
+        // Open URL
+        const url = isCorreoArgentino 
+            ? 'https://www.correoargentino.com.ar/formularios/e-commerce'
+            : `https://seguimiento.andreani.com/envio/${trackingNumber.trim()}`;
+        
+        window.open(url, '_blank');
+    };
+
+    const bg = isSelected
+        ? (copied ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.15)')
+        : (copied ? 'rgba(16, 185, 129, 0.1)' : 'rgba(37, 99, 235, 0.08)');
+    const border = isSelected
+        ? (copied ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255, 255, 255, 0.3)')
+        : (copied ? 'rgba(16, 185, 129, 0.3)' : 'rgba(37, 99, 235, 0.2)');
+    const color = isSelected
+        ? 'white'
+        : (copied ? '#10b981' : '#2563eb');
+
+    return (
+        <span 
+            onClick={handleTrack}
+            title={isCorreoArgentino ? `Copiar TN: ${trackingNumber} e ir a Correo Argentino` : `Ir a seguimiento de Andreani: ${trackingNumber}`}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '2px 6px',
+                background: bg,
+                border: `1px solid ${border}`,
+                color: color,
+                borderRadius: '4px',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                userSelect: 'none'
+            }}
+            className="tracking-badge-hover"
+        >
+            {copied ? (
+                <>
+                    <Check size={10} strokeWidth={3} />
+                    <span>¡TN Copiado!</span>
+                </>
+            ) : (
+                <>
+                    <span>TN: {trackingNumber}</span>
+                    <ExternalLink size={10} strokeWidth={2.5} />
+                </>
+            )}
+        </span>
+    );
+};
 
 export default function AssociatedCasesCard({
     ticket,
@@ -58,7 +129,7 @@ export default function AssociatedCasesCard({
                                         {task.subject}
                                     </h4>
                                 </div>
-                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                     <Badge variant={hasHardware ? 'info' : 'secondary'} style={{ fontSize: '0.65rem', opacity: isSelected ? 0.85 : 1 }}>
                                         {caseAssets.length} Equipos
                                     </Badge>
@@ -67,6 +138,9 @@ export default function AssociatedCasesCard({
                                          {task.method === 'Repartidor Propio' && task.delivery_person && ` - ${task.delivery_person}`}
                                          {(task.method === 'Andreani' || task.method === 'Correo Argentino') && task.tracking_number && ` - ${task.tracking_number}`}
                                      </Badge>
+                                     {task.tracking_number && (task.method === 'Andreani' || task.method === 'Correo Argentino') && (
+                                         <TrackingBadge method={task.method} trackingNumber={task.tracking_number} isSelected={isSelected} />
+                                     )}
                                 </div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem', marginLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
@@ -85,6 +159,13 @@ export default function AssociatedCasesCard({
 
                 {/* La sección de "Otros casos" ha sido eliminada ya que ahora se vinculan automáticamente en el hook useTicketDetail */}
             </div>
+            
+            <style jsx>{`
+                .tracking-badge-hover:hover {
+                    filter: brightness(0.95);
+                    transform: scale(1.02);
+                }
+            `}</style>
         </Card>
     );
 }

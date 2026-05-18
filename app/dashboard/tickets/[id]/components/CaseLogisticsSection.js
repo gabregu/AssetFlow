@@ -3,8 +3,69 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Badge } from '@/app/components/ui/Badge';
 import { getStatusVariant } from '../../constants';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ExternalLink, Check } from 'lucide-react';
 import { useStore } from '@/lib/store';
+
+const TrackingBadge = ({ method, trackingNumber }) => {
+    const [copied, setCopied] = React.useState(false);
+    if (!method || !trackingNumber) return null;
+    
+    const isCorreoArgentino = String(method).toLowerCase().includes('correo argentino') || String(method).toLowerCase().trim() === 'correo';
+    const isAndreani = String(method).toLowerCase().includes('andreani');
+    
+    if (!isCorreoArgentino && !isAndreani) return null;
+
+    const handleTrack = (e) => {
+        e.stopPropagation();
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(trackingNumber.trim());
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        
+        // Open URL
+        const url = isCorreoArgentino 
+            ? 'https://www.correoargentino.com.ar/formularios/e-commerce'
+            : `https://seguimiento.andreani.com/envio/${trackingNumber.trim()}`;
+        
+        window.open(url, '_blank');
+    };
+
+    return (
+        <span 
+            onClick={handleTrack}
+            title={isCorreoArgentino ? `Copiar TN: ${trackingNumber} e ir a Correo Argentino` : `Ir a seguimiento de Andreani: ${trackingNumber}`}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '2px 6px',
+                background: copied ? 'rgba(16, 185, 129, 0.1)' : 'rgba(37, 99, 235, 0.08)',
+                border: `1px solid ${copied ? 'rgba(16, 185, 129, 0.3)' : 'rgba(37, 99, 235, 0.2)'}`,
+                color: copied ? '#10b981' : '#2563eb',
+                borderRadius: '4px',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                userSelect: 'none'
+            }}
+            className="tracking-badge-hover"
+        >
+            {copied ? (
+                <>
+                    <Check size={10} strokeWidth={3} />
+                    <span>¡TN Copiado!</span>
+                </>
+            ) : (
+                <>
+                    <span>TN: {trackingNumber}</span>
+                    <ExternalLink size={10} strokeWidth={2.5} />
+                </>
+            )}
+        </span>
+    );
+};
 
 export default function CaseLogisticsSection({
     task,
@@ -318,7 +379,12 @@ export default function CaseLogisticsSection({
 
                 {(localValues.method === 'Andreani' || localValues.method === 'Correo Argentino') && (
                     <div className="form-group">
-                        <label className="form-label">Número de Seguimiento</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <label className="form-label" style={{ margin: 0 }}>Número de Seguimiento</label>
+                            {localValues.tracking_number && (
+                                <TrackingBadge method={localValues.method} trackingNumber={localValues.tracking_number} />
+                            )}
+                        </div>
                         <input
                             className="form-input"
                             placeholder="Ej: AR123456789"
@@ -503,6 +569,13 @@ export default function CaseLogisticsSection({
                     </div>
                 )}
             </div>
+            
+            <style jsx>{`
+                .tracking-badge-hover:hover {
+                    filter: brightness(0.95);
+                    transform: scale(1.02);
+                }
+            `}</style>
         </div>
     );
 }
