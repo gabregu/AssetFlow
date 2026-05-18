@@ -88,7 +88,8 @@ export default function AssociatedCasesCard({
     setSelectedCaseIndex,
     resetSearchStates,
     ticketTasks,
-    unifiedTasks
+    unifiedTasks,
+    addLogisticsTask
 }) {
     return (
         <Card title="Casos Asociados" style={{ height: 'auto' }}>
