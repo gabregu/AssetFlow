@@ -572,7 +572,7 @@ export default function TicketsPage() {
             )}
             <div style={{ marginBottom: '2rem' }} className="flex-mobile-column">
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Casos</h1>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Gestión de Servicios</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Gestiona y resuelve las incidencias reportadas de cliente {countryFilter}.</p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
@@ -581,17 +581,7 @@ export default function TicketsPage() {
                             setNewTicket({ ...newTicket, country: countryFilter });
                             setIsModalOpen(true);
                         }} style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6', color: 'white' }}>
-                            Nuevo Caso
-                        </Button>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            style={{ display: 'none' }}
-                            accept=".csv"
-                            onChange={handleFileUpload}
-                        />
-                        <Button variant="secondary" icon={Upload} onClick={() => fileInputRef.current.click()}>
-                            Importar SFDC
+                            Nuevo Servicio
                         </Button>
                     </div>
                     {canDelete && selectedTickets.length > 0 && (
@@ -854,7 +844,7 @@ export default function TicketsPage() {
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
                                 type="text"
-                                placeholder="Buscar tickets..."
+                                placeholder="Buscar servicios..."
                                 value={filter}
                                 onChange={(e) => setFilter(e.target.value)}
                                 style={{
@@ -1087,7 +1077,7 @@ export default function TicketsPage() {
                 </div>
             </Card>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Caso">
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Servicio">
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="form-group">
                         <label className="form-label">Número de Caso SFDC (Opcional)</label>
@@ -1222,7 +1212,7 @@ export default function TicketsPage() {
                     <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                         <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} style={{ flex: 1 }} disabled={isSubmittingManual}>Cancelar</Button>
                         <Button type="button" onClick={handleCreate} style={{ flex: 1 }} disabled={isSubmittingManual}>
-                            {isSubmittingManual ? 'Procesando...' : 'Crear Caso'}
+                            {isSubmittingManual ? 'Procesando...' : 'Crear Servicio'}
                         </Button>
                     </div>
                 </form>
