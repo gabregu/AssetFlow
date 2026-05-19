@@ -94,7 +94,7 @@ export default function CaseConfigModal({
                 address: currentTask.address || ticket.logistics?.address || '',
                 deliveryPerson: currentTask.deliveryPerson || currentTask.delivery_person || '',
                 type: currentTask.method === 'Recupero' ? 'Recupero' : 'Entrega',
-                deliveryInfo: currentTask.deliveryInfo || null
+                deliveryInfo: currentTask.deliveryInfo || currentTask.delivery_info || null
             },
             caseNumber: currentTask.caseNumber
         };

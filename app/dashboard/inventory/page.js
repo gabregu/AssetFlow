@@ -1746,7 +1746,7 @@ export default function InventoryPage() {
                                                     setYubikeyStockChange(item.stock);
                                                     setIsYubikeyModalOpen(true);
                                                 }} />
-                                                {currentUser?.role === 'admin' && (
+                                                {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -2626,7 +2626,7 @@ export default function InventoryPage() {
                                                     setStockChange(item.stock);
                                                     setIsConsumableModalOpen(true);
                                                 }} />
-                                                {currentUser?.role === 'admin' && (
+                                                {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -2785,7 +2785,7 @@ export default function InventoryPage() {
                                                                 setSelectedYubikey(item);
                                                                 setIsYubikeyModalOpen(true);
                                                             }} />
-                                                            {currentUser?.role === 'admin' && (
+                                                            {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"

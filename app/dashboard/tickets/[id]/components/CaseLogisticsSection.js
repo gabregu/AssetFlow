@@ -531,6 +531,28 @@ export default function CaseLogisticsSection({
                     </select>
                 </div>
 
+                <div className="form-group">
+                    <label className="form-label">Notas Adicionales (se muestran en el Remito impreso)</label>
+                    <textarea
+                        className="form-input"
+                        value={localValues.deliveryInfo?.notes || ''}
+                        onChange={e => updateLogistics('deliveryInfo', { ...(localValues.deliveryInfo || {}), notes: e.target.value })}
+                        placeholder="Escriba aquí notas o aclaraciones que se imprimirán en el remito..."
+                        style={{
+                            minHeight: '80px',
+                            resize: 'vertical',
+                            width: '100%',
+                            padding: '0.625rem 0.875rem',
+                            border: '1px solid var(--border)',
+                            borderRadius: 'var(--radius-md)',
+                            fontFamily: 'inherit',
+                            fontSize: '0.875rem',
+                            background: 'var(--background)',
+                            color: 'var(--text-main)'
+                        }}
+                    />
+                </div>
+
                 {(task.status === 'Entregado' || task.status === 'Finalizado') && localValues.delivery_person && (
                     <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(34, 197, 94, 0.05)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
                         <h5 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534', marginBottom: '0.75rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

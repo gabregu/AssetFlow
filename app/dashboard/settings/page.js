@@ -37,7 +37,7 @@ export default function SettingsPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
 
-    const isAdmin = currentUser?.role === 'admin';
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'Gerencial';
 
     const handleAddUser = async (e) => {
         e.preventDefault();

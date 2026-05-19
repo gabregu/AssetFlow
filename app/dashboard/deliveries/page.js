@@ -779,7 +779,7 @@ export default function DeliveriesPage() {
                     <p style={{ color: 'var(--text-secondary)' }}>Logística avanzada de cliente {countryFilter}.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }} className="flex-mobile-column">
-                    {currentUser?.role === 'Administrador' && selectedIds.length > 0 && (
+                    {(currentUser?.role === 'Administrador' || currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && selectedIds.length > 0 && (
                         <Button
                             icon={Trash2}
                             onClick={handleBulkDelete}
@@ -1000,7 +1000,7 @@ export default function DeliveriesPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                {currentUser?.role === 'Administrador' && (
+                                {(currentUser?.role === 'Administrador' || currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
                                     <th style={{ padding: '1rem', width: '40px' }}>
                                         <input
                                             type="checkbox"
@@ -1072,7 +1072,7 @@ export default function DeliveriesPage() {
                                         <React.Fragment key={delivery.id}>
                                             {showDateHeader && (
                                                 <tr style={{ backgroundColor: 'var(--background)' }}>
-                                                    <td colSpan={currentUser?.role === 'Administrador' ? "7" : "6"} style={{ padding: '1.5rem 1rem 0.5rem 1rem' }}>
+                                                    <td colSpan={(currentUser?.role === 'Administrador' || currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') ? "7" : "6"} style={{ padding: '1.5rem 1rem 0.5rem 1rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                             <div style={{ backgroundColor: dateColor, width: '8px', height: '8px', borderRadius: '50%' }}></div>
                                                             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

@@ -35,7 +35,7 @@ export default function TicketsPage() {
     const [showMap, setShowMap] = useState(false);
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
 
-    const canDelete = currentUser?.role === 'admin' || currentUser?.role === 'Administrativo';
+    const canDelete = currentUser?.role === 'admin' || currentUser?.role === 'Gerencial' || currentUser?.role === 'Administrativo';
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];

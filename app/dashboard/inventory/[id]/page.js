@@ -133,7 +133,7 @@ export default function AssetDetailPage() {
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
                     <Button variant="outline" icon={Edit3} onClick={handleEditClick}>Editar Datos</Button>
-                    {currentUser?.role === 'admin' && (
+                    {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
                         <Button variant="danger" icon={Trash2} onClick={handleDelete}>Dar de Baja</Button>
                     )}
                 </div>

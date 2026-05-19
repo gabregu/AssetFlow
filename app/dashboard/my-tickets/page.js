@@ -41,7 +41,7 @@ export default function MyTicketsPage() {
     const [isOptimizing, setIsOptimizing] = useState(false);
     const [optimizedOrder, setOptimizedOrder] = useState(null); // Array of ticket IDs in order
 
-    const isAdmin = currentUser?.role === 'admin';
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'Gerencial';
 
     // Generamos la lista "aplanada" de items de trabajo (Tickets o Casos Asociados) asignados al usuario
     const myAssignedItems = useMemo(() => {
