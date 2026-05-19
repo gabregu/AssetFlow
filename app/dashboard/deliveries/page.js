@@ -593,40 +593,40 @@ export default function DeliveriesPage() {
                             * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
                             html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
                             .label-container {
-                                width: 50mm; height: 25mm; padding: 0.8mm 1.5mm;
+                                width: 50mm; height: 25mm; padding: 1.8mm 2.8mm;
                                 display: flex; position: absolute; top: 0; left: 0;
                                 font-family: 'Helvetica', 'Arial', sans-serif;
                             }
                             .left-side {
                                 flex: 1; display: flex; flex-direction: column;
-                                justify-content: space-between; padding-right: 1mm;
+                                justify-content: center; gap: 0.3mm; padding-right: 1.5mm;
                                 overflow: hidden;
                             }
                             .ticket-id {
-                                font-size: 6pt; font-weight: 800; color: #000;
+                                font-size: 5.5pt; font-weight: 800; color: #000;
                                 margin-bottom: 0.1mm; line-height: 1;
                             }
                             .recipient-name {
-                                font-size: 8pt; font-weight: 900; line-height: 1.1;
+                                font-size: 7.5pt; font-weight: 900; line-height: 1.1;
                                 color: #000; text-transform: uppercase;
                                 display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
                                 overflow: hidden; margin-bottom: 0.2mm;
                             }
                             .address-text {
-                                font-size: 5.6pt; font-weight: 600; line-height: 1.1;
+                                font-size: 5.2pt; font-weight: 600; line-height: 1.1;
                                 color: #111; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
                                 overflow: hidden;
                             }
                             .date-text {
-                                font-size: 5.2pt; font-weight: 800; color: #000;
+                                font-size: 4.8pt; font-weight: 800; color: #000;
                                 margin-top: 0.2mm;
                             }
                             .right-side {
-                                width: 16.5mm; display: flex;
+                                width: 14.5mm; display: flex;
                                 align-items: center; justify-content: center;
                                 height: 100%;
                             }
-                            .qr-code { width: 16.5mm; height: 16.5mm; }
+                            .qr-code { width: 14.5mm; height: 14.5mm; }
                         </style>
                     </head>
                     <body>
