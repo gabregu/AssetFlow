@@ -152,25 +152,33 @@ export default function AssociatedCasesCard({
                                 <span style={{ fontSize: '0.72rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)', whiteSpace: 'nowrap', marginBottom: 'auto' }}>
                                     {isSelected ? '▲ Configurando' : 'Clic para configurar'}
                                 </span>
-                                {task.id && (
-                                    <button 
-                                        onClick={async (e) => {
-                                            e.stopPropagation();
-                                            if (window.confirm(`¿Seguro que deseas eliminar el caso ${task.caseNumber}?`)) {
+                                <button 
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm(`¿Seguro que deseas eliminar el caso ${task.caseNumber || 'asociado'}?`)) {
+                                            if (task.id) {
                                                 if (deleteLogisticsTask) await deleteLogisticsTask(task.id);
-                                                if (selectedCaseIndex === index) setSelectedCaseIndex(null);
+                                            } else {
+                                                const updatedCases = (editedData?.associatedCases || []).filter((_, idx) => idx !== index);
+                                                if (setEditedData) {
+                                                    setEditedData(prev => ({ ...prev, associatedCases: updatedCases }));
+                                                }
+                                                if (updateTicket) {
+                                                    await updateTicket(ticket.id, { associatedCases: updatedCases });
+                                                }
                                             }
-                                        }}
-                                        style={{ 
-                                            background: 'transparent', border: 'none', color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--accent-red, #ef4444)', 
-                                            cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center',
-                                            borderRadius: '4px'
-                                        }}
-                                        title="Eliminar caso"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                )}
+                                            if (selectedCaseIndex === index) setSelectedCaseIndex(null);
+                                        }
+                                    }}
+                                    style={{ 
+                                        background: 'transparent', border: 'none', color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--accent-red, #ef4444)', 
+                                        cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center',
+                                        borderRadius: '4px'
+                                    }}
+                                    title="Eliminar caso"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
                             </div>
                         </div>
                     );
