@@ -115,6 +115,7 @@ export default function CaseConfigModal({
                             setIsAssetModalOpen={setIsAssetModalOpen}
                             updateAsset={updateAsset}
                             currentUser={currentUser}
+                            allTasks={currentTasks}
                         />
 
                         <AccessoriesSection

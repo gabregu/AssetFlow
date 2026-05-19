@@ -16,7 +16,8 @@ export default function AssetListSection({
     setAssetSearchResult,
     setIsAssetModalOpen,
     updateAsset,
-    currentUser
+    currentUser,
+    allTasks = []
 }) {
     if (!task) return null;
 
@@ -140,6 +141,7 @@ export default function AssetListSection({
                                     <div style={{ marginTop: '4px' }}>
                                         <input
                                             type="text"
+                                            list={`related-cases-list-${idxx}`}
                                             className="form-input"
                                             placeholder="N° Caso Relacionado (Opcional)"
                                             style={{ fontSize: '0.75rem', padding: '2px 6px', height: '26px', width: '100%', maxWidth: '200px' }}
@@ -150,6 +152,16 @@ export default function AssetListSection({
                                                 await onUpdateTask({ assets: newAssets });
                                             }}
                                         />
+                                        <datalist id={`related-cases-list-${idxx}`}>
+                                            {allTasks.map((t, tIdx) => {
+                                                const caseNum = t.caseNumber || t.case_number;
+                                                // Excluir el caso actual si es posible
+                                                if (caseNum && caseNum !== (task.caseNumber || task.case_number)) {
+                                                    return <option key={tIdx} value={caseNum}>{t.subject || ''}</option>;
+                                                }
+                                                return null;
+                                            })}
+                                        </datalist>
                                     </div>
                                 </div>
                                 <Button 
