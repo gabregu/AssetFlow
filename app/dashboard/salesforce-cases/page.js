@@ -287,15 +287,14 @@ export default function SFDCCasesPage() {
                 }
             }];
 
-            // Solo aplicar si el caso actual ES una entrega
-            if (selectedCase && isDelivery(selectedCase)) {
+            // SIEMPRE buscar hermanos del mismo usuario, sin importar si es entrega o collection
+            if (selectedCase) {
                 const currentRequestedFor = normalizeName(selectedCase.requestedFor);
 
-                // Buscar otros casos del mismo usuario que también sean entregas
+                // Buscar todos los casos del mismo usuario (entregas Y collections/offboardings)
                 // LÓGICA FLEXIBLE: Coincidencia parcial o exacta normalizada
                 const siblings = sfdcCases.filter(c => {
                     if (c.caseNumber === selectedCase.caseNumber) return false; // Skip self
-                    if (!isDelivery(c)) return false; // Skip non-deliveries
 
                     const siblingName = normalizeName(c.requestedFor);
 
