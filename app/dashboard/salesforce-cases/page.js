@@ -46,7 +46,11 @@ export default function SFDCCasesPage() {
         return sfdcCases.filter(c => {
             // Exclusión: Si el servicio vinculado (Ticket/Logística) está finalizado, lo ocultamos.
             const linkedTicket = 
-                (tickets && tickets.find(t => String(t.id) === String(c.caseNumber) || (t.subject && t.subject.includes(c.caseNumber)))) || 
+                (tickets && tickets.find(t => 
+                    String(t.id) === String(c.caseNumber) || 
+                    (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber) === String(c.caseNumber))) ||
+                    (t.subject && t.subject.includes(c.caseNumber))
+                )) || 
                 (logisticsTasks && logisticsTasks.find(tk => String(tk.case_number) === String(c.caseNumber)));
                 
             if (linkedTicket) {
@@ -1237,7 +1241,11 @@ export default function SFDCCasesPage() {
                                     <td style={{ padding: '1rem' }}>
                                         {(() => {
                                             const linkedTicket = 
-                                                (tickets?.find(t => String(t.id) === String(c.caseNumber))) || 
+                                                (tickets?.find(t => 
+                                                    String(t.id) === String(c.caseNumber) || 
+                                                    (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber) === String(c.caseNumber))) ||
+                                                    (t.subject && t.subject.includes(c.caseNumber))
+                                                )) || 
                                                 (logisticsTasks?.find(tk => String(tk.case_number) === String(c.caseNumber)));
 
                                             if (linkedTicket) {
