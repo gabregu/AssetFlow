@@ -69,9 +69,13 @@ export default function AccessoriesSection({
         const scannedValue = barcodeInput.trim();
         if (!scannedValue) return;
 
-        // Search in consumables list for matching barcode (case-insensitive)
+        // Search in consumables list for matching barcode (case-insensitive) or ID
+        const scannedLower = scannedValue.toLowerCase();
         const match = localConsumables.find(c => 
-            c.barcode && c.barcode.trim().toLowerCase() === scannedValue.toLowerCase()
+            (c.barcode && c.barcode.trim().toLowerCase() === scannedLower) ||
+            (c.id && c.id.toLowerCase() === scannedLower) ||
+            (c.cod && c.cod.toLowerCase() === scannedLower) ||
+            (c.name && c.name.toLowerCase() === scannedLower)
         );
 
         if (!match) {
