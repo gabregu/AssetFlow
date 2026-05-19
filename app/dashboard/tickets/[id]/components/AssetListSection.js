@@ -23,6 +23,38 @@ export default function AssetListSection({
 
     const caseAssets = task.assets || [];
 
+    // Auto-sincronizar activos vinculados en inventario a la tarea
+    const lastSyncedCaseRef = React.useRef(null);
+    React.useEffect(() => {
+        if (!task || !task.caseNumber) return;
+        
+        const caseKey = `${task.id || task.caseNumber}`;
+        if (lastSyncedCaseRef.current === caseKey) return;
+        
+        const caseSerials = caseAssets.map(item => (typeof item === 'string' ? item : item.serial).toLowerCase());
+        
+        const dbLinkedAssets = assets.filter(a => 
+            a.sfdcCase && 
+            String(a.sfdcCase).toLowerCase() === String(task.caseNumber).toLowerCase()
+        );
+        
+        const missingAssets = dbLinkedAssets.filter(dbAsset => 
+            !caseSerials.includes(dbAsset.serial.toLowerCase())
+        );
+        
+        if (missingAssets.length > 0) {
+            lastSyncedCaseRef.current = caseKey;
+            const assetsToAdd = missingAssets.map(dbAsset => ({
+                serial: dbAsset.serial,
+                type: 'Entrega',
+                hardware_type: dbAsset.type || ''
+            }));
+            
+            const updatedAssets = [...caseAssets, ...assetsToAdd];
+            onUpdateTask({ assets: updatedAssets });
+        }
+    }, [task, assets, caseAssets, onUpdateTask]);
+
     const handleUnlink = async (idx) => {
         const item = caseAssets[idx];
         const newAssets = caseAssets.filter((_, i) => i !== idx);
