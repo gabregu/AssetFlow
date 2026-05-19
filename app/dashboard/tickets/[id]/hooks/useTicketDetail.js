@@ -156,7 +156,9 @@ export function useTicketDetail() {
         // Sincronización robusta dse duplicados: revisar tanto el campo legacy como la tabla real de base de datos
         const linkedLegacy = (ticket.associatedCases || []).map(c => c.caseNumber).filter(Boolean);
         const linkedReal = (ticketTasks || []).map(c => c.caseNumber).filter(Boolean);
-        const allLinked = [...new Set([...linkedLegacy, ...linkedReal])];
+        // Casos excluidos manualmente por el usuario (borrados desde la UI)
+        const excludedCases = (ticket.excludedCases || []);
+        const allLinked = [...new Set([...linkedLegacy, ...linkedReal, ...excludedCases])];
         
         // También incluimos el número de caso principal si está en el subject para no re-vincularlo a sí mismo
         const mainCaseMatch = (ticket.subject || '').match(/SFDC-(\d+)/);

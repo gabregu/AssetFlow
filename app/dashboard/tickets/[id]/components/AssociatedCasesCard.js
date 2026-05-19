@@ -160,11 +160,16 @@ export default function AssociatedCasesCard({
                                                 if (deleteLogisticsTask) await deleteLogisticsTask(task.id);
                                             } else {
                                                 const updatedCases = (editedData?.associatedCases || []).filter((_, idx) => idx !== index);
+                                                // Guardar el caseNumber en la lista de excluidos para evitar que el auto-vinculador lo re-agregue
+                                                const currentExcluded = editedData?.excludedCases || [];
+                                                const updatedExcluded = task.caseNumber 
+                                                    ? [...new Set([...currentExcluded, task.caseNumber])]
+                                                    : currentExcluded;
                                                 if (setEditedData) {
-                                                    setEditedData(prev => ({ ...prev, associatedCases: updatedCases }));
+                                                    setEditedData(prev => ({ ...prev, associatedCases: updatedCases, excludedCases: updatedExcluded }));
                                                 }
                                                 if (updateTicket) {
-                                                    await updateTicket(ticket.id, { associatedCases: updatedCases });
+                                                    await updateTicket(ticket.id, { associatedCases: updatedCases, excludedCases: updatedExcluded });
                                                 }
                                             }
                                             if (selectedCaseIndex === index) setSelectedCaseIndex(null);
