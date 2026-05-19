@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Package, Monitor, Smartphone, Keyboard, Headphones, BatteryCharging, Check, QrCode, Search, Trash2, AlertCircle } from 'lucide-react';
+import { Package, Monitor, Smartphone, Keyboard, Headphones, BatteryCharging, Check, QrCode, Search, Trash2, AlertCircle, Mouse } from 'lucide-react';
 
 export default function AccessoriesSection({
     task,
@@ -201,8 +201,83 @@ export default function AccessoriesSection({
                     {ticketCountry}
                 </span>
             </div>
-
-
+            {/* Standard Checkboxes Grid */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
+                gap: '0.75rem', 
+                marginBottom: '1.5rem' 
+            }}>
+                {[
+                    { key: 'backpack', label: 'Mochila Técnica', icon: Package },
+                    { key: 'screenFilter', label: 'Filtro de Pantalla', icon: Monitor },
+                    { key: 'mouse', label: 'Mouse Óptico', icon: Mouse },
+                    { key: 'keyboard', label: 'Teclado USB', icon: Keyboard },
+                    { key: 'headset', label: 'Auriculares', icon: Headphones },
+                    { key: 'charger', label: 'Cargador Original', icon: BatteryCharging }
+                ].map(({ key, label, icon: Icon }) => {
+                    const isActive = !!accessories[key];
+                    return (
+                        <div 
+                            key={key}
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.5rem',
+                                padding: '0.75rem',
+                                background: isActive ? 'rgba(37, 99, 235, 0.04)' : 'rgba(0,0,0,0.01)',
+                                border: `1px solid ${isActive ? 'var(--primary-color)' : 'var(--border)'}`,
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                userSelect: 'none'
+                            }}
+                            onClick={() => toggleAccessory(key, label)}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Icon size={16} style={{ color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)' }} />
+                                    <span style={{ 
+                                        fontSize: '0.8rem', 
+                                        fontWeight: isActive ? 600 : 500,
+                                        color: isActive ? 'var(--text-main)' : 'var(--text-secondary)'
+                                    }}>
+                                        {label}
+                                    </span>
+                                </div>
+                                <input 
+                                    type="checkbox"
+                                    checked={isActive}
+                                    readOnly
+                                    style={{ pointerEvents: 'none', cursor: 'pointer' }}
+                                />
+                            </div>
+                            
+                            {/* Render size selector if screenFilter is active */}
+                            {key === 'screenFilter' && isActive && (
+                                <div 
+                                    style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    onClick={e => e.stopPropagation()} // Stop toggle on click
+                                >
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Tamaño:</span>
+                                    <select
+                                        className="form-select"
+                                        value={accessories.filterSize || '14"'}
+                                        onChange={e => updateFilterSize(e.target.value)}
+                                        style={{ fontSize: '0.7rem', padding: '2px 4px', height: '24px', width: 'auto' }}
+                                    >
+                                        <option value='14"'>14"</option>
+                                        <option value='15.6"'>15.6"</option>
+                                        <option value='16"'>16"</option>
+                                        <option value='24"'>24"</option>
+                                        <option value='27"'>27"</option>
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
 
             {/* Smart Add Accessories & Barcode Scan Panel */}
             <div style={{ 
