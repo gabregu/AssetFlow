@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 
 export default function SFDCCasesPage() {
     const router = useRouter();
-    const { sfdcCases, tickets, logisticsTasks, addTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter, getClientName, entities = [] } = useStore();
+    const { sfdcCases, tickets, logisticsTasks, addTicket, updateTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter, getClientName, entities = [] } = useStore();
     const [filter, setFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCase, setSelectedCase] = useState(null);
@@ -32,6 +32,9 @@ export default function SFDCCasesPage() {
 
     // Bulk Actions State
     const [selectedCases, setSelectedCases] = useState([]);
+
+    // Estado para modal de fusión (agregar como caso asociado a ticket existente)
+    const [mergeModal, setMergeModal] = useState({ open: false, sfdcCase: null, existingTicket: null });
 
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
@@ -216,7 +219,49 @@ export default function SFDCCasesPage() {
         </th>
     );
 
-    const handleOpenCreateService = (sfdcCase) => {
+    const handleOpenCreateService = async (sfdcCase) => {
+        // Buscar si ya existe un ticket activo para el mismo usuario
+        const normalize = (val) => (val || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        const requesterNorm = normalize(sfdcCase.requestedFor);
+        const closedStatuses = ['Resuelto', 'Cerrado', 'Servicio Facturado', 'Caso SFDC Cerrado', 'Cancelado'];
+
+        const existingTicket = tickets.find(t => {
+            if (closedStatuses.includes(t.status)) return false;
+            return normalize(t.requester) === requesterNorm;
+        });
+
+        if (existingTicket) {
+            // Fusionar automáticamente
+            showToast(`Asociando caso SFDC-${sfdcCase.caseNumber} al servicio activo ${existingTicket.id}...`, 'info');
+            
+            const newAssociated = {
+                caseNumber: sfdcCase.caseNumber,
+                subject: sfdcCase.subject,
+                status: sfdcCase.status || 'Abierto',
+                priority: sfdcCase.priority,
+                dateOpened: sfdcCase.dateOpened,
+                logistics: {
+                    address: sfdcCase.mailingStreet && sfdcCase.country ? `${sfdcCase.mailingStreet}, ${sfdcCase.country} ${sfdcCase.zipCode}` : '',
+                    phone: sfdcCase.mobile || '',
+                    email: sfdcCase.email || '',
+                    method: '',
+                    status: 'Para Coordinar'
+                }
+            };
+
+            const updatedAssociatedCases = [...(existingTicket.associatedCases || []), newAssociated];
+            const success = await updateTicket(existingTicket.id, { associatedCases: updatedAssociatedCases });
+
+            if (success !== false) {
+                showToast(`Caso SFDC-${sfdcCase.caseNumber} agrupado con éxito en ${existingTicket.id} (${existingTicket.requester})`, 'success');
+                router.push(`/dashboard/tickets/${existingTicket.id}`);
+            } else {
+                showToast('Error al agregar el caso al servicio existente', 'error');
+            }
+            return;
+        }
+
+        // No existe ticket → abrir modal de creación normal
         setSelectedCase(sfdcCase);
         setNewTicket({
             subject: `[SFDC-${sfdcCase.caseNumber}] ${sfdcCase.subject}`,
@@ -231,6 +276,38 @@ export default function SFDCCasesPage() {
             }
         });
         setIsModalOpen(true);
+    };
+
+    // Agregar SFDC case como caso asociado a un ticket existente
+    const handleMergeIntoExisting = async () => {
+        const { sfdcCase, existingTicket } = mergeModal;
+        if (!sfdcCase || !existingTicket) return;
+
+        const newAssociated = {
+            caseNumber: sfdcCase.caseNumber,
+            subject: sfdcCase.subject,
+            status: sfdcCase.status || 'Abierto',
+            priority: sfdcCase.priority,
+            dateOpened: sfdcCase.dateOpened,
+            logistics: {
+                address: sfdcCase.mailingStreet && sfdcCase.country ? `${sfdcCase.mailingStreet}, ${sfdcCase.country} ${sfdcCase.zipCode}` : '',
+                phone: sfdcCase.mobile || '',
+                email: sfdcCase.email || '',
+                method: '',
+                status: 'Para Coordinar'
+            }
+        };
+
+        const updatedAssociatedCases = [...(existingTicket.associatedCases || []), newAssociated];
+        const success = await updateTicket(existingTicket.id, { associatedCases: updatedAssociatedCases });
+
+        if (success !== false) {
+            showToast(`Caso SFDC-${sfdcCase.caseNumber} agregado a ${existingTicket.id} (${existingTicket.requester})`, 'success');
+            setMergeModal({ open: false, sfdcCase: null, existingTicket: null });
+            router.push(`/dashboard/tickets/${existingTicket.id}`);
+        } else {
+            showToast('Error al agregar el caso al servicio existente', 'error');
+        }
     };
 
     const [isCreating, setIsCreating] = useState(false);
@@ -1196,6 +1273,69 @@ export default function SFDCCasesPage() {
                     </table>
                 </div>
             </Card>
+
+            {/* Modal de fusión: agregar como caso asociado a ticket existente */}
+            <Modal isOpen={mergeModal.open} onClose={() => setMergeModal({ open: false, sfdcCase: null, existingTicket: null })} title="Servicio existente detectado">
+                {mergeModal.existingTicket && mergeModal.sfdcCase && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ background: 'var(--background)', borderRadius: 'var(--radius-md)', padding: '1rem', border: '1px solid var(--border)' }}>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase', fontWeight: 700 }}>Caso SFDC a atender</p>
+                            <p style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem' }}>SFDC-{mergeModal.sfdcCase.caseNumber}</p>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{mergeModal.sfdcCase.subject}</p>
+                        </div>
+
+                        <div style={{ background: 'rgba(37,99,235,0.07)', borderRadius: 'var(--radius-md)', padding: '1rem', border: '1px solid rgba(37,99,235,0.2)' }}>
+                            <p style={{ fontSize: '0.8rem', color: '#2563eb', marginBottom: '0.4rem', textTransform: 'uppercase', fontWeight: 700 }}>✓ Ya existe un servicio activo para {mergeModal.sfdcCase.requestedFor}</p>
+                            <p style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem', color: '#2563eb' }}>{mergeModal.existingTicket.id}</p>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{mergeModal.existingTicket.subject}</p>
+                        </div>
+
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                            ¿Querés agregar este caso SFDC como <strong>caso asociado</strong> al servicio existente, o crear un <strong>nuevo servicio</strong> independiente?
+                        </p>
+
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <button
+                                onClick={handleMergeIntoExisting}
+                                style={{
+                                    flex: 1, padding: '0.75rem 1rem', background: '#2563eb', color: 'white',
+                                    border: 'none', borderRadius: 'var(--radius-md)', fontWeight: 700,
+                                    cursor: 'pointer', fontSize: '0.9rem'
+                                }}
+                            >
+                                → Agregar al servicio existente ({mergeModal.existingTicket.id})
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setMergeModal({ open: false, sfdcCase: null, existingTicket: null });
+                                    const c = mergeModal.sfdcCase;
+                                    setSelectedCase(c);
+                                    setNewTicket({
+                                        subject: `[SFDC-${c.caseNumber}] ${c.subject}`,
+                                        requester: c.requestedFor,
+                                        priority: c.priority === 'High' ? 'Alta' : 'Media',
+                                        status: 'Abierto',
+                                        logistics: {
+                                            address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : '',
+                                            phone: c.mobile || '',
+                                            email: c.email || '',
+                                            type: 'Entrega'
+                                        }
+                                    });
+                                    setIsModalOpen(true);
+                                }}
+                                style={{
+                                    flex: 1, padding: '0.75rem 1rem', background: 'var(--surface)', color: 'var(--text-main)',
+                                    border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', fontWeight: 600,
+                                    cursor: 'pointer', fontSize: '0.9rem'
+                                }}
+                            >
+                                + Crear nuevo servicio
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Caso desde SFDC">
                 <div /* Changed from form to div to avoid validation issues */ >
