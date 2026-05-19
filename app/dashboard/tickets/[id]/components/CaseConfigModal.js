@@ -56,13 +56,33 @@ export default function CaseConfigModal({
     const handleGenerateRemito = (action = 'download') => {
         if (!currentTask) return;
         
+        let allAssets = [];
+        let allYubikeys = [];
+        let allAccessories = {};
+        
+        currentTasks.forEach(t => {
+            if (t.assets) allAssets = [...allAssets, ...t.assets];
+            if (t.yubikeys) allYubikeys = [...allYubikeys, ...t.yubikeys];
+            if (t.accessories) {
+                Object.keys(t.accessories).forEach(key => {
+                    if (t.accessories[key]) {
+                        allAccessories[key] = true;
+                    }
+                });
+            }
+        });
+
+        // Deduplicate
+        const uniqueAssets = Array.from(new Map(allAssets.map(item => [item.serial || item, item])).values());
+        const uniqueYubikeys = Array.from(new Map(allYubikeys.map(item => [item.serial || item, item])).values());
+
         // Crear un objeto de ticket "virtual" que sea compatible con generateTicketPDF
         const virtualTicket = {
             ...ticket,
-            subject: currentTask.subject,
-            associatedAssets: currentTask.assets || [],
-            accessories: currentTask.accessories || {},
-            yubikeys: currentTask.yubikeys || [],
+            subject: `${ticket.subject || currentTask.subject} (Consolidado: ${currentTasks.length} casos)`,
+            associatedAssets: uniqueAssets,
+            accessories: allAccessories,
+            yubikeys: uniqueYubikeys,
             logistics: {
                 ...(ticket.logistics || {}),
                 method: currentTask.method,
