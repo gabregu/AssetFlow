@@ -190,11 +190,11 @@ export default function AssociatedCasesCard({
                     size="sm" 
                     icon={Plus} 
                     onClick={async () => {
-                        const randomId = `CAS-MANUAL-${Math.floor(Math.random() * 900000) + 100000}`;
+                        const randomId = `${ticket.id}-${Math.floor(Math.random() * 9000) + 1000}`;
                         const newTask = {
                             ticketId: ticket.id,
                             caseNumber: randomId,
-                            subject: "Caso Asociado Manual",
+                            subject: "Caso Consolidado",
                             status: "Para Coordinar",
                             method: "Pendiente",
                             assets: [],
