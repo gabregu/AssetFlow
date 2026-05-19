@@ -65,15 +65,10 @@ export default function AccessoriesSection({
     };
 
     // Filter consumables by ticket country to isolate client data
-    const normalizeCountry = (c) => {
-        let str = (c || 'Argentina').trim().toLowerCase();
-        if (str === 'sfdc-argentina') return 'argentina';
-        return str;
-    };
-    
-    const safeTicketCountry = normalizeCountry(ticketCountry);
+    const safeTicketCountry = (ticketCountry || 'Argentina').trim().toLowerCase();
     const localConsumables = consumables.filter(c => {
-        return normalizeCountry(c.country) === safeTicketCountry;
+        const cCountry = (c.country || 'Argentina').trim().toLowerCase();
+        return cCountry === safeTicketCountry;
     });
 
     // Handle adding custom accessory via barcode scanning

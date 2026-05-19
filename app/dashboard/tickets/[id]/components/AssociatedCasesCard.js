@@ -197,6 +197,7 @@ export default function AssociatedCasesCard({
                             subject: "Caso Consolidado",
                             status: "Para Coordinar",
                             method: "Pendiente",
+                            country: ticket.client || ticket?.logistics?.country || 'Argentina',
                             assets: [],
                             accessories: { backpack: false, screenFilter: false, filterSize: '14"' }
                         };

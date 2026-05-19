@@ -20,13 +20,24 @@ export function useTicketDetail() {
     const [editedData, setEditedData] = useState({});
     const [selectedCaseIndex, setSelectedCaseIndex] = useState(null);
     const ticket = useMemo(() => tickets.find(t => t.id === params.id), [tickets, params.id]);
-    const ticketTasks = useMemo(() => logisticsTasks.filter(t => t.ticket_id === params.id), [logisticsTasks, params.id]);
+    const ticketTasks = useMemo(() => {
+        const tasks = logisticsTasks.filter(t => t.ticket_id === params.id);
+        const ticketClient = ticket?.client || ticket?.logistics?.country || 'Argentina';
+        return tasks.map(t => ({
+            ...t,
+            country: t.country || ticketClient
+        }));
+    }, [logisticsTasks, params.id, ticket]);
 
     // Lista unificada: Si hay tareas reales en DB las usamos, si no usamos los casos sintetizados
     const unifiedTasks = useMemo(() => {
-        if (ticketTasks && ticketTasks.length > 0) return ticketTasks;
-        return (editedData && editedData.associatedCases) || [];
-    }, [ticketTasks, editedData]);
+        const tasks = (ticketTasks && ticketTasks.length > 0) ? ticketTasks : ((editedData && editedData.associatedCases) || []);
+        const ticketClient = ticket?.client || ticket?.logistics?.country || 'Argentina';
+        return tasks.map(t => ({
+            ...t,
+            country: t.country || ticketClient
+        }));
+    }, [ticketTasks, editedData, ticket]);
 
     const [editMode, setEditMode] = useState(false);
     const [editLogistics, setEditLogistics] = useState(false);
