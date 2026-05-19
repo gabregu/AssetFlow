@@ -47,6 +47,10 @@ export default function AccessoriesSection({
             const stockChange = isCurrentlyActive ? 1 : -1;
             const targetStock = Math.max(0, (matchingConsumable.stock || 0) + stockChange);
             updateConsumableStock(matchingConsumable.id, targetStock);
+            
+            const actionText = isCurrentlyActive ? 'devuelto 1 unidad de' : 'descontado 1 unidad de';
+            const locationText = isCurrentlyActive ? 'al' : 'del';
+            window.alert(`MOVIMIENTO DE INVENTARIO\n\nSe ha ${actionText} "${matchingConsumable.name}" ${locationText} stock general.`);
         }
 
         showFeedback('success', `${label} ${!isCurrentlyActive ? 'agregado' : 'quitado'} correctamente.`);
@@ -108,6 +112,7 @@ export default function AccessoriesSection({
         // Update database stock
         if (updateConsumableStock) {
             updateConsumableStock(match.id, (match.stock || 0) - 1);
+            window.alert(`MOVIMIENTO DE INVENTARIO\n\nSe ha descontado 1 unidad de "${match.name}" del stock general.`);
         }
 
         showFeedback('success', `¡"${match.name}" agregado con éxito!`);
@@ -143,6 +148,7 @@ export default function AccessoriesSection({
         // Update database stock
         if (updateConsumableStock) {
             updateConsumableStock(match.id, (match.stock || 0) - 1);
+            window.alert(`MOVIMIENTO DE INVENTARIO\n\nSe ha descontado 1 unidad de "${match.name}" del stock general.`);
         }
 
         showFeedback('success', `¡"${match.name}" agregado con éxito!`);
@@ -161,6 +167,7 @@ export default function AccessoriesSection({
         // Restore stock to database
         if (matchingConsumable && updateConsumableStock) {
             updateConsumableStock(matchingConsumable.id, (matchingConsumable.stock || 0) + 1);
+            window.alert(`MOVIMIENTO DE INVENTARIO\n\nSe ha devuelto 1 unidad de "${name}" al stock general.`);
         }
 
         showFeedback('success', `"${name}" removido correctamente.`);
