@@ -111,6 +111,7 @@ export default function CaseConfigModal({
                     setSelectedCaseIndex(null);
                 }}
                 title={currentTask ? `Configuración: ${currentTask.subject}` : 'Configurar Caso'}
+                disableOutsideClick={true}
             >
                 {selectedCaseIndex !== null && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>

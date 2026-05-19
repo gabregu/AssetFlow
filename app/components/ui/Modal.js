@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
-export function Modal({ isOpen, onClose, title, children }) {
+export function Modal({ isOpen, onClose, title, children, disableOutsideClick = false }) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -21,7 +21,7 @@ export function Modal({ isOpen, onClose, title, children }) {
     // Usamos Portal para inyectar el modal directamente en el body y evitar conflictos de transform/z-index
     return createPortal(
         <div className="modal-overlay" onClick={(e) => {
-            if (e.target === e.currentTarget) onClose();
+            if (!disableOutsideClick && e.target === e.currentTarget) onClose();
         }}>
             <div className="modal-content" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div style={{
