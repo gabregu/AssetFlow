@@ -316,7 +316,8 @@ export default function DeliveriesPage() {
             const matchesText = recipient.includes(searchTerm) ||
                 displayId.includes(searchTerm) ||
                 address.includes(searchTerm);
-            const matchesStatus = statusFilter === 'All' || d.status === statusFilter;
+            const normalizeStatus = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+            const matchesStatus = statusFilter === 'All' || normalizeStatus(d.status) === normalizeStatus(statusFilter);
 
             // Filtrado por Cliente (campo explícito)
             const expectedClient = getClientName(countryFilter);
@@ -1062,11 +1063,13 @@ export default function DeliveriesPage() {
                         </thead>
                         <tbody>
                             {(() => {
-                                let lastDate = null;
+                                let lastDateKey = null;
                                 return sortedAndFilteredDeliveries.map((delivery) => {
                                     const dateColor = getColorByDate(delivery.date);
-                                    const showDateHeader = delivery.date !== lastDate;
-                                    lastDate = delivery.date;
+                                    // Usar solo la parte YYYY-MM-DD para agrupar (ignorar [AM]/[PM])
+                                    const dateKey = (delivery.date || '').split(' ')[0] || delivery.date;
+                                    const showDateHeader = dateKey !== lastDateKey;
+                                    lastDateKey = dateKey;
 
                                     return (
                                         <React.Fragment key={delivery.id}>
