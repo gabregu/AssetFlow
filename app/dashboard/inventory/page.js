@@ -339,9 +339,9 @@ export default function InventoryPage() {
 
         // Verificar duplicados solo si estamos CREANDO un activo nuevo
         if (!editingAsset) {
-            const isDuplicate = assets.some(a => a.serial.toLowerCase() === newAsset.serial.toLowerCase());
-            if (isDuplicate) {
-                alert(`Error: Ya existe un activo con el número de serie "${newAsset.serial}".`);
+            const duplicateAsset = assets.find(a => a.serial.toLowerCase() === newAsset.serial.toLowerCase());
+            if (duplicateAsset) {
+                alert(`Error: Ya existe un activo con el número de serie "${newAsset.serial}".\n\nEl activo ya está registrado:\n- Asignado a: ${duplicateAsset.assignee}\n- Estado: ${duplicateAsset.status}\n- País: ${duplicateAsset.country || 'No especificado'}`);
                 return;
             }
         }
