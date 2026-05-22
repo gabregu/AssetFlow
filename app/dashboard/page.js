@@ -134,14 +134,17 @@ export default function Dashboard() {
 
     // ── Workload per user ──────────────────────────────────────────────────
     const workloadUsers = (users || []).map((u, i) => {
-        const active = filteredTickets.filter(t => {
+        const myTickets = filteredTickets.filter(t => {
             const assigned = String(t.logistics?.deliveryPerson || t.logistics?.delivery_person || t.assignedTo || t.assignee || t.owner || '').toLowerCase();
             const un = String(u.name || u.username || '').toLowerCase();
             const unParts = un.split(' ');
             const isAssigned = assigned === un || (assigned && un && assigned.includes(un)) || (assigned && unParts.length > 0 && assigned.includes(unParts[0]));
             return isAssigned && !['Resuelto', 'Cerrado', 'Cancelado'].includes(t.status);
-        }).length;
-        return { ...u, active, color: USER_COLORS[i % USER_COLORS.length], Icon: USER_ICONS[i % USER_ICONS.length] };
+        });
+        const active = myTickets.length;
+        const entregas = myTickets.filter(t => t.type === 'Entrega' || t.logistics?.type === 'Entrega').length;
+        const recolecciones = myTickets.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
+        return { ...u, active, entregas, recolecciones, color: USER_COLORS[i % USER_COLORS.length], Icon: USER_ICONS[i % USER_ICONS.length] };
     });
     const maxActive = Math.max(...workloadUsers.map(u => u.active), 1);
 
@@ -233,7 +236,13 @@ export default function Dashboard() {
                                     padding: '0.65rem 0',
                                     borderBottom: i < workloadUsers.length - 1 ? '1px solid var(--border)' : 'none'
                                 }}>
-                                    <span style={{ minWidth: '140px', fontWeight: 500, fontSize: '0.9rem' }}>{u.name}</span>
+                                    <div style={{ minWidth: '140px', display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{u.name}</span>
+                                        <div style={{ display: 'flex', gap: '6px', fontSize: '0.65rem', marginTop: '2px', opacity: 0.8 }}>
+                                            <span style={{ color: '#3b82f6', fontWeight: 600 }}>{u.entregas} Entregas</span>
+                                            <span style={{ color: '#f59e0b', fontWeight: 600 }}>{u.recolecciones} Recolecciones</span>
+                                        </div>
+                                    </div>
                                     <MiniBar value={u.active} max={maxActive} color={u.color} />
                                     <div style={{
                                         minWidth: '28px', height: '28px', borderRadius: '6px',
