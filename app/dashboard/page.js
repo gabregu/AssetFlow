@@ -107,7 +107,7 @@ const USER_COLORS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#22
 
 export default function Dashboard() {
     const router = useRouter();
-    const { tickets, assets, currentUser, users, countryFilter, getClientName } = useStore();
+    const { tickets, assets, currentUser, users, countryFilter, getClientName, logisticsTasks } = useStore();
 
     useEffect(() => {
         if (currentUser?.role === 'Conductor') router.push('/dashboard/my-tickets');
@@ -134,13 +134,23 @@ export default function Dashboard() {
 
     // ── Workload per user ──────────────────────────────────────────────────
     const workloadUsers = (users || []).map((u, i) => {
+        const un = String(u.name || u.username || '').toLowerCase();
+        const unParts = un.split(' ');
+        const matchesUser = (assigned) => {
+            const a = String(assigned || '').toLowerCase();
+            return a === un || (a && un && a.includes(un)) || (a && unParts.length > 0 && a.includes(unParts[0]));
+        };
+
+        // Get active tickets where user is directly assigned to the ticket
         const myTickets = filteredTickets.filter(t => {
-            const assigned = String(t.logistics?.deliveryPerson || t.logistics?.delivery_person || t.assignedTo || t.assignee || t.owner || '').toLowerCase();
-            const un = String(u.name || u.username || '').toLowerCase();
-            const unParts = un.split(' ');
-            const isAssigned = assigned === un || (assigned && un && assigned.includes(un)) || (assigned && unParts.length > 0 && assigned.includes(unParts[0]));
-            return isAssigned && !['Resuelto', 'Cerrado', 'Cancelado'].includes(t.status);
+            if (['Resuelto', 'Cerrado', 'Cancelado'].includes(t.status)) return false;
+            // Also check if any logistics task for this ticket is assigned to the user
+            const tasks = (logisticsTasks || []).filter(task => String(task.ticket_id) === String(t.id) && !['Resuelto', 'Cerrado', 'Cancelado', 'Entregado'].includes(task.status));
+            const taskAssigned = tasks.some(task => matchesUser(task.delivery_person || task.deliveryPerson || task.assigned_to || task.assignedTo));
+            const ticketAssigned = matchesUser(t.logistics?.deliveryPerson || t.logistics?.delivery_person || t.assignedTo || t.assignee || t.owner);
+            return ticketAssigned || taskAssigned;
         });
+
         const active = myTickets.length;
         const entregas = myTickets.filter(t => t.type === 'Entrega' || t.logistics?.type === 'Entrega').length;
         const recolecciones = myTickets.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
