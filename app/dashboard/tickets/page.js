@@ -365,9 +365,14 @@ export default function TicketsPage() {
     const sortedAndFilteredTickets = React.useMemo(() => {
         // ... (existing filter/sort logic remains same)
         let result = tickets.filter(t => {
+            const associatedTasks = (logisticsTasks || []).filter(tk => String(tk.ticket_id) === String(t.id));
+            const taskRecipients = associatedTasks.map(tk => String(tk.recipient || '').toLowerCase());
+            const taskAddresses = associatedTasks.map(tk => String(tk.address || '').toLowerCase());
             const matchesSearch = String(t.subject || '').toLowerCase().includes(filter.toLowerCase()) ||
                 String(t.requester || '').toLowerCase().includes(filter.toLowerCase()) ||
-                String(t.id || '').toLowerCase().includes(filter.toLowerCase());
+                String(t.id || '').toLowerCase().includes(filter.toLowerCase()) ||
+                taskRecipients.some(rec => rec.includes(filter.toLowerCase())) ||
+                taskAddresses.some(addr => addr.includes(filter.toLowerCase()));
 
             const matchesStatus = columnFilters.status === 'All' || t.status === columnFilters.status;
             const matchesRequester = !columnFilters.requester || String(t.requester || '').toLowerCase().includes(columnFilters.requester.toLowerCase());
