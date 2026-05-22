@@ -277,6 +277,17 @@ export default function SettingsPage() {
                                                             <option key={r} value={r}>{r}</option>
                                                         ))}
                                                     </select>
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (confirm(`¿Estás seguro de que deseas rechazar y eliminar la solicitud de ${u.name}?`)) {
+                                                                await deleteUser(u.id);
+                                                            }
+                                                        }}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.5rem' }}
+                                                        title="Rechazar solicitud"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
                                             </div>
                                         ))}

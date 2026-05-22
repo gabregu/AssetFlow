@@ -853,8 +853,13 @@ export default function SFDCCasesPage() {
                 
                 const skippedCount = newCases.length - uniqueCases.length;
                 showToast(`Se detectaron ${uniqueCases.length} casos nuevos. Iniciando creación automática...`, 'info');
+                alert(`Importación completada:\n- ${uniqueCases.length} casos nuevos agregados.\n- ${skippedCount} casos omitidos (ya existían).`);
+                
+                // Ordenar los casos nuevos arriba y los más viejos abajo (fecha descendente)
+                setSortConfig({ key: 'dateOpened', direction: 'descending' });
             } else {
                 showToast('No se encontraron casos nuevos.', 'info');
+                alert('No se agregaron casos nuevos.\nTodos los casos en el archivo CSV ya existen en el sistema.');
             }
 
             e.target.value = null; // Reset input
