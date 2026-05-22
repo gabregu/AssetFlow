@@ -100,7 +100,7 @@ export default function HistoryPage() {
             <Card className="p-0">
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }} className="flex-mobile-column">
-                        <div style={{ position: 'relative', flex: 1, minWidth: '100%', width: '100%' }}>
+                        <div style={{ position: 'relative', flex: 1, width: '100%' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
                                 type="text"
@@ -198,7 +198,7 @@ export default function HistoryPage() {
                                     Fecha Inicio <SortIcon column="date" />
                                 </th>
                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                                    Estado Final
+                                    Estado Servicio
                                 </th>
                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Acciones</th>
                             </tr>
@@ -209,7 +209,7 @@ export default function HistoryPage() {
                                 const grouped = {};
                                 sortedAndFilteredTickets.forEach(t => {
                                     // Determinar fecha de cierre/resolución
-                                    const rawDate = t.deliveryCompletedDate || t.closedDate || t.date;
+                                    const rawDate = t.deliveryCompletedDate || t.closedDate || t.updatedAt || t.updated_at || t.date;
                                     const dateObj = new Date(rawDate);
 
                                     // Fallback
