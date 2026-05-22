@@ -135,9 +135,11 @@ export default function Dashboard() {
     // ── Workload per user ──────────────────────────────────────────────────
     const workloadUsers = (users || []).map((u, i) => {
         const active = filteredTickets.filter(t => {
-            const dp = String(t.logistics?.deliveryPerson || t.logistics?.delivery_person || '').toLowerCase();
+            const assigned = String(t.logistics?.deliveryPerson || t.logistics?.delivery_person || t.assignedTo || t.assignee || t.owner || '').toLowerCase();
             const un = String(u.name || u.username || '').toLowerCase();
-            return (dp === un || (dp && un && dp.includes(un))) && !['Resuelto', 'Cerrado'].includes(t.status);
+            const unParts = un.split(' ');
+            const isAssigned = assigned === un || (assigned && un && assigned.includes(un)) || (assigned && unParts.length > 0 && assigned.includes(unParts[0]));
+            return isAssigned && !['Resuelto', 'Cerrado', 'Cancelado'].includes(t.status);
         }).length;
         return { ...u, active, color: USER_COLORS[i % USER_COLORS.length], Icon: USER_ICONS[i % USER_ICONS.length] };
     });
@@ -159,15 +161,15 @@ export default function Dashboard() {
     const maxCount = Math.max(...days.map(d => d.count), 1);
 
     // ── Donut data ─────────────────────────────────────────────────────────
-    const incidentes = filteredTickets.filter(t => t.type === 'Incidente').length;
-    const solicitudes = filteredTickets.filter(t => t.type === 'Solicitud').length;
-    const mantenimiento = filteredTickets.filter(t => t.type === 'Mantenimiento').length;
-    const typeTotal = incidentes + solicitudes + mantenimiento || 1;
+    const entregas = filteredTickets.filter(t => t.type === 'Entrega' || t.logistics?.type === 'Entrega').length;
+    const recolecciones = filteredTickets.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
+    const otros = filteredTickets.length - (entregas + recolecciones);
+    const typeTotal = entregas + recolecciones + otros || 1;
 
     const donutType = [
-        { value: incidentes, color: '#6b7280' },
-        { value: solicitudes, color: '#d1d5db' },
-        { value: mantenimiento, color: '#e5e7eb' },
+        { value: entregas, color: '#3b82f6' },
+        { value: recolecciones, color: '#f59e0b' },
+        { value: otros, color: '#6b7280' },
     ];
     const donutStatus = [
         { value: openTickets, color: '#3b82f6' },
@@ -277,12 +279,12 @@ export default function Dashboard() {
                         <div>
                             <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>Carga de Trabajo por Tipo</p>
                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                <DonutChart slices={donutType} size={110} thickness={20} label={typeTotal === 1 && (incidentes + solicitudes + mantenimiento) === 0 ? 0 : incidentes + solicitudes + mantenimiento} />
+                                <DonutChart slices={donutType} size={110} thickness={20} label={typeTotal === 1 && (entregas + recolecciones + otros) === 0 ? 0 : entregas + recolecciones + otros} />
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     {[
-                                        { label: 'Incidentes', color: '#6b7280', val: incidentes },
-                                        { label: 'Solicitudes', color: '#d1d5db', val: solicitudes },
-                                        { label: 'Mantenimiento', color: '#e5e7eb', val: mantenimiento },
+                                        { label: 'Entregas', color: '#3b82f6', val: entregas },
+                                        { label: 'Recolecciones', color: '#f59e0b', val: recolecciones },
+                                        { label: 'Otros', color: '#6b7280', val: otros },
                                     ].map(l => (
                                         <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem' }}>
                                             <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: l.color, flexShrink: 0 }} />
