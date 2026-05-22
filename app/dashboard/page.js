@@ -165,8 +165,11 @@ export default function Dashboard() {
         d.setDate(today.getDate() - (9 - i));
         const label = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
         const count = filteredTickets.filter(t => {
-            if (!t.createdAt) return false;
-            const td = new Date(t.createdAt);
+            const ticketDateStr = t.created_at || t.createdAt || t.date || t.dateOpened;
+            if (!ticketDateStr) return false;
+            const td = new Date(ticketDateStr);
+            // If the date is invalid, don't count it
+            if (isNaN(td.getTime())) return false;
             return td.toDateString() === d.toDateString();
         }).length;
         return { label, count };
