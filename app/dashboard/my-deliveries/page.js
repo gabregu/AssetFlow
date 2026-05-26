@@ -70,7 +70,9 @@ export default function MyDeliveriesPage() {
         dni: '',
         notes: '',
         actualTime: '',
-        photoUrl: null
+        photoUrl: null,
+        sendWhatsapp: false,
+        emailAddress: ''
     });
 
     // 1. APLANAR DATOS: Convertir las tareas relacionales en una lista de Entregas individuales
@@ -325,7 +327,9 @@ export default function MyDeliveriesPage() {
                         dni: deliveryForm.dni,
                         notes: deliveryForm.notes,
                         deliveredAt: new Date().toISOString(),
-                        actualTime: deliveryForm.actualTime
+                        actualTime: deliveryForm.actualTime,
+                        sendWhatsapp: deliveryForm.sendWhatsapp,
+                        emailAddress: deliveryForm.emailAddress
                     }
                 });
             } else if (selectedDelivery.isMainTicket) {
@@ -338,7 +342,9 @@ export default function MyDeliveriesPage() {
                         dni: deliveryForm.dni,
                         notes: deliveryForm.notes,
                         deliveredAt: new Date().toISOString(),
-                        actualTime: deliveryForm.actualTime
+                        actualTime: deliveryForm.actualTime,
+                        sendWhatsapp: deliveryForm.sendWhatsapp,
+                        emailAddress: deliveryForm.emailAddress
                     }
                 };
                 await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
@@ -357,7 +363,9 @@ export default function MyDeliveriesPage() {
                                 dni: deliveryForm.dni,
                                 notes: deliveryForm.notes,
                                 deliveredAt: new Date().toISOString(),
-                                actualTime: deliveryForm.actualTime
+                                actualTime: deliveryForm.actualTime,
+                                sendWhatsapp: deliveryForm.sendWhatsapp,
+                                emailAddress: deliveryForm.emailAddress
                             }
                         }
                     };
@@ -369,7 +377,7 @@ export default function MyDeliveriesPage() {
             showToast('Entrega registrada correctamente', 'success');
             await refreshData(); // Asegurar sincronización total tras el guardado
             setIsDeliveryModalOpen(false);
-            setDeliveryForm({ receivedBy: '', dni: '', notes: '', actualTime: '' });
+            setDeliveryForm({ receivedBy: '', dni: '', notes: '', actualTime: '', sendWhatsapp: false, emailAddress: '' });
         } catch (error) {
             console.error('Error al registrar entrega:', error);
             showToast('Error al guardar los datos', 'error');
@@ -415,7 +423,9 @@ export default function MyDeliveriesPage() {
                 receivedBy: '',
                 dni: '',
                 notes: '',
-                actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                sendWhatsapp: false,
+                emailAddress: ''
             });
             showToast('Envío encontrado', 'success');
         } else {
@@ -882,6 +892,35 @@ export default function MyDeliveriesPage() {
                                 }}
                                 placeholder="Cualquier observación relevante sobre la entrega..."
                             />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem', padding: '1rem', background: 'var(--surface-active)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={deliveryForm.sendWhatsapp}
+                                    onChange={(e) => setDeliveryForm({ ...deliveryForm, sendWhatsapp: e.target.checked })}
+                                    style={{ width: '1.2rem', height: '1.2rem', accentColor: '#25D366' }}
+                                />
+                                Enviar comprobante por WhatsApp
+                            </label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.2rem' }}>
+                                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>Enviar también por correo electrónico (Opcional)</label>
+                                <input
+                                    type="email"
+                                    value={deliveryForm.emailAddress}
+                                    onChange={(e) => setDeliveryForm({ ...deliveryForm, emailAddress: e.target.value })}
+                                    style={{
+                                        padding: '0.75rem',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--surface-main)',
+                                        color: 'var(--text-main)',
+                                        fontSize: '0.95rem'
+                                    }}
+                                    placeholder="Ej: correo@empresa.com"
+                                />
+                            </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
