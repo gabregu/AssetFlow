@@ -27,6 +27,7 @@ import { Button } from '@/app/components/ui/Button';
 import { useStore } from '../../../lib/store';
 
 import QRCode from 'qrcode';
+import JsBarcode from 'jsbarcode';
 
 const TrackingBadge = ({ method, trackingNumber }) => {
     const [copied, setCopied] = React.useState(false);
@@ -194,6 +195,116 @@ export default function LogisticsHubPage() {
         if (!task.parentAddress) return;
         if (confirm(`¿Sincronizar dirección con el Servicio? Se cambiará a: ${task.parentAddress}`)) {
             await updateLogisticsTask(task.id, { address: null });
+        }
+    };
+
+    const handlePrintDeliveryLabel = async (task) => {
+        try {
+            // Contenido dinámico para el QR: URL que lleva al conductor directo al registro
+            const qrContent = `${window.location.origin}/dashboard/my-deliveries?scan=${task.case_number || task.id}`;
+            const qrDataUrl = await QRCode.toDataURL(qrContent, {
+                margin: 1,
+                width: 200,
+                errorCorrectionLevel: 'M', // Nivel medio para mayor robustez
+                color: { dark: '#000000', light: '#ffffff' }
+            });
+
+            // Barcode para el ID
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, String(task.case_number || task.id), {
+                format: "CODE128",
+                width: 2,
+                height: 40,
+                displayValue: false,
+                margin: 0
+            });
+            const barcodeDataUrl = canvas.toDataURL("image/png");
+
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            const content = `
+                <html>
+                    <head>
+                        <meta charset="utf-8">
+                        <style>
+                            @page { size: 50mm 25mm; margin: 0; }
+                            * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+                            html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
+                            .label-container {
+                                width: 50mm; height: 25mm; padding: 1.8mm 2.8mm;
+                                display: flex; position: absolute; top: 0; left: 0;
+                                font-family: 'Helvetica', 'Arial', sans-serif;
+                            }
+                            .left-side {
+                                flex: 1; display: flex; flex-direction: column;
+                                justify-content: center; gap: 0.3mm; padding-right: 1.5mm;
+                                overflow: hidden;
+                            }
+                            .ticket-id {
+                                font-size: 5.5pt; font-weight: 800; color: #000;
+                                margin-bottom: 0.1mm; line-height: 1;
+                            }
+                            .recipient-name {
+                                font-size: 7.5pt; font-weight: 900; line-height: 1.1;
+                                color: #000; text-transform: uppercase;
+                                display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+                                overflow: hidden; margin-bottom: 0.2mm;
+                            }
+                            .address-text {
+                                font-size: 5.2pt; font-weight: 600; line-height: 1.1;
+                                color: #111; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+                                overflow: hidden;
+                            }
+                            .date-text {
+                                font-size: 4.8pt; font-weight: 800; color: #000;
+                                margin-top: 0.2mm;
+                            }
+                            .right-side {
+                                width: 14.5mm; display: flex;
+                                align-items: center; justify-content: center;
+                                height: 100%;
+                            }
+                            .qr-code { width: 14.5mm; height: 14.5mm; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="label-container">
+                            <div class="left-side">
+                                <div class="ticket-id">TICKET #${task.case_number || task.id}</div>
+                                <div class="recipient-name">${task.displayRequester}</div>
+                                <div class="address-text">${task.displayAddress}</div>
+                                <div class="date-text">📅 ${task.date ? new Date(task.date + 'T00:00:00').toLocaleDateString() : 'Por coordinar'}</div>
+                            </div>
+                            <div class="right-side">
+                                <img class="qr-code" src="${qrDataUrl}" />
+                            </div>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }, 500);
+
+        } catch (err) {
+            console.error('Error printing delivery label:', err);
+            alert('Error al imprimir la etiqueta de envío');
         }
     };
 
@@ -559,14 +670,23 @@ export default function LogisticsHubPage() {
                                     </Badge>
                                 </td>
                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                    <Button 
-                                        size="sm" 
-                                        variant="outline" 
-                                        icon={ArrowRight} 
-                                        onClick={() => window.location.href = `/dashboard/tickets/${task.ticket_id}`}
-                                    >
-                                        Gestionar
-                                    </Button>
+                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                        <Button 
+                                            size="sm" 
+                                            variant="secondary" 
+                                            icon={Printer} 
+                                            onClick={() => handlePrintDeliveryLabel(task)}
+                                            title="Imprimir Etiqueta Logística"
+                                        />
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            icon={ArrowRight} 
+                                            onClick={() => window.location.href = `/dashboard/tickets/${task.ticket_id}`}
+                                        >
+                                            Gestionar
+                                        </Button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
