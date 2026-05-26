@@ -10,7 +10,8 @@ import {
     TrendingUp,
     BarChart3,
     ArrowUpRight,
-    QrCode
+    QrCode,
+    Download
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -19,10 +20,12 @@ import { Modal } from '@/app/components/ui/Modal';
 import { QRScannerModal } from '@/app/components/ui/QRScannerModal';
 import { useRouter } from 'next/navigation';
 import { useStore } from '../../../lib/store';
+import { generateTicketPDF } from '../../../lib/pdf-generator';
 
 export default function MyDeliveriesPage() {
     const { 
         tickets, 
+        assets,
         currentUser, 
         updateTicket, 
         logisticsTasks, 
@@ -370,34 +373,6 @@ export default function MyDeliveriesPage() {
                         }
                     };
                     await updateTicket(parentTicket.id, { associatedCases: updatedCases });
-                }
-            }
-            
-            // Enviar correo si se especificó una dirección utilizando la API segura
-            if (deliveryForm.emailAddress && deliveryForm.emailAddress.trim() !== '') {
-                try {
-                    await fetch('/api/send-email', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            to: deliveryForm.emailAddress,
-                            deliveryId: selectedDelivery.displayId,
-                            recipientName: deliveryForm.receivedBy,
-                            dni: deliveryForm.dni,
-                            notes: deliveryForm.notes,
-                            actualTime: deliveryForm.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                            requester: selectedDelivery.requester,
-                            address: selectedDelivery.displayAddress,
-                            type: getOperationType(selectedDelivery).label,
-                            items: getDevicesList(selectedDelivery)
-                        })
-                    });
-                    showToast('Comprobante enviado por correo', 'success');
-                } catch (emailError) {
-                    console.error('Error al enviar el correo:', emailError);
-                    showToast('Entrega guardada, pero falló el envío del correo', 'error');
                 }
             }
             
@@ -921,51 +896,53 @@ export default function MyDeliveriesPage() {
                             />
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem', padding: '1rem', background: 'var(--surface-active)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={deliveryForm.sendWhatsapp}
-                                    onChange={(e) => setDeliveryForm({ ...deliveryForm, sendWhatsapp: e.target.checked })}
-                                    style={{ width: '1.2rem', height: '1.2rem', accentColor: '#25D366' }}
-                                />
-                                Enviar comprobante por WhatsApp
-                            </label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.2rem' }}>
-                                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>Enviar también por correo electrónico (Opcional)</label>
-                                <input
-                                    type="email"
-                                    value={deliveryForm.emailAddress}
-                                    onChange={(e) => setDeliveryForm({ ...deliveryForm, emailAddress: e.target.value })}
-                                    style={{
-                                        padding: '0.75rem',
-                                        borderRadius: 'var(--radius-sm)',
-                                        border: '1px solid var(--border)',
-                                        background: 'var(--surface-main)',
-                                        color: 'var(--text-main)',
-                                        fontSize: '0.95rem'
-                                    }}
-                                    placeholder="Ej: correo@empresa.com"
-                                />
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem' }}>
                             <Button 
                                 type="button" 
-                                variant="secondary" 
-                                onClick={() => setIsDeliveryModalOpen(false)} 
-                                style={{ flex: 1 }}
+                                onClick={() => {
+                                    if (!deliveryForm.receivedBy || !deliveryForm.dni) {
+                                        showToast('Recomendación: Completa Nombre y DNI antes de descargar', 'warning');
+                                    }
+                                    generateTicketPDF(selectedDelivery, assets, {
+                                        receivedBy: deliveryForm.receivedBy,
+                                        dni: deliveryForm.dni,
+                                        notes: deliveryForm.notes,
+                                        actualTime: deliveryForm.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                        deliveredAt: new Date().toISOString()
+                                    }, 'download');
+                                }} 
+                                icon={Download}
+                                style={{ 
+                                    padding: '0.75rem 1.5rem', 
+                                    fontSize: '1rem', 
+                                    width: '100%', 
+                                    backgroundColor: '#25D366', 
+                                    borderColor: '#25D366',
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                    boxShadow: '0 4px 12px rgba(37, 211, 102, 0.2)'
+                                }}
                             >
-                                CANCELAR
+                                DESCARGAR REMITO PDF
                             </Button>
-                            <Button 
-                                type="submit" 
-                                icon={CheckCircle2} 
-                                style={{ flex: 1 }}
-                            >
-                                CONFIRMAR ENTREGA
-                            </Button>
+                            
+                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                <Button 
+                                    type="button" 
+                                    variant="secondary" 
+                                    onClick={() => setIsDeliveryModalOpen(false)} 
+                                    style={{ flex: 1 }}
+                                >
+                                    CANCELAR
+                                </Button>
+                                <Button 
+                                    type="submit" 
+                                    icon={CheckCircle2} 
+                                    style={{ flex: 1 }}
+                                >
+                                    CONFIRMAR ENTREGA
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </form>
