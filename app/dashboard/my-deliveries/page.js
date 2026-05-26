@@ -373,6 +373,33 @@ export default function MyDeliveriesPage() {
                 }
             }
             
+            // Enviar correo si se especificó una dirección utilizando la API segura
+            if (deliveryForm.emailAddress && deliveryForm.emailAddress.trim() !== '') {
+                try {
+                    await fetch('/api/send-email', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            to: deliveryForm.emailAddress,
+                            deliveryId: selectedDelivery.displayId,
+                            recipientName: deliveryForm.receivedBy,
+                            dni: deliveryForm.dni,
+                            notes: deliveryForm.notes,
+                            actualTime: deliveryForm.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                            requester: selectedDelivery.requester,
+                            address: selectedDelivery.displayAddress,
+                            type: getOperationType(selectedDelivery).label,
+                            items: getDevicesList(selectedDelivery)
+                        })
+                    });
+                    showToast('Comprobante enviado por correo', 'success');
+                } catch (emailError) {
+                    console.error('Error al enviar el correo:', emailError);
+                    showToast('Entrega guardada, pero falló el envío del correo', 'error');
+                }
+            }
             
             showToast('Entrega registrada correctamente', 'success');
             await refreshData(); // Asegurar sincronización total tras el guardado
