@@ -18,7 +18,7 @@ export default function SFDCCasesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCase, setSelectedCase] = useState(null);
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+    const [sortConfig, setSortConfig] = useState({ key: 'age', direction: 'ascending' });
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' }); // Nuevo estado
 
     // New State for Delivery/Collection Filter
