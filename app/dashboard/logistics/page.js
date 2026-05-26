@@ -518,11 +518,28 @@ export default function LogisticsHubPage() {
                                     </div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <div style={{ width: '24px', height: '24px', background: 'var(--background)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <User size={14} />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{ width: '24px', height: '24px', background: 'var(--background)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                <User size={14} style={{ color: 'var(--text-secondary)' }} />
+                                            </div>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                                                {task.deliveryPerson || task.delivery_person || 'Sin Asignar'}
+                                            </div>
                                         </div>
-                                        <div style={{ fontSize: '0.85rem' }}>{task.deliveryPerson || 'Sin Asignar'}</div>
+                                        {(task.coordinatedBy || task.coordinated_by) ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingLeft: '28px' }}>
+                                                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                                    Coordinó: <strong style={{ color: 'var(--primary-color)' }}>{task.coordinatedBy || task.coordinated_by}</strong>
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingLeft: '28px' }}>
+                                                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                    Sin coordinar
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
