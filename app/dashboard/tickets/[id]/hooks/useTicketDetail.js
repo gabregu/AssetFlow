@@ -7,6 +7,22 @@ import { useJsApiLoader } from '@react-google-maps/api';
 
 const libraries = ['geometry'];
 
+// Helper to identify unconfigured automatic SFDC cases
+const isAutoUnconfiguredCase = (task) => {
+    const caseNum = task.caseNumber || task.case_number;
+    if (!caseNum) return false;
+    
+    // Check if it's an 8-digit SFDC case number
+    const isSFDCCase = /^\d{8}$/.test(String(caseNum).trim());
+    if (!isSFDCCase) return false;
+    
+    // Check if it has no assets and is not configured
+    const hasNoAssets = !task.assets || task.assets.length === 0;
+    const isUnconfigured = !task.method || task.method === 'Sin método' || task.method === 'Pendiente' || !task.status || task.status === 'No requiere accion' || task.status === 'Pendiente';
+    
+    return hasNoAssets && isUnconfigured;
+};
+
 export function useTicketDetail() {
     const params = useParams();
     const router = useRouter();
@@ -37,10 +53,12 @@ export function useTicketDetail() {
     const unifiedTasks = useMemo(() => {
         const baseTasks = ticketTasks || [];
         if (!showAutoCases) {
-            return baseTasks.map(t => ({
-                ...t,
-                country: t.country || (ticket?.client || ticket?.logistics?.country || 'Argentina')
-            }));
+            return baseTasks
+                .filter(t => !isAutoUnconfiguredCase(t))
+                .map(t => ({
+                    ...t,
+                    country: t.country || (ticket?.client || ticket?.logistics?.country || 'Argentina')
+                }));
         }
 
         const legacyCases = (editedData && editedData.associatedCases) || [];

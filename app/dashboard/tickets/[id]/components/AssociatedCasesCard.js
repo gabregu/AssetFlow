@@ -94,7 +94,14 @@ export default function AssociatedCasesCard({
     showAutoCases,
     setShowAutoCases
 }) {
-    const toggleButton = (editedData?.associatedCases && editedData.associatedCases.length > 0 && editedData.associatedCases.some(c => c.caseNumber && c.caseNumber !== 'Caso Principal')) ? (
+    const hasAutomaticCases = 
+        (editedData?.associatedCases && editedData.associatedCases.some(c => c.caseNumber && c.caseNumber !== 'Caso Principal' && /^\d+$/.test(String(c.caseNumber).trim()))) ||
+        (ticketTasks && ticketTasks.some(t => {
+            const caseNum = t.caseNumber || t.case_number;
+            return caseNum && /^\d+$/.test(String(caseNum).trim()) && (!t.assets || t.assets.length === 0) && (!t.method || t.method === 'Sin método' || t.method === 'Pendiente');
+        }));
+
+    const toggleButton = hasAutomaticCases ? (
         <button
             onClick={() => setShowAutoCases(!showAutoCases)}
             style={{
