@@ -204,7 +204,7 @@ export default function TicketDetailPage() {
                 setNewAsset={setNewAsset}
                 verifyDeliveryModal={verifyDeliveryModal}
                 setVerifyDeliveryModal={setVerifyDeliveryModal}
-                ticketTasks={ticketTasks}
+                unifiedTasks={unifiedTasks}
                 deleteLogisticsTask={deleteLogisticsTask}
                 handleUpdateTask={handleUpdateTask}
                 updateAsset={updateAsset}
@@ -224,7 +224,7 @@ export default function TicketDetailPage() {
                     const ticketCountry = ticket?.logistics?.country;
                     return !ticketCountry || a.country === ticketCountry;
                 })}
-                task={(selectedCaseIndex !== null && (ticketTasks && ticketTasks.length > 0 ? ticketTasks : (editedData?.associatedCases || []))[selectedCaseIndex]) || null}
+                task={(selectedCaseIndex !== null && unifiedTasks[selectedCaseIndex]) || null}
                 onUpdateTask={handleUpdateTask}
             />
         </div>

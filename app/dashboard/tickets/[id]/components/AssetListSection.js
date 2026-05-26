@@ -17,7 +17,8 @@ export default function AssetListSection({
     setIsAssetModalOpen,
     updateAsset,
     currentUser,
-    allTasks = []
+    allTasks = [],
+    associatedCases = []
 }) {
     if (!task) return null;
 
@@ -185,11 +186,27 @@ export default function AssetListSection({
                                             }}
                                         />
                                         <datalist id={`related-cases-list-${idxx}`}>
+                                            {/* 1. Mostrar casos asociados automáticos (de la cabecera / legacy JSON) */}
+                                            {(associatedCases || []).map((ac, acIdx) => {
+                                                const caseNum = ac.caseNumber;
+                                                if (caseNum && caseNum !== 'Caso Principal') {
+                                                    return (
+                                                        <option key={`auto-${acIdx}`} value={caseNum}>
+                                                            {ac.subject || 'Caso Asociado'}
+                                                        </option>
+                                                    );
+                                                }
+                                                return null;
+                                            })}
+                                            {/* 2. Mostrar otras tareas consolidadas (si las hubiera) */}
                                             {allTasks.map((t, tIdx) => {
                                                 const caseNum = t.caseNumber || t.case_number;
-                                                // Excluir el caso actual si es posible
                                                 if (caseNum && caseNum !== (task.caseNumber || task.case_number)) {
-                                                    return <option key={tIdx} value={caseNum}>{t.subject || ''}</option>;
+                                                    // Evitar duplicar si ya está en la lista automática
+                                                    const alreadyListed = (associatedCases || []).some(ac => ac.caseNumber === caseNum);
+                                                    if (!alreadyListed) {
+                                                        return <option key={`task-${tIdx}`} value={caseNum}>{t.subject || ''}</option>;
+                                                    }
                                                 }
                                                 return null;
                                             })}

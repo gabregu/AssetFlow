@@ -29,15 +29,17 @@ export function useTicketDetail() {
         }));
     }, [logisticsTasks, params.id, ticket]);
 
-    // Lista unificada: Si hay tareas reales en DB las usamos, si no usamos los casos sintetizados
+    // Lista unificada: Mostrar únicamente las tareas reales de la base de datos (Casos Consolidados/Manuales) 
+    // en la sección inferior de Casos Asociados, manteniendo limpia la UI. Los asociados automáticos 
+    // heredados de la columna JSONB solo se muestran arriba en la cabecera.
     const unifiedTasks = useMemo(() => {
-        const tasks = (ticketTasks && ticketTasks.length > 0) ? ticketTasks : ((editedData && editedData.associatedCases) || []);
+        const tasks = ticketTasks || [];
         const ticketClient = ticket?.client || ticket?.logistics?.country || 'Argentina';
         return tasks.map(t => ({
             ...t,
             country: t.country || ticketClient
         }));
-    }, [ticketTasks, editedData, ticket]);
+    }, [ticketTasks, ticket]);
 
     const [editMode, setEditMode] = useState(false);
     const [editLogistics, setEditLogistics] = useState(false);

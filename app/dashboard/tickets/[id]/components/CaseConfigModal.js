@@ -38,7 +38,7 @@ export default function CaseConfigModal({
     setNewAsset,
     verifyDeliveryModal,
     setVerifyDeliveryModal,
-    ticketTasks,
+    unifiedTasks,
     updateLogisticsTask,
     addLogisticsTask,
     deleteLogisticsTask,
@@ -47,7 +47,7 @@ export default function CaseConfigModal({
     updateConsumableStock,
     currentUser
 }) {
-    const currentTasks = (ticketTasks && ticketTasks.length > 0) ? ticketTasks : (editedData?.associatedCases || []);
+    const currentTasks = unifiedTasks || [];
     const currentTask = (selectedCaseIndex !== null && currentTasks) ? currentTasks[selectedCaseIndex] : null;
 
     // Ref para poder llamar saveAll() desde CaseLogisticsSection antes de cerrar
@@ -129,6 +129,7 @@ export default function CaseConfigModal({
                             updateAsset={updateAsset}
                             currentUser={currentUser}
                             allTasks={currentTasks}
+                            associatedCases={editedData?.associatedCases || ticket?.associatedCases || []}
                         />
 
                         <AccessoriesSection
