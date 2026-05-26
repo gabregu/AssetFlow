@@ -19,7 +19,8 @@ import {
     Truck,
     Settings,
     Trash,
-    Info
+    Info,
+    Search
 } from 'lucide-react';
 
 
@@ -37,6 +38,7 @@ export default function BillingPage() {
     const [dolarQuotes, setDolarQuotes] = useState({ official: null, blue: null });
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
     const [expenseForm, setExpenseForm] = useState({ description: '', amount: '' });
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Estado para edición de cotización histórica
     const currentDate = new Date();
@@ -409,7 +411,23 @@ export default function BillingPage() {
             <div className="grid-responsive-dashboard">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     {/* Profit Analysis Table */}
-                    <Card title="Detalle de Utilidad por Servicio" className="table-responsive">
+                    <Card 
+                        title="Detalle de Utilidad por Servicio" 
+                        className="table-responsive"
+                        action={
+                            <div style={{ position: 'relative', width: '250px' }}>
+                                <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar Ticket o solicitante..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="form-input"
+                                    style={{ paddingLeft: '35px', height: '36px', fontSize: '0.85rem' }}
+                                />
+                            </div>
+                        }
+                    >
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead>
@@ -432,7 +450,15 @@ export default function BillingPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredTickets.length > 0 ? filteredTickets.map(ticket => {
+                                    {filteredTickets.length > 0 ? filteredTickets
+                                        .filter(ticket => {
+                                            if (!searchQuery.trim()) return true;
+                                            const query = searchQuery.toLowerCase().trim();
+                                            return (ticket.id && ticket.id.toLowerCase().includes(query)) ||
+                                                   (ticket.requester && ticket.requester.toLowerCase().includes(query)) ||
+                                                   (ticket.subject && ticket.subject.toLowerCase().includes(query));
+                                        })
+                                        .map(ticket => {
                                         // Calculate Profit for this row
                                         const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
                                         if (!financials) return null;
