@@ -5,7 +5,7 @@ import { calculateTicketFinancials } from '@/lib/billing';
 import { useStore } from '@/lib/store';
 
 export function FinancialsSummary({ ticket }) {
-    const { rates, assets, users, currentUser, logisticsTasks } = useStore();
+    const { rates, assets, users, currentUser, logisticsTasks, updateTicket } = useStore();
 
     // Only visible for management or admin
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'Gerencial') {
@@ -120,6 +120,18 @@ export function FinancialsSummary({ ticket }) {
                          Costo Logístico {method !== 'N/A' && `(${method})`}
                     </span>
                     <span style={{ fontWeight: 600, color: '#ef4444' }}>- {formatUSD(logisticCost)}</span>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '0.25rem' }}>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={ticket.hasSecondVisitSurcharge || false}
+                            onChange={async (e) => await updateTicket(ticket.id, { hasSecondVisitSurcharge: e.target.checked })}
+                            style={{ cursor: 'pointer' }}
+                        />
+                        Recargo por 2ª visita
+                    </label>
                 </div>
 
                 {operationalCost > 0 && (
