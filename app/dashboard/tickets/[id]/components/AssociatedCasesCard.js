@@ -90,10 +90,31 @@ export default function AssociatedCasesCard({
     ticketTasks,
     unifiedTasks,
     addLogisticsTask,
-    deleteLogisticsTask
+    deleteLogisticsTask,
+    showAutoCases,
+    setShowAutoCases
 }) {
+    const toggleButton = (editedData?.associatedCases && editedData.associatedCases.length > 0 && editedData.associatedCases.some(c => c.caseNumber && c.caseNumber !== 'Caso Principal')) ? (
+        <button
+            onClick={() => setShowAutoCases(!showAutoCases)}
+            style={{
+                fontSize: '0.72rem',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontWeight: 600,
+                border: `1px solid ${showAutoCases ? 'var(--primary-color)' : 'var(--border)'}`,
+                background: showAutoCases ? 'rgba(37, 99, 235, 0.05)' : 'transparent',
+                color: showAutoCases ? 'var(--primary-color)' : 'var(--text-secondary)'
+            }}
+        >
+            {showAutoCases ? 'Ocultar Automáticos' : 'Ver Automáticos'}
+        </button>
+    ) : null;
+
     return (
-        <Card title="Casos Asociados" style={{ height: 'auto' }}>
+        <Card title="Casos Asociados" action={toggleButton} style={{ height: 'auto' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>                {(unifiedTasks || []).map((task, index) => {
                     const caseAssets = task.assets || [];
                     const hasHardware = caseAssets.length > 0;

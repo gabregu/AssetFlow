@@ -29,17 +29,35 @@ export function useTicketDetail() {
         }));
     }, [logisticsTasks, params.id, ticket]);
 
+    const [showAutoCases, setShowAutoCases] = useState(false);
+
     // Lista unificada: Mostrar únicamente las tareas reales de la base de datos (Casos Consolidados/Manuales) 
-    // en la sección inferior de Casos Asociados, manteniendo limpia la UI. Los asociados automáticos 
-    // heredados de la columna JSONB solo se muestran arriba en la cabecera.
+    // en la sección inferior de Casos Asociados por defecto. Si el usuario activa "showAutoCases",
+    // se fusionan también los asociados automáticos heredados de la columna JSONB.
     const unifiedTasks = useMemo(() => {
-        const tasks = ticketTasks || [];
+        const baseTasks = ticketTasks || [];
+        if (!showAutoCases) {
+            return baseTasks.map(t => ({
+                ...t,
+                country: t.country || (ticket?.client || ticket?.logistics?.country || 'Argentina')
+            }));
+        }
+
+        const legacyCases = (editedData && editedData.associatedCases) || [];
+        
+        // Deduplicar por caseNumber (evitar duplicar si ya existe en ticketTasks)
+        const filteredLegacy = legacyCases.filter(lc => 
+            lc.caseNumber && lc.caseNumber !== 'Caso Principal' && 
+            !baseTasks.some(rt => String(rt.caseNumber || rt.case_number).trim() === String(lc.caseNumber).trim())
+        );
+
+        const tasks = [...baseTasks, ...filteredLegacy];
         const ticketClient = ticket?.client || ticket?.logistics?.country || 'Argentina';
         return tasks.map(t => ({
             ...t,
             country: t.country || ticketClient
         }));
-    }, [ticketTasks, ticket]);
+    }, [ticketTasks, ticket, showAutoCases, editedData]);
 
     const [editMode, setEditMode] = useState(false);
     const [editLogistics, setEditLogistics] = useState(false);
@@ -542,6 +560,8 @@ export function useTicketDetail() {
         logisticsTasks,
         ticketTasks,
         unifiedTasks,
+        showAutoCases,
+        setShowAutoCases,
         addLogisticsTask,
         updateLogisticsTask,
         deleteLogisticsTask,

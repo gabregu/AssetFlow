@@ -50,6 +50,8 @@ export default function TicketDetailPage() {
         sfdcCases,
         ticketTasks,
         unifiedTasks,
+        showAutoCases,
+        setShowAutoCases,
         addLogisticsTask,
         updateLogisticsTask,
         deleteLogisticsTask,
@@ -131,6 +133,8 @@ export default function TicketDetailPage() {
                                 unifiedTasks={unifiedTasks}
                                 addLogisticsTask={addLogisticsTask}
                                 deleteLogisticsTask={deleteLogisticsTask}
+                                showAutoCases={showAutoCases}
+                                setShowAutoCases={setShowAutoCases}
                             />
 
                             <InstructionsCard
