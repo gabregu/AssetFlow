@@ -27,7 +27,7 @@ import { calculateTicketFinancials, resolveTicketServiceDetails, calculateTaskFi
 import Link from 'next/link';
 
 export default function BillingPage() {
-    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, countryFilter, getClientName, logisticsTasks } = useStore();
+    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, countryFilter, getClientName, logisticsTasks, updateTicket } = useStore();
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [isRatesModalOpen, setIsRatesModalOpen] = useState(false);
@@ -1310,11 +1310,22 @@ export default function BillingPage() {
                                     </div>
                                 )}
 
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
-                                    <Link href={`/dashboard/tickets/${t.id}`} style={{ textDecoration: 'none' }}>
-                                        <Button icon={ArrowRight} variant="outline" size="sm">Ver Ticket Completo</Button>
-                                    </Link>
-                                    <Button onClick={() => setDetailModal({ ...detailModal, isOpen: false })}>Cerrar Detalle</Button>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
+                                    <label style={{ fontSize: '0.85rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', background: 'var(--surface)', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={t.hasSecondVisitSurcharge || false}
+                                            onChange={async (e) => await updateTicket(t.id, { hasSecondVisitSurcharge: e.target.checked })}
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                        Recargo por 2ª visita
+                                    </label>
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <Link href={`/dashboard/tickets/${t.id}`} style={{ textDecoration: 'none' }}>
+                                            <Button icon={ArrowRight} variant="outline" size="sm">Ver Ticket Completo</Button>
+                                        </Link>
+                                        <Button onClick={() => setDetailModal({ ...detailModal, isOpen: false })}>Cerrar Detalle</Button>
+                                    </div>
                                 </div>
                             </>
                         );
