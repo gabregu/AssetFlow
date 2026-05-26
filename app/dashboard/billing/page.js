@@ -1314,8 +1314,8 @@ export default function BillingPage() {
                                     <label style={{ fontSize: '0.85rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', background: 'var(--surface)', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                         <input 
                                             type="checkbox" 
-                                            checked={t.hasSecondVisitSurcharge || false}
-                                            onChange={async (e) => await updateTicket(t.id, { hasSecondVisitSurcharge: e.target.checked })}
+                                            checked={t.deliveryDetails?.hasSecondVisitSurcharge || false}
+                                            onChange={async (e) => await updateTicket(t.id, { deliveryDetails: { ...t.deliveryDetails, hasSecondVisitSurcharge: e.target.checked } })}
                                             style={{ cursor: 'pointer' }}
                                         />
                                         Recargo por 2ª visita

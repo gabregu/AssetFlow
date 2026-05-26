@@ -126,8 +126,8 @@ export function FinancialsSummary({ ticket }) {
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                         <input 
                             type="checkbox" 
-                            checked={ticket.hasSecondVisitSurcharge || false}
-                            onChange={async (e) => await updateTicket(ticket.id, { hasSecondVisitSurcharge: e.target.checked })}
+                            checked={ticket.deliveryDetails?.hasSecondVisitSurcharge || false}
+                            onChange={async (e) => await updateTicket(ticket.id, { deliveryDetails: { ...ticket.deliveryDetails, hasSecondVisitSurcharge: e.target.checked } })}
                             style={{ cursor: 'pointer' }}
                         />
                         Recargo por 2ª visita
