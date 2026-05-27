@@ -1028,8 +1028,29 @@ export default function InventoryPage() {
                         const rowCountry = (asset.country || '').trim();
 
                         if (rowCountry) {
-                            // If country exists, it MUST match the filter
-                            if (rowCountry.toLowerCase() !== countryFilter.toLowerCase()) {
+                            const rowLower = rowCountry.toLowerCase().trim();
+                            const filterLower = countryFilter.toLowerCase().trim();
+
+                            // Helper to normalize any "SFDC-Country" or "Country" to a base key
+                            const getBaseKey = (name) => {
+                                let key = name.replace(/^sfdc-/, '').trim();
+                                if (key === 'herness') key = 'harness';
+                                return key;
+                            };
+
+                            const rowBase = getBaseKey(rowLower);
+                            const filterBase = getBaseKey(filterLower);
+
+                            // Check compatibility:
+                            // - Base keys match exactly (e.g. harness === harness, chile === chile, argentina === argentina)
+                            // - OR: CSV row is general "argentina", and active filter is "harness" (or vice versa) since harness is in Argentina
+                            const isCompatible = (rowBase === filterBase) || 
+                                                 (rowBase === 'argentina' && filterBase === 'harness') ||
+                                                 (rowBase === 'harness' && filterBase === 'argentina');
+
+                            if (isCompatible) {
+                                asset.country = countryFilter; // Normalize to active filter (e.g. harness)
+                            } else {
                                 asset._validationError = `Conflicto de País: El archivo dice "${rowCountry}" pero estás en la vista "${countryFilter}".`;
                             }
                         } else {
