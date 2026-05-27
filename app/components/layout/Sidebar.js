@@ -193,7 +193,7 @@ export function Sidebar({ isOpen, onClose }) {
                 borderTop: '1px solid var(--border)',
                 flexShrink: 0, // Prevent shrinking
                 backgroundColor: 'var(--surface)', // Ensure background
-                paddingBottom: 'safe-area-inset-bottom' // For iPhone home bar
+                paddingBottom: 'calc(1.5rem + safe-area-inset-bottom)' // Safe padding for home indicator and mobile navigation
             }}>
                 {/* Sección Usuarios Online (Solo Admin/Gerencial) */}
                 {currentUser && ['admin', 'Gerencial'].includes(currentUser.role) && (

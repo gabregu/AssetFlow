@@ -485,8 +485,10 @@ a {
   .sidebar-container {
     position: fixed !important;
     left: -260px;
-    z-index: 1001;
+    z-index: 1050 !important; /* Force render on top of mobile bottom nav */
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    overflow-y: auto !important; /* Enable scrolling for small screen heights */
+    -webkit-overflow-scrolling: touch;
   }
 
   .sidebar-container.open {
