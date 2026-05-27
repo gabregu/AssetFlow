@@ -17,7 +17,11 @@ export default function Home() {
 
     useEffect(() => {
         if (!loading && currentUser) {
-            router.push('/dashboard');
+            if (currentUser.role === 'Conductor') {
+                router.push('/dashboard/my-tickets');
+            } else {
+                router.push('/dashboard');
+            }
         }
     }, [currentUser, loading, router]);
 
