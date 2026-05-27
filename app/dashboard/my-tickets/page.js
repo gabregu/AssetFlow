@@ -6,7 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { ServiceMap } from '../../components/ui/ServiceMap';
 import { useStore } from '../../../lib/store';
-import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon, Route, StickyNote, MessageSquare } from 'lucide-react';
+import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon, Route, StickyNote, MessageSquare, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useJsApiLoader } from '@react-google-maps/api';
@@ -42,6 +42,7 @@ export default function MyTicketsPage() {
     const [optimizedOrder, setOptimizedOrder] = useState(null); // Array of ticket IDs in order
 
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'Gerencial';
+    const isConductor = currentUser?.role === 'Conductor';
 
     // Generamos la lista "aplanada" de items de trabajo (Tickets o Casos Asociados) asignados al usuario
     const myAssignedItems = useMemo(() => {
@@ -342,10 +343,79 @@ export default function MyTicketsPage() {
         try {
             const now = new Date();
             const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth(); // 0-indexed
             
             const list = Array.isArray(sortedAndFilteredTickets) ? sortedAndFilteredTickets : [];
             const allTickets = Array.isArray(tickets) ? tickets : [];
-
+            const allTasks = Array.isArray(logisticsTasks) ? logisticsTasks : [];
+            
+            // Conductor-specific metrics
+            // 1. Programados en ruta (En Transito)
+            const inRouteCount = list.filter(t => t?.displayStatus === 'En Transito').length;
+            
+            // 2. Para coordinar (Para Coordinar o Pendiente)
+            const toCoordinateCount = list.filter(t => t?.displayStatus === 'Para Coordinar' || t?.displayStatus === 'Pendiente').length;
+            
+            // 3. Realizados en el mes
+            let completedInMonthCount = 0;
+            if (currentUser) {
+                const uName = (currentUser.name || '').trim().toLowerCase();
+                const uId = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
+                
+                // Count from logisticsTasks
+                allTasks.forEach(task => {
+                    if (!task) return;
+                    const drvName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
+                    const drvId = String(task.assigned_to || task.assignedTo || '');
+                    
+                    const isMeByName = drvName && (drvName === uName || uName.includes(drvName) || drvName.includes(uName));
+                    const isMeById = drvId && (drvId === uId);
+                    
+                    if (isMeByName || isMeById) {
+                        const taskStatus = task.status || 'Pendiente';
+                        if (['Entregado', 'Finalizado', 'Resuelto', 'Cerrado', 'Caso SFDC Cerrado'].includes(taskStatus)) {
+                            const dateStr = task.date;
+                            if (dateStr) {
+                                const tDate = new Date(dateStr + 'T00:00:00');
+                                if (tDate.getFullYear() === currentYear && tDate.getMonth() === currentMonth) {
+                                    completedInMonthCount++;
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Count from legacy tickets
+                allTickets.forEach(ticket => {
+                    if (!ticket) return;
+                    const hasTasks = allTasks.some(tk => tk && String(tk.ticket_id) === String(ticket.id));
+                    if (hasTasks) return;
+                    
+                    const tDriverName = (ticket.logistics?.delivery_person || ticket.logistics?.deliveryPerson || '').trim().toLowerCase();
+                    const tDriverUid = String(ticket.logistics?.assigned_to || ticket.logistics?.assignedTo || '');
+                    
+                    const isMeLegacy = (tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName))) || 
+                                       (tDriverUid && (tDriverUid === uId));
+                    
+                    if (isMeLegacy) {
+                        const tStatus = ticket.status || 'Abierto';
+                        const lStatus = ticket.logistics?.status || 'Pendiente';
+                        const isCompleted = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(tStatus) || ['Entregado', 'Finalizado'].includes(lStatus);
+                        
+                        if (isCompleted) {
+                            const dateStr = ticket.logistics?.date || ticket.date;
+                            if (dateStr) {
+                                const tDate = new Date(dateStr + 'T00:00:00');
+                                if (tDate.getFullYear() === currentYear && tDate.getMonth() === currentMonth) {
+                                    completedInMonthCount++;
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
             return {
                 pending: list.filter(t => t?.displayStatus === 'Para Coordinar' || t?.displayStatus === 'Pendiente').length,
                 inProgress: list.filter(t => t?.displayStatus === 'En Transito').length,
@@ -363,13 +433,16 @@ export default function MyTicketsPage() {
                         } catch (e) { return false; }
                     }
                     return false;
-                }).length
+                }).length,
+                inRoute: inRouteCount,
+                toCoordinate: toCoordinateCount,
+                completedInMonth: completedInMonthCount
             };
         } catch (error) {
             console.error("Error calculating stats:", error);
-            return { pending: 0, inProgress: 0, resolvedToday: 0 };
+            return { pending: 0, inProgress: 0, resolvedToday: 0, inRoute: 0, toCoordinate: 0, completedInMonth: 0 };
         }
-    }, [sortedAndFilteredTickets, tickets]);
+    }, [sortedAndFilteredTickets, tickets, logisticsTasks, currentUser]);
 
     // Estadísticas movidas a /dashboard/my-stats
 
@@ -389,49 +462,72 @@ export default function MyTicketsPage() {
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem' }}>
+            <div className="flex-mobile-column" style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: isConductor ? '0.75rem' : '2rem', 
+                gap: '1rem' 
+            }}>
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Casos</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Gestiona tus tareas asignadas y reporta entregas.</p>
+                    <h1 style={{ fontSize: isConductor ? '1.4rem' : '1.8rem', fontWeight: 700, color: 'var(--text-main)' }}>Mis Casos</h1>
+                    <p style={{ fontSize: isConductor ? '0.78rem' : '1rem', color: 'var(--text-secondary)' }}>Gestiona tus tareas asignadas y reporta entregas.</p>
                 </div>
-                <div style={{ padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', color: '#3b82f6' }}>
-                    <Truck size={24} />
+                <div style={{ padding: isConductor ? '0.5rem' : '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', color: '#3b82f6' }}>
+                    <Truck size={isConductor ? 16 : 24} />
                 </div>
             </div>
 
-            <div className="grid-responsive-dashboard" style={{ marginBottom: '2rem' }}>
-                <Card>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div className="grid-responsive-dashboard" style={{ 
+                marginBottom: isConductor ? '1rem' : '2rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: isConductor ? '0.5rem' : '1rem'
+            }}>
+                <Card style={{ padding: isConductor ? '0.6rem 0.8rem' : '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Pendientes</p>
-                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{stats.pending}</h2>
+                            <p style={{ fontSize: isConductor ? '0.7rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0 }}>
+                                {isConductor ? 'En Ruta' : 'Pendientes'}
+                            </p>
+                            <h2 style={{ fontSize: isConductor ? '1.3rem' : '2rem', fontWeight: 800, margin: '0.2rem 0 0 0' }}>
+                                {isConductor ? stats.inRoute : stats.pending}
+                            </h2>
                         </div>
-                        <div style={{ padding: '0.5rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', color: '#3b82f6' }}>
-                            <Clock size={20} />
+                        <div style={{ padding: '0.35rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Truck size={isConductor ? 14 : 20} />
                         </div>
                     </div>
                 </Card>
 
-                <Card>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Card style={{ padding: isConductor ? '0.6rem 0.8rem' : '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>En Progreso</p>
-                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{stats.inProgress}</h2>
+                            <p style={{ fontSize: isConductor ? '0.7rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0 }}>
+                                {isConductor ? 'Para Coordinar' : 'En Progreso'}
+                            </p>
+                            <h2 style={{ fontSize: isConductor ? '1.3rem' : '2rem', fontWeight: 800, margin: '0.2rem 0 0 0' }}>
+                                {isConductor ? stats.toCoordinate : stats.inProgress}
+                            </h2>
                         </div>
-                        <div style={{ padding: '0.5rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '8px', color: '#eab308' }}>
-                            <Truck size={20} />
+                        <div style={{ padding: '0.35rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '6px', color: '#eab308', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Clock size={isConductor ? 14 : 20} />
                         </div>
                     </div>
                 </Card>
 
-                <Card>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Card style={{ padding: isConductor ? '0.6rem 0.8rem' : '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Resueltos Hoy</p>
-                            <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: '0.5rem 0' }}>{stats.resolvedToday}</h2>
+                            <p style={{ fontSize: isConductor ? '0.7rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0 }}>
+                                {isConductor ? 'Realizados (Mes)' : 'Resueltos Hoy'}
+                            </p>
+                            <h2 style={{ fontSize: isConductor ? '1.3rem' : '2rem', fontWeight: 800, margin: '0.2rem 0 0 0' }}>
+                                {isConductor ? stats.completedInMonth : stats.resolvedToday}
+                            </h2>
                         </div>
-                        <div style={{ padding: '0.5rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', color: '#22c55e' }}>
-                            <CheckCircle2 size={20} />
+                        <div style={{ padding: '0.35rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '6px', color: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <CheckCircle2 size={isConductor ? 14 : 20} />
                         </div>
                     </div>
                 </Card>
@@ -591,33 +687,36 @@ export default function MyTicketsPage() {
                 </div>
 
                 {/* Vista Mobile (Tarjetas) */}
-                <div className="show-mobile" style={{ padding: '1rem' }}>
+                <div className="show-mobile" style={{ padding: isConductor ? '0.5rem' : '1rem' }}>
                     {sortedAndFilteredTickets.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                             <p style={{ color: 'var(--text-secondary)' }}>No se encontraron servicios.</p>
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: isConductor ? '0.5rem' : '1rem' }}>
                             {sortedAndFilteredTickets.map((ticket) => (
                                 <Card key={`${ticket.id}-${ticket.displayId}`} style={{
-                                    padding: '1.25rem',
+                                    padding: isConductor ? '0.75rem 0.9rem' : '1.25rem',
                                     borderLeft: `4px solid ${ticket.displayStatus === 'En Transito' ? '#0ea5e9' : ticket.displayStatus === 'Entregado' ? '#22c55e' : '#f59e0b'}`
                                 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                            <span style={{ fontWeight: 800, color: 'var(--primary-color)' }}>#{ticket.displayId}</span>
-                                            {!ticket.isMainTicket && <span style={{ fontSize: '0.6rem', background: '#f1f5f9', padding: '2px 4px', borderRadius: '4px' }}>Caso SFDC</span>}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isConductor ? '0.4rem' : '0.75rem' }}>
+                                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                            <span style={{ fontWeight: 800, color: 'var(--primary-color)', fontSize: isConductor ? '0.8rem' : '1rem' }}>#{ticket.displayId}</span>
+                                            {!ticket.isMainTicket && <span style={{ fontSize: '0.55rem', background: '#f1f5f9', padding: '1px 3px', borderRadius: '3px' }}>Caso SFDC</span>}
                                             {(ticket.instructions || ticket.hasNewNotes) && (
                                                 <div 
                                                     className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
                                                     style={{ 
                                                         color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)',
-                                                        width: ticket.hasUnreadChat ? '22px' : 'auto',
-                                                        height: ticket.hasUnreadChat ? '22px' : 'auto'
+                                                        width: ticket.hasUnreadChat ? '16px' : 'auto',
+                                                        height: ticket.hasUnreadChat ? '16px' : 'auto',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
                                                     }}
                                                 >
                                                     <MessageSquare 
-                                                        size={14} 
+                                                        size={isConductor ? 11 : 14} 
                                                         fill={ticket.hasUnreadChat ? 'white' : 'none'} 
                                                         stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'}
                                                     />
@@ -628,20 +727,29 @@ export default function MyTicketsPage() {
                                             ticket.displayStatus === 'En Transito' ? 'info' :
                                                 ticket.displayStatus === 'Entregado' ? 'success' :
                                                     ticket.displayStatus === 'Para Coordinar' ? 'warning' : 'default'
-                                        }>
+                                        } style={{ fontSize: isConductor ? '0.62rem' : 'inherit', padding: isConductor ? '2px 6px' : 'inherit' }}>
                                             {ticket.displayStatus || 'Pendiente'}
                                         </Badge>
                                     </div>
-                                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>{ticket.displaySubject}</h3>
+                                    <h3 style={{ fontSize: isConductor ? '0.85rem' : '1rem', fontWeight: 700, marginBottom: isConductor ? '0.3rem' : '0.5rem', color: 'var(--text-main)' }}>{ticket.displaySubject}</h3>
 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
-                                            <User size={14} style={{ color: 'var(--text-secondary)' }} />
-                                            <span style={{ fontWeight: 500 }}>{ticket.requester}</span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: isConductor ? '0.2rem' : '0.5rem', marginBottom: isConductor ? '0.8rem' : '1.25rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: isConductor ? '0.78rem' : '0.85rem' }}>
+                                            <User size={isConductor ? 12 : 14} style={{ color: 'var(--text-secondary)' }} />
+                                            <span style={{ fontWeight: 600 }}>{ticket.requester}</span>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
-                                            <Clock size={14} style={{ color: 'var(--text-secondary)' }} />
+                                        {ticket.displayAddress && (
+                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', fontSize: isConductor ? '0.74rem' : '0.82rem', color: 'var(--text-secondary)' }}>
+                                                <MapPin size={isConductor ? 11 : 13} style={{ marginTop: '2px', flexShrink: 0 }} />
+                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                    {ticket.displayAddress}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: isConductor ? '0.78rem' : '0.85rem', marginTop: isConductor ? '2px' : '0' }}>
+                                            <Clock size={isConductor ? 12 : 14} style={{ color: 'var(--text-secondary)' }} />
                                             <span>{ticket.displayDate || ticket.date}</span>
+                                            {ticket.taskTimeSlot && <span style={{ color: 'var(--text-secondary)', background: 'var(--background)', padding: '1px 4px', borderRadius: '3px', fontSize: '0.65rem', marginLeft: '4px' }}>{ticket.taskTimeSlot}</span>}
                                             <span style={{
                                                 marginLeft: 'auto',
                                                 fontWeight: 700,
@@ -660,39 +768,39 @@ export default function MyTicketsPage() {
                                                     const d = new Date(dateStr + 'T00:00:00');
                                                     if (isNaN(d.getTime())) return '-';
                                                     const days = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
-                                                    return `${days} días`;
+                                                    return `${days}d`;
                                                 })()}
                                             </span>
                                         </div>
                                     </div>
 
-                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                                            <Link href={`/dashboard/tickets/${ticket.id}`} style={{ flex: 1 }}>
-                                                <Button variant="secondary" icon={Eye} style={{ width: '100%', padding: '0.9rem', fontSize: '0.9rem' }}>DETALLES</Button>
-                                            </Link>
-                                            
-                                            {/* Atajo de WhatsApp para móvil */}
-                                            {ticket.parentTicket?.deliveryDetails?.contactPhone && (
-                                                <Button 
-                                                    variant="success" 
-                                                    onClick={() => window.open(`https://wa.me/${ticket.parentTicket.deliveryDetails.contactPhone.replace(/\D/g, '')}`, '_blank')}
-                                                    style={{ width: '56px', height: '52px', flexShrink: 0, padding: 0 }}
-                                                >
-                                                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" style={{ width: '24px', height: '24px' }} alt="WA" />
-                                                </Button>
-                                            )}
+                                    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
+                                        <Link href={`/dashboard/tickets/${ticket.id}`} style={{ flex: 1 }}>
+                                            <Button variant="secondary" icon={Eye} style={{ width: '100%', padding: isConductor ? '0.5rem' : '0.9rem', fontSize: isConductor ? '0.78rem' : '0.9rem', height: isConductor ? '36px' : 'auto' }}>DETALLES</Button>
+                                        </Link>
+                                        
+                                        {/* Atajo de WhatsApp para móvil */}
+                                        {ticket.parentTicket?.deliveryDetails?.contactPhone && (
+                                            <Button 
+                                                variant="success" 
+                                                onClick={() => window.open(`https://wa.me/${ticket.parentTicket.deliveryDetails.contactPhone.replace(/\D/g, '')}`, '_blank')}
+                                                style={{ width: isConductor ? '36px' : '56px', height: isConductor ? '36px' : '52px', flexShrink: 0, padding: 0 }}
+                                            >
+                                                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" style={{ width: isConductor ? '16px' : '24px', height: isConductor ? '16px' : '24px' }} alt="WA" />
+                                            </Button>
+                                        )}
 
-                                            {/* Atajo de Navegación para móvil */}
-                                            {ticket.displayAddress !== 'Sin dirección' && (
-                                                <Button 
-                                                    variant="secondary" 
-                                                    onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`, '_blank')}
-                                                    style={{ width: '56px', height: '52px', flexShrink: 0, color: 'var(--primary-color)' }}
-                                                >
-                                                    📍
-                                                </Button>
-                                            )}
-                                        </div>
+                                        {/* Atajo de Navegación para móvil */}
+                                        {ticket.displayAddress !== 'Sin dirección' && (
+                                            <Button 
+                                                variant="secondary" 
+                                                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`, '_blank')}
+                                                style={{ width: isConductor ? '36px' : '56px', height: isConductor ? '36px' : '52px', flexShrink: 0, color: 'var(--primary-color)', fontSize: isConductor ? '0.9rem' : 'inherit' }}
+                                            >
+                                                📍
+                                            </Button>
+                                        )}
+                                    </div>
                                 </Card>
                             ))}
                         </div>
