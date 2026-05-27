@@ -79,10 +79,10 @@ export function InactivityMonitor() {
             }, 2000);
         };
 
-        activityEvents.forEach(e => window.addEventListener(e, throttledUpdate, { passive: true }));
+        activityEvents.forEach(e => window.addEventListener(e, throttledUpdate, { capture: true, passive: true }));
 
         return () => {
-            activityEvents.forEach(e => window.removeEventListener(e, throttledUpdate));
+            activityEvents.forEach(e => window.removeEventListener(e, throttledUpdate, { capture: true }));
             if (throttleTimer) clearTimeout(throttleTimer);
         };
     }, [currentUser, updateActivity]);
@@ -152,7 +152,7 @@ export function InactivityMonitor() {
             position: 'fixed',
             top: 0, left: 0, right: 0, bottom: 0,
             backgroundColor: 'rgba(15, 23, 42, 0.85)',
-            zIndex: 99999,
+            zIndex: 9999999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
