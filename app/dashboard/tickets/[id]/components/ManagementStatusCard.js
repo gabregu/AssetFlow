@@ -32,6 +32,7 @@ export default function ManagementStatusCard({
                                     setEditedData({ ...editedData, status: s });
                                 } else {
                                     updateTicket(ticket.id, { status: s });
+                                    setEditedData(prev => ({ ...prev, status: s }));
                                 }
                             }}
                         >

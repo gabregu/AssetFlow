@@ -16,6 +16,18 @@ export function FinancialsSummary({ ticket }) {
         return calculateTicketFinancials(ticket, rates, assets, users, logisticsTasks);
     }, [ticket, rates, assets, users, logisticsTasks]);
 
+    const defaultFinancials = useMemo(() => {
+        if (!ticket?.deliveryDetails?.customLogisticCost) return null;
+        const ticketCopy = {
+            ...ticket,
+            deliveryDetails: {
+                ...ticket.deliveryDetails,
+                customLogisticCost: null
+            }
+        };
+        return calculateTicketFinancials(ticketCopy, rates, assets, users, logisticsTasks);
+    }, [ticket, rates, assets, users, logisticsTasks]);
+
     if (!financials) return null;
 
     const {
@@ -30,6 +42,8 @@ export function FinancialsSummary({ ticket }) {
         assetType,
         method
     } = financials;
+
+    const autoLogisticCost = defaultFinancials ? defaultFinancials.logisticCost : logisticCost;
 
     const formatUSD = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
@@ -119,7 +133,50 @@ export function FinancialsSummary({ ticket }) {
                     <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                          Costo Logístico {method !== 'N/A' && `(${method})`}
                     </span>
-                    <span style={{ fontWeight: 600, color: '#ef4444' }}>- {formatUSD(logisticCost)}</span>
+                    {method !== 'N/A' ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#ef4444' }}>- $</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={ticket.deliveryDetails?.customLogisticCost !== undefined && ticket.deliveryDetails?.customLogisticCost !== null ? ticket.deliveryDetails.customLogisticCost : ''}
+                                placeholder={autoLogisticCost.toFixed(2)}
+                                onChange={async (e) => {
+                                    const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                                    await updateTicket(ticket.id, {
+                                        deliveryDetails: {
+                                            ...ticket.deliveryDetails,
+                                            customLogisticCost: val
+                                        }
+                                    });
+                                }}
+                                style={{
+                                    width: '75px',
+                                    padding: '3px 6px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--border)',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    color: '#ef4444',
+                                    fontWeight: 600,
+                                    textAlign: 'right',
+                                    outline: 'none',
+                                    transition: 'border-color 0.2s, background-color 0.2s',
+                                    fontSize: '0.875rem'
+                                }}
+                                onFocus={(e) => {
+                                    e.target.style.borderColor = 'var(--primary-color)';
+                                    e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                                }}
+                                onBlur={(e) => {
+                                    e.target.style.borderColor = 'var(--border)';
+                                    e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                                }}
+                            />
+                        </div>
+                    ) : (
+                        <span style={{ fontWeight: 600, color: '#ef4444' }}>- {formatUSD(logisticCost)}</span>
+                    )}
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '0.25rem' }}>
