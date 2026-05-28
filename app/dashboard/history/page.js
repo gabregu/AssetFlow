@@ -14,6 +14,23 @@ export default function HistoryPage() {
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'completedDate', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ requester: '' });
+
+    // Helper to get local resolution/delivery completed date cleanly without timezone shifts
+    const getLocalCompletedDateStr = (t) => {
+        const rawDate = t.deliveryCompletedDate || t.closedDate || t.updatedAt || t.updated_at || t.date;
+        if (!rawDate) return '';
+        const dateObj = new Date(rawDate);
+        if (isNaN(dateObj.getTime())) return '';
+        
+        if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
+            return rawDate.trim();
+        }
+        
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
     const [selectedMonth, setSelectedMonth] = useState('All'); // 'All' or 'YYYY-MM'
 
     // Restricted access? Usually history is open but let's assume same roles as tickets for now or maybe everyone?
@@ -43,10 +60,13 @@ export default function HistoryPage() {
 
             let matchesMonth = true;
             if (selectedMonth !== 'All') {
-                const rawDate = t.deliveryCompletedDate || t.closedDate || t.date;
-                const d = new Date((rawDate && typeof rawDate === 'string' && !rawDate.includes('T') ? rawDate + 'T00:00:00' : rawDate));
-                const ticketMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                matchesMonth = ticketMonth === selectedMonth;
+                const localCompletedStr = getLocalCompletedDateStr(t);
+                if (localCompletedStr) {
+                    const [yyyy, mm] = localCompletedStr.split('-');
+                    matchesMonth = `${yyyy}-${mm}` === selectedMonth;
+                } else {
+                    matchesMonth = false;
+                }
             }
 
             // Filtrado por Cliente (campo explícito)
@@ -60,8 +80,8 @@ export default function HistoryPage() {
             result.sort((a, b) => {
                 let valA, valB;
                 if (sortConfig.key === 'completedDate') {
-                    valA = a.deliveryCompletedDate || a.closedDate || a.updatedAt || a.updated_at || a.date || '';
-                    valB = b.deliveryCompletedDate || b.closedDate || b.updatedAt || b.updated_at || b.date || '';
+                    valA = getLocalCompletedDateStr(a);
+                    valB = getLocalCompletedDateStr(b);
                 } else {
                     valA = a[sortConfig.key] || '';
                     valB = b[sortConfig.key] || '';
@@ -72,7 +92,7 @@ export default function HistoryPage() {
             });
         }
         return result;
-    }, [historicalTickets, filter, sortConfig, columnFilters, countryFilter]);
+    }, [historicalTickets, filter, sortConfig, columnFilters, countryFilter, getLocalCompletedDateStr]);
 
     const getStatusVariant = (status) => {
         switch (status) {
@@ -203,12 +223,6 @@ export default function HistoryPage() {
                                 >
                                     Fecha Inicio <SortIcon column="date" />
                                 </th>
-                                <th
-                                    onClick={() => handleSort('completedDate')}
-                                    style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
-                                >
-                                    Fecha Fin / Entrega <SortIcon column="completedDate" />
-                                </th>
                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                                     Estado Servicio
                                 </th>
@@ -220,29 +234,24 @@ export default function HistoryPage() {
                             {(() => {
                                 const grouped = {};
                                 sortedAndFilteredTickets.forEach(t => {
-                                    // Determinar fecha de cierre/resolución
-                                    const rawDate = t.deliveryCompletedDate || t.closedDate || t.updatedAt || t.updated_at || t.date;
-                                    const dateObj = new Date(rawDate);
-
-                                    // Fallback
-                                    const safeDate = isNaN(dateObj.getTime()) ? new Date() : dateObj;
-
-                                    const key = new Date(safeDate.toISOString().split('T')[0] + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-                                    // Capitalizar
+                                    const localCompletedStr = getLocalCompletedDateStr(t);
+                                    if (!localCompletedStr) return;
+                                    
+                                    const [yyyy, mm, dd] = localCompletedStr.split('-');
+                                    const dateObj = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+                                    
+                                    const key = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                                     const finalKey = key.charAt(0).toUpperCase() + key.slice(1);
 
-                                    // Clave ordenable para ordenar los grupos (YYYY-MM-DD)
-                                    const sortKey = safeDate.toISOString().split('T')[0];
-
-                                    if (!grouped[sortKey]) grouped[sortKey] = { label: finalKey, items: [] };
-                                    grouped[sortKey].items.push(t);
+                                    if (!grouped[localCompletedStr]) grouped[localCompletedStr] = { label: finalKey, items: [] };
+                                    grouped[localCompletedStr].items.push(t);
                                 });
 
                                 // Si no hay tickets
                                 if (Object.keys(grouped).length === 0) {
                                     return (
                                         <tr>
-                                            <td colSpan="7" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                            <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                                                 <p>No se encontraron tickets en el histórico.</p>
                                             </td>
                                         </tr>
@@ -255,7 +264,7 @@ export default function HistoryPage() {
                                     .map(([sortKey, groupData]) => (
                                         <React.Fragment key={sortKey}>
                                             <tr style={{ backgroundColor: 'var(--background-secondary)' }}>
-                                                <td colSpan="7" style={{ padding: '0.75rem 1rem', fontWeight: 800, color: 'var(--text-main)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderLeft: '4px solid var(--primary-color)' }}>
+                                                <td colSpan="6" style={{ padding: '0.75rem 1rem', fontWeight: 800, color: 'var(--text-main)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderLeft: '4px solid var(--primary-color)' }}>
                                                     {groupData.label}
                                                 </td>
                                             </tr>
@@ -281,18 +290,6 @@ export default function HistoryPage() {
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{String(ticket.date || '')}</td>
-                                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                                        {(() => {
-                                                            const rawDate = ticket.deliveryCompletedDate || ticket.closedDate || ticket.updatedAt || ticket.updated_at || ticket.date;
-                                                            if (!rawDate) return '-';
-                                                            const dateObj = new Date(rawDate);
-                                                            if (isNaN(dateObj.getTime())) return '-';
-                                                            const yyyy = dateObj.getFullYear();
-                                                            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-                                                            const dd = String(dateObj.getDate()).padStart(2, '0');
-                                                            return `${yyyy}-${mm}-${dd}`;
-                                                        })()}
-                                                    </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
                                                     </td>
