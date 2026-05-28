@@ -12,7 +12,7 @@ export default function HistoryPage() {
     const router = useRouter();
     const { tickets, currentUser, countryFilter, getClientName } = useStore();
     const [filter, setFilter] = useState('');
-    const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+    const [sortConfig, setSortConfig] = useState({ key: 'completedDate', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ requester: '' });
     const [selectedMonth, setSelectedMonth] = useState('All'); // 'All' or 'YYYY-MM'
 
@@ -58,8 +58,14 @@ export default function HistoryPage() {
 
         if (sortConfig.key) {
             result.sort((a, b) => {
-                const valA = a[sortConfig.key] || '';
-                const valB = b[sortConfig.key] || '';
+                let valA, valB;
+                if (sortConfig.key === 'completedDate') {
+                    valA = a.deliveryCompletedDate || a.closedDate || a.updatedAt || a.updated_at || a.date || '';
+                    valB = b.deliveryCompletedDate || b.closedDate || b.updatedAt || b.updated_at || b.date || '';
+                } else {
+                    valA = a[sortConfig.key] || '';
+                    valB = b[sortConfig.key] || '';
+                }
                 if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
                 if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
                 return 0;
@@ -197,6 +203,12 @@ export default function HistoryPage() {
                                 >
                                     Fecha Inicio <SortIcon column="date" />
                                 </th>
+                                <th
+                                    onClick={() => handleSort('completedDate')}
+                                    style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
+                                >
+                                    Fecha Fin / Entrega <SortIcon column="completedDate" />
+                                </th>
                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                                     Estado Servicio
                                 </th>
@@ -230,7 +242,7 @@ export default function HistoryPage() {
                                 if (Object.keys(grouped).length === 0) {
                                     return (
                                         <tr>
-                                            <td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                            <td colSpan="7" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                                                 <p>No se encontraron tickets en el histórico.</p>
                                             </td>
                                         </tr>
@@ -243,7 +255,7 @@ export default function HistoryPage() {
                                     .map(([sortKey, groupData]) => (
                                         <React.Fragment key={sortKey}>
                                             <tr style={{ backgroundColor: 'var(--background-secondary)' }}>
-                                                <td colSpan="6" style={{ padding: '0.75rem 1rem', fontWeight: 800, color: 'var(--text-main)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderLeft: '4px solid var(--primary-color)' }}>
+                                                <td colSpan="7" style={{ padding: '0.75rem 1rem', fontWeight: 800, color: 'var(--text-main)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderLeft: '4px solid var(--primary-color)' }}>
                                                     {groupData.label}
                                                 </td>
                                             </tr>
@@ -269,6 +281,18 @@ export default function HistoryPage() {
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{String(ticket.date || '')}</td>
+                                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                                        {(() => {
+                                                            const rawDate = ticket.deliveryCompletedDate || ticket.closedDate || ticket.updatedAt || ticket.updated_at || ticket.date;
+                                                            if (!rawDate) return '-';
+                                                            const dateObj = new Date(rawDate);
+                                                            if (isNaN(dateObj.getTime())) return '-';
+                                                            const yyyy = dateObj.getFullYear();
+                                                            const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                                                            const dd = String(dateObj.getDate()).padStart(2, '0');
+                                                            return `${yyyy}-${mm}-${dd}`;
+                                                        })()}
+                                                    </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
                                                     </td>
