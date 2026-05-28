@@ -457,14 +457,33 @@ export function useTicketDetail() {
 
     const handleCreateAsset = (e) => {
         e.preventDefault();
+        
+        // Determinar el país/cliente del caso actual de forma robusta
+        const currentTask = (selectedCaseIndex !== null && unifiedTasks) ? unifiedTasks[selectedCaseIndex] : null;
+        const taskCountry = currentTask?.country || ticket?.client || ticket?.logistics?.country || 'Argentina';
+
         const createdAsset = {
             ...newAsset,
             name: newAsset.model,
             serial: serialQuery,
             status: 'Asignado',
-            assignee: editedData.requester || ticket.requester
+            assignee: editedData.requester || ticket.requester,
+            country: taskCountry,
+            sfdcCase: ticket.id
         };
+        
+        // 1. Guardar en el inventario global de base de datos
         addAsset(createdAsset);
+
+        // 2. Vincular directamente al caso/tarea seleccionada si existe
+        if (currentTask) {
+            const currentTaskAssets = currentTask.assets || [];
+            handleUpdateTask({
+                assets: [...currentTaskAssets, { serial: serialQuery, type: 'Entrega', hardware_type: newAsset.type }]
+            });
+        }
+
+        // 3. Mantener retrocompatibilidad con la lista general del ticket
         const currentAssets = editedData.associatedAssets || [];
         const newData = {
             ...editedData,
@@ -473,6 +492,7 @@ export function useTicketDetail() {
         const automatedData = automateDeliveryStatus(newData);
         updateTicket(ticket.id, automatedData);
         setEditedData(automatedData);
+        
         setIsAssetModalOpen(false);
         setAssetSearchResult(null);
         setSerialQuery('');
