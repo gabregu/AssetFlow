@@ -48,11 +48,45 @@ export default function HistoryPage() {
         let hasDelivery = false;
         let hasCollection = false;
         
+        // 1. Nueva arquitectura: Inspeccionar tareas relacionales y sus activos individuales
         if (tasks.length > 0) {
-            hasDelivery = tasks.some(t => t.method === 'Entrega' || String(t.subject || '').toLowerCase().includes('entrega') || String(t.subject || '').toLowerCase().includes('provisioning'));
-            hasCollection = tasks.some(t => t.method === 'Recupero' || String(t.subject || '').toLowerCase().includes('recupero') || String(t.subject || '').toLowerCase().includes('collection') || String(t.subject || '').toLowerCase().includes('retiro'));
+            tasks.forEach(t => {
+                const taskMethod = String(t.method || '').toLowerCase();
+                if (taskMethod === 'entrega' || taskMethod === 'delivery') hasDelivery = true;
+                if (taskMethod === 'recupero' || taskMethod === 'collection' || taskMethod === 'retiro') hasCollection = true;
+                
+                const taskAssets = t.assets || [];
+                taskAssets.forEach(asset => {
+                    const assetType = String(asset.type || '').toLowerCase();
+                    if (assetType === 'entrega' || assetType === 'delivery') hasDelivery = true;
+                    if (assetType === 'recupero' || assetType === 'collection' || assetType === 'retiro') hasCollection = true;
+                });
+            });
         }
         
+        // 2. Arquitectura Legacy: Inspeccionar casos consolidados y activos del ticket general
+        const legacyCases = ticket.associatedCases || [];
+        legacyCases.forEach(c => {
+            const caseMethod = String(c.method || c.logistics?.method || '').toLowerCase();
+            if (caseMethod === 'entrega' || caseMethod === 'delivery') hasDelivery = true;
+            if (caseMethod === 'recupero' || caseMethod === 'collection' || caseMethod === 'retiro') hasCollection = true;
+            
+            const caseAssets = c.assets || [];
+            caseAssets.forEach(asset => {
+                const assetType = String(asset.type || '').toLowerCase();
+                if (assetType === 'entrega' || assetType === 'delivery') hasDelivery = true;
+                if (assetType === 'recupero' || assetType === 'collection' || assetType === 'retiro') hasCollection = true;
+            });
+        });
+
+        const generalAssets = ticket.associatedAssets || ticket.associated_assets || [];
+        generalAssets.forEach(asset => {
+            const assetType = String(asset.type || '').toLowerCase();
+            if (assetType === 'entrega' || assetType === 'delivery') hasDelivery = true;
+            if (assetType === 'recupero' || assetType === 'collection' || assetType === 'retiro') hasCollection = true;
+        });
+        
+        // 3. Fallbacks del asunto y tipo de logística
         const subject = String(ticket.subject || '').toLowerCase();
         const hasLegacyDelivery = subject.includes('provisioning') || subject.includes('entrega') || subject.includes('delivery') || ticket.logistics?.type === 'Entrega';
         const hasLegacyCollection = subject.includes('recupero') || subject.includes('retiro') || subject.includes('collection') || ticket.logistics?.type === 'Recupero';
