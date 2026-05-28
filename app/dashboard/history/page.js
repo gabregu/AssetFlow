@@ -19,12 +19,21 @@ export default function HistoryPage() {
     const getLocalCompletedDateStr = (t) => {
         const rawDate = t.deliveryCompletedDate || t.closedDate || t.updatedAt || t.updated_at || t.date;
         if (!rawDate) return '';
+        
+        if (typeof rawDate === 'string') {
+            const trimmed = rawDate.trim();
+            // If it is YYYY-MM-DD exactly
+            if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+                return trimmed;
+            }
+            // If it is a timestamp representing exactly 00:00:00 in UTC (which is how date-only values are saved in postgres timestamp columns)
+            if (/^\d{4}-\d{2}-\d{2}T00:00:00/.test(trimmed) || trimmed.includes('00:00:00.000') || trimmed.includes('00:00:00+00') || trimmed.includes('00:00:00Z')) {
+                return trimmed.substring(0, 10);
+            }
+        }
+        
         const dateObj = new Date(rawDate);
         if (isNaN(dateObj.getTime())) return '';
-        
-        if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawDate.trim())) {
-            return rawDate.trim();
-        }
         
         const yyyy = dateObj.getFullYear();
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');

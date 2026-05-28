@@ -17,6 +17,26 @@ export default function ReportsPage() {
     const [columnFilters, setColumnFilters] = useState({ requester: '' });
     const [selectedMonth, setSelectedMonth] = useState('All'); // 'All' or 'YYYY-MM'
 
+    // Helper to get local resolution/delivery completed date cleanly without timezone shifts
+    const getLocalCompletedDateStr = (rawDate) => {
+        if (!rawDate) return '';
+        if (typeof rawDate === 'string') {
+            const trimmed = rawDate.trim();
+            if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+                return trimmed;
+            }
+            if (/^\d{4}-\d{2}-\d{2}T00:00:00/.test(trimmed) || trimmed.includes('00:00:00.000') || trimmed.includes('00:00:00+00') || trimmed.includes('00:00:00Z')) {
+                return trimmed.substring(0, 10);
+            }
+        }
+        const dateObj = new Date(rawDate);
+        if (isNaN(dateObj.getTime())) return '';
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
     // Filtrar casos que son de interés para "Informes" (por ahora igual que histórico)
     const informativeTickets = useMemo(() => {
         const expectedClient = getClientName(countryFilter);
@@ -45,9 +65,13 @@ export default function ReportsPage() {
             let matchesMonth = true;
             if (selectedMonth !== 'All') {
                 const rawDate = t.deliveryCompletedDate || t.closedDate || t.date;
-                const d = new Date(rawDate);
-                const ticketMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                matchesMonth = ticketMonth === selectedMonth;
+                const localStr = getLocalCompletedDateStr(rawDate);
+                if (localStr) {
+                    const [yyyy, mm] = localStr.split('-');
+                    matchesMonth = `${yyyy}-${mm}` === selectedMonth;
+                } else {
+                    matchesMonth = false;
+                }
             }
 
             return matchesSearch && matchesRequester && matchesMonth;
@@ -79,9 +103,12 @@ export default function ReportsPage() {
             }
             informativeTickets.forEach(t => {
                 const rawDate = t.deliveryCompletedDate || t.closedDate || t.date;
-                const d = new Date(rawDate);
-                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                if (data[key]) data[key].count++;
+                const localStr = getLocalCompletedDateStr(rawDate);
+                if (localStr) {
+                    const [yyyy, mm] = localStr.split('-');
+                    const key = `${yyyy}-${mm}`;
+                    if (data[key]) data[key].count++;
+                }
             });
         } else {
             // Days of the selected month
@@ -93,11 +120,14 @@ export default function ReportsPage() {
             }
             informativeTickets.forEach(t => {
                 const rawDate = t.deliveryCompletedDate || t.closedDate || t.date;
-                const d = new Date(rawDate);
-                const ticketMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                if (ticketMonth === selectedMonth) {
-                    const day = d.getDate();
-                    if (data[day]) data[day].count++;
+                const localStr = getLocalCompletedDateStr(rawDate);
+                if (localStr) {
+                    const [yyyy, mm, dd] = localStr.split('-');
+                    const ticketMonth = `${yyyy}-${mm}`;
+                    if (ticketMonth === selectedMonth) {
+                        const day = parseInt(dd);
+                        if (data[day]) data[day].count++;
+                    }
                 }
             });
         }
@@ -255,11 +285,14 @@ export default function ReportsPage() {
                                 const grouped = {};
                                 sortedAndFilteredTickets.forEach(t => {
                                     const rawDate = t.deliveryCompletedDate || t.closedDate || t.date;
-                                    const dateObj = new Date(rawDate);
-                                    const safeDate = isNaN(dateObj.getTime()) ? new Date() : dateObj;
-                                    const key = safeDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                                    const localStr = getLocalCompletedDateStr(rawDate);
+                                    if (!localStr) return;
+                                    
+                                    const [yyyy, mm, dd] = localStr.split('-');
+                                    const dateObj = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+                                    const key = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
                                     const finalKey = key.charAt(0).toUpperCase() + key.slice(1);
-                                    const sortKey = safeDate.toISOString().split('T')[0];
+                                    const sortKey = localStr;
 
                                     if (!grouped[sortKey]) grouped[sortKey] = { label: finalKey, items: [] };
                                     grouped[sortKey].items.push(t);
