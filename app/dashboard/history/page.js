@@ -10,7 +10,7 @@ import Link from 'next/link';
 
 export default function HistoryPage() {
     const router = useRouter();
-    const { tickets, currentUser, countryFilter, getClientName } = useStore();
+    const { tickets, logisticsTasks, currentUser, countryFilter, getClientName } = useStore();
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'completedDate', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ requester: '' });
@@ -40,6 +40,32 @@ export default function HistoryPage() {
         const dd = String(dateObj.getDate()).padStart(2, '0');
         return `${yyyy}-${mm}-${dd}`;
     };
+
+    // Helper to identify service type (Entrega, Recupero, Ambos)
+    const getServiceType = (ticket) => {
+        const tasks = (logisticsTasks || []).filter(t => t.ticket_id === ticket.id);
+        
+        let hasDelivery = false;
+        let hasCollection = false;
+        
+        if (tasks.length > 0) {
+            hasDelivery = tasks.some(t => t.method === 'Entrega' || String(t.subject || '').toLowerCase().includes('entrega') || String(t.subject || '').toLowerCase().includes('provisioning'));
+            hasCollection = tasks.some(t => t.method === 'Recupero' || String(t.subject || '').toLowerCase().includes('recupero') || String(t.subject || '').toLowerCase().includes('collection') || String(t.subject || '').toLowerCase().includes('retiro'));
+        }
+        
+        const subject = String(ticket.subject || '').toLowerCase();
+        const hasLegacyDelivery = subject.includes('provisioning') || subject.includes('entrega') || subject.includes('delivery') || ticket.logistics?.type === 'Entrega';
+        const hasLegacyCollection = subject.includes('recupero') || subject.includes('retiro') || subject.includes('collection') || ticket.logistics?.type === 'Recupero';
+        
+        const isDelivery = hasDelivery || hasLegacyDelivery;
+        const isCollection = hasCollection || hasLegacyCollection;
+        
+        if (isDelivery && isCollection) return 'Ambos';
+        if (isCollection) return 'Recupero';
+        if (isDelivery) return 'Entrega';
+        return 'Entrega'; 
+    };
+
     const [selectedMonth, setSelectedMonth] = useState('All'); // 'All' or 'YYYY-MM'
 
     // Restricted access? Usually history is open but let's assume same roles as tickets for now or maybe everyone?
@@ -300,7 +326,38 @@ export default function HistoryPage() {
                                                     </td>
                                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{String(ticket.date || '')}</td>
                                                     <td style={{ padding: '1rem' }}>
-                                                        <Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                                            <Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
+                                                            {(() => {
+                                                                const type = getServiceType(ticket);
+                                                                let color = 'var(--text-secondary)';
+                                                                let bg = 'rgba(0,0,0,0.05)';
+                                                                if (type === 'Entrega') {
+                                                                    color = '#22c55e';
+                                                                    bg = 'rgba(34, 197, 94, 0.1)';
+                                                                } else if (type === 'Recupero') {
+                                                                    color = '#eab308';
+                                                                    bg = 'rgba(234, 179, 8, 0.1)';
+                                                                } else if (type === 'Ambos') {
+                                                                    color = '#3b82f6';
+                                                                    bg = 'rgba(59, 130, 246, 0.1)';
+                                                                }
+                                                                return (
+                                                                    <span style={{ 
+                                                                        fontSize: '0.7rem', 
+                                                                        fontWeight: 700, 
+                                                                        padding: '2px 6px', 
+                                                                        borderRadius: '4px', 
+                                                                        color: color, 
+                                                                        backgroundColor: bg,
+                                                                        textTransform: 'uppercase',
+                                                                        letterSpacing: '0.02em'
+                                                                    }}>
+                                                                        {type}
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                        </div>
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <Link href={`/dashboard/tickets/${ticket.id}`}>
