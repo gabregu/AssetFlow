@@ -473,7 +473,8 @@ export default function BillingPage() {
                                             profit: displayProfit,
                                             moveType: finalMoveType,
                                             assetType: finalDeviceType,
-                                            method
+                                            method,
+                                            deliveryPerson
                                         } = financials;
                                         
                                         const currencyKey = 'USD'; // Enforced for consistency
@@ -497,7 +498,9 @@ export default function BillingPage() {
                                                     <Badge variant={ticket.status === 'Servicio Facturado' ? 'success' : 'outline'}>{ticket.status}</Badge>
                                                 </td>
 
-                                                <td style={{ padding: '1rem', color: 'var(--text-main)' }}>{method || 'N/A'}</td>
+                                                <td style={{ padding: '1rem', color: 'var(--text-main)' }}>
+                                                    {(method === 'Repartidor Propio' || method === 'Envío Interno' || String(method || '').includes('Propio')) && deliveryPerson ? `${method} (${deliveryPerson})` : (method || 'N/A')}
+                                                </td>
 
                                                 {/* Revenue Column */}
                                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
