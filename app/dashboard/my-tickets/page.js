@@ -479,66 +479,119 @@ export default function MyTicketsPage() {
             </div>
 
             <div className="grid-responsive-dashboard" style={{ 
-                marginBottom: isConductor ? '1rem' : '2rem',
+                marginBottom: isConductor ? '0.75rem' : '2rem',
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: isConductor ? '0.5rem' : '1rem'
+                gridTemplateColumns: isConductor ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
+                gap: isConductor ? '0.35rem' : '1rem'
             }}>
-                <Card style={{ padding: isConductor ? '0.6rem 0.8rem' : '1.5rem' }}>
+                {/* CARD 1: TOTAL (Only shown in driver view as first card) */}
+                {isConductor && (
+                    <Card style={{ padding: '0.4rem 0.5rem', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <p style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                    Total
+                                </p>
+                                <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--primary-color)' }} />
+                            </div>
+                            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0.1rem 0 0 0', color: 'var(--text-main)' }}>
+                                {myAssignedItems.length}
+                            </h2>
+                        </div>
+                    </Card>
+                )}
+
+                <Card style={{ padding: isConductor ? '0.4rem 0.5rem' : '1.5rem', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <p style={{ fontSize: isConductor ? '0.7rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0 }}>
+                        <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: isConductor ? '0.62rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0, textTransform: isConductor ? 'uppercase' : 'none', letterSpacing: isConductor ? '0.02em' : 'normal' }}>
                                 {isConductor ? 'En Ruta' : 'Pendientes'}
                             </p>
-                            <h2 style={{ fontSize: isConductor ? '1.3rem' : '2rem', fontWeight: 800, margin: '0.2rem 0 0 0' }}>
+                            <h2 style={{ fontSize: isConductor ? '1.2rem' : '2rem', fontWeight: 800, margin: '0.1rem 0 0 0' }}>
                                 {isConductor ? stats.inRoute : stats.pending}
                             </h2>
                         </div>
-                        <div style={{ padding: '0.35rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Truck size={isConductor ? 14 : 20} />
-                        </div>
+                        {!isConductor ? (
+                            <div style={{ padding: '0.35rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Truck size={20} />
+                            </div>
+                        ) : (
+                            <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#3b82f6' }} />
+                        )}
                     </div>
                 </Card>
 
-                <Card style={{ padding: isConductor ? '0.6rem 0.8rem' : '1.5rem' }}>
+                <Card style={{ padding: isConductor ? '0.4rem 0.5rem' : '1.5rem', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <p style={{ fontSize: isConductor ? '0.7rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0 }}>
-                                {isConductor ? 'Para Coordinar' : 'En Progreso'}
+                        <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: isConductor ? '0.62rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0, textTransform: isConductor ? 'uppercase' : 'none', letterSpacing: isConductor ? '0.02em' : 'normal' }}>
+                                {isConductor ? 'Para Coord.' : 'En Progreso'}
                             </p>
-                            <h2 style={{ fontSize: isConductor ? '1.3rem' : '2rem', fontWeight: 800, margin: '0.2rem 0 0 0' }}>
+                            <h2 style={{ fontSize: isConductor ? '1.2rem' : '2rem', fontWeight: 800, margin: '0.1rem 0 0 0' }}>
                                 {isConductor ? stats.toCoordinate : stats.inProgress}
                             </h2>
                         </div>
-                        <div style={{ padding: '0.35rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '6px', color: '#eab308', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Clock size={isConductor ? 14 : 20} />
-                        </div>
+                        {!isConductor ? (
+                            <div style={{ padding: '0.35rem', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '6px', color: '#eab308', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Clock size={20} />
+                            </div>
+                        ) : (
+                            <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#eab308' }} />
+                        )}
                     </div>
                 </Card>
 
-                <Card style={{ padding: isConductor ? '0.6rem 0.8rem' : '1.5rem' }}>
+                <Card style={{ padding: isConductor ? '0.4rem 0.5rem' : '1.5rem', position: 'relative', overflow: 'hidden' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <p style={{ fontSize: isConductor ? '0.7rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0 }}>
-                                {isConductor ? 'Realizados (Mes)' : 'Resueltos Hoy'}
+                        <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: isConductor ? '0.62rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0, textTransform: isConductor ? 'uppercase' : 'none', letterSpacing: isConductor ? '0.02em' : 'normal' }}>
+                                {isConductor ? 'Realizados' : 'Resueltos Hoy'}
                             </p>
-                            <h2 style={{ fontSize: isConductor ? '1.3rem' : '2rem', fontWeight: 800, margin: '0.2rem 0 0 0' }}>
+                            <h2 style={{ fontSize: isConductor ? '1.2rem' : '2rem', fontWeight: 800, margin: '0.1rem 0 0 0' }}>
                                 {isConductor ? stats.completedInMonth : stats.resolvedToday}
                             </h2>
                         </div>
-                        <div style={{ padding: '0.35rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '6px', color: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <CheckCircle2 size={isConductor ? 14 : 20} />
-                        </div>
+                        {!isConductor ? (
+                            <div style={{ padding: '0.35rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '6px', color: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <CheckCircle2 size={20} />
+                            </div>
+                        ) : (
+                            <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#22c55e' }} />
+                        )}
                     </div>
                 </Card>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <Button variant="secondary" icon={Route} onClick={() => setIsOptimizationModalOpen(true)}>Optimizar Ruta</Button>
-                    <Button variant="secondary" icon={MapIcon} onClick={() => setIsMapOpen(true)}>Ver Mapa</Button>
-                    <Button icon={Plus} onClick={() => setIsModalOpen(true)}>Nuevo Caso</Button>
-                </div>
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: isConductor ? 'space-between' : 'flex-end', 
+                gap: isConductor ? '6px' : '8px', 
+                marginBottom: '1rem',
+                width: '100%'
+            }}>
+                <Button 
+                    variant="secondary" 
+                    icon={Route} 
+                    onClick={() => setIsOptimizationModalOpen(true)}
+                    style={isConductor ? { flex: 1, padding: '0.45rem 0.5rem', fontSize: '0.78rem', justifyContent: 'center', height: 'auto', minHeight: '0' } : {}}
+                >
+                    {isConductor ? 'Optimizar' : 'Optimizar Ruta'}
+                </Button>
+                <Button 
+                    variant="secondary" 
+                    icon={MapIcon} 
+                    onClick={() => setIsMapOpen(true)}
+                    style={isConductor ? { flex: 1, padding: '0.45rem 0.5rem', fontSize: '0.78rem', justifyContent: 'center', height: 'auto', minHeight: '0' } : {}}
+                >
+                    {isConductor ? 'Mapa' : 'Ver Mapa'}
+                </Button>
+                <Button 
+                    icon={Plus} 
+                    onClick={() => setIsModalOpen(true)}
+                    style={isConductor ? { flex: 1, padding: '0.45rem 0.5rem', fontSize: '0.78rem', justifyContent: 'center', height: 'auto', minHeight: '0' } : {}}
+                >
+                    {isConductor ? 'Nuevo' : 'Nuevo Caso'}
+                </Button>
             </div>
 
             <Card className="p-0">
