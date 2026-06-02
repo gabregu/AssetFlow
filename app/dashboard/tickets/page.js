@@ -182,17 +182,7 @@ export default function TicketsPage() {
                 }
 
                 const normalizeName = (name) => (name || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-                const normalizeCountry = (country) => {
-                    if (!country) return '';
-                    let clean = country.toLowerCase().trim();
-                    clean = clean.replace(/^sfdc[-_\s]?/i, '');
-                    if (clean === 'arg' || clean.includes('argentina')) return 'argentina';
-                    if (clean === 'cl' || clean.includes('chile')) return 'chile';
-                    if (clean === 'co' || clean.includes('colombia')) return 'colombia';
-                    if (clean === 'cr' || clean.includes('costa rica') || clean.includes('costarica')) return 'costa rica';
-                    if (clean === 'uy' || clean.includes('uruguay')) return 'uruguay';
-                    return clean;
-                };
+                const normalizeCountry = (country) => (country || '').toLowerCase().trim();
 
                 const groupedCases = {};
                 for (const c of newCases) {
@@ -211,20 +201,15 @@ export default function TicketsPage() {
 
                     const repCase = group[0];
                     const reqNameNorm = normalizeName(repCase.requestedFor);
-                    const countryNorm = normalizeCountry(repCase.country);
 
                     const existingActiveTicket = tickets.find(t => {
                         const isNotResolved = t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado';
                         const tReqNorm = normalizeName(t.requester);
-                        let tCountryNorm = '';
-                        if (t.logistics?.address) tCountryNorm = normalizeCountry(t.logistics.address);
-                        const tClientNorm = normalizeCountry(t.client);
                         
                         const hasSameReq = (tReqNorm === reqNameNorm || (tReqNorm.length > 3 && reqNameNorm.length > 3 && (tReqNorm.includes(reqNameNorm) || reqNameNorm.includes(tReqNorm))));
-                        const hasSameCountry = (tCountryNorm && (tCountryNorm.includes(countryNorm) || countryNorm.includes(tCountryNorm))) ||
-                                               (tClientNorm && (tClientNorm.includes(countryNorm) || countryNorm.includes(tClientNorm)));
+                        const hasSameClient = t.client === getClientName(repCase.country);
 
-                        return isNotResolved && hasSameReq && (hasSameCountry || (!tCountryNorm && !tClientNorm));
+                        return isNotResolved && hasSameReq && hasSameClient;
                     });
 
                     if (existingActiveTicket) {
@@ -285,6 +270,7 @@ export default function TicketsPage() {
                             requester: mainCase.requestedFor,
                             priority: mainCase.priority === 'High' ? 'Alta' : 'Media',
                             status: 'Abierto',
+                            client: getClientName(mainCase.country),
                             internalNotes: internalNotes,
                             logistics: {
                                 address: mainCase.mailingStreet && mainCase.country ? `${mainCase.mailingStreet}, ${mainCase.country} ${mainCase.zipCode}` : mainCase.country,
