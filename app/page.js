@@ -34,7 +34,11 @@ export default function Home() {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        const { error, user } = await login(formData.email, formData.password);
+        // Read directly from the DOM form elements to ensure compatibility with Chrome Autofill
+        const emailVal = e.target.elements.email.value;
+        const passwordVal = e.target.elements.password.value;
+        
+        const { error, user } = await login(emailVal, passwordVal);
 
         if (error) {
             setError(error.message || JSON.stringify(error));
