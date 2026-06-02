@@ -21,6 +21,41 @@ import Link from 'next/link';
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
 import { Camera } from 'lucide-react';
 
+const parseAssetName = (name) => {
+    if (!name) return { title: '', specs: [] };
+    const parts = name.split(/\s+/);
+    const titleParts = [];
+    const specs = [];
+    
+    const specKeywords = [
+        'CPU', 'GPU', 'RAM', 'SSD', 'HDD', 'GB', 'TB', 'CTO',
+        'ING', 'ESP', 'SPA', 'USA', 'LATAM', 'ENG'
+    ];
+    
+    parts.forEach(part => {
+        const cleanPart = part.replace(/[()]/g, '').toUpperCase();
+        const isSpec = specKeywords.some(keyword => cleanPart === keyword || cleanPart.includes(keyword)) ||
+                       /^\d+(CPU|GPU|RAM|GB|TB|SSD|HDD|CORE|HZ)$/i.test(cleanPart) ||
+                       /^\(\w+\)$/.test(part);
+        
+        if (isSpec) {
+            specs.push(part.replace(/[()]/g, ''));
+        } else {
+            titleParts.push(part);
+        }
+    });
+    
+    if (titleParts.length === 0 && parts.length > 0) {
+        titleParts.push(parts[0]);
+        specs.shift();
+    }
+    
+    return {
+        title: titleParts.join(' '),
+        specs: specs
+    };
+};
+
 export default function InventoryPage() {
     const router = useRouter();
     const {
@@ -2393,7 +2428,7 @@ export default function InventoryPage() {
                                         </Button>
                                     </div>
                                 </div>
-                                <div className="table-responsive" style={{ maxHeight: '65vh', overflowY: 'auto', background: 'white', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                                <div className="table-responsive" style={{ maxHeight: '65vh', overflowX: 'auto', overflowY: 'auto', background: 'white', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                         <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--surface)', zIndex: 10, borderBottom: '2px solid var(--border)' }}>
                                             <tr>
@@ -2405,16 +2440,16 @@ export default function InventoryPage() {
                                                         style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                                                     />
                                                 </th>
-                                                <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ACTIVO <SortIcon column="name" /></th>
-                                                <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>SERIAL <SortIcon column="serial" /></th>
-                                                <th onClick={() => handleSort('country')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>CLIENTE <SortIcon column="country" /></th>
-                                                <th onClick={() => handleSort('assignee')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>USUARIO <SortIcon column="assignee" /></th>
-                                                <th onClick={() => handleSort('sfdcCase')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>CASO <SortIcon column="sfdcCase" /></th>
-                                                <th onClick={() => handleSort('cod')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>COD <SortIcon column="cod" /></th>
-                                                <th onClick={() => handleSort('boxNumber')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>CAJA <SortIcon column="boxNumber" /></th>
-                                                <th onClick={() => handleSort('locationId')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>UBICACIÓN <SortIcon column="locationId" /></th>
-                                                <th onClick={() => handleSort('status')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer' }}>ESTADO <SortIcon column="status" /></th>
-                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
+                                                <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '220px' }}>ACTIVO <SortIcon column="name" /></th>
+                                                <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '120px' }}>SERIAL <SortIcon column="serial" /></th>
+                                                <th onClick={() => handleSort('country')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '95px' }}>CLIENTE <SortIcon column="country" /></th>
+                                                <th onClick={() => handleSort('assignee')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '130px' }}>USUARIO <SortIcon column="assignee" /></th>
+                                                <th onClick={() => handleSort('sfdcCase')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '110px' }}>CASO <SortIcon column="sfdcCase" /></th>
+                                                <th onClick={() => handleSort('cod')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '90px' }}>COD <SortIcon column="cod" /></th>
+                                                <th onClick={() => handleSort('boxNumber')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '90px' }}>CAJA <SortIcon column="boxNumber" /></th>
+                                                <th onClick={() => handleSort('locationId')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '150px' }}>UBICACIÓN <SortIcon column="locationId" /></th>
+                                                <th onClick={() => handleSort('status')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '100px' }}>ESTADO <SortIcon column="status" /></th>
+                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right', minWidth: '135px' }}>ACCIONES</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -2435,9 +2470,37 @@ export default function InventoryPage() {
                                                             </div>
                                                             <div>
                                                                 <Link href={`/dashboard/inventory/${asset.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                                                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }} className="hover-link">{asset.name}</div>
+                                                                    {(() => {
+                                                                        const assetData = parseAssetName(asset.name);
+                                                                        return (
+                                                                            <>
+                                                                                <div style={{ fontWeight: 600, fontSize: '0.93rem', color: 'var(--text-main)' }} className="hover-link">
+                                                                                    {assetData.title}
+                                                                                </div>
+                                                                                {assetData.specs.length > 0 && (
+                                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '3px', marginBottom: '3px', maxWidth: '280px' }}>
+                                                                                        {assetData.specs.map((spec, idx) => (
+                                                                                            <span key={idx} style={{
+                                                                                                fontSize: '0.62rem',
+                                                                                                fontWeight: 700,
+                                                                                                backgroundColor: 'var(--background)',
+                                                                                                border: '1px solid var(--border)',
+                                                                                                color: 'var(--text-secondary)',
+                                                                                                padding: '1px 5px',
+                                                                                                borderRadius: '4px',
+                                                                                                whiteSpace: 'nowrap',
+                                                                                                textTransform: 'uppercase'
+                                                                                            }}>
+                                                                                                {spec}
+                                                                                            </span>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </>
+                                                                        );
+                                                                    })()}
                                                                 </Link>
-                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{asset.type}</div>
+                                                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{asset.type}</div>
                                                             </div>
                                                         </div>
                                                     </td>
