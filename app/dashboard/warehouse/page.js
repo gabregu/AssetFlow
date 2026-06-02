@@ -19,7 +19,9 @@ import {
     Scan,
     Printer,
     ExternalLink,
-    Edit3
+    Edit3,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
@@ -82,6 +84,56 @@ export default function WarehousePage() {
         });
         return groups;
     }, [warehouseLocations, countryFilter]);
+
+    // Track visual sorting of group aisles in localStorage
+    const [groupOrder, setGroupOrder] = useState([]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem(`warehouse_group_order_${countryFilter}`);
+            const availableAisles = Object.keys(groupedLocations);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    const existing = parsed.filter(a => availableAisles.includes(a));
+                    const added = availableAisles.filter(a => !existing.includes(a));
+                    setGroupOrder([...existing, ...added]);
+                } catch (e) {
+                    setGroupOrder(availableAisles.sort());
+                }
+            } else {
+                setGroupOrder(availableAisles.sort());
+            }
+        }
+    }, [groupedLocations, countryFilter]);
+
+    const sortedGroupedLocations = useMemo(() => {
+        const entries = Object.entries(groupedLocations);
+        entries.sort(([aisleA], [aisleB]) => {
+            const idxA = groupOrder.indexOf(aisleA);
+            const idxB = groupOrder.indexOf(aisleB);
+            if (idxA === -1 && idxB === -1) return aisleA.localeCompare(aisleB);
+            if (idxA === -1) return 1;
+            if (idxB === -1) return -1;
+            return idxA - idxB;
+        });
+        return entries;
+    }, [groupedLocations, groupOrder]);
+
+    const moveGroup = (aisle, direction) => {
+        const idx = groupOrder.indexOf(aisle);
+        if (idx === -1) return;
+        const newOrder = [...groupOrder];
+        if (direction === 'left' && idx > 0) {
+            newOrder[idx] = newOrder[idx - 1];
+            newOrder[idx - 1] = aisle;
+        } else if (direction === 'right' && idx < newOrder.length - 1) {
+            newOrder[idx] = newOrder[idx + 1];
+            newOrder[idx + 1] = aisle;
+        }
+        setGroupOrder(newOrder);
+        localStorage.setItem(`warehouse_group_order_${countryFilter}`, JSON.stringify(newOrder));
+    };
 
     // Handle Asset Scan simulation
     const handleScanAsset = (e) => {
@@ -427,11 +479,33 @@ export default function WarehousePage() {
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3rem' }}>
-                            {Object.entries(groupedLocations).map(([aisle, locations]) => (
-                                <div key={aisle} style={{ flex: '1', minWidth: '200px' }}>
+                            {sortedGroupedLocations.map(([aisle, locations]) => (
+                                <div key={aisle} style={{ flex: '1', minWidth: '220px' }}>
                                     <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             <span>Grupo {aisle}</span>
+                                            {sortedGroupedLocations.length > 1 && (
+                                                <div style={{ display: 'flex', gap: '1px', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '6px', padding: '2px' }}>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="xs"
+                                                        icon={ChevronLeft}
+                                                        onClick={() => moveGroup(aisle, 'left')}
+                                                        disabled={groupOrder.indexOf(aisle) === 0}
+                                                        style={{ padding: '2px', height: '20px', width: '20px', opacity: groupOrder.indexOf(aisle) === 0 ? 0.25 : 0.6 }}
+                                                        title="Mover Izquierda"
+                                                    />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="xs"
+                                                        icon={ChevronRight}
+                                                        onClick={() => moveGroup(aisle, 'right')}
+                                                        disabled={groupOrder.indexOf(aisle) === sortedGroupedLocations.length - 1}
+                                                        style={{ padding: '2px', height: '20px', width: '20px', opacity: groupOrder.indexOf(aisle) === sortedGroupedLocations.length - 1 ? 0.25 : 0.6 }}
+                                                        title="Mover Derecha"
+                                                    />
+                                                </div>
+                                            )}
                                             {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
                                                 <Button 
                                                     variant="ghost" 
@@ -453,7 +527,7 @@ export default function WarehousePage() {
                                     </h3>
                                     <div style={{ 
                                         display: 'grid', 
-                                        gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', 
+                                        gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))', 
                                         gap: '0.5rem',
                                         background: 'rgba(0,0,0,0.02)',
                                         padding: '1rem',
@@ -485,14 +559,14 @@ export default function WarehousePage() {
                                                     key={loc.id}
                                                     onClick={() => handleScanLocation(loc.id)}
                                                     style={{
-                                                        aspectRatio: '1/1',
+                                                        aspectRatio: '1.7/1',
                                                         display: 'flex',
                                                         flexDirection: 'column',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         background: bgColor,
                                                         color: textColor,
-                                                        borderRadius: '8px',
+                                                        borderRadius: '6px',
                                                         border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : '1px solid var(--border)',
                                                         cursor: 'pointer',
                                                         transition: 'all 0.2s ease',
@@ -508,11 +582,11 @@ export default function WarehousePage() {
                                                     {loc.id.split('-').slice(1).join('-')}
                                                     {assetCount > 0 && (
                                                         <div style={{ 
-                                                            display: 'flex', alignItems: 'center', gap: '2px', marginTop: '2px',
-                                                            background: '#ef4444', color: 'white', padding: '1px 5px', borderRadius: '10px',
-                                                            fontSize: '0.65rem', fontWeight: 900
+                                                            display: 'flex', alignItems: 'center', gap: '2px', marginTop: '1px',
+                                                            background: '#ef4444', color: 'white', padding: '1px 4px', borderRadius: '8px',
+                                                            fontSize: '0.6rem', fontWeight: 900
                                                         }}>
-                                                            <Box size={10} />
+                                                            <Box size={8} />
                                                             <span>{assetCount}</span>
                                                         </div>
                                                     )}
