@@ -759,7 +759,7 @@ export default function BillingPage() {
                 </div >
             </div >
 
-            <Modal isOpen={isRatesModalOpen} onClose={() => setIsRatesModalOpen(false)} title="Configuración de Cuadro Tarifario">
+            <Modal isOpen={isRatesModalOpen} onClose={() => setIsRatesModalOpen(false)} title={`Configuración de Cuadro Tarifario (${countryFilter})`}>
                 <form onSubmit={handleSaveRates} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {/* Dolar Section */}
                     <div style={{ padding: '1rem', background: 'var(--surface)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
