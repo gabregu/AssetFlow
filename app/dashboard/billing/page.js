@@ -97,7 +97,7 @@ export default function BillingPage() {
         const currencyKey = 'USD';
 
         const filtered = tickets.filter(ticket => {
-            const ticketDate = new Date(ticket.date || ticket.deliveryCompletedDate || Date.now());
+            const ticketDate = new Date(ticket.deliveryCompletedDate || ticket.closedDate || ticket.date || Date.now());
             const isDateMatch = ticketDate.getMonth() === selectedMonth && ticketDate.getFullYear() === selectedYear;
             const isStatusMatch = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
 
