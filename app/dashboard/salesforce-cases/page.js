@@ -41,47 +41,77 @@ export default function SFDCCasesPage() {
         setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
     };
 
+    // Helper functions for filtering cases
+    const hasService = (c) => {
+        return (tickets && tickets.some(t => 
+            String(t.id) === String(c.caseNumber) || 
+            (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber) === String(c.caseNumber))) ||
+            (t.subject && t.subject.includes(c.caseNumber))
+        )) || 
+        (logisticsTasks && logisticsTasks.some(tk => String(tk.case_number) === String(c.caseNumber)));
+    };
+
+    const isActiveCaseStatus = (c) => {
+        const status = String(c.status || '').toLowerCase();
+        return status.includes('new') || status.includes('progress') || status.includes('hold') || status.includes('waiting') || status.includes('escalated');
+    };
+
+    const isCaseInCountryFilter = (c) => {
+        const expectedClient = getClientName(countryFilter);
+        const matchesCountry = expectedClient === 'Todos' || (c.country && c.country.toLowerCase() === countryFilter.toLowerCase());
+        let forceSycomp = false;
+        if (expectedClient === 'Sycomp-SRV' && (String(c.subject || '').includes('1053') || String(c.subject || '').includes('1055') || String(c.subject || '').includes('1056'))) {
+            forceSycomp = true;
+        }
+        return matchesCountry || forceSycomp;
+    };
+
+    // 3. Estadísticas (Moved up to be available for statsByType and filteredCases)
+    const countryFilteredCases = useMemo(() => {
+        return sfdcCases.filter(c => {
+            return !hasService(c) && isActiveCaseStatus(c) && isCaseInCountryFilter(c);
+        });
+    }, [sfdcCases, countryFilter, tickets, logisticsTasks]);
+
+    // Metrics for Buttons (Including NEW HIRE filter)
+    const statsByType = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const isNewHire = (c) => {
+            const subject = String(c.subject || '').toLowerCase();
+            let futureStart = false;
+            if (c.startDate) {
+                const start = new Date(c.startDate);
+                if (!isNaN(start.getTime())) {
+                    start.setHours(0, 0, 0, 0);
+                    if (start > today) futureStart = true;
+                }
+            }
+            return subject.includes('new hire') || futureStart;
+        };
+
+        return {
+            delivery: countryFilteredCases.filter(c => !String(c.subject || '').toLowerCase().includes('collection') && !String(c.subject || '').toLowerCase().includes('offboarding') && !isNewHire(c)).length,
+            collection: countryFilteredCases.filter(c => String(c.subject || '').toLowerCase().includes('collection') || String(c.subject || '').toLowerCase().includes('offboarding')).length,
+            newHire: countryFilteredCases.filter(c => isNewHire(c)).length
+        };
+    }, [countryFilteredCases]);
+
     // 1. Filtrado
     const filteredCases = useMemo(() => {
         return sfdcCases.filter(c => {
-            // Exclusión: Si el servicio vinculado (Ticket/Logística) está finalizado, lo ocultamos.
-            const linkedTicket = 
-                (tickets && tickets.find(t => 
-                    String(t.id) === String(c.caseNumber) || 
-                    (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber) === String(c.caseNumber))) ||
-                    (t.subject && t.subject.includes(c.caseNumber))
-                )) || 
-                (logisticsTasks && logisticsTasks.find(tk => String(tk.case_number) === String(c.caseNumber)));
-                
-            if (linkedTicket) {
-                const linkedStatus = String(linkedTicket.status || '').toLowerCase();
-                const isServiceClosed = linkedStatus.includes('cerrado') || 
-                                        linkedStatus.includes('resuelto') || 
-                                        linkedStatus.includes('cancelado') || 
-                                        linkedStatus.includes('entregado') || 
-                                        linkedStatus.includes('completado') ||
-                                        linkedStatus.includes('devuelto');
-                if (isServiceClosed) return false;
-            }
-
-            const status = String(c.status || '').toLowerCase();
-            const isActiveStatus = status.includes('new') || status.includes('progress') || status.includes('hold') || status.includes('waiting') || status.includes('escalated');
+            // Exclusión: Si ya existe un servicio/ticket creado para este caso, lo ocultamos.
+            if (hasService(c)) return false;
 
             // Si el caso en SFDC está en estado cerrado/finalizado, también lo ocultamos
-            if (!isActiveStatus) return false;
+            if (!isActiveCaseStatus(c)) return false;
 
             const matchesText = String(c.subject || '').toLowerCase().includes(filter.toLowerCase()) ||
                 String(c.requestedFor || '').toLowerCase().includes(filter.toLowerCase()) ||
                 String(c.caseNumber || '').toLowerCase().includes(filter.toLowerCase());
 
-            const expectedClient = getClientName(countryFilter);
-            const matchesCountry = expectedClient === 'Todos' || (c.country && c.country.toLowerCase() === countryFilter.toLowerCase());
-            
-            // Si el cliente es Sycomp-SRV, forzamos mostrar los casos que sabemos que le pertenecen
-            let forceSycomp = false;
-            if (expectedClient === 'Sycomp-SRV' && (String(c.subject || '').includes('1053') || String(c.subject || '').includes('1055') || String(c.subject || '').includes('1056'))) {
-                forceSycomp = true;
-            }
+            if (!isCaseInCountryFilter(c)) return false;
 
             // Helper New Hire
             const isNewHire = (c) => {
@@ -108,38 +138,9 @@ export default function SFDCCasesPage() {
                 matchesType = isNewHire(c);
             }
 
-            return matchesText && (matchesCountry || forceSycomp) && matchesType;
+            return matchesText && matchesType;
         });
     }, [sfdcCases, filter, countryFilter, filterType, tickets, logisticsTasks]);
-
-    // Metrics for Buttons (Including NEW HIRE filter)
-    const statsByType = useMemo(() => {
-        const relevantCases = sfdcCases.filter(c =>
-            (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()))
-        );
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const isNewHire = (c) => {
-            const subject = String(c.subject || '').toLowerCase();
-            let futureStart = false;
-            if (c.startDate) {
-                const start = new Date(c.startDate);
-                if (!isNaN(start.getTime())) {
-                    start.setHours(0, 0, 0, 0);
-                    if (start > today) futureStart = true;
-                }
-            }
-            return subject.includes('new hire') || futureStart;
-        };
-
-        return {
-            delivery: relevantCases.filter(c => !String(c.subject || '').toLowerCase().includes('collection') && !String(c.subject || '').toLowerCase().includes('offboarding') && !isNewHire(c)).length,
-            collection: relevantCases.filter(c => String(c.subject || '').toLowerCase().includes('collection') || String(c.subject || '').toLowerCase().includes('offboarding')).length,
-            newHire: relevantCases.filter(c => isNewHire(c)).length
-        };
-    }, [sfdcCases, countryFilter]);
 
     // 2. Ordenamiento
     const sortedCases = useMemo(() => {
@@ -870,11 +871,6 @@ export default function SFDCCasesPage() {
 
 
     // 3. Estadísticas
-    const countryFilteredCases = useMemo(() => {
-        return sfdcCases.filter(c => {
-            return countryFilter === 'Todos' || (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()));
-        });
-    }, [sfdcCases, countryFilter]);
 
     const stats = useMemo(() => {
         const counts = {};
