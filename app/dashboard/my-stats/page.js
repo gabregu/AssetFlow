@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
@@ -8,6 +8,26 @@ import { resolveTicketServiceDetails, getRate, getExchangeRateForDate } from '@/
 
 export default function MyStatsPage() {
     const { tickets, assets: globalAssets, currentUser, rates, users, logisticsTasks } = useStore();
+    const [selectedMonthIndex, setSelectedMonthIndex] = useState(0);
+
+    // Generamos las opciones del selector de meses (últimos 6 meses)
+    const monthOptions = useMemo(() => {
+        const options = [];
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        
+        for (let i = 0; i < 6; i++) {
+            const date = new Date(currentYear, currentMonth - i, 1);
+            options.push({
+                index: i,
+                month: date.getMonth(),
+                year: date.getFullYear(),
+                label: date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+            });
+        }
+        return options;
+    }, []);
 
     // Reutilizamos la lógica de aplanado de items (Tickets/Sub-Casos)
     const myAssignedItems = useMemo(() => {
@@ -67,11 +87,16 @@ export default function MyStatsPage() {
     const stats = useMemo(() => {
         const today = new Date().toLocaleDateString('en-CA');
         const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const startOfWeek = new Date(now);
         startOfWeek.setDate(now.getDate() - now.getDay());
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(endOfWeek.getDate() + 6);
+
+        // Mes y año seleccionados para liquidación
+        const targetDate = new Date(now.getFullYear(), now.getMonth() - selectedMonthIndex, 1);
+        const targetMonth = targetDate.getMonth();
+        const targetYear = targetDate.getFullYear();
 
         let personalLiquidation = 0;
         let deliveriesCount = 0;
@@ -128,13 +153,17 @@ export default function MyStatsPage() {
             }
             const amount = (baseCommission + extra);
 
-            // Conteos diarios y semanales
+            // Conteos diarios y semanales (siempre actuales)
             if (isFinished) {
                 const completedDate = item.deliveryCompletedDate ? new Date(item.deliveryCompletedDate).toLocaleDateString('en-CA') : ticketDate.toLocaleDateString('en-CA');
                 if (completedDate === today) deliveredToday++;
                 
                 const updatedAt = item.deliveryCompletedDate ? new Date(item.deliveryCompletedDate) : new Date();
-                if (updatedAt >= startOfMonth) finishedThisMonthCount++;
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+                if (updatedAt.getMonth() === currentMonth && updatedAt.getFullYear() === currentYear) {
+                    finishedThisMonthCount++;
+                }
             } else if (item.displayStatus === 'En Transito' || item.displayStatus === 'Para Coordinar') {
                 const deliveryDate = item.displayDate ? new Date(item.displayDate + 'T00:00:00') : null;
                 if (deliveryDate && deliveryDate >= startOfWeek && deliveryDate <= endOfWeek) {
@@ -142,17 +171,15 @@ export default function MyStatsPage() {
                 }
             }
 
-            // Liquidación mensual (mes actual)
-            const currentMonth = now.getMonth();
-            const currentYear = now.getFullYear();
-            
-            if (isFinished && ticketDate.getMonth() === currentMonth && ticketDate.getFullYear() === currentYear) {
+            // Liquidación mensual filtrada por mes seleccionado
+            if (isFinished && ticketDate.getMonth() === targetMonth && ticketDate.getFullYear() === targetYear) {
                 personalLiquidation += amount;
                 if (isDelivery) deliveriesCount++;
                 if (isRecovery) recoveriesCount++;
             }
         });
 
+        // Generar lista de los últimos 6 meses
         const historyData = [];
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
@@ -161,10 +188,31 @@ export default function MyStatsPage() {
             historyData.push({
                 month: date.getMonth(),
                 year: date.getFullYear(),
-                label: date.toLocaleDateString('es-ES', { month: 'short' }),
-                total: 0 // Simplificado para visual
+                label: date.toLocaleDateString('es-ES', { month: 'short' }).replace('.', ''),
+                total: 0
             });
         }
+
+        // Llenar datos reales en la evolución histórica de 6 meses
+        myAssignedItems.forEach(item => {
+            const t = item.isMainTicket ? item : (item.parentTicket || item); 
+            const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status || '') || item.displayStatus === 'Entregado' || item.displayStatus === 'Finalizado';
+            
+            if (isFinished) {
+                const rawDate = item.deliveryCompletedDate || item.date || item.displayDate;
+                const isValidDate = rawDate && !['Pendiente', 'Sin fecha', 'Por definir'].includes(rawDate);
+                if (isValidDate) {
+                    const ticketDate = new Date(rawDate.toString().includes('T') ? rawDate : rawDate + 'T00:00:00');
+                    const tMonth = ticketDate.getMonth();
+                    const tYear = ticketDate.getFullYear();
+                    
+                    const match = historyData.find(h => h.month === tMonth && h.year === tYear);
+                    if (match) {
+                        match.total++;
+                    }
+                }
+            }
+        });
 
         return {
             total: myAssignedItems.length,
@@ -177,169 +225,234 @@ export default function MyStatsPage() {
             personalLiquidation,
             deliveriesCount,
             recoveriesCount,
-            historyData
+            historyData,
+            targetMonth,
+            targetYear
         };
-    }, [myAssignedItems, globalAssets, currentUser, rates, users]);
+    }, [myAssignedItems, globalAssets, currentUser, rates, users, selectedMonthIndex]);
 
     return (
-        <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
-            <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem' }}>
+        <div style={{ animation: 'fadeIn 0.5s ease-out', paddingBottom: '2rem' }}>
+            {/* Título de la sección */}
+            <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', gap: '1rem' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <TrendingUp size={32} style={{ color: 'var(--primary-color)' }} />
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <TrendingUp size={28} style={{ color: 'var(--primary-color)' }} />
                         Mis <span style={{ color: 'var(--primary-color)' }}>Números</span>
                     </h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.25rem' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '0.2rem' }}>
                         Visualiza el rendimiento de tus entregas y tu liquidación.
                     </p>
                 </div>
-                <div style={{ padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', color: '#3b82f6' }}>
-                    <BarChart3 size={24} />
+                <div style={{ padding: '0.5rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', color: '#3b82f6' }}>
+                    <BarChart3 size={20} />
                 </div>
             </div>
 
-            <div className="grid-responsive-dashboard" style={{ marginBottom: '1.25rem' }}>
-                <Card style={{ padding: '1.25rem', borderLeft: '5px solid var(--primary-color)', backgroundColor: 'var(--surface)' }}>
+            {/* Rendimiento y Carga Semanal */}
+            <div style={{ 
+                marginBottom: '0.75rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: '0.5rem'
+            }}>
+                <Card style={{ padding: '0.8rem 1rem', borderLeft: '4px solid var(--primary-color)', backgroundColor: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Rendimiento</span>
-                            <span style={{ fontSize: '1.75rem', fontWeight: 900 }}>{stats.finishedThisMonth}</span>
-                            <span style={{ fontSize: '0.75rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '2px', fontWeight: 600 }}>
-                                <ArrowUpRight size={14} /> Entregados este mes
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Rendimiento</span>
+                            <span style={{ fontSize: '1.3rem', fontWeight: 900 }}>{stats.finishedThisMonth}</span>
+                            <span style={{ fontSize: '0.65rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '1px', fontWeight: 600 }}>
+                                <ArrowUpRight size={12} /> Mes actual
                             </span>
                         </div>
-                        <div style={{ padding: '0.6rem', backgroundColor: 'var(--primary-light)', borderRadius: '12px', color: 'var(--primary-color)' }}>
-                            <TrendingUp size={20} />
-                        </div>
                     </div>
                 </Card>
 
-                <Card style={{ padding: '1.25rem', borderLeft: '5px solid #f59e0b', backgroundColor: 'var(--surface)' }}>
+                <Card style={{ padding: '0.8rem 1rem', borderLeft: '4px solid #f59e0b', backgroundColor: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Carga Semanal</span>
-                            <span style={{ fontSize: '1.75rem', fontWeight: 900 }}>{stats.pendingThisWeek}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Servicios para esta semana</span>
-                        </div>
-                        <div style={{ padding: '0.6rem', backgroundColor: '#fef3c7', borderRadius: '12px', color: '#f59e0b' }}>
-                            <ClipboardList size={20} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                            <span style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Carga Semanal</span>
+                            <span style={{ fontSize: '1.3rem', fontWeight: 900 }}>{stats.pendingThisWeek}</span>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Esta semana</span>
                         </div>
                     </div>
                 </Card>
             </div>
 
-            {/* Fila 1: Indicadores Básicos */}
-            <div className="grid-responsive-4" style={{ marginBottom: '1.25rem' }}>
-                <Card style={{ padding: '1.25rem', borderLeft: '4px solid #94a3b8', backgroundColor: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ padding: '0.5rem', backgroundColor: '#f1f5f9', borderRadius: '50%', color: '#64748b' }}>
-                            <Archive size={20} />
+            {/* Fila de Indicadores Básicos (2x2 en Móviles, 4x1 en Desktop) */}
+            <div style={{ 
+                marginBottom: '0.75rem',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                gap: '0.5rem'
+            }}>
+                <Card style={{ padding: '0.6rem 0.8rem', borderLeft: '4px solid #3b82f6', backgroundColor: 'var(--surface)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ padding: '0.35rem', backgroundColor: '#eff6ff', borderRadius: '50%', color: '#3b82f6' }}>
+                            <Archive size={16} />
                         </div>
                         <div>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>Total Pendientes</p>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{stats.total}</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.62rem', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>Total Servicios</p>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>{stats.total}</h3>
                         </div>
                     </div>
                 </Card>
 
-                <Card style={{ padding: '1.25rem', borderLeft: '4px solid #f97316', backgroundColor: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ padding: '0.5rem', backgroundColor: '#fff7ed', borderRadius: '50%', color: '#f97316' }}>
-                            <AlertCircle size={20} />
+                <Card style={{ padding: '0.6rem 0.8rem', borderLeft: '4px solid #f97316', backgroundColor: 'var(--surface)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ padding: '0.35rem', backgroundColor: '#fff7ed', borderRadius: '50%', color: '#f97316' }}>
+                            <AlertCircle size={16} />
                         </div>
                         <div>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>Para Coordinar</p>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{stats.paraCoordinar}</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.62rem', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>Para Coordinar</p>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>{stats.paraCoordinar}</h3>
                         </div>
                     </div>
                 </Card>
 
-                <Card style={{ padding: '1.25rem', borderLeft: '4px solid #3b82f6', backgroundColor: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ padding: '0.5rem', backgroundColor: '#eff6ff', borderRadius: '50%', color: '#3b82f6' }}>
-                            <Truck size={20} />
+                <Card style={{ padding: '0.6rem 0.8rem', borderLeft: '4px solid #0ea5e9', backgroundColor: 'var(--surface)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ padding: '0.35rem', backgroundColor: '#e0f2fe', borderRadius: '50%', color: '#0ea5e9' }}>
+                            <Truck size={16} />
                         </div>
                         <div>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>En Tránsito</p>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{stats.enTransito}</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.62rem', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>En Tránsito</p>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>{stats.enTransito}</h3>
                         </div>
                     </div>
                 </Card>
 
-                <Card style={{ padding: '1.25rem', borderLeft: '4px solid #22c55e', backgroundColor: 'rgba(34, 197, 94, 0.05)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ padding: '0.5rem', backgroundColor: '#f0fdf4', borderRadius: '50%', color: '#22c55e' }}>
-                            <CheckCircle2 size={20} />
+                <Card style={{ padding: '0.6rem 0.8rem', borderLeft: '4px solid #22c55e', backgroundColor: 'rgba(34, 197, 94, 0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ padding: '0.35rem', backgroundColor: '#f0fdf4', borderRadius: '50%', color: '#22c55e' }}>
+                            <CheckCircle2 size={16} />
                         </div>
                         <div>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>Entregados Hoy</p>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>{stats.entregadosHoy}</h3>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.62rem', margin: 0, textTransform: 'uppercase', fontWeight: 700 }}>Entregados Hoy</p>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>{stats.entregadosHoy}</h3>
                         </div>
                     </div>
                 </Card>
             </div>
 
-            {/* Fila 2: Liquidación y Evolución */}
-            <div className="grid-responsive-dashboard" style={{ marginBottom: '2rem' }}>
+            {/* Fila de Liquidación y Evolución Histórica */}
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', 
+                gap: '0.75rem',
+                marginBottom: '1rem'
+            }}>
                 {/* Resumen de Liquidación */}
-                <Card style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6', backgroundColor: 'var(--surface)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#f5f3ff', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.4rem', border: '2px solid rgba(139, 92, 246, 0.1)' }}>
+                <Card style={{ padding: '1rem', borderLeft: '4px solid #8b5cf6', backgroundColor: 'var(--surface)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#f5f3ff', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.2rem', border: '2px solid rgba(139, 92, 246, 0.1)' }}>
                                 {(currentUser?.name || 'U').charAt(0).toUpperCase()}
                             </div>
                             <div>
-                                <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--text-main)', marginBottom: '4px' }}>{currentUser?.name}</div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Badge variant="outline" style={{ border: 'none', background: 'rgba(139, 92, 246, 0.05)', color: '#8b5cf6' }}>{stats.deliveriesCount} entregas</Badge>
-                                    <span style={{ opacity: 0.3 }}>|</span>
-                                    <Badge variant="outline" style={{ border: 'none', background: 'rgba(139, 92, 246, 0.05)', color: '#8b5cf6' }}>{stats.recoveriesCount} recuperos</Badge>
-                                </div>
+                                <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)' }}>{currentUser?.name}</div>
+                                <select 
+                                    value={selectedMonthIndex}
+                                    onChange={(e) => setSelectedMonthIndex(parseInt(e.target.value))}
+                                    style={{
+                                        marginTop: '4px',
+                                        padding: '3px 8px',
+                                        borderRadius: '6px',
+                                        border: '1px solid var(--border)',
+                                        backgroundColor: 'var(--background)',
+                                        color: 'var(--text-main)',
+                                        fontSize: '0.72rem',
+                                        outline: 'none',
+                                        cursor: 'pointer',
+                                        fontWeight: 600
+                                    }}
+                                >
+                                    {monthOptions.map(opt => (
+                                        <option key={opt.index} value={opt.index}>{opt.label}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
-                        <div style={{ textAlign: 'right', minWidth: '140px' }}>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, marginBottom: '2px' }}>Liquidación (Mes Actual)</div>
-                            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.5px' }}>
+                        <div style={{ textAlign: 'right', minWidth: '130px' }}>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Liquidación</div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 850, color: 'var(--text-main)', letterSpacing: '-0.5px', marginTop: '2px' }}>
                                 USD {stats.personalLiquidation.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </div>
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500, marginTop: '2px' }}>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '1px' }}>
                                 {(() => {
-                                    const currentMonthRate = getExchangeRateForDate(rates, new Date());
+                                    const currentMonthRate = getExchangeRateForDate(rates, new Date(stats.targetYear, stats.targetMonth, 15));
                                     return currentMonthRate > 0 ? (
                                         <>ARS {(stats.personalLiquidation * currentMonthRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</>
                                     ) : (
-                                        <span style={{ color: '#ef4444', fontSize: '0.7rem' }}>Sin cotización del mes en Tarifas</span>
+                                        <span style={{ color: '#ef4444', fontSize: '0.65rem' }}>Sin cotización en Tarifas</span>
                                     );
                                 })()}
                             </div>
                         </div>
                     </div>
+                    
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border)' }}>
+                        <Badge style={{ border: 'none', background: 'rgba(139, 92, 246, 0.05)', color: '#8b5cf6', padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
+                            {stats.deliveriesCount} entregas
+                        </Badge>
+                        <Badge style={{ border: 'none', background: 'rgba(139, 92, 246, 0.05)', color: '#8b5cf6', padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
+                            {stats.recoveriesCount} recuperos
+                        </Badge>
+                    </div>
                 </Card>
 
-                {/* Grafico Placeholder */}
-                <Card style={{ padding: '1.5rem', backgroundColor: 'var(--surface)', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <BarChart3 size={18} style={{ color: '#8b5cf6' }} />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Evolución 6 Meses</span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: '#8b5cf6', fontWeight: 600 }}>Próximamente...</span>
+                {/* Gráfico de Evolución de 6 Meses */}
+                <Card style={{ padding: '1rem', backgroundColor: 'var(--surface)', display: 'flex', flexDirection: 'column', minHeight: '170px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                        <BarChart3 size={16} style={{ color: '#8b5cf6' }} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Evolución 6 Meses</span>
                     </div>
 
-                    <div style={{ height: '80px', display: 'flex', alignItems: 'flex-end', gap: '10px', paddingBottom: '5px', opacity: 0.5 }}>
+                    <div style={{ 
+                        height: '90px', 
+                        display: 'flex', 
+                        alignItems: 'flex-end', 
+                        gap: '6px', 
+                        paddingBottom: '5px',
+                        borderBottom: '1px solid var(--border)'
+                    }}>
                         {stats.historyData.map((h, i) => {
-                            const max = 1;
-                            const height = 10;
+                            const maxTotal = Math.max(...stats.historyData.map(item => item.total), 1);
+                            const percentHeight = (h.total / maxTotal) * 100;
+                            const targetDate = new Date(new Date().getFullYear(), new Date().getMonth() - selectedMonthIndex, 1);
+                            const isCurrentSelected = h.month === targetDate.getMonth() && h.year === targetDate.getFullYear();
+                            
                             return (
-                                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative' }}>
+                                    <span style={{ 
+                                        fontSize: '0.6rem', 
+                                        fontWeight: '800', 
+                                        color: isCurrentSelected ? '#8b5cf6' : 'var(--text-secondary)',
+                                        marginBottom: '2px'
+                                    }}>
+                                        {h.total}
+                                    </span>
+                                    
                                     <div style={{
                                         width: '100%',
-                                        height: `${Math.max(height, 5)}%`,
-                                        background: i === 5 ? 'linear-gradient(to top, #8b5cf6, #a78bfa)' : 'rgba(139, 92, 246, 0.15)',
-                                        borderRadius: '4px',
-                                        transition: 'height 0.4s ease'
+                                        maxWidth: '24px',
+                                        height: `${Math.max(percentHeight, 4)}%`,
+                                        background: isCurrentSelected 
+                                            ? 'linear-gradient(to top, #8b5cf6, #a78bfa)' 
+                                            : 'rgba(139, 92, 246, 0.15)',
+                                        borderRadius: '3px 3px 0 0',
+                                        transition: 'all 0.4s ease'
                                     }} />
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: i === 5 ? 'var(--text-main)' : 'var(--text-secondary)' }}>{h.label}</span>
+                                    
+                                    <span style={{ 
+                                        fontSize: '0.6rem', 
+                                        fontWeight: 700, 
+                                        color: isCurrentSelected ? 'var(--text-main)' : 'var(--text-secondary)',
+                                        textTransform: 'capitalize',
+                                        marginTop: '4px'
+                                    }}>
+                                        {h.label}
+                                    </span>
                                 </div>
                             );
                         })}
