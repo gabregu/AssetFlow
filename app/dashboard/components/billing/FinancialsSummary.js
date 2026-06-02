@@ -17,12 +17,17 @@ export function FinancialsSummary({ ticket }) {
     }, [ticket, rates, assets, users, logisticsTasks]);
 
     const defaultFinancials = useMemo(() => {
-        if (!ticket?.deliveryDetails?.customLogisticCost) return null;
+        const hasCustom = ticket?.deliveryDetails?.customLogisticCost || 
+                          ticket?.deliveryDetails?.customServiceRevenue || 
+                          ticket?.deliveryDetails?.customLogisticRevenue;
+        if (!hasCustom) return null;
         const ticketCopy = {
             ...ticket,
             deliveryDetails: {
                 ...ticket.deliveryDetails,
-                customLogisticCost: null
+                customLogisticCost: null,
+                customServiceRevenue: null,
+                customLogisticRevenue: null
             }
         };
         return calculateTicketFinancials(ticketCopy, rates, assets, users, logisticsTasks);
@@ -43,6 +48,8 @@ export function FinancialsSummary({ ticket }) {
         method
     } = financials;
 
+    const autoServiceRevenue = defaultFinancials ? defaultFinancials.serviceRevenue : serviceRevenue;
+    const autoLogisticRevenue = defaultFinancials ? defaultFinancials.logisticRevenue : logisticRevenue;
     const autoLogisticCost = defaultFinancials ? defaultFinancials.logisticCost : logisticCost;
 
     const formatUSD = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
@@ -111,14 +118,92 @@ export function FinancialsSummary({ ticket }) {
                     <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <DollarSign size={14} /> Ingreso Servicio
                     </span>
-                    <span style={{ fontWeight: 600 }}>{formatUSD(serviceRevenue)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>$</span>
+                        <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={ticket.deliveryDetails?.customServiceRevenue !== undefined && ticket.deliveryDetails?.customServiceRevenue !== null ? ticket.deliveryDetails.customServiceRevenue : ''}
+                            placeholder={autoServiceRevenue.toFixed(2)}
+                            onChange={async (e) => {
+                                const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                                await updateTicket(ticket.id, {
+                                    deliveryDetails: {
+                                        ...ticket.deliveryDetails,
+                                        customServiceRevenue: val
+                                    }
+                                });
+                            }}
+                            style={{
+                                width: '75px',
+                                padding: '3px 6px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border)',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                color: 'var(--text-main)',
+                                fontWeight: 600,
+                                textAlign: 'right',
+                                outline: 'none',
+                                transition: 'border-color 0.2s, background-color 0.2s',
+                                fontSize: '0.875rem'
+                            }}
+                            onFocus={(e) => {
+                                e.target.style.borderColor = 'var(--primary-color)';
+                                e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                            }}
+                            onBlur={(e) => {
+                                e.target.style.borderColor = 'var(--border)';
+                                e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                            }}
+                        />
+                    </div>
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <Truck size={14} /> Ingreso Logística
                     </span>
-                    <span style={{ fontWeight: 600 }}>{formatUSD(logisticRevenue)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>$</span>
+                        <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={ticket.deliveryDetails?.customLogisticRevenue !== undefined && ticket.deliveryDetails?.customLogisticRevenue !== null ? ticket.deliveryDetails.customLogisticRevenue : ''}
+                            placeholder={autoLogisticRevenue.toFixed(2)}
+                            onChange={async (e) => {
+                                const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                                await updateTicket(ticket.id, {
+                                    deliveryDetails: {
+                                        ...ticket.deliveryDetails,
+                                        customLogisticRevenue: val
+                                    }
+                                });
+                            }}
+                            style={{
+                                width: '75px',
+                                padding: '3px 6px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border)',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                color: 'var(--text-main)',
+                                fontWeight: 600,
+                                textAlign: 'right',
+                                outline: 'none',
+                                transition: 'border-color 0.2s, background-color 0.2s',
+                                fontSize: '0.875rem'
+                            }}
+                            onFocus={(e) => {
+                                e.target.style.borderColor = 'var(--primary-color)';
+                                e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                            }}
+                            onBlur={(e) => {
+                                e.target.style.borderColor = 'var(--border)';
+                                e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                            }}
+                        />
+                    </div>
                 </div>
 
                 <div style={{ 
