@@ -5,14 +5,15 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
 import { ServiceMap } from '../../components/ui/ServiceMap';
-import { Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus } from 'lucide-react';
+import { Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getStatusVariant } from './constants';
 import { Modal } from '../../components/ui/Modal';
+import { supabase } from '../../../lib/supabase';
 
 export default function TicketsPage() {
-    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks, entities, getClientName } = useStore();
+    const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks, entities, getClientName, refreshData } = useStore();
     const fileInputRef = useRef(null);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const router = useRouter();
@@ -329,6 +330,155 @@ export default function TicketsPage() {
         if (confirm(`¿Estás seguro de que deseas eliminar ${selectedTickets.length} tickets seleccionados?`)) {
             deleteTickets(selectedTickets);
             setSelectedTickets([]);
+        }
+    };
+
+    const handleMergeTickets = async () => {
+        if (selectedTickets.length < 2) return;
+        
+        const selectedObjects = tickets.filter(t => selectedTickets.includes(t.id));
+        const firstRequester = selectedObjects[0].requester;
+        const differentRequester = selectedObjects.some(t => t.requester !== firstRequester);
+        
+        if (differentRequester) {
+            if (!confirm("Los servicios seleccionados pertenecen a diferentes solicitantes. ¿Estás seguro de que deseas fusionarlos de todos modos?")) {
+                return;
+            }
+        } else {
+            if (!confirm(`¿Estás seguro de que deseas fusionar los ${selectedTickets.length} servicios de ${firstRequester} en uno solo?`)) {
+                return;
+            }
+        }
+        
+        // Ordenar por ID para mantener el más viejo (menor ID) como primario
+        selectedObjects.sort((a, b) => {
+            const numA = parseInt(a.id.split('-')[1]) || 0;
+            const numB = parseInt(b.id.split('-')[1]) || 0;
+            return numA - numB;
+        });
+        
+        const primary = selectedObjects[0];
+        const sources = selectedObjects.slice(1);
+        const sourceIds = sources.map(s => s.id);
+        
+        try {
+            // 1. Unificar asociados
+            let mergedCases = primary.associatedCases ? [...primary.associatedCases] : [];
+            
+            // Garantizar que el caso primario principal esté listado en asociados
+            const matchPrimary = primary.subject.match(/\[SFDC-(\d+)\]/i);
+            if (matchPrimary) {
+                const pCaseNum = matchPrimary[1];
+                if (!mergedCases.some(mc => mc.caseNumber === pCaseNum)) {
+                    const subText = primary.subject.replace(/\[SFDC-\d+\]\s*/i, '').replace(/\s*\(\+\s*\d+\s*casos agrupados\)/i, '');
+                    mergedCases.push({
+                        caseNumber: pCaseNum,
+                        subject: subText,
+                        status: primary.status,
+                        priority: primary.priority === 'Alta' ? 'High' : 'Medium',
+                        dateOpened: primary.date || new Date().toISOString().split('T')[0],
+                        logistics: {
+                            address: primary.logistics?.address || '',
+                            phone: primary.logistics?.phone || '',
+                            email: primary.logistics?.email || '',
+                            method: '',
+                            status: 'Pendiente'
+                        }
+                    });
+                }
+            }
+            
+            // Extraer y agrupar de los tickets secundarios
+            sources.forEach(src => {
+                const srcCases = src.associatedCases || [];
+                srcCases.forEach(c => {
+                    if (!mergedCases.some(mc => mc.caseNumber === c.caseNumber)) {
+                        mergedCases.push(c);
+                    }
+                });
+                
+                const match = src.subject.match(/\[SFDC-(\d+)\]/i);
+                if (match) {
+                    const caseNum = match[1];
+                    if (!mergedCases.some(mc => mc.caseNumber === caseNum)) {
+                        const subText = src.subject.replace(/\[SFDC-\d+\]\s*/i, '').replace(/\s*\(\+\s*\d+\s*casos agrupados\)/i, '');
+                        mergedCases.push({
+                            caseNumber: caseNum,
+                            subject: subText,
+                            status: src.status,
+                            priority: src.priority === 'Alta' ? 'High' : 'Medium',
+                            dateOpened: src.date || new Date().toISOString().split('T')[0],
+                            logistics: {
+                                address: src.logistics?.address || '',
+                                phone: src.logistics?.phone || '',
+                                email: src.logistics?.email || '',
+                                method: '',
+                                status: 'Pendiente'
+                            }
+                        });
+                    }
+                }
+            });
+            
+            // 2. Combinar notas internas
+            let mergedNotes = primary.internalNotes ? [...primary.internalNotes] : [];
+            sources.forEach(src => {
+                if (src.internalNotes && src.internalNotes.length > 0) {
+                    mergedNotes.push(`=== NOTAS FUSIONADAS DE ${src.id} ===`);
+                    src.internalNotes.forEach(note => {
+                        mergedNotes.push(note);
+                    });
+                }
+            });
+            
+            mergedNotes.push(`=== FUSIÓN DE SERVICIOS [${new Date().toLocaleString()}] ===\nSe fusionaron los servicios: ${sourceIds.join(', ')} en este servicio por el usuario ${currentUser?.name || 'Operador'}.`);
+            
+            // Actualizar ticket principal en DB
+            const updatedSubject = primary.subject.includes('casos agrupados') 
+                ? primary.subject 
+                : `${primary.subject} (+ casos agrupados)`;
+                
+            const { error: primaryError } = await supabase.from('tickets').update({
+                associated_assets: mergedCases,
+                internal_notes: mergedNotes,
+                subject: updatedSubject
+            }).eq('id', primary.id);
+            
+            if (primaryError) throw primaryError;
+            
+            // 3. Mover tareas logísticas al ticket principal
+            const { error: taskError } = await supabase.from('logistics_tasks')
+                .update({ ticket_id: primary.id })
+                .in('ticket_id', sourceIds);
+                
+            if (taskError) {
+                console.error("Error moving logistics tasks:", taskError);
+            }
+            
+            // 4. Mover inventario relacionado
+            const { error: assetError } = await supabase.from('assets')
+                .update({ sfdc_case: primary.id })
+                .in('sfdc_case', sourceIds);
+                
+            if (assetError) {
+                console.error("Error moving assets:", assetError);
+            }
+            
+            // 5. Eliminar tickets secundarios
+            const { error: deleteError } = await supabase.from('tickets')
+                .delete()
+                .in('id', sourceIds);
+                
+            if (deleteError) throw deleteError;
+            
+            // 6. Recargar estado local
+            await refreshData();
+            
+            setSelectedTickets([]);
+            showToast("Servicios fusionados con éxito", "success");
+        } catch (err) {
+            console.error("Error during merge:", err);
+            alert("Error al fusionar servicios: " + err.message);
         }
     };
 
@@ -863,6 +1013,15 @@ export default function TicketsPage() {
                             <Button size="sm" onClick={handleBulkDelete} style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', color: 'white' }}>
                                 <Trash2 size={16} style={{ marginRight: '0.5rem' }} /> Borrar Seleccionados
                             </Button>
+                            {selectedTickets.length >= 2 && (
+                                <Button 
+                                    size="sm" 
+                                    onClick={handleMergeTickets} 
+                                    style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6', color: 'white' }}
+                                >
+                                    <GitMerge size={16} style={{ marginRight: '0.5rem' }} /> Fusionar Seleccionados
+                                </Button>
+                            )}
                             <Button variant="ghost" size="sm" onClick={() => setSelectedTickets([])} style={{ marginLeft: 'auto', color: '#64748b' }}>
                                 Cancelar
                             </Button>
