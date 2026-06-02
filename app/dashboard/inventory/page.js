@@ -72,6 +72,14 @@ export default function InventoryPage() {
         eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina', cod: '', boxNumber: '',
         locationId: ''
     });
+
+    const uniqueAssetNames = React.useMemo(() => {
+        if (!assets || assets.length === 0) return [];
+        const filtered = assets.filter(a => a.type === newAsset.type);
+        const names = filtered.map(a => a.name?.trim()).filter(Boolean);
+        return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+    }, [assets, newAsset.type]);
+
     const [bulkBoxNumber, setBulkBoxNumber] = useState('');
     const [replacementSerial, setReplacementSerial] = useState('');
     const [smartRecommendations, setSmartRecommendations] = useState([]);
@@ -2840,7 +2848,13 @@ export default function InventoryPage() {
                             value={newAsset.name}
                             onChange={e => handleFieldChange('name', e.target.value)}
                             onPaste={e => handlePaste('name', e)}
+                            list="asset-names-list"
                         />
+                        <datalist id="asset-names-list">
+                            {uniqueAssetNames.map(name => (
+                                <option key={name} value={name} />
+                            ))}
+                        </datalist>
                     </div>
 
                     <div className="grid-responsive-2">
