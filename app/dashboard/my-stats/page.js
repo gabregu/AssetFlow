@@ -215,7 +215,11 @@ export default function MyStatsPage() {
         });
 
         return {
-            total: myAssignedItems.length,
+            total: myAssignedItems.filter(item => {
+                const t = item.isMainTicket ? item : (item.parentTicket || item);
+                const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status || '') || item.displayStatus === 'Entregado' || item.displayStatus === 'Finalizado';
+                return !isFinished;
+            }).length,
             pendiente: myAssignedItems.filter(t => !t.displayStatus || t.displayStatus === 'Pendiente').length,
             paraCoordinar: myAssignedItems.filter(t => t.displayStatus === 'Para Coordinar').length,
             enTransito: myAssignedItems.filter(t => t.displayStatus === 'En Transito').length,
