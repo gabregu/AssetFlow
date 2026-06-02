@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -31,6 +31,25 @@ export default function TicketsPage() {
     // Manual Creation State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
+
+    // Similar active tickets for warnings on manual creation
+    const [similarTickets, setSimilarTickets] = useState([]);
+
+    useEffect(() => {
+        const req = (newTicket.requester || '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (req.length < 3) {
+            setSimilarTickets([]);
+            return;
+        }
+        const active = tickets.filter(t => {
+            const isNotResolved = t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado';
+            if (!isNotResolved) return false;
+            
+            const tReq = (t.requester || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return tReq.includes(req) || req.includes(tReq);
+        });
+        setSimilarTickets(active);
+    }, [newTicket.requester, tickets]);
 
     const [showMap, setShowMap] = useState(false);
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
@@ -163,7 +182,17 @@ export default function TicketsPage() {
                 }
 
                 const normalizeName = (name) => (name || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-                const normalizeCountry = (country) => (country || '').toLowerCase().trim();
+                const normalizeCountry = (country) => {
+                    if (!country) return '';
+                    let clean = country.toLowerCase().trim();
+                    clean = clean.replace(/^sfdc[-_\s]?/i, '');
+                    if (clean === 'arg' || clean.includes('argentina')) return 'argentina';
+                    if (clean === 'cl' || clean.includes('chile')) return 'chile';
+                    if (clean === 'co' || clean.includes('colombia')) return 'colombia';
+                    if (clean === 'cr' || clean.includes('costa rica') || clean.includes('costarica')) return 'costa rica';
+                    if (clean === 'uy' || clean.includes('uruguay')) return 'uruguay';
+                    return clean;
+                };
 
                 const groupedCases = {};
                 for (const c of newCases) {
@@ -189,24 +218,42 @@ export default function TicketsPage() {
                         const tReqNorm = normalizeName(t.requester);
                         let tCountryNorm = '';
                         if (t.logistics?.address) tCountryNorm = normalizeCountry(t.logistics.address);
+                        const tClientNorm = normalizeCountry(t.client);
                         
                         const hasSameReq = (tReqNorm === reqNameNorm || (tReqNorm.length > 3 && reqNameNorm.length > 3 && (tReqNorm.includes(reqNameNorm) || reqNameNorm.includes(tReqNorm))));
-                        const hasSameCountry = tCountryNorm.includes(countryNorm) || countryNorm.includes(tCountryNorm);
+                        const hasSameCountry = (tCountryNorm && (tCountryNorm.includes(countryNorm) || countryNorm.includes(tCountryNorm))) ||
+                                               (tClientNorm && (tClientNorm.includes(countryNorm) || countryNorm.includes(tClientNorm)));
 
-                        return isNotResolved && hasSameReq && (hasSameCountry || !tCountryNorm);
+                        return isNotResolved && hasSameReq && (hasSameCountry || (!tCountryNorm && !tClientNorm));
                     });
 
                     if (existingActiveTicket) {
                         let updatedNotes = existingActiveTicket.internalNotes ? [...existingActiveTicket.internalNotes] : [];
+                        let updatedAssociatedCases = existingActiveTicket.associatedCases ? [...existingActiveTicket.associatedCases] : [];
                         let addedToExisting = 0;
 
                         group.forEach(c => {
                             const alreadyExists = existingActiveTicket.subject.includes(c.caseNumber) ||
-                                                  updatedNotes.some(n => n.includes(c.caseNumber));
+                                                  updatedNotes.some(n => n.includes(c.caseNumber)) ||
+                                                  updatedAssociatedCases.some(ac => ac.caseNumber === c.caseNumber);
                                                   
                             if (!alreadyExists) {
                                 const msg = `• Caso Adicional Agregado via CSV: [SFDC-${c.caseNumber}] ${c.subject}`;
                                 updatedNotes.push(msg);
+                                updatedAssociatedCases.push({
+                                    caseNumber: c.caseNumber,
+                                    subject: c.subject,
+                                    status: c.status,
+                                    priority: c.priority,
+                                    dateOpened: c.dateOpened,
+                                    logistics: {
+                                        address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : existingActiveTicket.logistics?.address,
+                                        phone: c.mobile || '',
+                                        email: c.email || '',
+                                        method: '',
+                                        status: 'Pendiente'
+                                    }
+                                });
                                 addedToExisting++;
                                 casesProcessed++;
                             }
@@ -215,6 +262,7 @@ export default function TicketsPage() {
                         if (addedToExisting > 0) {
                             await updateTicket(existingActiveTicket.id, {
                                 internalNotes: updatedNotes,
+                                associatedCases: updatedAssociatedCases,
                                 subject: existingActiveTicket.subject + (existingActiveTicket.subject.includes('casos agrupados') ? '' : ` (+ casos agrupados)`)
                             });
                             ticketsUpdated++;
@@ -1114,6 +1162,40 @@ export default function TicketsPage() {
                                 setNewTicket({ ...newTicket, requester: text });
                             }}
                         />
+                        {similarTickets.length > 0 && (
+                            <div style={{
+                                marginTop: '0.5rem',
+                                padding: '0.75rem',
+                                background: 'rgba(245, 158, 11, 0.1)',
+                                border: '1px dashed #f59e0b',
+                                borderRadius: '8px',
+                                fontSize: '0.8rem',
+                                color: '#d97706',
+                                animation: 'fadeIn 0.2s ease-out'
+                            }}>
+                                <div style={{ fontWeight: 700, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <AlertCircle size={14} /> Ya existe un servicio abierto para este empleado:
+                                </div>
+                                <ul style={{ margin: 0, paddingLeft: '1.2rem', listStyleType: 'disc' }}>
+                                    {similarTickets.map(t => (
+                                        <li key={t.id} style={{ marginBottom: '4px' }}>
+                                            <strong>{t.id}</strong>: {t.subject} (Estado: {t.status}){' '}
+                                            <a 
+                                                href={`/dashboard/tickets/${t.id}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{ textDecoration: 'underline', fontWeight: 600, color: 'var(--primary-color)', marginLeft: '4px' }}
+                                            >
+                                                Ver y agregar caso asociado →
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', opacity: 0.9 }}>
+                                    Se recomienda abrir el servicio existente y añadir el nuevo caso desde allí para mantener todo agrupado.
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div className="form-group">
                         <label className="form-label">Prioridad</label>
