@@ -1016,6 +1016,18 @@ export default function BillingPage() {
                                     />
                                 </div>
                             </div>
+
+                            {/* Otros */}
+                            <div className="form-group">
+                                <label className="form-label">Otros</label>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>USD</span>
+                                    <input type="number" className="form-input" style={{ paddingLeft: '45px' }}
+                                        value={tempRates.service_Other !== undefined ? tempRates.service_Other : (tempRates.otherService || 5)}
+                                        onChange={e => { const val = e.target.value; setTempRates(prev => ({ ...prev, service_Other: val === '' ? '' : parseFloat(val) })) }}
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '1.5rem 0 1rem 0', color: 'var(--primary-color)' }}>Logística</h4>
