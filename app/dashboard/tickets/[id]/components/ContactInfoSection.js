@@ -90,13 +90,13 @@ export default function ContactInfoSection({
                 </div>
             </div>
 
-            <div className="form-group" style={{ gridColumn: 'span 2', marginBottom: 0 }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Dirección Completa</label>
                 <div style={{ position: 'relative' }}>
                     {addressStatus === 'valid' ? (
-                        <CheckCircle2 size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: '#22c55e' }} />
+                        <CheckCircle2 size={12} style={{ position: 'absolute', left: '10px', top: '15px', color: '#22c55e' }} />
                     ) : (
-                        <MapPin size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                        <MapPin size={12} style={{ position: 'absolute', left: '10px', top: '15px', color: 'var(--text-secondary)' }} />
                     )}
                     {isEditing ? (
                         <input
@@ -176,6 +176,49 @@ export default function ContactInfoSection({
                         ⚠️ Dirección no encontrada en Google Maps.
                     </p>
                 )}
+            </div>
+
+            {/* Piso y Departamento */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Piso y Departamento</label>
+                <div style={{ position: 'relative' }}>
+                    <Hash size={12} style={{ position: 'absolute', left: '10px', top: '15px', color: 'var(--text-secondary)' }} />
+                    {isEditing ? (
+                        <input
+                            className="form-input"
+                            style={{
+                                paddingLeft: '2.2rem',
+                                height: 'auto',
+                                minHeight: '42px',
+                                fontSize: '1.1rem',
+                                fontWeight: 600,
+                                lineHeight: '1.4',
+                                background: 'var(--background)',
+                                color: 'var(--text-main)'
+                            }}
+                            value={editedData.logistics?.floorDept || ''}
+                            placeholder="Ej: Piso 5, Depto B"
+                            onChange={e => setEditedData({
+                                ...editedData,
+                                logistics: { ...(editedData.logistics || {}), floorDept: e.target.value }
+                            })}
+                        />
+                    ) : (
+                        <div style={{
+                            padding: '8px 8px 8px 2.2rem',
+                            fontSize: '1.25rem',
+                            fontWeight: 700,
+                            lineHeight: '1.4',
+                            color: 'var(--text-main)',
+                            minHeight: '42px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            wordBreak: 'break-word'
+                        }}>
+                            {editedData.logistics?.floorDept || '-'}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>

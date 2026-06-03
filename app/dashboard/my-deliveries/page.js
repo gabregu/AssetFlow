@@ -106,6 +106,7 @@ export default function MyDeliveriesPage() {
                         displayId: task.case_number || (parentTicket?.id ? String(parentTicket.id).substring(0, 8) : 'SUB-CASE'),
                         displaySubject: task.subject || parentTicket?.subject,
                         displayAddress: task.address || parentTicket?.logistics?.address || 'Sin dirección',
+                        displayFloorDept: task.floorDept || task.floor_dept || parentTicket?.logistics?.floorDept || '',
                         displayStatus: task.status || 'Pendiente',
                         displayDate: task.date,
                         requester: task.recipient || parentTicket?.requester || 'Destinatario',
@@ -148,6 +149,7 @@ export default function MyDeliveriesPage() {
                     displayId: t.id,
                     displaySubject: t.subject,
                     displayAddress: t.logistics?.address,
+                    displayFloorDept: t.logistics?.floorDept || '',
                     displayStatus: t.logistics?.status || 'Pendiente',
                     displayDate: t.logistics?.date,
                     instructions: t.instructions || '',
@@ -182,6 +184,7 @@ export default function MyDeliveriesPage() {
                                 displayId: c.caseNumber || c.case_number || `${String(t.id).substring(0,8)}-${idx}`,
                                 displaySubject: c.subject || t.subject,
                                 displayAddress: c.logistics?.address || t.logistics?.address,
+                                displayFloorDept: c.logistics?.floorDept || t.logistics?.floorDept || '',
                                 displayStatus: cStatus,
                                 displayDate: c.logistics?.date,
                                 requester: c.requester || t.requester,
@@ -633,7 +636,7 @@ export default function MyDeliveriesPage() {
                                                             className="hover-underline"
                                                         >
                                                             <MapPin size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-                                                            <span>{delivery.displayAddress} <Navigation size={12} style={{ opacity: 0.7, marginLeft: '4px' }} /></span>
+                                                            <span>{delivery.displayAddress}{delivery.displayFloorDept ? `, ${delivery.displayFloorDept}` : ''} <Navigation size={12} style={{ opacity: 0.7, marginLeft: '4px' }} /></span>
                                                         </div>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-main)', fontSize: '0.95rem', fontWeight: 600, marginTop: '0.2rem', flexWrap: 'wrap' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>

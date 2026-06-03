@@ -150,6 +150,7 @@ export default function LogisticsHubPage() {
                 
                 // Fallbacks unificados
                 const displayAddress = task.address || parentTicket?.logistics?.address || 'Sin dirección';
+                const floorDept = task.floorDept || task.floor_dept || parentTicket?.logistics?.floorDept || '';
                 const displayRequester = parentTicket?.requester || 'Sin nombre';
                 
                 // Detectar desincronización
@@ -160,6 +161,7 @@ export default function LogisticsHubPage() {
                     ...task,
                     parentTicket,
                     displayAddress,
+                    floorDept,
                     displayRequester,
                     parentAddress,
                     isOutOfSync,
@@ -635,7 +637,7 @@ export default function LogisticsHubPage() {
                                         <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                             <MapPin size={14} className={task.isOutOfSync ? "text-warning" : "text-secondary-400"} />
                                             <span style={{ color: task.isOutOfSync ? 'var(--warning-color)' : 'inherit', fontWeight: task.isOutOfSync ? 600 : 400 }}>
-                                                {task.displayAddress}
+                                                {task.displayAddress}{task.floorDept ? `, ${task.floorDept}` : ''}
                                             </span>
                                         </div>
                                         {task.isOutOfSync && (

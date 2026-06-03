@@ -225,6 +225,7 @@ export default function DeliveriesPage() {
                 parentTicketId: task.ticket_id,
                 recipient: parentTicket?.requester || 'Destinatario Desconocido',
                 address: task.address || parentTicket?.logistics?.address || 'Sin dirección',
+                floorDept: task.floorDept || task.floor_dept || parentTicket?.logistics?.floorDept || '',
                 items: task.subject || parentTicket?.subject || 'Equipo IT',
                 courier: task.method || 'No definido',
                 deliveryPerson: task.deliveryPerson,
@@ -255,6 +256,7 @@ export default function DeliveriesPage() {
                     id: t.id,
                     recipient: t.requester,
                     address: t.logistics.address || 'Sin dirección',
+                    floorDept: t.logistics.floorDept || '',
                     items: t.subject || 'Equipo IT',
                     courier: t.logistics.method || 'No definido',
                     deliveryPerson: t.logistics.deliveryPerson,
@@ -275,7 +277,8 @@ export default function DeliveriesPage() {
             ...d,
             source: 'Manual',
             ticketStatus: d.status,
-            deliveryStatusOriginal: d.status
+            deliveryStatusOriginal: d.status,
+            floorDept: d.floorDept || ''
         }));
 
         return [...activeManualDeliveries, ...items];
@@ -460,7 +463,7 @@ export default function DeliveriesPage() {
 
     // Inicializar Google Map y Marcadores
     useEffect(() => {
-        if (!googleLoaded || !mapRef.current || !window.google || geocodedPoints.length === 0) return;
+        if (!googleLoaded || !mapRef.current || !window.google) return;
 
         const mapOptions = {
             center: { lat: -34.6037, lng: -58.3816 },
@@ -513,7 +516,7 @@ export default function DeliveriesPage() {
                         <div style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 2px;">Destinatario</div>
                         <strong style="display: block; font-size: 15px; color: #1e293b; margin-bottom: 8px;">${d.recipient}</strong>
                         <div style="font-size: 12px; color: #475569; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 4px;">
-                            <span>📍</span> <span>${d.address}</span>
+                            <span>📍</span> <span>${d.address}${d.floorDept ? `, ${d.floorDept}` : ''}</span>
                         </div>
                         <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f1f5f9; padding-top: 8px;">
                             <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; color: ${color};">
@@ -533,11 +536,75 @@ export default function DeliveriesPage() {
             bounds.extend(d.coords);
         });
 
-        if (visiblePoints.length > 0) {
+        // Renderizar conductores activos con ubicación
+        const activeDrivers = (users || []).filter(u => 
+            String(u.role).toLowerCase() === 'conductor' && 
+            u.location_latitude && 
+            u.location_longitude
+        );
+
+        activeDrivers.forEach(driver => {
+            const driverLatLng = { lat: Number(driver.location_latitude), lng: Number(driver.location_longitude) };
+            
+            const driverMarker = new window.google.maps.Marker({
+                position: driverLatLng,
+                map: googleMap.current,
+                title: `Conductor: ${driver.name}`,
+                icon: {
+                    url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="40">
+                          <circle cx="12" cy="12" r="10" fill="#dc2626" stroke="#ffffff" stroke-width="2" />
+                          <path d="M5 8h9v5H5z" fill="#ffffff" />
+                          <path d="M14 9h3l2 2v2h-5z" fill="#ffffff" />
+                          <circle cx="7.5" cy="14.5" r="1.5" fill="#000000" stroke="#ffffff" stroke-width="1" />
+                          <circle cx="15.5" cy="14.5" r="1.5" fill="#000000" stroke="#ffffff" stroke-width="1" />
+                        </svg>
+                    `),
+                    scaledSize: new window.google.maps.Size(40, 40),
+                    origin: new window.google.maps.Point(0, 0),
+                    anchor: new window.google.maps.Point(20, 20)
+                },
+                zIndex: 1000 // Asegurar que los camiones queden por encima de los pines
+            });
+
+            let lastUpdateText = 'No registrada';
+            if (driver.last_location_update) {
+                try {
+                    const diffMs = Date.now() - new Date(driver.last_location_update).getTime();
+                    const diffMins = Math.round(diffMs / 60000);
+                    if (diffMins < 1) lastUpdateText = 'Hace instantes';
+                    else if (diffMins < 60) lastUpdateText = `Hace ${diffMins} min`;
+                    else lastUpdateText = `Hace ${Math.round(diffMins / 60)} h`;
+                } catch (e) {
+                    lastUpdateText = new Date(driver.last_location_update).toLocaleTimeString();
+                }
+            }
+
+            const driverInfoWindow = new window.google.maps.InfoWindow({
+                content: `
+                    <div style="padding: 10px; font-family: 'Inter', sans-serif; min-width: 180px; color: #333;">
+                        <div style="font-size: 10px; text-transform: uppercase; color: #dc2626; font-weight: 800; margin-bottom: 2px;">🚚 Conductor Activo</div>
+                        <strong style="display: block; font-size: 14px; color: #1e293b; margin-bottom: 6px;">${driver.name}</strong>
+                        <div style="font-size: 11px; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 6px; display: flex; justify-content: space-between;">
+                            <span>Último reporte:</span>
+                            <span style="font-weight: 600; color: #334155;">${lastUpdateText}</span>
+                        </div>
+                    </div>
+                `
+            });
+
+            driverMarker.addListener("click", () => {
+                driverInfoWindow.open(googleMap.current, driverMarker);
+            });
+
+            bounds.extend(driverLatLng);
+        });
+
+        if (visiblePoints.length > 0 || activeDrivers.length > 0) {
             googleMap.current.fitBounds(bounds, { padding: 50 });
         }
 
-    }, [googleLoaded, visiblePoints]);
+    }, [googleLoaded, visiblePoints, users]);
 
     const handleCreate = (e) => {
         e.preventDefault();
@@ -1167,6 +1234,7 @@ export default function DeliveriesPage() {
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                         <MapPin size={14} style={{ color: dateColor, flexShrink: 0 }} />
                                                         {delivery.address}
+                                                        {delivery.floorDept && ` - ${delivery.floorDept}`}
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
