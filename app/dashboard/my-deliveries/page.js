@@ -11,7 +11,8 @@ import {
     BarChart3,
     ArrowUpRight,
     QrCode,
-    Download
+    Download,
+    Loader2
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -58,6 +59,7 @@ export default function MyDeliveriesPage() {
     const [editingOrderId, setEditingOrderId] = useState(null);
     const [editOrderValue, setEditOrderValue] = useState("");
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
     // Stats and Toast State
 
@@ -317,11 +319,14 @@ export default function MyDeliveriesPage() {
     const handleDeliverySubmit = async (e) => {
         e.preventDefault();
         
+        if (isSubmitting) return;
+        
         if (!deliveryForm.receivedBy || !deliveryForm.dni) {
             showToast('Nombre y DNI son obligatorios', 'error');
             return;
         }
 
+        setIsSubmitting(true);
         try {
             // Lógica para actualizar usando la nueva tabla de tareas
             if (selectedDelivery.taskId) {
@@ -386,6 +391,8 @@ export default function MyDeliveriesPage() {
         } catch (error) {
             console.error('Error al registrar entrega:', error);
             showToast('Error al guardar los datos', 'error');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -940,10 +947,12 @@ export default function MyDeliveriesPage() {
                                 </Button>
                                 <Button 
                                     type="submit" 
-                                    icon={CheckCircle2} 
+                                    icon={isSubmitting ? Loader2 : CheckCircle2} 
+                                    disabled={isSubmitting}
                                     style={{ flex: 1 }}
+                                    className={isSubmitting ? "animate-pulse" : ""}
                                 >
-                                    CONFIRMAR ENTREGA
+                                    {isSubmitting ? 'REGISTRANDO...' : 'CONFIRMAR ENTREGA'}
                                 </Button>
                             </div>
                         </div>
