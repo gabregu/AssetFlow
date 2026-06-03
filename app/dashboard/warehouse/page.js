@@ -38,6 +38,7 @@ export default function WarehousePage() {
         mapAssetToLocation, 
         addWarehouseLocation,
         deleteWarehouseLocation,
+        updateWarehouseLocation,
         renameWarehouseGroup,
         currentUser,
         countryFilter 
@@ -59,6 +60,9 @@ export default function WarehousePage() {
     const [isAddLocationModalOpen, setIsAddLocationModalOpen] = useState(false);
     const [isSavingLocation, setIsSavingLocation] = useState(false);
     const [newLoc, setNewLoc] = useState({ id: '', aisle: '', section: '', level: '' });
+    const [isEditLocationModalOpen, setIsEditLocationModalOpen] = useState(false);
+    const [isSavingEditLocation, setIsSavingEditLocation] = useState(false);
+    const [editLoc, setEditLoc] = useState({ aisle: '', section: '', level: '' });
 
     // Helper to normalize IDs for comparison (ignore dashes, quotes, spaces)
     const normalizeId = (id) => {
@@ -275,6 +279,32 @@ export default function WarehousePage() {
             setSelectedLocation(null);
         } else {
             alert("Error al eliminar: " + res.error.message);
+        }
+    };
+
+    const handleEditLocation = async (e) => {
+        e.preventDefault();
+        setIsSavingEditLocation(true);
+        try {
+            const res = await updateWarehouseLocation(selectedLocation.id, {
+                ...selectedLocation,
+                aisle: editLoc.aisle,
+                section: editLoc.section,
+                level: editLoc.level
+            });
+            
+            if (res.error) {
+                alert("Error al actualizar la ubicación: " + res.error.message);
+            } else {
+                setIsEditLocationModalOpen(false);
+                setSelectedLocation(res.data);
+                alert("¡Ubicación actualizada correctamente!");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Ocurrió un error inesperado al actualizar.");
+        } finally {
+            setIsSavingEditLocation(false);
         }
     };
 
@@ -792,14 +822,31 @@ export default function WarehousePage() {
                                     }}>
                                         {locationAssets.length > 0 ? 'Ocupado' : 'Disponible'}
                                     </div>
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        icon={Printer} 
-                                        onClick={() => handlePrintLocationLabel(selectedLocation)}
-                                        title="Imprimir Etiqueta Estantería"
-                                        style={{ marginLeft: '0.5rem', color: 'var(--primary-color)', borderColor: 'var(--primary-color)', height: '28px' }}
-                                    />
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: '0.5rem' }}>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            icon={Edit3} 
+                                            onClick={() => {
+                                                setEditLoc({
+                                                    aisle: selectedLocation.aisle,
+                                                    section: selectedLocation.section,
+                                                    level: selectedLocation.level
+                                                });
+                                                setIsEditLocationModalOpen(true);
+                                            }}
+                                            title="Editar Ubicación"
+                                            style={{ color: 'var(--primary-color)', borderColor: 'var(--primary-color)', height: '28px' }}
+                                        />
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            icon={Printer} 
+                                            onClick={() => handlePrintLocationLabel(selectedLocation)}
+                                            title="Imprimir Etiqueta Estantería"
+                                            style={{ color: 'var(--primary-color)', borderColor: 'var(--primary-color)', height: '28px' }}
+                                        />
+                                    </div>
                                 </div>
 
                                 {locationAssets.length > 0 ? (
@@ -911,6 +958,52 @@ export default function WarehousePage() {
                         </Button>
                         <Button type="submit" loading={isSavingLocation}>
                             {isSavingLocation ? 'Creando...' : 'Crear Ubicación'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Modal Editar Ubicación */}
+            <Modal isOpen={isEditLocationModalOpen} onClose={() => setIsEditLocationModalOpen(false)} title="Editar Ubicación">
+                <form onSubmit={handleEditLocation}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div className="form-group">
+                            <label className="form-label">Grupo (Categoría)</label>
+                            <input 
+                                className="form-input" 
+                                placeholder="Ej: B" 
+                                required
+                                value={editLoc.aisle}
+                                onChange={e => setEditLoc({ ...editLoc, aisle: e.target.value.toUpperCase() })}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Sección (Rack)</label>
+                            <input 
+                                className="form-input" 
+                                placeholder="Ej: 03" 
+                                required
+                                value={editLoc.section}
+                                onChange={e => setEditLoc({ ...editLoc, section: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <div className="form-group" style={{ marginBottom: '2rem' }}>
+                        <label className="form-label">Nivel (Level)</label>
+                        <input 
+                            className="form-input" 
+                            placeholder="Ej: 2" 
+                            required
+                            value={editLoc.level}
+                            onChange={e => setEditLoc({ ...editLoc, level: e.target.value })}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                        <Button type="button" variant="ghost" onClick={() => setIsEditLocationModalOpen(false)} disabled={isSavingEditLocation}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" loading={isSavingEditLocation}>
+                            {isSavingEditLocation ? 'Guardando...' : 'Guardar Cambios'}
                         </Button>
                     </div>
                 </form>

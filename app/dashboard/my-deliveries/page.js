@@ -358,7 +358,8 @@ export default function MyDeliveriesPage() {
                         emailAddress: deliveryForm.emailAddress
                     }
                 };
-                await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
+                const success = await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
+                if (!success) throw new Error('Error al actualizar el ticket principal');
             } else if (selectedDelivery.legacyCaseIndex !== undefined) {
                 // Caso legacy: Sub-caso anidado en associatedCases del ticket principal
                 const parentTicket = tickets.find(t => t.id === selectedDelivery.id);
@@ -380,7 +381,8 @@ export default function MyDeliveriesPage() {
                             }
                         }
                     };
-                    await updateTicket(parentTicket.id, { associatedCases: updatedCases });
+                    const success = await updateTicket(parentTicket.id, { associatedCases: updatedCases });
+                    if (!success) throw new Error('Error al actualizar el sub-caso');
                 }
             }
             
