@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
     Search, 
     Plus, 
@@ -139,7 +139,7 @@ export default function WarehousePage() {
         localStorage.setItem(`warehouse_group_order_${countryFilter}`, JSON.stringify(newOrder));
     };
 
-    const toggleScanMode = () => {
+    const toggleScanMode = useCallback(() => {
         setIsMappingMode(prev => {
             const nextMode = !prev;
             if (nextMode) {
@@ -149,7 +149,46 @@ export default function WarehousePage() {
             }
             return nextMode;
         });
-    };
+    }, []);
+
+    useEffect(() => {
+        let buffer = '';
+        let lastKeyTime = Date.now();
+
+        const handleGlobalKeyDown = (e) => {
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+            const now = Date.now();
+            if (now - lastKeyTime > 2000) {
+                buffer = '';
+            }
+            lastKeyTime = now;
+
+            if (e.key.length === 1) {
+                buffer += e.key;
+            }
+
+            if (buffer.length > 50) {
+                buffer = buffer.slice(-50);
+            }
+
+            if (buffer.toUpperCase().endsWith('CMD-TOGGLE-SCAN')) {
+                toggleScanMode();
+                buffer = '';
+                
+                if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
+                    setTimeout(() => {
+                        document.activeElement.value = '';
+                        setSearchQuery('');
+                        setAuditSearchQuery('');
+                    }, 10);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    }, [toggleScanMode]);
 
     const handlePrintControlBarcode = () => {
         try {
