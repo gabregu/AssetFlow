@@ -279,7 +279,7 @@ export default function MyDeliveriesPage() {
                     setIsDeliveryModalOpen(true);
                     setDeliveryForm(prev => ({
                         ...prev,
-                        receivedBy: '',
+                        receivedBy: delivery.requester || '',
                         dni: '',
                         notes: '',
                         actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -432,7 +432,7 @@ export default function MyDeliveriesPage() {
             setSelectedDelivery(delivery);
             setIsDeliveryModalOpen(true);
             setDeliveryForm({
-                receivedBy: '',
+                receivedBy: delivery.requester || '',
                 dni: '',
                 notes: '',
                 actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -719,7 +719,7 @@ export default function MyDeliveriesPage() {
                                                                 setIsDeliveryModalOpen(true);
                                                                 setDeliveryForm(prev => ({
                                                                     ...prev,
-                                                                    receivedBy: '', // Reset
+                                                                    receivedBy: delivery.requester || '',
                                                                     dni: '',
                                                                     notes: '',
                                                                     actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
