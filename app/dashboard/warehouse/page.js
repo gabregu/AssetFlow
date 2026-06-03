@@ -172,13 +172,17 @@ export default function WarehousePage() {
                 buffer = buffer.slice(-50);
             }
 
-            if (buffer.toUpperCase().endsWith('CMD-TOGGLE-SCAN')) {
+            const normalizedBuffer = buffer.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            if (normalizedBuffer.endsWith('CMDTOGGLESCAN')) {
                 toggleScanMode();
                 buffer = '';
                 
                 if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) {
                     setTimeout(() => {
-                        document.activeElement.value = '';
+                        const valNorm = document.activeElement.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                        if (valNorm.includes('CMDTOGGLESCAN')) {
+                            document.activeElement.value = '';
+                        }
                         setSearchQuery('');
                         setAuditSearchQuery('');
                     }, 10);
@@ -192,7 +196,7 @@ export default function WarehousePage() {
 
     const handlePrintControlBarcode = () => {
         try {
-            const command = "CMD-TOGGLE-SCAN";
+            const command = "CMDTOGGLESCAN";
             const canvas = document.createElement('canvas');
             JsBarcode(canvas, command, {
                 format: "CODE128",
@@ -280,7 +284,7 @@ export default function WarehousePage() {
     const handleScanAsset = (e) => {
         e.preventDefault();
         const val = searchQuery.trim().toUpperCase();
-        if (val === 'CMD-TOGGLE-SCAN') {
+        if (val.replace(/[^A-Z0-9]/g, '') === 'CMDTOGGLESCAN') {
             toggleScanMode();
             setSearchQuery('');
             return;
@@ -327,7 +331,7 @@ export default function WarehousePage() {
     const handleLocationSearchSubmit = (e) => {
         e.preventDefault();
         const val = searchQuery.trim().toUpperCase();
-        if (val === 'CMD-TOGGLE-SCAN') {
+        if (val.replace(/[^A-Z0-9]/g, '') === 'CMDTOGGLESCAN') {
             toggleScanMode();
             setSearchQuery('');
             return;
@@ -339,7 +343,7 @@ export default function WarehousePage() {
     const handleAuditScan = (e) => {
         e.preventDefault();
         const val = auditSearchQuery.trim().toUpperCase();
-        if (val === 'CMD-TOGGLE-SCAN') {
+        if (val.replace(/[^A-Z0-9]/g, '') === 'CMDTOGGLESCAN') {
             toggleScanMode();
             setAuditSearchQuery('');
             return;
@@ -585,7 +589,7 @@ export default function WarehousePage() {
                     <form onSubmit={(e) => {
                         e.preventDefault();
                         const val = searchQuery.trim().toUpperCase();
-                        if (val === 'CMD-TOGGLE-SCAN') {
+                        if (val.replace(/[^A-Z0-9]/g, '') === 'CMDTOGGLESCAN') {
                             toggleScanMode();
                             setSearchQuery('');
                             return;
