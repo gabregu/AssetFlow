@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Modal } from '@/app/components/ui/Modal';
 import AssetListSection from './AssetListSection';
 import AccessoriesSection from './AccessoriesSection';
@@ -52,6 +52,14 @@ export default function CaseConfigModal({
 
     // Ref para poder llamar saveAll() desde CaseLogisticsSection antes de cerrar
     const logisticsSaveRef = useRef(null);
+
+    const [subjectInput, setSubjectInput] = useState('');
+
+    useEffect(() => {
+        if (currentTask) {
+            setSubjectInput(currentTask.subject || '');
+        }
+    }, [currentTask?.id, currentTask?.subject]);
     // handleUpdateTask was moved to hook for centralization
     const handleGenerateRemito = (action = 'download') => {
         if (!currentTask) return;
@@ -115,6 +123,59 @@ export default function CaseConfigModal({
             >
                 {selectedCaseIndex !== null && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                        {currentTask && (
+                            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem' }}>
+                                <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                                    Título / Asunto del Caso Asociado
+                                </label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={subjectInput}
+                                    onChange={(e) => setSubjectInput(e.target.value)}
+                                    onBlur={() => {
+                                        if (subjectInput.trim() !== '' && subjectInput !== currentTask.subject) {
+                                            handleUpdateTask({ subject: subjectInput.trim() });
+                                        }
+                                    }}
+                                    placeholder="Ej: Entrega de Laptop, Recupero de Monitor..."
+                                    style={{
+                                        padding: '0.6rem 0.8rem',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: '1px solid var(--border)',
+                                        width: '100%',
+                                        background: 'var(--surface)',
+                                        color: 'var(--text-main)',
+                                        fontSize: '0.9rem'
+                                    }}
+                                />
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                                    {['Entrega', 'Recupero', 'Entrega y Recupero', 'Servicio Técnico'].map(opt => (
+                                        <button
+                                            key={opt}
+                                            type="button"
+                                            onClick={() => {
+                                                setSubjectInput(opt);
+                                                handleUpdateTask({ subject: opt });
+                                            }}
+                                            style={{
+                                                fontSize: '0.7rem',
+                                                padding: '4px 8px',
+                                                borderRadius: '4px',
+                                                border: `1px solid ${currentTask.subject === opt ? 'var(--primary-color)' : 'var(--border)'}`,
+                                                background: currentTask.subject === opt ? 'rgba(37, 99, 235, 0.1)' : 'var(--background)',
+                                                color: currentTask.subject === opt ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                cursor: 'pointer',
+                                                fontWeight: 600,
+                                                transition: 'all 0.15s'
+                                            }}
+                                        >
+                                            {opt}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                         <AssetListSection
                             task={currentTask}
                             onUpdateTask={handleUpdateTask}
