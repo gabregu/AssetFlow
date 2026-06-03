@@ -423,14 +423,33 @@ export default function DeliveriesPage() {
             setIsGeocoding(false);
         };
 
+        geocodeAll();
     }, [googleLoaded, combinedDeliveries]);
     
-    // Puntos que deben ser visibles según los filtros actuales
+    // Puntos que deben ser visibles según los filtros actuales (Solo en tránsito)
     const visiblePoints = React.useMemo(() => {
-        return geocodedPoints.filter(p => 
-            sortedAndFilteredDeliveries.some(s => s.id === p.id)
-        );
-    }, [geocodedPoints, sortedAndFilteredDeliveries]);
+        return geocodedPoints.filter(p => {
+            const isTransit = p.deliveryStatusOriginal === 'En Transito' || p.status === 'En Transito';
+            if (!isTransit) return false;
+
+            // Debe cumplir con el filtro de texto, cliente y conductor
+            const recipient = String(p.recipient || '').toLowerCase();
+            const displayId = String(p.id || '').toLowerCase();
+            const address = String(p.address || '').toLowerCase();
+            const searchTerm = filter.toLowerCase();
+
+            const matchesText = recipient.includes(searchTerm) ||
+                displayId.includes(searchTerm) ||
+                address.includes(searchTerm);
+
+            const expectedClient = getClientName(countryFilter);
+            const matchesCountry = expectedClient === 'Todos' || p.client === expectedClient;
+
+            const matchesDriver = driverFilter === 'All' || (p.deliveryPerson || 'Sin Asignar') === driverFilter;
+
+            return matchesText && matchesCountry && matchesDriver;
+        });
+    }, [geocodedPoints, filter, countryFilter, driverFilter]);
 
     // Inicializar Google Map y Marcadores
     useEffect(() => {
