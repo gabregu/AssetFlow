@@ -386,15 +386,22 @@ export default function DeliveriesPage() {
 
                 try {
                     const result = await new Promise((resolve, reject) => {
-                        // Limpiamos la dirección y añadimos contexto regional fuerte
-                        const cleanAddress = delivery.address.split(',')[0].trim();
-                        const query = `${cleanAddress}, Ciudad Autónoma de Buenos Aires, Argentina`;
+                        // Extraemos la calle y número limpiando pisos/departamentos
+                        const parts = delivery.address.split(',').map(p => p.trim());
+                        const firstPart = parts[0];
+                        const match = firstPart ? firstPart.match(/^(.*?\s+\d+)(?:\s+.*)?$/) : null;
+                        const cleanStreet = match ? match[1].trim() : firstPart;
+                        
+                        const otherParts = parts.slice(1);
+                        let query = [cleanStreet, ...otherParts].filter(Boolean).join(', ');
+                        if (!query.toLowerCase().includes('argentina')) {
+                            query = `${query}, Argentina`;
+                        }
 
                         geocoder.geocode({
                             address: query,
                             componentRestrictions: {
-                                country: 'AR',
-                                administrativeArea: 'CABA'
+                                country: 'AR'
                             }
                         }, (results, status) => {
                             if (status === 'OK') {
@@ -1132,7 +1139,6 @@ export default function DeliveriesPage() {
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{delivery.recipient}</div>
-                                                    <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: '2px', fontStyle: 'italic', opacity: 0.8 }}>{delivery.address}</div>
                                                     {(() => {
                                                         const hasPerson = !!delivery.deliveryPerson && delivery.deliveryPerson !== 'No definido';
                                                         const hasMethod = !!delivery.courier && delivery.courier !== 'No definido';
