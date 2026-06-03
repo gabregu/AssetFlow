@@ -1256,9 +1256,6 @@ export default function DeliveriesPage() {
                                                                     }} title={delivery.deliveryPerson}>
                                                                         {initials}
                                                                     </span>
-                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: 700 }}>
-                                                                        {delivery.deliveryPerson}
-                                                                    </span>
                                                                 </div>
                                                             );
                                                         } else if (hasMethod) {

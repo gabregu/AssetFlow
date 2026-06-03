@@ -696,33 +696,38 @@ export default function LogisticsHubPage() {
                                                     const initials = getInitials(driverName);
                                                     const color = getDriverColor(driverName);
                                                     return (
-                                                        <div style={{
-                                                            width: '24px',
-                                                            height: '24px',
-                                                            borderRadius: '50%',
-                                                            backgroundColor: color,
-                                                            color: '#ffffff',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            fontSize: '0.7rem',
-                                                            fontWeight: 800,
-                                                            flexShrink: 0,
-                                                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                                                        }}>
+                                                        <div 
+                                                            style={{
+                                                                width: '24px',
+                                                                height: '24px',
+                                                                borderRadius: '50%',
+                                                                backgroundColor: color,
+                                                                color: '#ffffff',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                fontSize: '0.7rem',
+                                                                fontWeight: 800,
+                                                                flexShrink: 0,
+                                                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                                            }}
+                                                            title={driverName}
+                                                        >
                                                             {initials}
                                                         </div>
                                                     );
                                                 }
                                                 return (
-                                                    <div style={{ width: '24px', height: '24px', background: 'var(--background)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                        <User size={14} style={{ color: 'var(--text-secondary)' }} />
-                                                    </div>
+                                                    <>
+                                                        <div style={{ width: '24px', height: '24px', background: 'var(--background)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                            <User size={14} style={{ color: 'var(--text-secondary)' }} />
+                                                        </div>
+                                                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                                                            Sin Asignar
+                                                        </div>
+                                                    </>
                                                 );
                                             })()}
-                                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                                                {task.deliveryPerson || task.delivery_person || 'Sin Asignar'}
-                                            </div>
                                         </div>
                                         {(task.coordinatedBy || task.coordinated_by) ? (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', paddingLeft: '28px' }}>
