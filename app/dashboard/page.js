@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect } from 'react';
 import { useStore } from '../../lib/store';
+import { supabase } from '../../lib/supabase';
 import {
     AlertCircle, TrendingUp, CheckCircle, Users, Plus,
     Search, Truck, FileText, Clock, Tag, Mail, Info, Package
@@ -108,6 +109,111 @@ const USER_COLORS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#22
 export default function Dashboard() {
     const router = useRouter();
     const { tickets, assets, currentUser, users, countryFilter, getClientName, logisticsTasks } = useStore();
+
+    const [systemStatus, setSystemStatus] = React.useState({
+        database: { label: 'Base de Datos', status: 'Comprobando...', color: '#6b7280' },
+        apiGateway: { label: 'API Gateway', status: 'Comprobando...', color: '#6b7280' },
+        localStorage: { label: 'Persistencia Local', status: 'Comprobando...', color: '#6b7280' },
+    });
+
+    React.useEffect(() => {
+        let isMounted = true;
+
+        const checkStatus = async () => {
+            // 1. Check LocalStorage
+            let lsStatus = 'Inactivo';
+            let lsColor = '#ef4444';
+            try {
+                if (typeof window !== 'undefined' && window.localStorage) {
+                    const testKey = '__status_test__';
+                    window.localStorage.setItem(testKey, 'ok');
+                    const val = window.localStorage.getItem(testKey);
+                    window.localStorage.removeItem(testKey);
+                    if (val === 'ok') {
+                        lsStatus = 'Activo';
+                        lsColor = '#22c55e';
+                    }
+                }
+            } catch (e) {
+                console.error("Local storage status error:", e);
+                lsStatus = 'Bloqueado';
+                lsColor = '#f59e0b';
+            }
+
+            if (!isMounted) return;
+            setSystemStatus(prev => ({
+                ...prev,
+                localStorage: { label: 'Persistencia Local', status: lsStatus, color: lsColor }
+            }));
+
+            // 2. Check Database (Supabase query)
+            let dbStatus = 'Fuera de Línea';
+            let dbColor = '#ef4444';
+            try {
+                const { error } = await supabase.from('users').select('id', { count: 'estimated', head: true }).limit(1);
+                if (!error) {
+                    dbStatus = 'Operativo';
+                    dbColor = '#22c55e';
+                } else {
+                    console.error("Database status error:", error);
+                    dbStatus = 'Error Conexión';
+                    dbColor = '#f59e0b';
+                }
+            } catch (e) {
+                console.error("Database connection exception:", e);
+            }
+
+            if (!isMounted) return;
+            setSystemStatus(prev => ({
+                ...prev,
+                database: { label: 'Base de Datos', status: dbStatus, color: dbColor }
+            }));
+
+            // 3. Check API Gateway / Internet connection
+            let apiStatus = 'Fuera de Línea';
+            let apiColor = '#ef4444';
+            try {
+                if (typeof window !== 'undefined' && window.navigator.onLine) {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 4000);
+                    
+                    const response = await fetch(window.location.origin, {
+                        method: 'GET',
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    
+                    if (response.ok || response.status === 404 || response.status === 405) {
+                        apiStatus = 'Operativo';
+                        apiColor = '#22c55e';
+                    } else {
+                        apiStatus = 'Degradado';
+                        apiColor = '#f59e0b';
+                    }
+                }
+            } catch (e) {
+                console.error("API connection error:", e);
+                apiStatus = 'Sin Acceso';
+                apiColor = '#f59e0b';
+            }
+
+            if (!isMounted) return;
+            setSystemStatus(prev => ({
+                ...prev,
+                apiGateway: { label: 'API Gateway', status: apiStatus, color: apiColor }
+            }));
+        };
+
+        checkStatus();
+
+        // Run periodically every 30 seconds
+        const intervalId = setInterval(checkStatus, 30000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(intervalId);
+        };
+    }, []);
 
     useEffect(() => {
         if (currentUser?.role === 'Conductor') router.push('/dashboard/my-tickets');
@@ -347,11 +453,7 @@ export default function Dashboard() {
             }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 1.25rem' }}>Estado del Sistema</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                    {[
-                        { label: 'Base de Datos', status: 'Operativo', color: '#22c55e' },
-                        { label: 'API Gateway', status: 'Precaución', color: '#f59e0b' },
-                        { label: 'Persistencia Local', status: 'Activo', color: '#22c55e' },
-                    ].map(s => (
+                    {Object.values(systemStatus).map(s => (
                         <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{s.label}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
