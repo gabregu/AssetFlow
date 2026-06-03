@@ -139,9 +139,113 @@ export default function WarehousePage() {
         localStorage.setItem(`warehouse_group_order_${countryFilter}`, JSON.stringify(newOrder));
     };
 
+    const toggleScanMode = () => {
+        setIsMappingMode(prev => {
+            const nextMode = !prev;
+            if (nextMode) {
+                setIsAuditMode(false);
+                setMappingStep(1);
+                setScannedAsset(null);
+            }
+            return nextMode;
+        });
+    };
+
+    const handlePrintControlBarcode = () => {
+        try {
+            const command = "CMD-TOGGLE-SCAN";
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, command, {
+                format: "CODE128",
+                displayValue: false,
+                margin: 5,
+                height: 50,
+                width: 2.0
+            });
+            const barcodeDataUrl = canvas.toDataURL("image/png");
+
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            const content = `
+                <html>
+                    <head>
+                        <style>
+                            @page { size: 50mm 25mm; margin: 0; }
+                            * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+                            html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
+                            .label-container {
+                                width: 50mm;
+                                height: 25mm;
+                                padding: 1.5mm 3mm;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: space-between;
+                                align-items: center;
+                                font-family: sans-serif;
+                            }
+                            .cmd-title { 
+                                font-size: 6pt; 
+                                font-weight: 800; 
+                                color: #2563eb; 
+                                text-transform: uppercase; 
+                                letter-spacing: 0.05em;
+                                text-align: center;
+                            }
+                            .barcode-img { width: 95%; height: 11mm; object-fit: fill; margin: 0.5mm 0; }
+                            .cmd-text {
+                                font-size: 6pt;
+                                font-weight: 700;
+                                color: #000;
+                                letter-spacing: 0.1em;
+                            }
+                            .cmd-footer { font-size: 4.5pt; opacity: 0.5; font-weight: 600; text-align: center; width: 100%; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="label-container">
+                            <div class="cmd-title">CÓDIGO DE CONTROL: MODO ESCANEO</div>
+                            <img src="${barcodeDataUrl}" class="barcode-img" />
+                            <div class="cmd-text">${command}</div>
+                            <div class="cmd-footer">AssetFlow WMS - Escanear para alternar modo</div>
+                        </div>
+                        <script>
+                            window.onload = () => {
+                                window.print();
+                                setTimeout(() => window.close(), 500);
+                            };
+                        </script>
+                    </body>
+                </html>
+            `;
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+        } catch (err) {
+            console.error('Print error:', err);
+            alert('Error al generar etiqueta de control');
+        }
+    };
+
     // Handle Asset Scan simulation
     const handleScanAsset = (e) => {
         e.preventDefault();
+        const val = searchQuery.trim().toUpperCase();
+        if (val === 'CMD-TOGGLE-SCAN') {
+            toggleScanMode();
+            setSearchQuery('');
+            return;
+        }
         const searchNorm = normalizeId(searchQuery);
         const asset = assets.find(a => 
             normalizeId(a.id) === searchNorm || 
@@ -183,12 +287,24 @@ export default function WarehousePage() {
 
     const handleLocationSearchSubmit = (e) => {
         e.preventDefault();
+        const val = searchQuery.trim().toUpperCase();
+        if (val === 'CMD-TOGGLE-SCAN') {
+            toggleScanMode();
+            setSearchQuery('');
+            return;
+        }
         handleScanLocation(searchQuery);
         setSearchQuery('');
     };
 
     const handleAuditScan = (e) => {
         e.preventDefault();
+        const val = auditSearchQuery.trim().toUpperCase();
+        if (val === 'CMD-TOGGLE-SCAN') {
+            toggleScanMode();
+            setAuditSearchQuery('');
+            return;
+        }
         const searchNorm = normalizeId(auditSearchQuery);
         const asset = assets.find(a => 
             normalizeId(a.id) === searchNorm || 
@@ -429,6 +545,12 @@ export default function WarehousePage() {
                 <div style={{ flex: 1, maxWidth: '400px', margin: '0 2rem' }}>
                     <form onSubmit={(e) => {
                         e.preventDefault();
+                        const val = searchQuery.trim().toUpperCase();
+                        if (val === 'CMD-TOGGLE-SCAN') {
+                            toggleScanMode();
+                            setSearchQuery('');
+                            return;
+                        }
                         const searchNorm = normalizeId(searchQuery);
                         // Global search: first try as location, then as asset
                         const loc = warehouseLocations.find(l => normalizeId(l.id) === searchNorm);
@@ -473,18 +595,35 @@ export default function WarehousePage() {
                     >
                         {isAuditMode ? "Cancelar Auditoría" : "Modo Auditoría"}
                     </Button>
-                    <Button 
-                        variant={isMappingMode ? "primary" : "outline"} 
-                        icon={ScanLine}
-                        onClick={() => {
-                            setIsMappingMode(!isMappingMode);
-                            setIsAuditMode(false);
-                            setMappingStep(1);
-                            setScannedAsset(null);
-                        }}
-                    >
-                        {isMappingMode ? "Cancelar Mapeo" : "Modo Escaneo"}
-                    </Button>
+                    <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                        <Button 
+                            variant={isMappingMode ? "primary" : "outline"} 
+                            icon={ScanLine}
+                            onClick={toggleScanMode}
+                            style={{
+                                borderTopRightRadius: 0,
+                                borderBottomRightRadius: 0,
+                                borderRight: 'none'
+                            }}
+                        >
+                            {isMappingMode ? "Cancelar Mapeo" : "Modo Escaneo"}
+                        </Button>
+                        <Button
+                            variant={isMappingMode ? "primary" : "outline"}
+                            icon={Printer}
+                            onClick={handlePrintControlBarcode}
+                            title="Imprimir Código de Barra de Control"
+                            style={{
+                                borderTopLeftRadius: 0,
+                                borderBottomLeftRadius: 0,
+                                padding: '0 0.75rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderLeft: isMappingMode ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border)'
+                            }}
+                        />
+                    </div>
                     <Button icon={Plus} onClick={() => setIsAddLocationModalOpen(true)}>Nueva Ubicación</Button>
                 </div>
             </div>
