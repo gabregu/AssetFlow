@@ -99,6 +99,30 @@ export default function LogisticsHubPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [driverFilter, setDriverFilter] = useState('All');
+
+    // Helper para iniciales
+    const getInitials = (name) => {
+        if (!name) return 'IT';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    };
+
+    // Helper para asignar color distintivo a cada conductor
+    const getDriverColor = (name) => {
+        if (!name) return '#dc2626';
+        const driverColors = [
+            '#dc2626', // Rojo
+            '#2563eb', // Azul
+            '#16a34a', // Verde
+            '#7c3aed', // Violeta
+            '#db2777', // Rosa
+            '#ea580c', // Naranja
+            '#0d9488', // Teal
+            '#6366f1', // Índigo
+            '#854d0e', // Amarillo oscuro/Marrón
+        ];
+        const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        return driverColors[hash % driverColors.length];
+    };
     
     // --- 1. PROCESAR TAREAS ---
     const tasks = useMemo(() => {
@@ -666,9 +690,36 @@ export default function LogisticsHubPage() {
                                 <td style={{ padding: '1rem' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <div style={{ width: '24px', height: '24px', background: 'var(--background)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                <User size={14} style={{ color: 'var(--text-secondary)' }} />
-                                            </div>
+                                            {(() => {
+                                                const driverName = task.deliveryPerson || task.delivery_person;
+                                                if (driverName && driverName !== 'Sin Asignar' && driverName !== 'No definido') {
+                                                    const initials = getInitials(driverName);
+                                                    const color = getDriverColor(driverName);
+                                                    return (
+                                                        <div style={{
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            borderRadius: '50%',
+                                                            backgroundColor: color,
+                                                            color: '#ffffff',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 800,
+                                                            flexShrink: 0,
+                                                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                                        }}>
+                                                            {initials}
+                                                        </div>
+                                                    );
+                                                }
+                                                return (
+                                                    <div style={{ width: '24px', height: '24px', background: 'var(--background)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        <User size={14} style={{ color: 'var(--text-secondary)' }} />
+                                                    </div>
+                                                );
+                                            })()}
                                             <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
                                                 {task.deliveryPerson || task.delivery_person || 'Sin Asignar'}
                                             </div>

@@ -196,6 +196,24 @@ export default function DeliveriesPage() {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
     };
 
+    // Helper para asignar color distintivo a cada conductor
+    const getDriverColor = (name) => {
+        if (!name) return '#dc2626';
+        const driverColors = [
+            '#dc2626', // Rojo
+            '#2563eb', // Azul
+            '#16a34a', // Verde
+            '#7c3aed', // Violeta
+            '#db2777', // Rosa
+            '#ea580c', // Naranja
+            '#0d9488', // Teal
+            '#6366f1', // Índigo
+            '#854d0e', // Amarillo oscuro/Marrón
+        ];
+        const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        return driverColors[hash % driverColors.length];
+    };
+
     const getStatusVariant = (status) => {
         switch (status) {
             case 'Abierto': return 'danger';
@@ -545,6 +563,8 @@ export default function DeliveriesPage() {
 
         activeDrivers.forEach(driver => {
             const driverLatLng = { lat: Number(driver.location_latitude), lng: Number(driver.location_longitude) };
+            const initials = getInitials(driver.name);
+            const driverColor = getDriverColor(driver.name);
             
             const driverMarker = new window.google.maps.Marker({
                 position: driverLatLng,
@@ -552,17 +572,20 @@ export default function DeliveriesPage() {
                 title: `Conductor: ${driver.name}`,
                 icon: {
                     url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(`
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="40" height="40">
-                          <circle cx="12" cy="12" r="10" fill="#dc2626" stroke="#ffffff" stroke-width="2" />
-                          <path d="M5 8h9v5H5z" fill="#ffffff" />
-                          <path d="M14 9h3l2 2v2h-5z" fill="#ffffff" />
-                          <circle cx="7.5" cy="14.5" r="1.5" fill="#000000" stroke="#ffffff" stroke-width="1" />
-                          <circle cx="15.5" cy="14.5" r="1.5" fill="#000000" stroke="#ffffff" stroke-width="1" />
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 40" width="70" height="40">
+                          <rect x="2" y="2" width="66" height="36" rx="18" fill="${driverColor}" stroke="#ffffff" stroke-width="2.5" />
+                          <g transform="translate(8, 8) scale(0.9)">
+                            <path d="M5 8h9v5H5z" fill="#ffffff" />
+                            <path d="M14 9h3l2 2v2h-5z" fill="#ffffff" />
+                            <circle cx="7.5" cy="14.5" r="1.5" fill="#000000" stroke="#ffffff" stroke-width="1" />
+                            <circle cx="15.5" cy="14.5" r="1.5" fill="#000000" stroke="#ffffff" stroke-width="1" />
+                          </g>
+                          <text x="44" y="24" fill="#ffffff" font-family="'Inter', sans-serif" font-size="13px" font-weight="900" text-anchor="middle">${initials}</text>
                         </svg>
                     `),
-                    scaledSize: new window.google.maps.Size(40, 40),
+                    scaledSize: new window.google.maps.Size(70, 40),
                     origin: new window.google.maps.Point(0, 0),
-                    anchor: new window.google.maps.Point(20, 20)
+                    anchor: new window.google.maps.Point(35, 20)
                 },
                 zIndex: 1000 // Asegurar que los camiones queden por encima de los pines
             });
@@ -583,7 +606,7 @@ export default function DeliveriesPage() {
             const driverInfoWindow = new window.google.maps.InfoWindow({
                 content: `
                     <div style="padding: 10px; font-family: 'Inter', sans-serif; min-width: 180px; color: #333;">
-                        <div style="font-size: 10px; text-transform: uppercase; color: #dc2626; font-weight: 800; margin-bottom: 2px;">🚚 Conductor Activo</div>
+                        <div style="font-size: 10px; text-transform: uppercase; color: ${driverColor}; font-weight: 800; margin-bottom: 2px;">🚚 Conductor Activo</div>
                         <strong style="display: block; font-size: 14px; color: #1e293b; margin-bottom: 6px;">${driver.name}</strong>
                         <div style="font-size: 11px; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 6px; display: flex; justify-content: space-between;">
                             <span>Último reporte:</span>
@@ -1209,19 +1232,40 @@ export default function DeliveriesPage() {
                                                     {(() => {
                                                         const hasPerson = !!delivery.deliveryPerson && delivery.deliveryPerson !== 'No definido';
                                                         const hasMethod = !!delivery.courier && delivery.courier !== 'No definido';
-                                                        const hasTracking = !!delivery.trackingNumber;
 
                                                         if (hasPerson) {
+                                                            const initials = getInitials(delivery.deliveryPerson);
+                                                            const color = getDriverColor(delivery.deliveryPerson);
                                                             return (
-                                                                <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', marginTop: '4px', fontWeight: 700 }}>
-                                                                    Repartidor: {delivery.deliveryPerson}
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                                                        Repartidor:
+                                                                    </span>
+                                                                    <span style={{
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        width: '20px',
+                                                                        height: '20px',
+                                                                        borderRadius: '50%',
+                                                                        backgroundColor: color,
+                                                                        color: '#ffffff',
+                                                                        fontSize: '0.65rem',
+                                                                        fontWeight: 800,
+                                                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                                                                    }} title={delivery.deliveryPerson}>
+                                                                        {initials}
+                                                                    </span>
+                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-main)', fontWeight: 700 }}>
+                                                                        {delivery.deliveryPerson}
+                                                                    </span>
                                                                 </div>
                                                             );
                                                         } else if (hasMethod) {
                                                             return (
                                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', fontWeight: 600, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
                                                                     <span>{delivery.courier}</span>
-                                                                    {hasTracking && (
+                                                                    {delivery.trackingNumber && (
                                                                         <TrackingBadge method={delivery.courier} trackingNumber={delivery.trackingNumber} />
                                                                     )}
                                                                 </div>
