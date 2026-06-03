@@ -178,6 +178,45 @@ export default function LogisticsHubPage() {
             });
     }, [logisticsTasks, tickets, searchTerm, statusFilter, countryFilter, currentUser, driverFilter]);
 
+    const metrics = useMemo(() => {
+        const uniqueMap = new Map();
+        logisticsTasks.forEach(task => {
+            const key = task.case_number ? String(task.case_number).trim() : task.id;
+            uniqueMap.set(key, task);
+        });
+        
+        const deduplicatedTasks = Array.from(uniqueMap.values());
+
+        const filtered = deduplicatedTasks.filter(task => {
+            if (['Resuelto', 'Cancelado', 'Cerrado', 'Caso SFDC Cerrado', 'No requiere accion', 'Pendiente'].includes(task.status)) return false;
+            if (task.status === 'Entregado') return false;
+
+            const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
+            const expectedClient = getClientName(countryFilter);
+            const matchesCountry = parentTicket?.client === expectedClient;
+
+            const displayAddress = task.address || parentTicket?.logistics?.address || '';
+            const displayRequester = parentTicket?.requester || '';
+
+            const matchesText = 
+                String(task.case_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                String(displayRequester || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                String(displayAddress || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                String(task.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                String(task.delivery_person || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+            const matchesDriver = driverFilter === 'All' || (task.deliveryPerson || 'Sin Asignar') === driverFilter;
+
+            return matchesCountry && matchesText && matchesDriver;
+        });
+
+        return {
+            porCoordinar: filtered.filter(t => t.status === 'Para Coordinar').length,
+            enTransito: filtered.filter(t => t.status === 'En Transito').length,
+            total: filtered.length
+        };
+    }, [logisticsTasks, tickets, searchTerm, countryFilter, driverFilter]);
+
     const uniqueDrivers = useMemo(() => {
         const drivers = new Set();
         logisticsTasks.forEach(t => {
@@ -519,29 +558,23 @@ export default function LogisticsHubPage() {
             </div>
 
             {/* Metrics cards */}
-            <div className="grid-responsive-4" style={{ marginBottom: '2rem' }}>
+            <div className="grid-responsive-3" style={{ marginBottom: '2rem' }}>
                 <Card className="p-4" style={{ borderLeft: '4px solid #f97316' }}>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Por Coordinar</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem' }}>
-                        {logisticsTasks.filter(t => t.status === 'Para Coordinar').length}
+                        {metrics.porCoordinar}
                     </div>
                 </Card>
                 <Card className="p-4" style={{ borderLeft: '4px solid #3b82f6' }}>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>En Tránsito</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem' }}>
-                        {logisticsTasks.filter(t => t.status === 'En Transito').length}
-                    </div>
-                </Card>
-                <Card className="p-4" style={{ borderLeft: '4px solid #10b981' }}>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Entregado (Total)</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem' }}>
-                        {logisticsTasks.filter(t => t.status === 'Entregado').length}
+                        {metrics.enTransito}
                     </div>
                 </Card>
                 <Card className="p-4" style={{ background: 'var(--primary-color)', color: 'white' }}>
                     <div style={{ opacity: 0.8, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Tareas</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem' }}>
-                        {tasks.length}
+                        {metrics.total}
                     </div>
                 </Card>
             </div>

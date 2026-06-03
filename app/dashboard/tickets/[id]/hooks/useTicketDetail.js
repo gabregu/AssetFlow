@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { useJsApiLoader } from '@react-google-maps/api';
@@ -85,6 +85,7 @@ export function useTicketDetail() {
     const [editContact, setEditContact] = useState(false);
     const [newNote, setNewNote] = useState('');
     const [addressStatus, setAddressStatus] = useState('idle');
+    const autoLinkedRef = useRef({});
 
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
@@ -188,6 +189,9 @@ export function useTicketDetail() {
         // Solo ejecutamos la vinculación automática si tenemos el ticket base y casos SFDC cargados
         if (!ticket || !sfdcCases || sfdcCases.length === 0) return;
 
+        // Evitar bucle infinito y vinculación repetida en la misma sesión
+        if (autoLinkedRef.current[ticket.id]) return;
+
         const normalize = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         const requesterName = normalize(ticket.requester);
         
@@ -210,6 +214,9 @@ export function useTicketDetail() {
         if (siblings.length > 0) {
             console.log(`Auto-linking ${siblings.length} sibling cases for ${ticket.requester}`);
             
+            // Registrar que ya se procedió a la vinculación de este ticket para no repetirlo
+            autoLinkedRef.current[ticket.id] = true;
+
             const newAssociatedCases = siblings.map(sc => ({
                 caseNumber: sc.caseNumber,
                 subject: sc.subject,

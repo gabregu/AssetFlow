@@ -487,6 +487,8 @@ export default function TicketsPage() {
     const handleCreate = async (e) => {
         if (e) e.preventDefault();
         
+        if (isSubmittingManual) return;
+        
         if (!newTicket.subject || !newTicket.requester) {
             showToast("Por favor completa el Asunto y Solicitante", "error");
             alert("Por favor completa el Asunto y Solicitante");
