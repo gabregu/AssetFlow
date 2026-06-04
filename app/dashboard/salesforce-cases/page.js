@@ -69,9 +69,9 @@ export default function SFDCCasesPage() {
     // 3. Estadísticas (Moved up to be available for statsByType and filteredCases)
     const countryFilteredCases = useMemo(() => {
         return sfdcCases.filter(c => {
-            return !hasService(c) && isActiveCaseStatus(c) && isCaseInCountryFilter(c);
+            return isActiveCaseStatus(c) && isCaseInCountryFilter(c);
         });
-    }, [sfdcCases, countryFilter, tickets, logisticsTasks]);
+    }, [sfdcCases, countryFilter]);
 
     // Metrics for Buttons (Including NEW HIRE filter)
     const statsByType = useMemo(() => {
@@ -101,8 +101,7 @@ export default function SFDCCasesPage() {
     // 1. Filtrado
     const filteredCases = useMemo(() => {
         return sfdcCases.filter(c => {
-            // Exclusión: Si ya existe un servicio/ticket creado para este caso, lo ocultamos.
-            if (hasService(c)) return false;
+            // Ya no ocultamos los casos que tienen un servicio creado para poder visualizarlos en el backlog
 
             // Si el caso en SFDC está en estado cerrado/finalizado, también lo ocultamos
             if (!isActiveCaseStatus(c)) return false;
