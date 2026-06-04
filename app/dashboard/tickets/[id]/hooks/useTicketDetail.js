@@ -338,13 +338,19 @@ export function useTicketDetail() {
         
         // Get ticket region from logistics
         const ticketCountry = ticket?.logistics?.country;
-        const normalizedQuery = serialQuery.toLowerCase();
+        const normalizedQuery = serialQuery.trim().toLowerCase();
+        
+        // Lenovo Fix: permitimos buscar por el serial sin la 'S' inicial si se escanea la caja
+        const queryWithoutS = (normalizedQuery.startsWith('s') && normalizedQuery.length > 7) 
+            ? normalizedQuery.substring(1) 
+            : normalizedQuery;
 
         // Search for the asset in the specific region
-        const found = assets.find(a => 
-            a.serial.toLowerCase() === normalizedQuery && 
-            (!ticketCountry || a.country === ticketCountry)
-        );
+        const found = assets.find(a => {
+            const assetSerialLower = a.serial.toLowerCase();
+            return (assetSerialLower === normalizedQuery || assetSerialLower === queryWithoutS) && 
+                   (!ticketCountry || a.country === ticketCountry);
+        });
 
         if (found) {
             setAssetSearchResult({ 
@@ -356,7 +362,10 @@ export function useTicketDetail() {
             });
         } else {
             // Check if it exists in another region for better UX feedback
-            const inOtherRegion = assets.find(a => a.serial.toLowerCase() === normalizedQuery);
+            const inOtherRegion = assets.find(a => {
+                const assetSerialLower = a.serial.toLowerCase();
+                return assetSerialLower === normalizedQuery || assetSerialLower === queryWithoutS;
+            });
             if (inOtherRegion) {
                 setAssetSearchResult({
                     status: 'wrong_region',
@@ -469,10 +478,16 @@ export function useTicketDetail() {
         const currentTask = (selectedCaseIndex !== null && unifiedTasks) ? unifiedTasks[selectedCaseIndex] : null;
         const taskCountry = currentTask?.country || ticket?.client || ticket?.logistics?.country || 'Argentina';
 
+        // Lenovo Fix: al escanear la caja el serial viene con una 'S' extra
+        const trimmedSerial = serialQuery.trim();
+        const cleanedSerial = (trimmedSerial.toUpperCase().startsWith('S') && trimmedSerial.length > 7)
+            ? trimmedSerial.substring(1)
+            : trimmedSerial;
+
         const createdAsset = {
             ...newAsset,
             name: newAsset.model,
-            serial: serialQuery,
+            serial: cleanedSerial,
             status: 'Asignado',
             assignee: editedData.requester || ticket.requester,
             country: taskCountry,
@@ -486,7 +501,7 @@ export function useTicketDetail() {
         if (currentTask) {
             const currentTaskAssets = currentTask.assets || [];
             handleUpdateTask({
-                assets: [...currentTaskAssets, { serial: serialQuery, type: 'Entrega', hardware_type: newAsset.type }]
+                assets: [...currentTaskAssets, { serial: cleanedSerial, type: 'Entrega', hardware_type: newAsset.type }]
             });
         }
 
@@ -494,7 +509,7 @@ export function useTicketDetail() {
         const currentAssets = editedData.associatedAssets || [];
         const newData = {
             ...editedData,
-            associatedAssets: [...currentAssets, { serial: serialQuery, type: '' }]
+            associatedAssets: [...currentAssets, { serial: cleanedSerial, type: '' }]
         };
         const automatedData = automateDeliveryStatus(newData);
         updateTicket(ticket.id, automatedData);

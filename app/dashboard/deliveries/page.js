@@ -1181,11 +1181,14 @@ export default function DeliveriesPage() {
                             {(() => {
                                 let lastDateKey = null;
                                 return sortedAndFilteredDeliveries.map((delivery) => {
-                                    const dateColor = getColorByDate(delivery.date);
+                                                                const dateColor = getColorByDate(delivery.date);
                                     // Usar solo la parte YYYY-MM-DD para agrupar (ignorar [AM]/[PM])
                                     const dateKey = (delivery.date || '').split(' ')[0] || delivery.date;
                                     const showDateHeader = dateKey !== lastDateKey;
                                     lastDateKey = dateKey;
+
+                                    const hasDriver = !!delivery.deliveryPerson && delivery.deliveryPerson !== 'No definido';
+                                    const displayColor = hasDriver ? getDriverColor(delivery.deliveryPerson) : dateColor;
 
                                     return (
                                         <React.Fragment key={delivery.id}>
@@ -1208,7 +1211,7 @@ export default function DeliveriesPage() {
                                                 </tr>
                                             )}
                                             <tr
-                                                style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', borderLeft: `4px solid ${dateColor}` }}
+                                                style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', borderLeft: `4px solid ${displayColor}` }}
                                                 className="table-row-hover"
                                                 onMouseEnter={() => {
                                                     const point = geocodedPoints.find(p => p.id === delivery.id);
@@ -1225,7 +1228,7 @@ export default function DeliveriesPage() {
                                                 }}
                                             >
                                                 <td style={{ padding: '1rem' }}>
-                                                    <span style={{ fontWeight: 700, color: dateColor, fontSize: '0.875rem' }}>{delivery.id}</span>
+                                                    <span style={{ fontWeight: 700, color: displayColor, fontSize: '0.875rem' }}>{delivery.id}</span>
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{delivery.recipient}</div>
@@ -1273,7 +1276,7 @@ export default function DeliveriesPage() {
                                                 </td>
                                                 <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                        <MapPin size={14} style={{ color: dateColor, flexShrink: 0 }} />
+                                                        <MapPin size={14} style={{ color: displayColor, flexShrink: 0 }} />
                                                         {delivery.address}
                                                         {delivery.floorDept && ` - ${delivery.floorDept}`}
                                                     </div>
