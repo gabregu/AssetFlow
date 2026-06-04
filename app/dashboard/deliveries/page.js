@@ -210,8 +210,13 @@ export default function DeliveriesPage() {
             '#6366f1', // Índigo
             '#854d0e', // Amarillo oscuro/Marrón
         ];
-        const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        return driverColors[hash % driverColors.length];
+        // Algoritmo DJB2 para evitar colisiones en nombres con sumas de caracteres idénticas (como LM y FS)
+        let hash = 5381;
+        for (let i = 0; i < name.length; i++) {
+            hash = ((hash << 5) + hash) + name.charCodeAt(i);
+        }
+        const index = Math.abs(hash) % driverColors.length;
+        return driverColors[index];
     };
 
     const getStatusVariant = (status) => {
