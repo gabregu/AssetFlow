@@ -36,6 +36,22 @@ export default function TicketsPage() {
     // Similar active tickets for warnings on manual creation
     const [similarTickets, setSimilarTickets] = useState([]);
 
+    const isTicketActive = (t) => {
+        if (!t || !t.status) return false;
+        const status = t.status.toLowerCase().trim();
+        const closedStatuses = [
+            'resuelto',
+            'cerrado',
+            'servicio facturado',
+            'caso sfdc cerrado',
+            'cancelado',
+            'entregado',
+            'finalizado',
+            'no requiere accion'
+        ];
+        return !closedStatuses.includes(status);
+    };
+
     useEffect(() => {
         const req = (newTicket.requester || '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         if (req.length < 3) {
@@ -43,8 +59,7 @@ export default function TicketsPage() {
             return;
         }
         const active = tickets.filter(t => {
-            const isNotResolved = t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado';
-            if (!isNotResolved) return false;
+            if (!isTicketActive(t)) return false;
             
             const tReq = (t.requester || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             return tReq.includes(req) || req.includes(tReq);
@@ -204,7 +219,7 @@ export default function TicketsPage() {
                     const reqNameNorm = normalizeName(repCase.requestedFor);
 
                     const existingActiveTicket = tickets.find(t => {
-                        const isNotResolved = t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado';
+                        const isNotResolved = isTicketActive(t);
                         const tReqNorm = normalizeName(t.requester);
                         
                         const hasSameReq = (tReqNorm === reqNameNorm || (tReqNorm.length > 3 && reqNameNorm.length > 3 && (tReqNorm.includes(reqNameNorm) || reqNameNorm.includes(tReqNorm))));
@@ -564,7 +579,7 @@ export default function TicketsPage() {
             const matchesRequester = !columnFilters.requester || String(t.requester || '').toLowerCase().includes(columnFilters.requester.toLowerCase());
 
             // Excluir Resueltos de esta vista
-            const isNotResolved = t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado';
+            const isNotResolved = isTicketActive(t);
 
             // Filtrado por Cliente (campo explícito)
             // Aislamiento por Cliente
@@ -621,7 +636,7 @@ export default function TicketsPage() {
         // Filter by country first to match the view logic roughly (ignoring status for now or keeping it consistent?)
         // The original logic in Cases filtered by country. Here we probably should too.
         // But `tickets` here includes all statuses. We usually care about active tickets for these counts.
-        const activeTickets = tickets.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado');
+        const activeTickets = tickets.filter(t => isTicketActive(t));
 
         const expectedClient = getClientName(countryFilter);
         const filteredByCountry = activeTickets.filter(t => expectedClient === 'Todos' || t.client === expectedClient);
@@ -655,7 +670,7 @@ export default function TicketsPage() {
         const filteredByCountry = tickets.filter(t => expectedClient === 'Todos' || t.client === expectedClient);
 
         return {
-            total: filteredByCountry.filter(t => t.status !== 'Resuelto' && t.status !== 'Cerrado' && t.status !== 'Servicio Facturado' && t.status !== 'Caso SFDC Cerrado').length,
+            total: filteredByCountry.filter(t => isTicketActive(t)).length,
             abiertos: filteredByCountry.filter(t => t.status === 'Abierto').length,
             enProgreso: filteredByCountry.filter(t => t.status === 'En Progreso').length,
             pendientes: filteredByCountry.filter(t => t.status === 'Pendiente').length

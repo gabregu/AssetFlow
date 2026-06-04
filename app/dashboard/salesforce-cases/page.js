@@ -224,14 +224,29 @@ export default function SFDCCasesPage() {
         </th>
     );
 
+    const isTicketActive = (t) => {
+        if (!t || !t.status) return false;
+        const status = t.status.toLowerCase().trim();
+        const closedStatuses = [
+            'resuelto',
+            'cerrado',
+            'servicio facturado',
+            'caso sfdc cerrado',
+            'cancelado',
+            'entregado',
+            'finalizado',
+            'no requiere accion'
+        ];
+        return !closedStatuses.includes(status);
+    };
+
     const handleOpenCreateService = async (sfdcCase) => {
         // Buscar si ya existe un ticket activo para el mismo usuario
         const normalize = (val) => (val || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
         const requesterNorm = normalize(sfdcCase.requestedFor);
-        const closedStatuses = ['Resuelto', 'Cerrado', 'Servicio Facturado', 'Caso SFDC Cerrado', 'Cancelado'];
 
         const existingTicket = tickets.find(t => {
-            if (closedStatuses.includes(t.status)) return false;
+            if (!isTicketActive(t)) return false;
             return normalize(t.requester) === requesterNorm;
         });
 
