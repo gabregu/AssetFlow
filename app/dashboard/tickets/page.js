@@ -706,7 +706,7 @@ export default function TicketsPage() {
 
         // 1. Tickets filtrados por la UI (Los que ya pasaron por sortedAndFilteredTickets)
         const activeFilteredTickets = sortedAndFilteredTickets.filter(t => 
-            ["En Progreso", "Abierto", "Pendiente"].includes(t.status)
+            ["En Progreso", "Abierto", "Pendiente", "Bloqueado / A la Espera"].includes(t.status)
         ).map(t => {
             const agg = getAggregatedInfo(t);
             return {
@@ -1151,6 +1151,7 @@ export default function TicketsPage() {
                                             <option value="Abierto">Abierto</option>
                                             <option value="En Progreso">En Progreso</option>
                                             <option value="Pendiente">Pendiente</option>
+                                            <option value="Bloqueado / A la Espera">Bloqueado / A la Espera</option>
                                         </select>
                                     </div>
                                 </th>

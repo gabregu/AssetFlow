@@ -38,6 +38,7 @@ export default function TicketHeader({
                         >
                             <option value="Abierto">Abierto</option>
                             <option value="Pendiente">Pendiente</option>
+                            <option value="Bloqueado / A la Espera">Bloqueado / A la Espera</option>
                             <option value="En Progreso">En Progreso</option>
                             <option value="Resuelto">Resuelto</option>
                             <option value="Cerrado">Cerrado</option>

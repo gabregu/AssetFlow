@@ -4,7 +4,7 @@ import React from 'react';
 import { Badge } from '@/app/components/ui/Badge';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
-import { AlertCircle, Clock, CheckCircle2, Check, DollarSign } from 'lucide-react';
+import { AlertCircle, Clock, CheckCircle2, Check, DollarSign, XCircle } from 'lucide-react';
 import { TICKET_STATUSES, getStatusVariant } from '@/app/dashboard/tickets/constants';
 
 export default function ManagementStatusCard({ 
@@ -41,6 +41,7 @@ export default function ManagementStatusCard({
                             {s === 'Resuelto' && <CheckCircle2 size={16} style={{ marginRight: '8px' }} />}
                             {s === 'Caso SFDC Cerrado' && <Check size={16} style={{ marginRight: '8px' }} />}
                             {s === 'Servicio Facturado' && <DollarSign size={16} style={{ marginRight: '8px' }} />}
+                            {s === 'Bloqueado / A la Espera' && <XCircle size={16} style={{ marginRight: '8px' }} />}
                             {s}
                         </Button>
                     ))}
