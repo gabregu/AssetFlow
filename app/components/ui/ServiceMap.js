@@ -262,7 +262,9 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                                 </>
                             ) : (
                                 <>
-                                    <h4 style={{ margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold' }}>#{selectedMarker.details.id}</h4>
+                                    <h4 style={{ margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold' }}>
+                                        {selectedMarker.details.requester || `#${selectedMarker.details.id}`}
+                                    </h4>
                                     {(() => {
                                         const status = selectedMarker.details.logistics?.status || selectedMarker.details.status || 'Pendiente';
                                         let bg = '#eff6ff';

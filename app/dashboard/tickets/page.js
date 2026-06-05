@@ -723,16 +723,20 @@ export default function TicketsPage() {
         const activeTasks = (logisticsTasks || [])
             .filter(task => !["Resuelto", "Cancelado", "Entregado"].includes(task.status))
             .filter(task => sortedAndFilteredTickets.some(t => String(t.id) === String(task.ticket_id)))
-            .map(task => ({
-                id: `task-${task.id}`,
-                subject: task.case_number ? `Caso ${task.case_number}` : `Tarea Logística ${task.id}`,
-                logistics: {
-                    address: task.address || tickets.find(t => String(t.id) === String(task.ticket_id))?.logistics?.address,
-                    status: task.status,
-                    deliveryPerson: task.delivery_person
-                },
-                status: task.status
-            }));
+            .map(task => {
+                const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
+                return {
+                    id: `task-${task.id}`,
+                    subject: task.case_number ? `Caso ${task.case_number}` : `Tarea Logística ${task.id}`,
+                    requester: parentTicket?.requester || 'Sin Solicitante',
+                    logistics: {
+                        address: task.address || parentTicket?.logistics?.address,
+                        status: task.status,
+                        deliveryPerson: task.delivery_person
+                    },
+                    status: task.status
+                };
+            });
 
         return [...activeFilteredTickets, ...activeTasks];
     }, [sortedAndFilteredTickets, showMap, tickets, logisticsTasks]);
