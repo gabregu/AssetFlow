@@ -5,6 +5,22 @@ import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Send, StickyNote, User, Info, Edit3, X, Save } from 'lucide-react';
 
+const formatCommentDateTime = (timestamp) => {
+    if (!timestamp) return '';
+    try {
+        const d = new Date(timestamp);
+        if (isNaN(d.getTime())) return '';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch (e) {
+        return '';
+    }
+};
+
 export default function InstructionsCard({ ticket, editedData, setEditedData, updateTicket, currentUser }) {
     const [msgText, setMsgText] = useState('');
     const [isSaving, setIsSaving] = useState(false);
@@ -192,7 +208,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                                         opacity: 0.8,
                                         fontWeight: 600
                                     }}>
-                                        {msg.user} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {msg.user} • {formatCommentDateTime(msg.timestamp)}
                                     </div>
                                     <div style={{ 
                                         padding: '0.4rem 0.6rem', 

@@ -127,19 +127,19 @@ export function useTicketDetail() {
         // Solo bloqueamos la sincronización si el usuario está editando activamente campos de texto 
         // (editMode o editContact). El simple hecho de tener un caso seleccionado para ver 
         // (selectedCaseIndex !== null) no debería bloquear la carga inicial de los casos.
-        const isActivelyEditing = editMode || editContact;
+        const isActivelyEditing = editMode || editContact || editLogistics || editAssets || editAccessories || editSchedule;
         
         // CRITICAL: If we have real DB tasks (New Architecture), we should NOT overwrite 
         // the UI cases with the legacy 'associatedCases' column from the ticket,
         // as this causes the "disappearing assets" bug during the background sync.
         const hasRealTasks = ticketTasks && ticketTasks.length > 0;
 
-        if (needsInitialSync || ((needsBackgroundSync || needsChatSync) && !isActivelyEditing && !hasRealTasks)) {
+        if (needsInitialSync || ((needsBackgroundSync || needsChatSync) && !isActivelyEditing)) {
             console.log("Synchronizing editedData with store ticket:", ticket.id);
             
-            let normalizedCases = [...storeCases];
+            let normalizedCases = hasRealTasks ? (editedData.associatedCases || []) : [...storeCases];
             
-            if (normalizedCases.length === 0) {
+            if (!hasRealTasks && normalizedCases.length === 0) {
                 const oldAssets = ticket.associatedAssets || (ticket.associatedAssetSerial ? [{ serial: ticket.associatedAssetSerial, type: ticket.logistics?.type || 'Entrega' }] : []);
                 normalizedCases = [{
                     caseNumber: 'Caso Principal',
@@ -155,7 +155,7 @@ export function useTicketDetail() {
                         lastUpdated: ticket.logistics?.lastUpdated || new Date().toISOString()
                     }
                 }];
-            } else {
+            } else if (!hasRealTasks) {
                 normalizedCases = normalizedCases.map(c => ({
                     ...c,
                     assets: c.assets || [],
@@ -182,7 +182,7 @@ export function useTicketDetail() {
                 instructionsUpdatedBy: ticket.instructionsUpdatedBy
             }));
         }
-    }, [ticket, editMode, editContact]); // Quitamos selectedCaseIndex de las dependencias
+    }, [ticket, editMode, editContact, editLogistics, editAssets, editAccessories, editSchedule, ticketTasks]);
 
     // Automatización: Vincular casos hermanos automáticamente al cargar o actualizar sfdcCases
     useEffect(() => {
@@ -309,21 +309,27 @@ export function useTicketDetail() {
     };
 
     const handleUpdate = async () => {
-        let statusUpdate = editedData.status;
-        if (editedData.status === 'Abierto' || editedData.status === 'Pendiente') {
-            statusUpdate = 'En Progreso';
+        try {
+            let statusUpdate = editedData.status;
+            if (editedData.status === 'Abierto' || editedData.status === 'Pendiente') {
+                statusUpdate = 'En Progreso';
+            }
+            const dataToUpdate = { ...editedData, status: statusUpdate };
+            
+            console.log("handleUpdate calling updateTicket with:", dataToUpdate);
+            const success = await updateTicket(ticket.id, dataToUpdate);
+            
+            if (success !== false) { // updateTicket returns false on error
+                setEditedData(dataToUpdate);
+                setEditMode(false);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error("Error in handleUpdate:", error);
+            alert("Error al actualizar la información del ticket: " + (error.message || error));
+            return false;
         }
-        const dataToUpdate = { ...editedData, status: statusUpdate };
-        
-        console.log("handleUpdate calling updateTicket with:", dataToUpdate);
-        const success = await updateTicket(ticket.id, dataToUpdate);
-        
-        if (success !== false) { // updateTicket returns false on error
-            setEditedData(dataToUpdate);
-            setEditMode(false);
-            return true;
-        }
-        return false;
     };
 
     const handleDelete = () => {
