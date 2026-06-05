@@ -880,15 +880,6 @@ export default function TicketsPage() {
                             <Map size={18} style={{ color: 'var(--primary-color)' }} /> Mapa de Operaciones
                         </h3>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            {users && (
-                                <Badge variant="default" style={{ background: 'var(--primary-color)', color: 'white', fontSize: '0.7rem' }}>
-                                    {users.filter(u => 
-                                        u.tracking_enabled && 
-                                        u.location_latitude && 
-                                        mapItems.some(item => item.logistics?.deliveryPerson === u.name)
-                                    ).length} Conductor(es) Activo(s)
-                                </Badge>
-                            )}
                             {showMap ? <ChevronUp size={20} style={{ color: 'var(--text-secondary)' }} /> : <ChevronDown size={20} style={{ color: 'var(--text-secondary)' }} />}
                         </div>
                     </div>
@@ -897,11 +888,7 @@ export default function TicketsPage() {
                         <div style={{ borderRadius: 0, overflow: 'hidden' }}>
                             <ServiceMap
                                 tickets={mapItems}
-                                drivers={users ? users.filter(u => 
-                                    u.tracking_enabled && 
-                                    u.location_latitude &&
-                                    mapItems.some(item => item.logistics?.deliveryPerson === u.name)
-                                ) : []}
+                                drivers={[]}
                             />
                         </div>
                     )}

@@ -61,6 +61,8 @@ const minimalistStyles = [
     }
 ];
 
+const geocodeCache = new Map();
+
 export function ServiceMap({ tickets = [], drivers = [] }) {
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
@@ -123,13 +125,26 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
             const validTickets = tickets.filter(t => t.logistics?.address && t.logistics.address.length > 5);
 
             for (const ticket of validTickets) {
+                const address = ticket.logistics.address;
                 try {
-                    const result = await new Promise((resolve, reject) => {
-                        geocoder.geocode({ address: ticket.logistics.address }, (results, status) => {
-                            if (status === 'OK' && results[0]) resolve(results[0]);
-                            else reject(status);
+                    let lat, lng;
+                    if (geocodeCache.has(address)) {
+                        const cached = geocodeCache.get(address);
+                        lat = cached.lat;
+                        lng = cached.lng;
+                    } else {
+                        const result = await new Promise((resolve, reject) => {
+                            geocoder.geocode({ address: address }, (results, status) => {
+                                if (status === 'OK' && results[0]) resolve(results[0]);
+                                else reject(status);
+                            });
                         });
-                    });
+                        lat = result.geometry.location.lat();
+                        lng = result.geometry.location.lng();
+                        geocodeCache.set(address, { lat, lng });
+                        // Only delay if we made a real API call to respect rate limits
+                        await new Promise(r => setTimeout(r, 200));
+                    }
 
                     const status = ticket.logistics?.status || ticket.deliveryStatus || ticket.status || 'Pendiente';
                     let markerColor = "#3b82f6"; // Default Blue
@@ -140,8 +155,8 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
 
                     newMarkers.push({
                         id: ticket.id,
-                        lat: result.geometry.location.lat(),
-                        lng: result.geometry.location.lng(),
+                        lat: lat,
+                        lng: lng,
                         title: ticket.subject,
                         type: 'ticket',
                         details: ticket,
@@ -158,7 +173,6 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                 } catch (error) {
                     console.error(`Error geocoding ${ticket.id}:`, error);
                 }
-                await new Promise(r => setTimeout(r, 200));
             }
 
             setMarkers(newMarkers);
