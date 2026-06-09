@@ -1174,9 +1174,23 @@ export default function TicketsPage() {
                                         </div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Prioridad: {String(ticket.priority || 'Normal')}</div>
                                         {ticket.logistics?.address && (
-                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                            <a 
+                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.logistics.address)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{ 
+                                                    fontSize: '0.7rem', 
+                                                    color: 'var(--primary-color)', 
+                                                    marginTop: '2px', 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: '3px',
+                                                    textDecoration: 'underline',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
                                                 <Map size={12} /> {ticket.logistics.address}
-                                            </div>
+                                            </a>
                                         )}
                                     </td>
                                     <td style={{ padding: '1rem' }}>

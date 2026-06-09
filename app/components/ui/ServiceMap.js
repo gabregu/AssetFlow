@@ -292,7 +292,16 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                                         );
                                     })()}
                                     <p style={{ margin: '0 0 5px 0', fontSize: '12px' }}>{selectedMarker.details.subject}</p>
-                                    <p style={{ margin: '0 0 5px 0', fontSize: '11px', color: '#666' }}>📍 {selectedMarker.details.logistics?.address}</p>
+                                    <p style={{ margin: '0 0 5px 0', fontSize: '11px', color: '#666' }}>
+                                         📍 <a 
+                                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedMarker.details.logistics?.address)}`}
+                                             target="_blank"
+                                             rel="noopener noreferrer"
+                                             style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}
+                                         >
+                                             {selectedMarker.details.logistics?.address}
+                                         </a>
+                                     </p>
                                     {selectedMarker.details.logistics?.deliveryPerson && (
                                         <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 600 }}>👤 Conductor: {selectedMarker.details.logistics.deliveryPerson}</p>
                                     )}
