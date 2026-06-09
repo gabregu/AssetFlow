@@ -22,6 +22,9 @@ import {
     Edit3,
     ChevronLeft,
     ChevronRight,
+    ChevronUp,
+    ChevronDown,
+    ArrowUpDown,
     Laptop,
     SlidersHorizontal
 } from 'lucide-react';
@@ -254,15 +257,42 @@ export default function WarehousePage() {
     }, [assets, countryFilter]);
 
     const moveGroup = (aisle, direction) => {
-        const idx = groupOrder.indexOf(aisle);
-        if (idx === -1) return;
+        const isH = isLocH(aisle);
+        const sameTypeAisles = groupOrder.filter(a => isLocH(a) === isH);
+        const idxInType = sameTypeAisles.indexOf(aisle);
+        if (idxInType === -1) return;
+        
+        let swapWithAisle = null;
+        if (direction === 'up' && idxInType > 0) {
+            swapWithAisle = sameTypeAisles[idxInType - 1];
+        } else if (direction === 'down' && idxInType < sameTypeAisles.length - 1) {
+            swapWithAisle = sameTypeAisles[idxInType + 1];
+        }
+        
+        if (!swapWithAisle) return;
+        
         const newOrder = [...groupOrder];
-        if (direction === 'left' && idx > 0) {
-            newOrder[idx] = newOrder[idx - 1];
-            newOrder[idx - 1] = aisle;
-        } else if (direction === 'right' && idx < newOrder.length - 1) {
-            newOrder[idx] = newOrder[idx + 1];
-            newOrder[idx + 1] = aisle;
+        const idxA = newOrder.indexOf(aisle);
+        const idxB = newOrder.indexOf(swapWithAisle);
+        if (idxA !== -1 && idxB !== -1) {
+            newOrder[idxA] = swapWithAisle;
+            newOrder[idxB] = aisle;
+            setGroupOrder(newOrder);
+            localStorage.setItem(`warehouse_group_order_${countryFilter}`, JSON.stringify(newOrder));
+        }
+    };
+
+    const sortGroupsAlphabetically = (isH) => {
+        const sameTypeAisles = groupOrder.filter(a => isLocH(a) === isH);
+        const sorted = [...sameTypeAisles].sort((a, b) => a.localeCompare(b));
+        
+        const newOrder = [...groupOrder];
+        let sortedIdx = 0;
+        for (let i = 0; i < newOrder.length; i++) {
+            if (isLocH(newOrder[i]) === isH) {
+                newOrder[i] = sorted[sortedIdx];
+                sortedIdx++;
+            }
         }
         setGroupOrder(newOrder);
         localStorage.setItem(`warehouse_group_order_${countryFilter}`, JSON.stringify(newOrder));
@@ -817,10 +847,22 @@ export default function WarehousePage() {
                     {/* LOCACIÓN W */}
                     <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         <div style={{ borderBottom: '2px solid var(--border)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: 'var(--text-main)' }}>LOCACIÓN W</h2>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '12px' }}>
-                                {locationsW.length} Grupos
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: 'var(--text-main)' }}>LOCACIÓN W</h2>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '12px' }}>
+                                    {locationsW.length} Grupos
+                                </span>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="xs"
+                                icon={ArrowUpDown}
+                                onClick={() => sortGroupsAlphabetically(false)}
+                                title="Ordenar Grupos W (A-Z)"
+                                style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px' }}
+                            >
+                                Ordenar A-Z
+                            </Button>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -851,6 +893,28 @@ export default function WarehousePage() {
                                                             }}
                                                             style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
                                                         />
+                                                    )}
+                                                    {locationsW.length > 1 && (
+                                                        <div style={{ display: 'flex', gap: '1px', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '4px', padding: '1px' }}>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="xs"
+                                                                icon={ChevronUp}
+                                                                onClick={() => moveGroup(aisle, 'up')}
+                                                                disabled={locationsW.findIndex(([a]) => a === aisle) === 0}
+                                                                style={{ padding: '2px', height: '16px', width: '16px', opacity: locationsW.findIndex(([a]) => a === aisle) === 0 ? 0.25 : 0.6 }}
+                                                                title="Mover Arriba"
+                                                            />
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="xs"
+                                                                icon={ChevronDown}
+                                                                onClick={() => moveGroup(aisle, 'down')}
+                                                                disabled={locationsW.findIndex(([a]) => a === aisle) === locationsW.length - 1}
+                                                                style={{ padding: '2px', height: '16px', width: '16px', opacity: locationsW.findIndex(([a]) => a === aisle) === locationsW.length - 1 ? 0.25 : 0.6 }}
+                                                                title="Mover Abajo"
+                                                            />
+                                                        </div>
                                                     )}
                                                 </h3>
                                                 <span style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700 }}>
@@ -938,10 +1002,22 @@ export default function WarehousePage() {
                     {/* LOCACIÓN H */}
                     <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         <div style={{ borderBottom: '2px solid var(--border)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: 'var(--text-main)' }}>LOCACIÓN H</h2>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', backgroundColor: 'var(--background-secondary)', padding: '3px 8px', borderRadius: '12px' }}>
-                                {locationsH.length} Grupos
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: 'var(--text-main)' }}>LOCACIÓN H</h2>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', backgroundColor: 'var(--background-secondary)', padding: '3px 8px', borderRadius: '12px' }}>
+                                    {locationsH.length} Grupos
+                                </span>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="xs"
+                                icon={ArrowUpDown}
+                                onClick={() => sortGroupsAlphabetically(true)}
+                                title="Ordenar Grupos H (A-Z)"
+                                style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px' }}
+                            >
+                                Ordenar A-Z
+                            </Button>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -972,6 +1048,28 @@ export default function WarehousePage() {
                                                             }}
                                                             style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
                                                         />
+                                                    )}
+                                                    {locationsH.length > 1 && (
+                                                        <div style={{ display: 'flex', gap: '1px', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '4px', padding: '1px' }}>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="xs"
+                                                                icon={ChevronUp}
+                                                                onClick={() => moveGroup(aisle, 'up')}
+                                                                disabled={locationsH.findIndex(([a]) => a === aisle) === 0}
+                                                                style={{ padding: '2px', height: '16px', width: '16px', opacity: locationsH.findIndex(([a]) => a === aisle) === 0 ? 0.25 : 0.6 }}
+                                                                title="Mover Arriba"
+                                                            />
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="xs"
+                                                                icon={ChevronDown}
+                                                                onClick={() => moveGroup(aisle, 'down')}
+                                                                disabled={locationsH.findIndex(([a]) => a === aisle) === locationsH.length - 1}
+                                                                style={{ padding: '2px', height: '16px', width: '16px', opacity: locationsH.findIndex(([a]) => a === aisle) === locationsH.length - 1 ? 0.25 : 0.6 }}
+                                                                title="Mover Abajo"
+                                                            />
+                                                        </div>
                                                     )}
                                                 </h3>
                                                 <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>
