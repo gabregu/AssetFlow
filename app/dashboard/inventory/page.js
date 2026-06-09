@@ -1655,7 +1655,7 @@ export default function InventoryPage() {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
-                        {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
+                        {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial' || currentUser?.role === 'Administrativo') && (
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                                 <input
                                     type="file"
@@ -1743,7 +1743,7 @@ export default function InventoryPage() {
                 <Card
                     title="Inventario de Security Keys (Yubikeys)"
                     action={
-                        (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
+                        (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial' || currentUser?.role === 'Administrativo') && (
                             <Button 
                                 size="sm" 
                                 icon={Plus} 
@@ -2191,7 +2191,7 @@ export default function InventoryPage() {
                             <Button variant="ghost" size="sm" onClick={() => setColumnFilters({ status: 'All', type: 'All', assignee: '' })}>Limpiar Filtros</Button>
                         )}
 
-                        {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
+                        {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial' || currentUser?.role === 'Administrativo') && (
                             <Button
                                 icon={Plus}
                                 title="Añadir nuevo equipo"
@@ -2354,9 +2354,11 @@ export default function InventoryPage() {
                                     {selectedAssets.length > 0 ? (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(37, 99, 235, 0.1)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
                                             <span style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{selectedAssets.length} seleccionados</span>
-                                            <Button variant="danger" size="sm" icon={Trash2} onClick={handleBulkDelete}>
-                                                Eliminar
-                                            </Button>
+                                            {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
+                                                <Button variant="danger" size="sm" icon={Trash2} onClick={handleBulkDelete}>
+                                                    Eliminar
+                                                </Button>
+                                            )}
 
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderLeft: '1px solid rgba(37, 99, 235, 0.2)', paddingLeft: '0.75rem' }}>
                                                 <Box size={14} style={{ color: 'var(--primary-color)' }} />
@@ -2623,7 +2625,7 @@ export default function InventoryPage() {
                 <Card
                     title="Inventario de Consumibles"
                     action={
-                        (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
+                        (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial' || currentUser?.role === 'Administrativo') && (
                             <div style={{ display: 'flex', gap: '0.75rem' }}>
                                 <Button 
                                     size="sm" 
@@ -2777,7 +2779,7 @@ export default function InventoryPage() {
                             </div>
                         }
                         action={
-                            (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
+                            (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial' || currentUser?.role === 'Administrativo') && (
                                 <Button size="sm" icon={Plus} onClick={() => setIsAddYubikeyModalOpen(true)}>
                                     Añadir Security Key
                                 </Button>

@@ -246,10 +246,11 @@ export default function WarehousePage() {
             if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
             return !!a.locationId;
         });
-        const enStock = filtered.filter(a => ['Disponible', 'Nuevo', 'En Stock'].includes(a.status)).length;
+        const enStock = filtered.filter(a => ['Disponible', 'Nuevo', 'En Stock', 'Recuperado'].includes(a.status)).length;
         const asignado = filtered.filter(a => a.status === 'Asignado').length;
         const mantenimiento = filtered.filter(a => ['Mantenimiento', 'Dañado'].includes(a.status)).length;
-        return { enStock, asignado, mantenimiento, total: filtered.length || 1 };
+        const actualTotal = filtered.length;
+        return { enStock, asignado, mantenimiento, total: actualTotal || 1, actualTotal };
     }, [assets, countryFilter]);
 
     const moveGroup = (aisle, direction) => {
@@ -830,7 +831,10 @@ export default function WarehousePage() {
                                 </div>
                             ) : (
                                 locationsW.map(([aisle, locations]) => {
-                                    const aisleAssetsCount = assets.filter(a => locations.some(loc => loc.id === a.locationId)).length;
+                                    const aisleAssetsCount = assets.filter(a => 
+                                        (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                        locations.some(loc => loc.id === a.locationId)
+                                    ).length;
                                     return (
                                         <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -865,7 +869,10 @@ export default function WarehousePage() {
                                                 border: '1px dashed var(--border)'
                                             }}>
                                                 {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
-                                                    const locationAssets = assets.filter(a => a.locationId === loc.id);
+                                                    const locationAssets = assets.filter(a => 
+                                                        (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                                        a.locationId === loc.id
+                                                    );
                                                     const assetCount = locationAssets.length;
                                                     const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
                                                     
@@ -945,7 +952,10 @@ export default function WarehousePage() {
                                 </div>
                             ) : (
                                 locationsH.map(([aisle, locations]) => {
-                                    const aisleAssetsCount = assets.filter(a => locations.some(loc => loc.id === a.locationId)).length;
+                                    const aisleAssetsCount = assets.filter(a => 
+                                        (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                        locations.some(loc => loc.id === a.locationId)
+                                    ).length;
                                     return (
                                         <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -980,7 +990,10 @@ export default function WarehousePage() {
                                                 border: '1px dashed var(--border)'
                                             }}>
                                                 {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
-                                                    const locationAssets = assets.filter(a => a.locationId === loc.id);
+                                                    const locationAssets = assets.filter(a => 
+                                                        (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                                        a.locationId === loc.id
+                                                    );
                                                     const assetCount = locationAssets.length;
                                                     const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
                                                     
@@ -1210,7 +1223,7 @@ export default function WarehousePage() {
                                         fontWeight: 800
                                     }}>
                                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.55rem', textTransform: 'uppercase' }}>Total</span>
-                                        <span style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>{statusCounts.total === 1 && assets.filter(a => a.locationId).length === 0 ? 0 : assets.filter(a => a.locationId).length}</span>
+                                        <span style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>{statusCounts.actualTotal}</span>
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1 }}>
