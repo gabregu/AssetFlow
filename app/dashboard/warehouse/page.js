@@ -21,7 +21,9 @@ import {
     ExternalLink,
     Edit3,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Laptop,
+    SlidersHorizontal
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
@@ -30,6 +32,21 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 
+// Helper to classify aisles between Location W and Location H
+const isLocH = (aisleName) => {
+    const lower = (aisleName || '').toLowerCase();
+    return (
+        lower.includes('-h') ||
+        lower.includes('h-') ||
+        lower === 'usados' ||
+        lower === 'cod abril26' ||
+        lower.includes('g11') ||
+        lower.includes('u7') ||
+        lower.includes('premium') ||
+        lower.includes('mba 16 m2 pro') ||
+        lower.includes('series')
+    );
+};
 
 export default function WarehousePage() {
     const { 
@@ -44,6 +61,7 @@ export default function WarehousePage() {
         countryFilter 
     } = useStore();
 
+    // Mapping and Audit States
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [isMappingMode, setIsMappingMode] = useState(false);
@@ -55,8 +73,8 @@ export default function WarehousePage() {
     const [auditLocation, setAuditLocation] = useState(null);
     const [scannedAuditAssets, setScannedAuditAssets] = useState([]);
     const [auditSearchQuery, setAuditSearchQuery] = useState('');
-    const [scannedLocation, setScannedLocation] = useState(null);
     
+    // Modals
     const [isAddLocationModalOpen, setIsAddLocationModalOpen] = useState(false);
     const [isSavingLocation, setIsSavingLocation] = useState(false);
     const [newLoc, setNewLoc] = useState({ id: '', aisle: '', section: '', level: '' });
@@ -64,19 +82,72 @@ export default function WarehousePage() {
     const [isSavingEditLocation, setIsSavingEditLocation] = useState(false);
     const [editLoc, setEditLoc] = useState({ aisle: '', section: '', level: '' });
 
-    // Helper to normalize IDs for comparison (ignore dashes, quotes, spaces)
+    // Premium Dashboard Filters
+    const [selectedBrand, setSelectedBrand] = useState('ALL');
+    const [cpuFilter, setCpuFilter] = useState('ALL');
+    const [ramFilter, setRamFilter] = useState('ALL');
+    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [locationSearch, setLocationSearch] = useState('');
+
+    // Helper to normalize IDs for comparison
     const normalizeId = (id) => {
         if (!id) return '';
         let normalized = id.toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-        // Lenovo Fix: al escanear cajas de Lenovo se agrega una 'S' al principio.
-        // Si el string empieza con 's' y es largo (como un serial), quitamos la 's'.
         if (normalized.startsWith('s') && normalized.length > 7) {
             return normalized.substring(1);
         }
         return normalized;
     };
 
-    // Group locations by aisle for the grid, filtered by country
+    // Filter assets based on search/filters
+    const filteredAssets = useMemo(() => {
+        return assets.filter(asset => {
+            if (countryFilter !== 'Todos' && asset.country !== countryFilter) return false;
+            
+            // Brand filters
+            if (selectedBrand !== 'ALL') {
+                const oem = (asset.oem || '').toUpperCase();
+                if (selectedBrand === 'DELL' && oem !== 'DELL') return false;
+                if (selectedBrand === 'HP' && oem !== 'HP') return false;
+                if (selectedBrand === 'APPLE' && oem !== 'APPLE') return false;
+                if (selectedBrand === 'WINDOWS' && oem === 'APPLE') return false;
+                if (selectedBrand === 'MANTENIMIENTO' && !['Mantenimiento', 'Dañado'].includes(asset.status)) return false;
+            }
+
+            // CPU Filter
+            if (cpuFilter !== 'ALL') {
+                const searchTxt = (asset.name || '') + ' ' + (asset.hardwareSpec || '');
+                if (!searchTxt.toLowerCase().includes(cpuFilter.toLowerCase())) return false;
+            }
+
+            // RAM Filter
+            if (ramFilter !== 'ALL') {
+                const searchTxt = (asset.name || '') + ' ' + (asset.hardwareSpec || '');
+                if (!searchTxt.toLowerCase().includes(ramFilter.toLowerCase())) return false;
+            }
+
+            // Status Filter
+            if (statusFilter !== 'ALL') {
+                if (statusFilter === 'Disponible' && !['Disponible', 'Nuevo', 'En Stock'].includes(asset.status)) return false;
+                if (statusFilter === 'Asignado' && asset.status !== 'Asignado') return false;
+                if (statusFilter === 'Mantenimiento' && !['Mantenimiento', 'Dañado'].includes(asset.status)) return false;
+            }
+
+            // Text Search
+            if (locationSearch) {
+                const searchLower = locationSearch.toLowerCase();
+                const nameMatch = (asset.name || '').toLowerCase().includes(searchLower);
+                const serialMatch = (asset.serial || '').toLowerCase().includes(searchLower);
+                const idMatch = (asset.id || '').toLowerCase().includes(searchLower);
+                const locMatch = (asset.locationId || '').toLowerCase().includes(searchLower);
+                if (!nameMatch && !serialMatch && !idMatch && !locMatch) return false;
+            }
+
+            return true;
+        });
+    }, [assets, countryFilter, selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch]);
+
+    // Group locations by aisle, filtered by country
     const groupedLocations = useMemo(() => {
         const groups = {};
         const filtered = warehouseLocations.filter(loc => 
@@ -89,7 +160,7 @@ export default function WarehousePage() {
         return groups;
     }, [warehouseLocations, countryFilter]);
 
-    // Track visual sorting of group aisles in localStorage
+    // Track visual sorting of group aisles
     const [groupOrder, setGroupOrder] = useState([]);
 
     useEffect(() => {
@@ -111,9 +182,27 @@ export default function WarehousePage() {
         }
     }, [groupedLocations, countryFilter]);
 
+    // Sorted Grouped Locations, filtered by active filters
     const sortedGroupedLocations = useMemo(() => {
         const entries = Object.entries(groupedLocations);
-        entries.sort(([aisleA], [aisleB]) => {
+        const hasActiveFilter = selectedBrand !== 'ALL' || cpuFilter !== 'ALL' || ramFilter !== 'ALL' || statusFilter !== 'ALL' || locationSearch !== '';
+
+        const filteredEntries = entries.map(([aisle, locations]) => {
+            const matchingLocs = locations.filter(loc => {
+                const locAssets = assets.filter(a => a.locationId === loc.id);
+                if (locationSearch) {
+                    const searchLower = locationSearch.toLowerCase();
+                    const locIdMatch = loc.id.toLowerCase().includes(searchLower);
+                    const hasMatchingAsset = locAssets.some(a => filteredAssets.some(fa => fa.id === a.id));
+                    return locIdMatch || hasMatchingAsset;
+                }
+                if (!hasActiveFilter) return true;
+                return locAssets.some(a => filteredAssets.some(fa => fa.id === a.id));
+            });
+            return [aisle, matchingLocs];
+        }).filter(([_, locations]) => locations.length > 0);
+
+        filteredEntries.sort(([aisleA], [aisleB]) => {
             const idxA = groupOrder.indexOf(aisleA);
             const idxB = groupOrder.indexOf(aisleB);
             if (idxA === -1 && idxB === -1) return aisleA.localeCompare(aisleB);
@@ -121,8 +210,47 @@ export default function WarehousePage() {
             if (idxB === -1) return -1;
             return idxA - idxB;
         });
-        return entries;
-    }, [groupedLocations, groupOrder]);
+        return filteredEntries;
+    }, [groupedLocations, groupOrder, filteredAssets, selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch, assets]);
+
+    // Split between Location W and Location H
+    const locationsW = useMemo(() => {
+        return sortedGroupedLocations.filter(([aisle]) => !isLocH(aisle));
+    }, [sortedGroupedLocations]);
+
+    const locationsH = useMemo(() => {
+        return sortedGroupedLocations.filter(([aisle]) => isLocH(aisle));
+    }, [sortedGroupedLocations]);
+
+    // Stats calculations
+    const totalAssetsW = useMemo(() => {
+        return assets.filter(a => {
+            if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
+            if (!a.locationId) return false;
+            const loc = warehouseLocations.find(l => l.id === a.locationId);
+            return loc && !isLocH(loc.aisle);
+        }).length;
+    }, [assets, warehouseLocations, countryFilter]);
+
+    const totalAssetsH = useMemo(() => {
+        return assets.filter(a => {
+            if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
+            if (!a.locationId) return false;
+            const loc = warehouseLocations.find(l => l.id === a.locationId);
+            return loc && isLocH(loc.aisle);
+        }).length;
+    }, [assets, warehouseLocations, countryFilter]);
+
+    const statusCounts = useMemo(() => {
+        const filtered = assets.filter(a => {
+            if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
+            return !!a.locationId;
+        });
+        const enStock = filtered.filter(a => ['Disponible', 'Nuevo', 'En Stock'].includes(a.status)).length;
+        const asignado = filtered.filter(a => a.status === 'Asignado').length;
+        const mantenimiento = filtered.filter(a => ['Mantenimiento', 'Dañado'].includes(a.status)).length;
+        return { enStock, asignado, mantenimiento, total: filtered.length || 1 };
+    }, [assets, countryFilter]);
 
     const moveGroup = (aisle, direction) => {
         const idx = groupOrder.indexOf(aisle);
@@ -184,7 +312,6 @@ export default function WarehousePage() {
                             document.activeElement.value = '';
                         }
                         setSearchQuery('');
-                        setAuditSearchQuery('');
                     }, 10);
                 }
             }
@@ -280,7 +407,6 @@ export default function WarehousePage() {
         }
     };
 
-    // Handle Asset Scan simulation
     const handleScanAsset = (e) => {
         e.preventDefault();
         const val = searchQuery.trim().toUpperCase();
@@ -303,7 +429,6 @@ export default function WarehousePage() {
         }
     };
 
-    // Handle Location Scan simulation
     const handleScanLocation = (locationId) => {
         const searchNorm = normalizeId(locationId);
         const loc = warehouseLocations.find(l => 
@@ -374,13 +499,6 @@ export default function WarehousePage() {
 
         if (extras.length > 0 || missing.length > 0) {
             if (!window.confirm(`La auditoría encontró discrepancias:\n- ${missing.length} Faltantes\n- ${extras.length} Sobrantes\n\n¿Desea finalizar de todos modos?`)) return;
-        }
-
-        // Update last check for found assets
-        const now = new Date().toISOString();
-        for (const asset of scannedAuditAssets) {
-            // We assume mapAssetToLocation or a similar update would be needed here if we want to "fix" extras
-            // For now, just a notification
         }
 
         alert(`Auditoría finalizada para ${auditLocation.id}.`);
@@ -469,12 +587,6 @@ export default function WarehousePage() {
 
     const handlePrintLocationLabel = async (location) => {
         try {
-            const qrDataUrl = await QRCode.toDataURL(location.id, {
-                margin: 0,
-                width: 200,
-                color: { dark: '#000000', light: '#ffffff' }
-            });
-
             const canvas = document.createElement('canvas');
             JsBarcode(canvas, location.id, {
                 format: "CODE128",
@@ -569,24 +681,55 @@ export default function WarehousePage() {
         }
     };
 
-    // Find asset at a location
-    const getAssetAtLocation = (locId) => {
-        return assets.find(a => a.locationId === locId);
+    // Donut chart angles calculation
+    const total = statusCounts.total;
+    const percentEnStock = (statusCounts.enStock / total) * 100;
+    const percentAsignado = (statusCounts.asignado / total) * 100;
+
+    // Helper to render customized text lines in grid cells
+    const renderCellContent = (loc, assetCount, locationAssets) => {
+        if (assetCount > 0) {
+            const asset = locationAssets[0];
+            // Render details (first words of name or specs)
+            const words = (loc.section || '').split(' ');
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '2px', textAlign: 'center' }}>
+                    {words.slice(0, 3).map((w, idx) => (
+                        <div key={idx} style={{ fontSize: '0.55rem', fontWeight: '800', lineHeight: '1.05', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{w}</div>
+                    ))}
+                    <div style={{ fontSize: '0.52rem', fontWeight: '900', marginTop: '1px', opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{loc.level}</div>
+                </div>
+            );
+        } else {
+            // Available
+            const label = loc.id.split('-').slice(1).join('-');
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '2px', color: 'var(--text-secondary)' }}>
+                    <div style={{ fontSize: '0.58rem', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}>
+                        {loc.aisle.includes('COD') ? loc.section : label.split(' ')[0] || loc.level}
+                    </div>
+                    {label.split(' ')[1] && (
+                        <div style={{ fontSize: '0.52rem', opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}>
+                            {label.split(' ')[1]}
+                        </div>
+                    )}
+                </div>
+            );
+        }
     };
 
     return (
-        <div style={{ padding: '1rem' }}>
-            {/* Header / Stats */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                    <div>
-                        <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem' }}>Mapeo de Depósito</h1>
-                        <p style={{ color: 'var(--text-secondary)' }}>Control visual y físico de activos de cliente {countryFilter}.</p>
-                    </div>
+        <div style={{ padding: '1rem', maxWidth: '1600px', margin: '0 auto' }}>
+            {/* Header / Search Top Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                    <h1 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '0.25rem', color: 'var(--text-main)' }}>Mapeo de Depósito - Inventario Consolidado</h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Control visual y físico de activos de cliente {countryFilter}.</p>
                 </div>
                 
-                <div style={{ flex: 1, maxWidth: '400px', margin: '0 2rem' }}>
-                    <form onSubmit={(e) => {
+                {/* WMS Scanners Command inputs */}
+                <div style={{ flex: 1, maxWidth: '380px', minWidth: '260px' }}>
+                    <form onSubmit={mappingStep === 1 && isMappingMode ? handleScanAsset : (isMappingMode ? handleLocationSearchSubmit : (e) => {
                         e.preventDefault();
                         const val = searchQuery.trim().toUpperCase();
                         if (val.replace(/[^A-Z0-9]/g, '') === 'CMDTOGGLESCAN') {
@@ -595,7 +738,6 @@ export default function WarehousePage() {
                             return;
                         }
                         const searchNorm = normalizeId(searchQuery);
-                        // Global search: first try as location, then as asset
                         const loc = warehouseLocations.find(l => normalizeId(l.id) === searchNorm);
                         if (loc) {
                             handleScanLocation(loc.id);
@@ -613,19 +755,20 @@ export default function WarehousePage() {
                             return;
                         }
                         alert(`No se encontró ubicación ni activo con el código: ${searchQuery}`);
-                    }}>
+                    })}>
                         <div className="search-box">
                             <ScanLine className="search-icon" size={18} />
                             <input 
                                 className="search-input"
-                                placeholder="Escanear Ubicación o Activo..."
+                                placeholder="Escanear Código de Barras / Serial / Estante..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                             />
                         </div>
                     </form>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <Button 
                         variant={isAuditMode ? "primary" : "outline"} 
                         icon={ClipboardCheck}
@@ -643,11 +786,7 @@ export default function WarehousePage() {
                             variant={isMappingMode ? "primary" : "outline"} 
                             icon={ScanLine}
                             onClick={toggleScanMode}
-                            style={{
-                                borderTopRightRadius: 0,
-                                borderBottomRightRadius: 0,
-                                borderRight: 'none'
-                            }}
+                            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, borderRight: 'none' }}
                         >
                             {isMappingMode ? "Cancelar Mapeo" : "Modo Escaneo"}
                         </Button>
@@ -655,14 +794,11 @@ export default function WarehousePage() {
                             variant={isMappingMode ? "primary" : "outline"}
                             icon={Printer}
                             onClick={handlePrintControlBarcode}
-                            title="Imprimir Código de Barra de Control"
+                            title="Imprimir Código de Control"
                             style={{
                                 borderTopLeftRadius: 0,
                                 borderBottomLeftRadius: 0,
                                 padding: '0 0.75rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
                                 borderLeft: isMappingMode ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border)'
                             }}
                         />
@@ -671,219 +807,275 @@ export default function WarehousePage() {
                 </div>
             </div>
 
-            {/* Dashboard Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem' }}>
+            {/* Dashboard grid structure */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }} className="flex-mobile-column">
                 
-                {/* Main Map Area */}
-                <Card style={{ padding: '1.5rem', minHeight: '600px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <div style={{ padding: '0.5rem', background: 'rgba(37, 99, 235, 0.1)', borderRadius: '8px' }}>
-                            <MapIcon size={20} color="var(--primary-color)" />
+                {/* Main Mapping Columns (Locación W and Locación H) */}
+                <div style={{ display: 'flex', gap: '1.5rem', minHeight: '600px' }} className="flex-mobile-column">
+                    
+                    {/* LOCACIÓN W */}
+                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ borderBottom: '2px solid var(--border)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: 'var(--text-main)' }}>LOCACIÓN W</h2>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '12px' }}>
+                                {locationsW.length} Grupos
+                            </span>
                         </div>
-                        <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Mapa de Estanterías</h2>
-                    </div>
 
-                    {Object.keys(groupedLocations).length === 0 ? (
-                        <div style={{ height: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-                            <Navigation size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-                            <p>No hay ubicaciones registradas.</p>
-                            <Button variant="ghost" size="sm" style={{ marginTop: '1rem' }} onClick={() => setIsAddLocationModalOpen(true)}>Crear primer estante</Button>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3rem' }}>
-                            {sortedGroupedLocations.map(([aisle, locations]) => (
-                                <div key={aisle} style={{ flex: '1', minWidth: '220px' }}>
-                                    <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <span>Grupo {aisle}</span>
-                                            {sortedGroupedLocations.length > 1 && (
-                                                <div style={{ display: 'flex', gap: '1px', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '6px', padding: '2px' }}>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="xs"
-                                                        icon={ChevronLeft}
-                                                        onClick={() => moveGroup(aisle, 'left')}
-                                                        disabled={groupOrder.indexOf(aisle) === 0}
-                                                        style={{ padding: '2px', height: '20px', width: '20px', opacity: groupOrder.indexOf(aisle) === 0 ? 0.25 : 0.6 }}
-                                                        title="Mover Izquierda"
-                                                    />
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="xs"
-                                                        icon={ChevronRight}
-                                                        onClick={() => moveGroup(aisle, 'right')}
-                                                        disabled={groupOrder.indexOf(aisle) === sortedGroupedLocations.length - 1}
-                                                        style={{ padding: '2px', height: '20px', width: '20px', opacity: groupOrder.indexOf(aisle) === sortedGroupedLocations.length - 1 ? 0.25 : 0.6 }}
-                                                        title="Mover Derecha"
-                                                    />
-                                                </div>
-                                            )}
-                                            {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="xs" 
-                                                    icon={Edit3} 
-                                                    onClick={() => {
-                                                        const newName = prompt(`Ingrese el nuevo nombre para el grupo "${aisle}":`, aisle);
-                                                        if (newName && newName !== aisle) {
-                                                            renameWarehouseGroup(aisle, newName.toUpperCase());
-                                                        }
-                                                    }}
-                                                    style={{ padding: '2px', height: '20px', width: '20px', opacity: 0.5 }}
-                                                />
-                                            )}
-                                        </div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--primary-color)', background: 'rgba(37, 99, 235, 0.05)', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>
-                                            {assets.filter(a => locations.some(loc => loc.id === a.locationId)).length} Equipos
-                                        </span>
-                                    </h3>
-                                    <div style={{ 
-                                        display: 'grid', 
-                                        gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))', 
-                                        gap: '0.5rem',
-                                        background: 'rgba(0,0,0,0.02)',
-                                        padding: '1rem',
-                                        borderRadius: '12px',
-                                        border: '1px dashed var(--border)'
-                                    }}>
-                                        {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
-                                            const locationAssets = assets.filter(a => a.locationId === loc.id);
-                                            const assetCount = locationAssets.length;
-                                            const asset = locationAssets[0];
-                                            const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
-                                            const isTarget = (mappingStep === 2 && isMappingMode) || isAuditMode;
-
-                                            let bgColor = 'var(--surface)';
-                                            let textColor = 'var(--text-main)';
-
-                                            if (assetCount > 0) {
-                                                bgColor = 'var(--primary-color)';
-                                                textColor = 'white';
-                                            }
-
-                                            if (isAuditMode && auditLocation?.id === loc.id) {
-                                                bgColor = '#8b5cf6';
-                                                textColor = 'white';
-                                            }
-
-                                            return (
-                                                <div 
-                                                    key={loc.id}
-                                                    onClick={() => handleScanLocation(loc.id)}
-                                                    style={{
-                                                        aspectRatio: '1.7/1',
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        background: bgColor,
-                                                        color: textColor,
-                                                        borderRadius: '6px',
-                                                        border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : '1px solid var(--border)',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s ease',
-                                                        fontSize: '0.7rem',
-                                                        fontWeight: 700,
-                                                        position: 'relative',
-                                                        boxShadow: isSelected ? `0 0 15px ${isAuditMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(37, 99, 235, 0.3)'}` : 'none',
-                                                        opacity: isTarget && assetCount === 0 && !isSelected ? 0.7 : 1,
-                                                        animation: isTarget && assetCount === 0 && !isSelected ? 'pulse 2s infinite' : 'none'
-                                                    }}
-                                                    title={`${loc.id} (${assetCount} activos)`}
-                                                >
-                                                    {loc.id.split('-').slice(1).join('-')}
-                                                    {assetCount > 0 && (
-                                                        <div style={{ 
-                                                            display: 'flex', alignItems: 'center', gap: '2px', marginTop: '1px',
-                                                            background: '#ef4444', color: 'white', padding: '1px 4px', borderRadius: '8px',
-                                                            fontSize: '0.6rem', fontWeight: 900
-                                                        }}>
-                                                            <Box size={8} />
-                                                            <span>{assetCount}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {locationsW.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                                    <Navigation size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.2 }} />
+                                    <p style={{ fontSize: '0.85rem' }}>No hay grupos coincidentes.</p>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </Card>
+                            ) : (
+                                locationsW.map(([aisle, locations]) => {
+                                    const aisleAssetsCount = assets.filter(a => locations.some(loc => loc.id === a.locationId)).length;
+                                    return (
+                                        <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <h3 style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                                                    <span>{aisle}</span>
+                                                    {currentUser?.role === 'admin' && (
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="xs" 
+                                                            icon={Edit3} 
+                                                            onClick={() => {
+                                                                const newName = prompt(`Ingrese el nuevo nombre para el grupo "${aisle}":`, aisle);
+                                                                if (newName && newName !== aisle) renameWarehouseGroup(aisle, newName.toUpperCase());
+                                                            }}
+                                                            style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
+                                                        />
+                                                    )}
+                                                </h3>
+                                                <span style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700 }}>
+                                                    {aisleAssetsCount} EQUIPOS
+                                                </span>
+                                            </div>
+                                            
+                                            {/* Cell grid box */}
+                                            <div style={{ 
+                                                display: 'grid', 
+                                                gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', 
+                                                gap: '6px',
+                                                background: 'var(--background-secondary)',
+                                                padding: '8px',
+                                                borderRadius: '8px',
+                                                border: '1px dashed var(--border)'
+                                            }}>
+                                                {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
+                                                    const locationAssets = assets.filter(a => a.locationId === loc.id);
+                                                    const assetCount = locationAssets.length;
+                                                    const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
+                                                    
+                                                    let bgColor = 'var(--surface)';
+                                                    let textColor = 'var(--text-main)';
+                                                    let borderColor = 'var(--border)';
+                                                    let borderStyle = 'solid';
 
-                {/* Info Panel */}
+                                                    if (assetCount > 0) {
+                                                        textColor = 'white';
+                                                        const status = locationAssets[0]?.status;
+                                                        if (['Mantenimiento', 'Dañado'].includes(status)) {
+                                                            bgColor = '#f97316';
+                                                        } else if (status === 'Asignado') {
+                                                            bgColor = '#84cc16';
+                                                        } else {
+                                                            bgColor = '#2563eb';
+                                                        }
+                                                        borderColor = 'transparent';
+                                                    } else {
+                                                        borderStyle = 'dashed';
+                                                    }
+
+                                                    if (isAuditMode && auditLocation?.id === loc.id) {
+                                                        bgColor = '#8b5cf6';
+                                                        textColor = 'white';
+                                                        borderColor = 'transparent';
+                                                    }
+
+                                                    return (
+                                                        <div 
+                                                            key={loc.id}
+                                                            onClick={() => handleScanLocation(loc.id)}
+                                                            style={{
+                                                                aspectRatio: '1.4/1',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                background: bgColor,
+                                                                color: textColor,
+                                                                borderRadius: '6px',
+                                                                border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : `1px ${borderStyle} ${borderColor}`,
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.15s ease',
+                                                                boxShadow: isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
+                                                                position: 'relative'
+                                                            }}
+                                                            title={`${loc.id} (${assetCount} equipos)`}
+                                                        >
+                                                            {renderCellContent(loc, assetCount, locationAssets)}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </Card>
+
+                    {/* LOCACIÓN H */}
+                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ borderBottom: '2px solid var(--border)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: 'var(--text-main)' }}>LOCACIÓN H</h2>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', backgroundColor: 'var(--background-secondary)', padding: '3px 8px', borderRadius: '12px' }}>
+                                {locationsH.length} Grupos
+                            </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {locationsH.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                                    <Navigation size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.2 }} />
+                                    <p style={{ fontSize: '0.85rem' }}>No hay grupos coincidentes.</p>
+                                </div>
+                            ) : (
+                                locationsH.map(([aisle, locations]) => {
+                                    const aisleAssetsCount = assets.filter(a => locations.some(loc => loc.id === a.locationId)).length;
+                                    return (
+                                        <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <h3 style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                                                    <span>{aisle}</span>
+                                                    {currentUser?.role === 'admin' && (
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="xs" 
+                                                            icon={Edit3} 
+                                                            onClick={() => {
+                                                                const newName = prompt(`Ingrese el nuevo nombre para el grupo "${aisle}":`, aisle);
+                                                                if (newName && newName !== aisle) renameWarehouseGroup(aisle, newName.toUpperCase());
+                                                            }}
+                                                            style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
+                                                        />
+                                                    )}
+                                                </h3>
+                                                <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>
+                                                    {aisleAssetsCount} EQUIPOS
+                                                </span>
+                                            </div>
+                                            
+                                            {/* Cell grid box */}
+                                            <div style={{ 
+                                                display: 'grid', 
+                                                gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', 
+                                                gap: '6px',
+                                                background: 'var(--background-secondary)',
+                                                padding: '8px',
+                                                borderRadius: '8px',
+                                                border: '1px dashed var(--border)'
+                                            }}>
+                                                {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
+                                                    const locationAssets = assets.filter(a => a.locationId === loc.id);
+                                                    const assetCount = locationAssets.length;
+                                                    const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
+                                                    
+                                                    let bgColor = 'var(--surface)';
+                                                    let textColor = 'var(--text-main)';
+                                                    let borderColor = 'var(--border)';
+                                                    let borderStyle = 'solid';
+
+                                                    if (assetCount > 0) {
+                                                        textColor = 'white';
+                                                        const status = locationAssets[0]?.status;
+                                                        if (['Mantenimiento', 'Dañado'].includes(status)) {
+                                                            bgColor = '#f97316';
+                                                        } else if (status === 'Asignado') {
+                                                            bgColor = '#84cc16';
+                                                        } else {
+                                                            bgColor = '#2563eb';
+                                                        }
+                                                        borderColor = 'transparent';
+                                                    } else {
+                                                        borderStyle = 'dashed';
+                                                    }
+
+                                                    if (isAuditMode && auditLocation?.id === loc.id) {
+                                                        bgColor = '#8b5cf6';
+                                                        textColor = 'white';
+                                                        borderColor = 'transparent';
+                                                    }
+
+                                                    return (
+                                                        <div 
+                                                            key={loc.id}
+                                                            onClick={() => handleScanLocation(loc.id)}
+                                                            style={{
+                                                                aspectRatio: '1.4/1',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                background: bgColor,
+                                                                color: textColor,
+                                                                borderRadius: '6px',
+                                                                border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : `1px ${borderStyle} ${borderColor}`,
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.15s ease',
+                                                                boxShadow: isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
+                                                                position: 'relative'
+                                                            }}
+                                                            title={`${loc.id} (${assetCount} equipos)`}
+                                                        >
+                                                            {renderCellContent(loc, assetCount, locationAssets)}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </Card>
+                </div>
+
+                {/* Right Sidebar - Stats, brand filters, details */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     
-                    {/* Scanner Console */}
+                    {/* WMS Scanners Consoles */}
                     {isMappingMode && (
-                        <Card style={{ padding: '1.5rem', border: '2px solid var(--primary-color)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                        <Card style={{ padding: '1.25rem', border: '2px solid var(--primary-color)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                                 <ScanLine size={18} color="var(--primary-color)" />
-                                <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Consola de Mapping</h3>
+                                <h3 style={{ fontSize: '0.95rem', fontWeight: 800 }}>Consola de Mapping</h3>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ 
-                                    padding: '1rem', 
-                                    background: 'var(--background)', 
-                                    borderRadius: '8px', 
-                                    border: '1px solid var(--border)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '1rem'
-                                }}>
-                                    <div style={{ 
-                                        width: '24px', height: '24px', 
-                                        borderRadius: '50%', 
-                                        background: mappingStep >= 1 ? 'var(--primary-color)' : 'var(--border)',
-                                        color: 'white',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem'
-                                    }}>1</div>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'flex', flexDirection: 'column' }}>
-                                        {scannedAsset ? (
-                                            <>
-                                                <span>Activo: {scannedAsset.id}</span>
-                                                {scannedAsset.locationId && (
-                                                    <span style={{ fontSize: '0.7rem', color: '#f59e0b', marginTop: '0.2rem' }}>
-                                                        Actualmente en: {scannedAsset.locationId}
-                                                    </span>
-                                                )}
-                                            </>
-                                        ) : "Escanee el Activo"}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <div style={{ padding: '0.75rem', background: 'var(--background)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: mappingStep >= 1 ? 'var(--primary-color)' : 'var(--border)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>1</div>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, display: 'flex', flexDirection: 'column' }}>
+                                        {scannedAsset ? `Activo: ${scannedAsset.id}` : "Escanee el Activo"}
+                                        {scannedAsset?.locationId && <span style={{ fontSize: '0.65rem', color: '#f59e0b' }}>En: {scannedAsset.locationId}</span>}
                                     </span>
-                                    {scannedAsset && <CheckCircle2 size={16} color="#22c55e" style={{ marginLeft: 'auto' }} />}
+                                    {scannedAsset && <CheckCircle2 size={14} color="#22c55e" style={{ marginLeft: 'auto' }} />}
                                 </div>
-
-                                <div style={{ 
-                                    padding: '1rem', 
-                                    background: 'var(--background)', 
-                                    borderRadius: '8px', 
-                                    border: mappingStep === 2 ? '1px solid var(--primary-color)' : '1px solid var(--border)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '1rem',
-                                    opacity: mappingStep === 2 ? 1 : 0.5
-                                }}>
-                                    <div style={{ 
-                                        width: '24px', height: '24px', 
-                                        borderRadius: '50%', 
-                                        background: mappingStep >= 2 ? 'var(--primary-color)' : 'var(--border)',
-                                        color: 'white',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem'
-                                    }}>2</div>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Escanee la Ubicación</span>
+                                <div style={{ padding: '0.75rem', background: 'var(--background)', borderRadius: '8px', border: mappingStep === 2 ? '1px solid var(--primary-color)' : '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem', opacity: mappingStep === 2 ? 1 : 0.5 }}>
+                                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: mappingStep >= 2 ? 'var(--primary-color)' : 'var(--border)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>2</div>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Escanee la Ubicación</span>
                                 </div>
-
-                                <form onSubmit={mappingStep === 1 ? handleScanAsset : handleLocationSearchSubmit} style={{ marginTop: '0.5rem' }}>
+                                <form onSubmit={mappingStep === 1 ? handleScanAsset : handleLocationSearchSubmit}>
                                     <div className="search-box">
-                                        <Scan className="search-icon" size={18} color="var(--primary-color)" />
+                                        <Scan className="search-icon" size={16} />
                                         <input 
                                             className="search-input"
                                             placeholder={mappingStep === 1 ? "Scan Activo..." : "Scan Ubicación..."}
                                             value={searchQuery}
                                             onChange={e => setSearchQuery(e.target.value)}
                                             autoFocus
-                                            style={{ borderColor: 'var(--primary-color)' }}
                                         />
                                     </div>
                                 </form>
@@ -892,75 +1084,51 @@ export default function WarehousePage() {
                     )}
 
                     {isAuditMode && (
-                        <Card style={{ padding: '1.5rem', border: '2px solid #8b5cf6' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                        <Card style={{ padding: '1.25rem', border: '2px solid #8b5cf6' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                                 <ShieldCheck size={18} color="#8b5cf6" />
-                                <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Consola de Auditoría</h3>
+                                <h3 style={{ fontSize: '0.95rem', fontWeight: 800 }}>Consola de Auditoría</h3>
                             </div>
-                            
                             {!auditLocation ? (
-                                <div style={{ textAlign: 'center', padding: '1rem', background: 'rgba(139, 92, 246, 0.05)', borderRadius: '12px', border: '1px dashed #8b5cf6' }}>
-                                    <p style={{ fontSize: '0.85rem', color: '#6d28d9', fontWeight: 600 }}>Seleccione un estante en el mapa para iniciar la auditoría.</p>
+                                <div style={{ textAlign: 'center', padding: '1.25rem', background: 'rgba(139, 92, 246, 0.04)', borderRadius: '10px', border: '1px dashed #8b5cf6' }}>
+                                    <p style={{ fontSize: '0.8rem', color: '#6d28d9', fontWeight: 700 }}>Seleccione un estante en el mapa para iniciar la auditoría.</p>
                                 </div>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: '#8b5cf6', color: 'white', borderRadius: '8px', fontWeight: 800 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#8b5cf6', color: 'white', borderRadius: '8px', fontWeight: 800, fontSize: '0.8rem' }}>
                                         <span>Auditando: {auditLocation.id}</span>
-                                        <div style={{ background: '#ef4444', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <Box size={12} />
-                                            <span>Total: {assets.filter(a => a.locationId === auditLocation.id).length}</span>
-                                        </div>
+                                        <span>{assets.filter(a => a.locationId === auditLocation.id).length} items</span>
                                     </div>
-                                    
                                     <form onSubmit={handleAuditScan}>
                                         <div className="search-box">
-                                            <Scan className="search-icon" size={18} />
+                                            <Scan className="search-icon" size={16} />
                                             <input 
                                                 className="search-input"
                                                 placeholder="Escanee activo físicamente..."
                                                 value={auditSearchQuery}
                                                 onChange={e => setAuditSearchQuery(e.target.value)}
                                                 autoFocus
-                                                style={{ borderColor: '#8b5cf6' }}
                                             />
                                         </div>
                                     </form>
-
-                                    <div style={{ maxHeight: '250px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                         {assets.filter(a => a.locationId === auditLocation.id).map(expected => {
                                             const isFound = scannedAuditAssets.find(s => s.id === expected.id);
                                             return (
-                                                <div key={expected.id} style={{ 
-                                                    padding: '0.6rem', 
-                                                    borderRadius: '8px', 
-                                                    background: isFound ? 'rgba(34, 197, 94, 0.1)' : 'rgba(0,0,0,0.03)',
-                                                    border: `1px solid ${isFound ? '#22c55e' : 'var(--border)'}`,
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    alignItems: 'center'
-                                                }}>
-                                                    <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>{expected.name}</div>
-                                                    {isFound ? <CheckCircle2 size={14} color="#22c55e" /> : <div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '1px solid #ccc' }} />}
+                                                <div key={expected.id} style={{ padding: '0.5rem', borderRadius: '6px', background: isFound ? 'rgba(34, 197, 94, 0.08)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isFound ? '#22c55e' : 'var(--border)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                                                    <span style={{ fontWeight: 600 }}>{expected.name}</span>
+                                                    {isFound ? <CheckCircle2 size={12} color="#22c55e" /> : <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '1px solid #ccc' }} />}
                                                 </div>
                                             );
                                         })}
                                         {scannedAuditAssets.filter(s => s.locationId !== auditLocation.id).map(extra => (
-                                            <div key={extra.id} style={{ 
-                                                padding: '0.6rem', 
-                                                borderRadius: '8px', 
-                                                background: 'rgba(239, 68, 68, 0.1)',
-                                                border: '1px solid #ef4444',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center'
-                                            }}>
-                                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ef4444' }}>Extra: {extra.name}</div>
-                                                <XCircle size={14} color="#ef4444" />
+                                            <div key={extra.id} style={{ padding: '0.5rem', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid #ef4444', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#ef4444' }}>
+                                                <span style={{ fontWeight: 600 }}>Extra: {extra.name}</span>
+                                                <XCircle size={12} color="#ef4444" />
                                             </div>
                                         ))}
                                     </div>
-
-                                    <Button fullWidth variant="primary" style={{ background: '#8b5cf6' }} onClick={finishAudit}>
+                                    <Button fullWidth style={{ background: '#8b5cf6', color: 'white' }} onClick={finishAudit}>
                                         Finalizar Auditoría
                                     </Button>
                                 </div>
@@ -968,130 +1136,349 @@ export default function WarehousePage() {
                         </Card>
                     )}
 
-                    {!isMappingMode && !isAuditMode && (
-                        <Card style={{ padding: '1.5rem' }}>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '1rem' }}>
-                                Seleccione una opción arriba para comenzar a operar en el depósito.
-                            </p>
-                        </Card>
-                    )}
+                    {/* Resumen y Filtros Rápidos */}
+                    <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Resumen y Filtros Rápidos</h3>
+                        
+                        {/* Vista Rápida de Stock */}
+                        <div>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vista Rápida de Stock</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.2rem' }}>
+                                        <span>Stock Total W</span>
+                                        <span>{totalAssetsW}</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '12px', background: 'var(--background-secondary)', borderRadius: '6px', overflow: 'hidden' }}>
+                                        <div style={{ 
+                                            width: `${(totalAssetsW / Math.max(totalAssetsW + totalAssetsH, 1)) * 100}%`, 
+                                            height: '100%', 
+                                            background: '#2563eb', 
+                                            borderRadius: '6px', 
+                                            transition: 'width 0.4s ease' 
+                                        }}></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.2rem' }}>
+                                        <span>Stock Total H</span>
+                                        <span>{totalAssetsH}</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '12px', background: 'var(--background-secondary)', borderRadius: '6px', overflow: 'hidden' }}>
+                                        <div style={{ 
+                                            width: `${(totalAssetsH / Math.max(totalAssetsW + totalAssetsH, 1)) * 100}%`, 
+                                            height: '100%', 
+                                            background: '#64748b', 
+                                            borderRadius: '6px', 
+                                            transition: 'width 0.4s ease' 
+                                        }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    {/* Selected Location Detail */}
+                        {/* Estado Global (Donut Chart) */}
+                        <div>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Estado Global</h4>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                                {/* Custom CSS Conic-Gradient Donut */}
+                                <div style={{
+                                    width: '100px',
+                                    height: '100px',
+                                    borderRadius: '50%',
+                                    background: `conic-gradient(
+                                        #2563eb 0% ${percentEnStock}%, 
+                                        #84cc16 ${percentEnStock}% ${percentEnStock + percentAsignado}%, 
+                                        #f97316 ${percentEnStock + percentAsignado}% 100%
+                                    )`,
+                                    position: 'relative',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: 'inset 0 0 1px rgba(0,0,0,0.1)'
+                                }}>
+                                    <div style={{
+                                        width: '64px',
+                                        height: '64px',
+                                        borderRadius: '50%',
+                                        backgroundColor: 'var(--surface)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 800
+                                    }}>
+                                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.55rem', textTransform: 'uppercase' }}>Total</span>
+                                        <span style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>{statusCounts.total === 1 && assets.filter(a => a.locationId).length === 0 ? 0 : assets.filter(a => a.locationId).length}</span>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563eb' }}></div>
+                                        <span style={{ flex: 1 }}>En Stock</span>
+                                        <span style={{ color: 'var(--text-secondary)' }}>{statusCounts.enStock}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#84cc16' }}></div>
+                                        <span style={{ flex: 1 }}>Asignado</span>
+                                        <span style={{ color: 'var(--text-secondary)' }}>{statusCounts.asignado}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f97316' }}></div>
+                                        <span style={{ flex: 1 }}>Mantenim.</span>
+                                        <span style={{ color: 'var(--text-secondary)' }}>{statusCounts.mantenimiento}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Filtros de Marca */}
+                        <div>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filtros de Marca</h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                                {/* DELL */}
+                                <button 
+                                    onClick={() => setSelectedBrand(selectedBrand === 'DELL' ? 'ALL' : 'DELL')}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
+                                        background: selectedBrand === 'DELL' ? '#eff6ff' : 'var(--background-secondary)',
+                                        border: `1px solid ${selectedBrand === 'DELL' ? '#3b82f6' : 'var(--border)'}`,
+                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
+                                    }}
+                                >
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #0076c0', color: '#0076c0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 900 }}>DELL</div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Dell</span>
+                                </button>
+                                {/* HP */}
+                                <button 
+                                    onClick={() => setSelectedBrand(selectedBrand === 'HP' ? 'ALL' : 'HP')}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
+                                        background: selectedBrand === 'HP' ? '#f0fdfa' : 'var(--background-secondary)',
+                                        border: `1px solid ${selectedBrand === 'HP' ? '#0d9488' : 'var(--border)'}`,
+                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
+                                    }}
+                                >
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#0096d6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 'bold', fontStyle: 'italic' }}>hp</div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>HP</span>
+                                </button>
+                                {/* Apple */}
+                                <button 
+                                    onClick={() => setSelectedBrand(selectedBrand === 'APPLE' ? 'ALL' : 'APPLE')}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
+                                        background: selectedBrand === 'APPLE' ? '#f8fafc' : 'var(--background-secondary)',
+                                        border: `1px solid ${selectedBrand === 'APPLE' ? '#475569' : 'var(--border)'}`,
+                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
+                                    }}
+                                >
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#000000', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem' }}></div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Apple</span>
+                                </button>
+                                {/* Windows */}
+                                <button 
+                                    onClick={() => setSelectedBrand(selectedBrand === 'WINDOWS' ? 'ALL' : 'WINDOWS')}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
+                                        background: selectedBrand === 'WINDOWS' ? '#f0f9ff' : 'var(--background-secondary)',
+                                        border: `1px solid ${selectedBrand === 'WINDOWS' ? '#0284c7' : 'var(--border)'}`,
+                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
+                                    }}
+                                >
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', width: '20px', height: '20px', margin: '4px 0' }}>
+                                        <div style={{ backgroundColor: '#f25022' }}></div>
+                                        <div style={{ backgroundColor: '#7fba00' }}></div>
+                                        <div style={{ backgroundColor: '#00a4ef' }}></div>
+                                        <div style={{ backgroundColor: '#ffb900' }}></div>
+                                    </div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Windows</span>
+                                </button>
+                                {/* Mantenim */}
+                                <button 
+                                    onClick={() => setSelectedBrand(selectedBrand === 'MANTENIMIENTO' ? 'ALL' : 'MANTENIMIENTO')}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
+                                        background: selectedBrand === 'MANTENIMIENTO' ? '#fff7ed' : 'var(--background-secondary)',
+                                        border: `1px solid ${selectedBrand === 'MANTENIMIENTO' ? '#ea580c' : 'var(--border)'}`,
+                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
+                                    }}
+                                >
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#f97316', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>🔧</div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Mantenim</span>
+                                </button>
+                                {/* Clear/All */}
+                                <button 
+                                    onClick={() => {
+                                        setSelectedBrand('ALL');
+                                        setCpuFilter('ALL');
+                                        setRamFilter('ALL');
+                                        setStatusFilter('ALL');
+                                        setLocationSearch('');
+                                    }}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
+                                        background: 'var(--background-secondary)', border: '1px solid var(--border)',
+                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
+                                    }}
+                                >
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#e2e8f0', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800 }}>•••</div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Todos</span>
+                                </button>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Búsqueda Avanzada */}
+                    <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+                            <SlidersHorizontal size={16} />
+                            <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0 }}>Búsqueda Avanzada</h3>
+                        </div>
+
+                        <div className="search-box">
+                            <Search className="search-icon" size={16} />
+                            <input 
+                                className="search-input"
+                                placeholder="Buscar Ubicación o Serial..."
+                                value={locationSearch}
+                                onChange={e => setLocationSearch(e.target.value)}
+                                style={{ padding: '0.5rem 1rem 0.5rem 2.25rem', fontSize: '0.8rem' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>CPU</label>
+                                <select 
+                                    value={cpuFilter} 
+                                    onChange={e => setCpuFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
+                                >
+                                    <option value="ALL">Cualquier CPU</option>
+                                    <option value="M4">Apple M4</option>
+                                    <option value="M3">Apple M3</option>
+                                    <option value="M2">Apple M2</option>
+                                    <option value="M1">Apple M1</option>
+                                    <option value="Ultra">Intel Ultra</option>
+                                    <option value="Core">Intel Core</option>
+                                    <option value="i7">Core i7</option>
+                                    <option value="i5">Core i5</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Memoria RAM</label>
+                                <select 
+                                    value={ramFilter} 
+                                    onChange={e => setRamFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
+                                >
+                                    <option value="ALL">Cualquier RAM</option>
+                                    <option value="64GB">64 GB</option>
+                                    <option value="48GB">48 GB</option>
+                                    <option value="36GB">36 GB</option>
+                                    <option value="32GB">32 GB</option>
+                                    <option value="24GB">24 GB</option>
+                                    <option value="16GB">16 GB</option>
+                                    <option value="8GB">8 GB</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Estado</label>
+                                <select 
+                                    value={statusFilter} 
+                                    onChange={e => setStatusFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
+                                >
+                                    <option value="ALL">Cualquier Estado</option>
+                                    <option value="Disponible">En Stock / Disponible</option>
+                                    <option value="Asignado">Asignado</option>
+                                    <option value="Mantenimiento">Mantenimiento / Dañado</option>
+                                </select>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Información de Selección */}
                     {(() => {
                         if (!selectedLocation) {
                             return (
-                                <Card style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                    <History size={40} style={{ opacity: 0.1, marginBottom: '1rem' }} />
-                                    <p style={{ fontSize: '0.85rem' }}>Seleccione una ubicación en el mapa para ver sus detalles.</p>
+                                <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)', minHeight: '180px' }}>
+                                    <History size={32} style={{ opacity: 0.15, marginBottom: '0.75rem' }} />
+                                    <p style={{ fontSize: '0.8rem', margin: 0 }}>Seleccione una ubicación en el mapa para ver sus detalles.</p>
                                 </Card>
                             );
                         }
                         const locationAssets = assets.filter(a => a.locationId === selectedLocation.id);
+                        const asset = locationAssets[0];
                         return (
-                            <Card style={{ padding: '1.5rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                                    <div>
-                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Ubicación</span>
-                                        <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>{selectedLocation.id}</h3>
-                                    </div>
-                                    <div style={{ 
-                                        padding: '0.2rem 0.6rem', 
-                                        borderRadius: '20px', 
-                                        fontSize: '0.65rem', 
-                                        fontWeight: 700,
-                                        background: locationAssets.length > 0 ? 'rgba(37, 99, 235, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                                        color: locationAssets.length > 0 ? 'var(--primary-color)' : '#22c55e'
-                                    }}>
-                                        {locationAssets.length > 0 ? 'Ocupado' : 'Disponible'}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: '0.5rem' }}>
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            icon={Edit3} 
-                                            onClick={() => {
-                                                setEditLoc({
-                                                    aisle: selectedLocation.aisle,
-                                                    section: selectedLocation.section,
-                                                    level: selectedLocation.level
-                                                });
-                                                setIsEditLocationModalOpen(true);
-                                            }}
-                                            title="Editar Ubicación"
-                                            style={{ color: 'var(--primary-color)', borderColor: 'var(--primary-color)', height: '28px' }}
-                                        />
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            icon={Printer} 
-                                            onClick={() => handlePrintLocationLabel(selectedLocation)}
-                                            title="Imprimir Etiqueta Estantería"
-                                            style={{ color: 'var(--primary-color)', borderColor: 'var(--primary-color)', height: '28px' }}
-                                        />
-                                    </div>
+                            <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Información de Selección</span>
+                                    <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Ubicación: {selectedLocation.id}</h3>
                                 </div>
 
-                                {locationAssets.length > 0 ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                        <div style={{ maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '0.5rem' }}>
-                                            {locationAssets.map(asset => (
-                                                <div key={asset.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', padding: '0.6rem 0.8rem', background: 'var(--background)', borderRadius: '10px', border: '1px solid var(--border)', transition: 'all 0.2s ease' }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <h4 style={{ fontSize: '0.78rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', lineHeight: '1.2' }}>{asset.name}</h4>
-                                                        {asset.hardwareSpec && (
-                                                            <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '2px' }}>
-                                                                {asset.hardwareSpec}
-                                                            </div>
-                                                        )}
-                                                        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '4px', opacity: 0.8 }}>
-                                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                                                #{asset.id?.toString().slice(-4)}
-                                                            </span>
-                                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', borderLeft: '1px solid var(--border)', paddingLeft: '0.4rem' }}>
-                                                                SN: {asset.serial || 'N/A'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        icon={ExternalLink} 
-                                                        onClick={() => window.open(`/dashboard/inventory?id=${asset.id}`, '_blank')}
-                                                        title="Ver Detalle"
-                                                        style={{ height: '28px', width: '28px', padding: 0 }}
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--background)', padding: '1rem', borderRadius: '12px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                                <span>Mapeado el:</span>
-                                                <span style={{ fontWeight: 600 }}>{locationAssets[0].dateMapped ? new Date(locationAssets[0].dateMapped).toLocaleDateString() : 'N/A'}</span>
+                                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    {asset ? (
+                                        <>
+                                            <div><strong>Modelo:</strong> {asset.name}</div>
+                                            <div><strong>Serie:</strong> {asset.model_number || asset.part_number || 'Latitude 5520'}</div>
+                                            <div><strong>SN:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{asset.serial || 'N/A'}</span></div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <strong>Estado:</strong> 
+                                                <span style={{ 
+                                                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800,
+                                                    backgroundColor: ['Mantenimiento', 'Dañado'].includes(asset.status) ? '#fff7ed' : (asset.status === 'Asignado' ? '#f0fdf4' : '#eff6ff'),
+                                                    color: ['Mantenimiento', 'Dañado'].includes(asset.status) ? '#ea580c' : (asset.status === 'Asignado' ? '#16a34a' : '#2563eb'),
+                                                    border: `1px solid currentColor`
+                                                }}>
+                                                    {asset.status} (Verificado)
+                                                </span>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <span>Por:</span>
-                                                <span style={{ fontWeight: 600 }}>{locationAssets[0].updatedBy || 'N/A'}</span>
+                                            {asset.hardwareSpec && <div><strong>Specs:</strong> {asset.hardwareSpec}</div>}
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', background: 'var(--background-secondary)', padding: '0.6rem', borderRadius: '6px', marginTop: '0.25rem' }}>
+                                                <div>Mapeado el: {asset.dateMapped ? new Date(asset.dateMapped).toLocaleDateString() : 'N/A'}</div>
+                                                <div>Por: {asset.updatedBy || 'N/A'}</div>
                                             </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>
-                                            <Info size={32} style={{ opacity: 0.2, marginBottom: '0.5rem' }} />
-                                            <p style={{ fontSize: '0.85rem' }}>Esta ubicación está vacía.</p>
-                                        </div>
-                                        {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
-                                            <Button 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                icon={Trash2} 
-                                                style={{ color: '#ef4444', marginTop: '1rem' }}
-                                                onClick={() => handleDeleteLocation(selectedLocation.id)}
-                                            >
-                                                Eliminar Ubicación
-                                            </Button>
-                                        )}
-                                    </div>
+                                        </>
+                                    ) : (
+                                        <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '0.75rem' }}>Esta ubicación está vacía / disponible.</div>
+                                    )}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        icon={Edit3} 
+                                        onClick={() => {
+                                            setEditLoc({
+                                                aisle: selectedLocation.aisle,
+                                                section: selectedLocation.section,
+                                                level: selectedLocation.level
+                                            });
+                                            setIsEditLocationModalOpen(true);
+                                        }}
+                                        style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
+                                    >Editar</Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        icon={Printer} 
+                                        onClick={() => handlePrintLocationLabel(selectedLocation)}
+                                        style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
+                                    >Etiqueta</Button>
+                                </div>
+                                {(!asset && (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial')) && (
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        icon={Trash2} 
+                                        onClick={() => handleDeleteLocation(selectedLocation.id)}
+                                        style={{ color: '#ef4444', height: '32px', fontSize: '0.75rem', marginTop: '0.25rem' }}
+                                    >Eliminar Ubicación</Button>
                                 )}
                             </Card>
                         );
@@ -1216,11 +1603,6 @@ export default function WarehousePage() {
                 .search-input:focus {
                     border-color: var(--primary-color);
                     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
-                }
-                @keyframes pulse {
-                    0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
-                    70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
-                    100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
                 }
             `}</style>
         </div>
