@@ -377,6 +377,30 @@ export default function MyTicketsPage() {
         return result;
     }, [myAssignedItems, filter, sortConfig, columnFilters, optimizedOrder, conductorFilter]);
 
+    const groupedCompletedTickets = useMemo(() => {
+        if (!isConductor || conductorFilter !== 'completed') return null;
+        
+        const getCompletionDate = (ticket) => {
+            const info = ticket.caseData?.deliveryInfo || ticket.caseData?.delivery_info || ticket.parentTicket?.deliveryDetails || ticket.logistics?.deliveryInfo || ticket.deliveryDetails || {};
+            const time = info.deliveredAt || info.delivered_at || '';
+            return time ? time.substring(0, 10) : 'Sin Fecha';
+        };
+
+        const groups = {};
+        sortedAndFilteredTickets.forEach(ticket => {
+            const date = getCompletionDate(ticket);
+            if (!groups[date]) groups[date] = [];
+            groups[date].push(ticket);
+        });
+
+        // Retorna las entradas ordenadas por fecha descendente (más recientes primero)
+        return Object.entries(groups).sort((a, b) => {
+            if (a[0] === 'Sin Fecha') return 1;
+            if (b[0] === 'Sin Fecha') return -1;
+            return b[0].localeCompare(a[0]);
+        });
+    }, [sortedAndFilteredTickets, isConductor, conductorFilter]);
+
     const stats = useMemo(() => {
         try {
             const now = new Date();
@@ -585,6 +609,237 @@ export default function MyTicketsPage() {
             deliveredAt: deliveryInfo.deliveredAt || deliveryInfo.delivered_at || ''
         }, 'download');
     };
+
+    const renderTicketRow = (ticket) => (
+        <tr key={`${ticket.id}-${ticket.displayId}`} style={{
+            borderBottom: '1px solid var(--border)',
+            backgroundColor: ticket.displayStatus === 'Pendiente' ? '#f8fafc' : 'transparent' 
+        }} className="table-row-hover">
+            <td style={{ padding: '1rem', fontWeight: 600 }}>{ticket.displayId}</td>
+            <td style={{ padding: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>{ticket.displaySubject}</div>
+                    {(ticket.instructions || ticket.hasNewNotes) && (
+                        <div 
+                            title={ticket.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"} 
+                            className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
+                            style={{ 
+                                color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)', 
+                                display: 'flex',
+                                marginRight: '8px'
+                            }}
+                        >
+                            <MessageSquare size={16} fill={ticket.hasUnreadChat ? 'white' : 'none'} stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'} />
+                        </div>
+                    )}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>ID: {ticket.displayId}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <span>Prioridad: {ticket.priority}</span>
+                    {ticket.displayAddress && (
+                        <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: 'var(--primary-color)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            📍 {ticket.displayAddress}
+                        </a>
+                    )}
+                </div>
+            </td>
+            <td style={{ padding: '1rem' }}>{ticket.requester}</td>
+            <td style={{ padding: '1rem' }}>
+                <div style={{ fontWeight: 500 }}>{ticket.displayDate ? new Date(ticket.displayDate + 'T00:00:00').toLocaleDateString() : '-'}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    {ticket.isMainTicket 
+                        ? (ticket.logistics?.timeSlot || ticket.logistics?.time_slot || '') 
+                        : (ticket.taskTimeSlot || ticket.caseData?.time_slot || '')}
+                </div>
+            </td>
+            <td style={{ padding: '1rem' }}>
+                <span style={{
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    color: (() => {
+                        const dateStr = ticket.displayDate || ticket.date;
+                        if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return 'var(--text-secondary)';
+                        const d = new Date(dateStr + 'T00:00:00');
+                        if (isNaN(d.getTime())) return 'var(--text-secondary)';
+                        const days = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
+                        return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
+                    })()
+                }}>
+                    {(() => {
+                        const dateStr = ticket.displayDate || ticket.date;
+                        if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return '-';
+                        const d = new Date(dateStr + 'T00:00:00');
+                        if (isNaN(d.getTime())) return '-';
+                        return Math.floor((new Date() - d) / (1000 * 60 * 60 * 24)) + 'd';
+                    })()}
+                </span>
+            </td>
+            <td style={{ padding: '1rem' }}>
+                <Badge variant={
+                    ticket.displayStatus === 'En Transito' ? 'info' :
+                        ticket.displayStatus === 'Entregado' ? 'success' :
+                            ticket.displayStatus === 'Para Coordinar' ? 'warning' : 'default'
+                }>
+                    {ticket.displayStatus || 'Pendiente'}
+                </Badge>
+            </td>
+            <td style={{ padding: '1rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                    <Link href={`/dashboard/tickets/${ticket.id}`}>
+                        <Button variant="ghost" size="sm" icon={Eye}>Detalles</Button>
+                    </Link>
+                    {ticket.isCompleted && (
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            icon={Download} 
+                            onClick={() => handleDownloadRemito(ticket)}
+                            style={{ color: '#22c55e' }}
+                            title="Descargar Remito"
+                        >
+                            Remito
+                        </Button>
+                    )}
+                </div>
+            </td>
+        </tr>
+    );
+
+    const renderTicketCard = (ticket) => (
+        <Card key={`${ticket.id}-${ticket.displayId}`} style={{
+            padding: isConductor ? '0.75rem 0.9rem' : '1.25rem',
+            borderLeft: `4px solid ${ticket.displayStatus === 'En Transito' ? '#0ea5e9' : ticket.displayStatus === 'Entregado' ? '#22c55e' : '#f59e0b'}`
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isConductor ? '0.4rem' : '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 800, color: 'var(--primary-color)', fontSize: isConductor ? '0.8rem' : '1rem' }}>#{ticket.displayId}</span>
+                    {!ticket.isMainTicket && <span style={{ fontSize: '0.55rem', background: '#f1f5f9', padding: '1px 3px', borderRadius: '3px' }}>Caso SFDC</span>}
+                    {(ticket.instructions || ticket.hasNewNotes) && (
+                        <div 
+                            className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
+                            style={{ 
+                                color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)',
+                                width: ticket.hasUnreadChat ? '16px' : 'auto',
+                                height: ticket.hasUnreadChat ? '16px' : 'auto',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            <MessageSquare 
+                                size={isConductor ? 11 : 14} 
+                                fill={ticket.hasUnreadChat ? 'white' : 'none'} 
+                                stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'}
+                            />
+                        </div>
+                    )}
+                </div>
+                <Badge variant={
+                    ticket.displayStatus === 'En Transito' ? 'info' :
+                        ticket.displayStatus === 'Entregado' ? 'success' :
+                            ticket.displayStatus === 'Para Coordinar' ? 'warning' : 'default'
+                } style={{ fontSize: isConductor ? '0.62rem' : 'inherit', padding: isConductor ? '2px 6px' : 'inherit' }}>
+                    {ticket.displayStatus || 'Pendiente'}
+                </Badge>
+            </div>
+            <h3 style={{ fontSize: isConductor ? '0.85rem' : '1rem', fontWeight: 700, marginBottom: isConductor ? '0.3rem' : '0.5rem', color: 'var(--text-main)' }}>{ticket.displaySubject}</h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isConductor ? '0.2rem' : '0.5rem', marginBottom: isConductor ? '0.8rem' : '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: isConductor ? '0.78rem' : '0.85rem' }}>
+                    <User size={isConductor ? 12 : 14} style={{ color: 'var(--text-secondary)' }} />
+                    <span style={{ fontWeight: 600 }}>{ticket.requester}</span>
+                </div>
+                {ticket.displayAddress && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', fontSize: isConductor ? '0.74rem' : '0.82rem', color: 'var(--text-secondary)' }}>
+                        <MapPin size={isConductor ? 11 : 13} style={{ marginTop: '2px', flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                            {ticket.displayAddress}
+                        </span>
+                    </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: isConductor ? '0.78rem' : '0.85rem', marginTop: isConductor ? '2px' : '0' }}>
+                    <Clock size={isConductor ? 12 : 14} style={{ color: 'var(--text-secondary)' }} />
+                    <span>{ticket.displayDate || ticket.date}</span>
+                    {ticket.taskTimeSlot && <span style={{ color: 'var(--text-secondary)', background: 'var(--background)', padding: '1px 4px', borderRadius: '3px', fontSize: '0.65rem', marginLeft: '4px' }}>{ticket.taskTimeSlot}</span>}
+                    <span style={{
+                        marginLeft: 'auto',
+                        fontWeight: 700,
+                        color: (() => {
+                            const dateStr = ticket.displayDate || ticket.date;
+                            if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return 'var(--text-secondary)';
+                            const d = new Date(dateStr + 'T00:00:00');
+                            if (isNaN(d.getTime())) return 'var(--text-secondary)';
+                            const days = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
+                            return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
+                        })()
+                    }}>
+                        {(() => {
+                            const dateStr = ticket.displayDate || ticket.date;
+                            if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return '-';
+                            const d = new Date(dateStr + 'T00:00:00');
+                            if (isNaN(d.getTime())) return '-';
+                            const days = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
+                            return `${days}d`;
+                        })()}
+                    </span>
+                </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
+                <Link href={`/dashboard/tickets/${ticket.id}`} style={{ flex: 1 }}>
+                    <Button variant="secondary" icon={Eye} style={{ width: '100%', padding: isConductor ? '0.5rem' : '0.9rem', fontSize: isConductor ? '0.78rem' : '0.9rem', height: isConductor ? '36px' : 'auto' }}>DETALLES</Button>
+                </Link>
+                
+                {ticket.isCompleted && (
+                    <Button 
+                        variant="success" 
+                        icon={Download}
+                        onClick={() => handleDownloadRemito(ticket)}
+                        style={{ 
+                            flex: 1, 
+                            padding: isConductor ? '0.5rem' : '0.9rem', 
+                            fontSize: isConductor ? '0.78rem' : '0.9rem', 
+                            height: isConductor ? '36px' : 'auto',
+                            backgroundColor: '#22c55e',
+                            borderColor: '#22c55e',
+                            color: 'white',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        REMITO
+                    </Button>
+                )}
+
+                {/* Atajo de WhatsApp para móvil (solo si no está completado) */}
+                {!ticket.isCompleted && ticket.parentTicket?.deliveryDetails?.contactPhone && (
+                    <Button 
+                        variant="success" 
+                        onClick={() => window.open(`https://wa.me/${ticket.parentTicket.deliveryDetails.contactPhone.replace(/\D/g, '')}`, '_blank')}
+                        style={{ width: isConductor ? '36px' : '56px', height: isConductor ? '36px' : '52px', flexShrink: 0, padding: 0 }}
+                    >
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" style={{ width: isConductor ? '16px' : '24px', height: isConductor ? '16px' : '24px' }} alt="WA" />
+                    </Button>
+                )}
+
+                {/* Atajo de Navegación para móvil (solo si no está completado) */}
+                {!ticket.isCompleted && ticket.displayAddress !== 'Sin dirección' && (
+                    <Button 
+                        variant="secondary" 
+                        onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`, '_blank')}
+                        style={{ width: isConductor ? '36px' : '56px', height: isConductor ? '36px' : '52px', flexShrink: 0, color: 'var(--primary-color)', fontSize: isConductor ? '0.9rem' : 'inherit' }}
+                    >
+                        📍
+                    </Button>
+                )}
+            </div>
+        </Card>
+    );
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
@@ -822,106 +1077,27 @@ export default function MyTicketsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {sortedAndFilteredTickets.map((ticket) => (
-                                    <tr key={`${ticket.id}-${ticket.displayId}`} style={{
-                                        borderBottom: '1px solid var(--border)',
-                                        backgroundColor: ticket.displayStatus === 'Pendiente' ? '#f8fafc' : 'transparent' 
-                                    }} className="table-row-hover">
-                                        <td style={{ padding: '1rem', fontWeight: 600 }}>{ticket.displayId}</td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>{ticket.displaySubject}</div>
-                                                {(ticket.instructions || ticket.hasNewNotes) && (
-                                                    <div 
-                                                        title={ticket.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"} 
-                                                        className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
-                                                        style={{ 
-                                                            color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)', 
-                                                            display: 'flex',
-                                                            marginRight: '8px'
-                                                        }}
-                                                    >
-                                                        <MessageSquare size={16} fill={ticket.hasUnreadChat ? 'white' : 'none'} stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'} />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>ID: {ticket.displayId}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                                <span>Prioridad: {ticket.priority}</span>
-                                                {ticket.displayAddress && (
-                                                    <a
-                                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        style={{ color: 'var(--primary-color)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                        📍 {ticket.displayAddress}
-                                                    </a>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>{ticket.requester}</td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <div style={{ fontWeight: 500 }}>{ticket.displayDate ? new Date(ticket.displayDate + 'T00:00:00').toLocaleDateString() : '-'}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                {ticket.isMainTicket 
-                                                    ? (ticket.logistics?.timeSlot || ticket.logistics?.time_slot || '') 
-                                                    : (ticket.taskTimeSlot || ticket.caseData?.time_slot || '')}
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <span style={{
-                                                fontSize: '0.85rem',
-                                                fontWeight: 600,
-                                                color: (() => {
-                                                    const dateStr = ticket.displayDate || ticket.date;
-                                                    if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return 'var(--text-secondary)';
-                                                    const d = new Date(dateStr + 'T00:00:00');
-                                                    if (isNaN(d.getTime())) return 'var(--text-secondary)';
-                                                    const days = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
-                                                    return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
-                                                })()
-                                            }}>
-                                                {(() => {
-                                                    const dateStr = ticket.displayDate || ticket.date;
-                                                    if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return '-';
-                                                    const d = new Date(dateStr + 'T00:00:00');
-                                                    if (isNaN(d.getTime())) return '-';
-                                                    return Math.floor((new Date() - d) / (1000 * 60 * 60 * 24)) + 'd';
-                                                })()}
-                                            </span>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <Badge variant={
-                                                ticket.displayStatus === 'En Transito' ? 'info' :
-                                                    ticket.displayStatus === 'Entregado' ? 'success' :
-                                                        ticket.displayStatus === 'Para Coordinar' ? 'warning' : 'default'
-                                            }>
-                                                {ticket.displayStatus || 'Pendiente'}
-                                            </Badge>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                                <Link href={`/dashboard/tickets/${ticket.id}`}>
-                                                    <Button variant="ghost" size="sm" icon={Eye}>Detalles</Button>
-                                                </Link>
-                                                {ticket.isCompleted && (
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        icon={Download} 
-                                                        onClick={() => handleDownloadRemito(ticket)}
-                                                        style={{ color: '#22c55e' }}
-                                                        title="Descargar Remito"
-                                                    >
-                                                        Remito
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {isConductor && conductorFilter === 'completed' && groupedCompletedTickets ? (
+                                    groupedCompletedTickets.map(([date, groupTickets]) => (
+                                        <React.Fragment key={date}>
+                                            <tr style={{ backgroundColor: 'rgba(34, 197, 94, 0.04)' }}>
+                                                <td colSpan={7} style={{ padding: '0.6rem 1rem', fontWeight: 700, fontSize: '0.8rem', color: '#22c55e', borderBottom: '1px solid var(--border)' }}>
+                                                    {(() => {
+                                                        if (date === 'Sin Fecha') return 'FECHA NO DEFINIDA';
+                                                        const d = new Date(date + 'T00:00:00');
+                                                        if (isNaN(d.getTime())) return date.toUpperCase();
+                                                        const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                                                        const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                                                        return `REALIZADOS EL ${days[d.getDay()].toUpperCase()} ${d.getDate()} DE ${months[d.getMonth()].toUpperCase()}`;
+                                                    })()}
+                                                </td>
+                                            </tr>
+                                            {groupTickets.map((ticket) => renderTicketRow(ticket))}
+                                        </React.Fragment>
+                                    ))
+                                ) : (
+                                    sortedAndFilteredTickets.map((ticket) => renderTicketRow(ticket))
+                                )}
                             </tbody>
                         </table>
                     )}
@@ -934,137 +1110,43 @@ export default function MyTicketsPage() {
                             <p style={{ color: 'var(--text-secondary)' }}>No se encontraron servicios.</p>
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: isConductor ? '0.5rem' : '1rem' }}>
-                            {sortedAndFilteredTickets.map((ticket) => (
-                                <Card key={`${ticket.id}-${ticket.displayId}`} style={{
-                                    padding: isConductor ? '0.75rem 0.9rem' : '1.25rem',
-                                    borderLeft: `4px solid ${ticket.displayStatus === 'En Transito' ? '#0ea5e9' : ticket.displayStatus === 'Entregado' ? '#22c55e' : '#f59e0b'}`
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isConductor ? '0.4rem' : '0.75rem' }}>
-                                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                            <span style={{ fontWeight: 800, color: 'var(--primary-color)', fontSize: isConductor ? '0.8rem' : '1rem' }}>#{ticket.displayId}</span>
-                                            {!ticket.isMainTicket && <span style={{ fontSize: '0.55rem', background: '#f1f5f9', padding: '1px 3px', borderRadius: '3px' }}>Caso SFDC</span>}
-                                            {(ticket.instructions || ticket.hasNewNotes) && (
-                                                <div 
-                                                    className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
-                                                    style={{ 
-                                                        color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)',
-                                                        width: ticket.hasUnreadChat ? '16px' : 'auto',
-                                                        height: ticket.hasUnreadChat ? '16px' : 'auto',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center'
-                                                    }}
-                                                >
-                                                    <MessageSquare 
-                                                        size={isConductor ? 11 : 14} 
-                                                        fill={ticket.hasUnreadChat ? 'white' : 'none'} 
-                                                        stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'}
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <Badge variant={
-                                            ticket.displayStatus === 'En Transito' ? 'info' :
-                                                ticket.displayStatus === 'Entregado' ? 'success' :
-                                                    ticket.displayStatus === 'Para Coordinar' ? 'warning' : 'default'
-                                        } style={{ fontSize: isConductor ? '0.62rem' : 'inherit', padding: isConductor ? '2px 6px' : 'inherit' }}>
-                                            {ticket.displayStatus || 'Pendiente'}
-                                        </Badge>
-                                    </div>
-                                    <h3 style={{ fontSize: isConductor ? '0.85rem' : '1rem', fontWeight: 700, marginBottom: isConductor ? '0.3rem' : '0.5rem', color: 'var(--text-main)' }}>{ticket.displaySubject}</h3>
-
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: isConductor ? '0.2rem' : '0.5rem', marginBottom: isConductor ? '0.8rem' : '1.25rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: isConductor ? '0.78rem' : '0.85rem' }}>
-                                            <User size={isConductor ? 12 : 14} style={{ color: 'var(--text-secondary)' }} />
-                                            <span style={{ fontWeight: 600 }}>{ticket.requester}</span>
-                                        </div>
-                                        {ticket.displayAddress && (
-                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', fontSize: isConductor ? '0.74rem' : '0.82rem', color: 'var(--text-secondary)' }}>
-                                                <MapPin size={isConductor ? 11 : 13} style={{ marginTop: '2px', flexShrink: 0 }} />
-                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                                    {ticket.displayAddress}
-                                                </span>
-                                            </div>
-                                        )}
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: isConductor ? '0.78rem' : '0.85rem', marginTop: isConductor ? '2px' : '0' }}>
-                                            <Clock size={isConductor ? 12 : 14} style={{ color: 'var(--text-secondary)' }} />
-                                            <span>{ticket.displayDate || ticket.date}</span>
-                                            {ticket.taskTimeSlot && <span style={{ color: 'var(--text-secondary)', background: 'var(--background)', padding: '1px 4px', borderRadius: '3px', fontSize: '0.65rem', marginLeft: '4px' }}>{ticket.taskTimeSlot}</span>}
-                                            <span style={{
-                                                marginLeft: 'auto',
-                                                fontWeight: 700,
-                                                color: (() => {
-                                                    const dateStr = ticket.displayDate || ticket.date;
-                                                    if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return 'var(--text-secondary)';
-                                                    const d = new Date(dateStr + 'T00:00:00');
-                                                    if (isNaN(d.getTime())) return 'var(--text-secondary)';
-                                                    const days = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
-                                                    return days > 5 ? '#ef4444' : (days > 2 ? '#f59e0b' : 'var(--text-secondary)');
-                                                })()
-                                            }}>
+                        isConductor && conductorFilter === 'completed' && groupedCompletedTickets ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                {groupedCompletedTickets.map(([date, groupTickets]) => (
+                                    <div key={date} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                        {/* Cabecera de fecha agrupada */}
+                                        <div style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '0.75rem', 
+                                            padding: '0.4rem 0.5rem',
+                                            position: 'sticky',
+                                            top: '0',
+                                            backgroundColor: 'var(--background)',
+                                            zIndex: 10,
+                                        }}>
+                                            <div style={{ backgroundColor: '#22c55e', width: '8px', height: '8px', borderRadius: '50%' }}></div>
+                                            <h4 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
                                                 {(() => {
-                                                    const dateStr = ticket.displayDate || ticket.date;
-                                                    if (!dateStr || dateStr === 'Pendiente' || dateStr === 'Sin fecha') return '-';
-                                                    const d = new Date(dateStr + 'T00:00:00');
-                                                    if (isNaN(d.getTime())) return '-';
-                                                    const days = Math.floor((new Date() - d) / (1000 * 60 * 60 * 24));
-                                                    return `${days}d`;
+                                                    if (date === 'Sin Fecha') return 'FECHA NO DEFINIDA';
+                                                    const d = new Date(date + 'T00:00:00');
+                                                    if (isNaN(d.getTime())) return date;
+                                                    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                                                    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                                                    return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
                                                 })()}
-                                            </span>
+                                            </h4>
+                                            <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, rgba(34, 197, 94, 0.2), transparent)' }}></div>
                                         </div>
+                                        {groupTickets.map((ticket) => renderTicketCard(ticket))}
                                     </div>
-
-                                    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
-                                        <Link href={`/dashboard/tickets/${ticket.id}`} style={{ flex: 1 }}>
-                                            <Button variant="secondary" icon={Eye} style={{ width: '100%', padding: isConductor ? '0.5rem' : '0.9rem', fontSize: isConductor ? '0.78rem' : '0.9rem', height: isConductor ? '36px' : 'auto' }}>DETALLES</Button>
-                                        </Link>
-                                        
-                                        {ticket.isCompleted && (
-                                            <Button 
-                                                variant="success" 
-                                                icon={Download}
-                                                onClick={() => handleDownloadRemito(ticket)}
-                                                style={{ 
-                                                    flex: 1, 
-                                                    padding: isConductor ? '0.5rem' : '0.9rem', 
-                                                    fontSize: isConductor ? '0.78rem' : '0.9rem', 
-                                                    height: isConductor ? '36px' : 'auto',
-                                                    backgroundColor: '#22c55e',
-                                                    borderColor: '#22c55e',
-                                                    color: 'white',
-                                                    fontWeight: 'bold'
-                                                }}
-                                            >
-                                                REMITO
-                                            </Button>
-                                        )}
-
-                                        {/* Atajo de WhatsApp para móvil (solo si no está completado) */}
-                                        {!ticket.isCompleted && ticket.parentTicket?.deliveryDetails?.contactPhone && (
-                                            <Button 
-                                                variant="success" 
-                                                onClick={() => window.open(`https://wa.me/${ticket.parentTicket.deliveryDetails.contactPhone.replace(/\D/g, '')}`, '_blank')}
-                                                style={{ width: isConductor ? '36px' : '56px', height: isConductor ? '36px' : '52px', flexShrink: 0, padding: 0 }}
-                                            >
-                                                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" style={{ width: isConductor ? '16px' : '24px', height: isConductor ? '16px' : '24px' }} alt="WA" />
-                                            </Button>
-                                        )}
-
-                                        {/* Atajo de Navegación para móvil (solo si no está completado) */}
-                                        {!ticket.isCompleted && ticket.displayAddress !== 'Sin dirección' && (
-                                            <Button 
-                                                variant="secondary" 
-                                                onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`, '_blank')}
-                                                style={{ width: isConductor ? '36px' : '56px', height: isConductor ? '36px' : '52px', flexShrink: 0, color: 'var(--primary-color)', fontSize: isConductor ? '0.9rem' : 'inherit' }}
-                                            >
-                                                📍
-                                            </Button>
-                                        )}
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: isConductor ? '0.5rem' : '1rem' }}>
+                                {sortedAndFilteredTickets.map((ticket) => renderTicketCard(ticket))}
+                            </div>
+                        )
                     )}
                 </div>
             </Card>
