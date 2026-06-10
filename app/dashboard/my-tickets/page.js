@@ -330,31 +330,49 @@ export default function MyTicketsPage() {
             }
         }
 
-        // Sort: "Para Coordinar" always top, then apply user sort config or default
-        result.sort((a, b) => {
-            const isCoordA = a.displayStatus === 'Para Coordinar';
-            const isCoordB = b.displayStatus === 'Para Coordinar';
+        // Sort: if completed view, sort by completion date/time (most recent first)
+        if (isConductor && conductorFilter === 'completed') {
+            result.sort((a, b) => {
+                const infoA = a.caseData?.deliveryInfo || a.caseData?.delivery_info || a.parentTicket?.deliveryDetails || a.logistics?.deliveryInfo || a.deliveryDetails || {};
+                const infoB = b.caseData?.deliveryInfo || b.caseData?.delivery_info || b.parentTicket?.deliveryDetails || b.logistics?.deliveryInfo || b.deliveryDetails || {};
+                
+                const timeA = infoA.deliveredAt || infoA.delivered_at || '';
+                const timeB = infoB.deliveredAt || infoB.delivered_at || '';
+                
+                if (timeA && timeB) {
+                    return new Date(timeB) - new Date(timeA); // Más recientes arriba
+                }
+                if (timeA) return -1;
+                if (timeB) return 1;
+                return 0;
+            });
+        } else {
+            // Sort: "Para Coordinar" always top, then apply user sort config or default
+            result.sort((a, b) => {
+                const isCoordA = a.displayStatus === 'Para Coordinar';
+                const isCoordB = b.displayStatus === 'Para Coordinar';
 
-            if (isCoordA && !isCoordB) return -1;
-            if (!isCoordA && isCoordB) return 1;
+                if (isCoordA && !isCoordB) return -1;
+                if (!isCoordA && isCoordB) return 1;
 
-            // If both are "Para Coordinar" or both are NOT, apply other sorts
-            if (sortConfig.key === 'optimized' && optimizedOrder) {
-                const idxA = optimizedOrder.indexOf(a.id);
-                const idxB = optimizedOrder.indexOf(b.id);
-                const safeIdxA = idxA === -1 ? 9999 : idxA;
-                const safeIdxB = idxB === -1 ? 9999 : idxB;
-                return safeIdxA - safeIdxB;
-            }
+                // If both are "Para Coordinar" or both are NOT, apply other sorts
+                if (sortConfig.key === 'optimized' && optimizedOrder) {
+                    const idxA = optimizedOrder.indexOf(a.id);
+                    const idxB = optimizedOrder.indexOf(b.id);
+                    const safeIdxA = idxA === -1 ? 9999 : idxA;
+                    const safeIdxB = idxB === -1 ? 9999 : idxB;
+                    return safeIdxA - safeIdxB;
+                }
 
-            if (sortConfig.key) {
-                const valA = a[sortConfig.key] || '';
-                const valB = b[sortConfig.key] || '';
-                if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-            }
-            return 0; // Default order
-        });
+                if (sortConfig.key) {
+                    const valA = a[sortConfig.key] || '';
+                    const valB = b[sortConfig.key] || '';
+                    if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                }
+                return 0; // Default order
+            });
+        }
 
         return result;
     }, [myAssignedItems, filter, sortConfig, columnFilters, optimizedOrder, conductorFilter]);
