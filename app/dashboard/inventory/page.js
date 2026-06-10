@@ -1406,6 +1406,7 @@ export default function InventoryPage() {
     // Helper: Apply country filter to assets (same logic as filteredAssets)
     const applyCountryFilter = (assetList) => {
         if (!assetList) return [];
+        if (countryFilter === 'Todos') return assetList;
         return assetList.filter(a => {
             if (a.country) {
                 return a.country.toLowerCase().includes(countryFilter.toLowerCase());
