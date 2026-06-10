@@ -7,7 +7,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { ServiceMap } from '../../components/ui/ServiceMap';
 import { useStore } from '../../../lib/store';
-import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon, Route, StickyNote, MessageSquare, MapPin } from 'lucide-react';
+import { Plus, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, User, Truck, CreditCard, TrendingUp, Map as MapIcon, Route, StickyNote, MessageSquare, MapPin, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useJsApiLoader } from '@react-google-maps/api';
