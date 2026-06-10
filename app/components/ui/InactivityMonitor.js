@@ -63,10 +63,9 @@ export function InactivityMonitor() {
     useEffect(() => {
         if (!currentUser) return;
 
-        // Inicializar actividad en localStorage si no existe
-        if (!localStorage.getItem(STORAGE_KEY)) {
-            localStorage.setItem(STORAGE_KEY, Date.now().toString());
-        }
+        // Siempre reiniciar la actividad al detectar un usuario autenticado
+        // (evita logout inmediato por timestamps desactualizados de sesiones anteriores)
+        localStorage.setItem(STORAGE_KEY, Date.now().toString());
 
         const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
 
