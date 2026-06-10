@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useMemo } from 'react';
+import { generateTicketPDF } from '../../../lib/pdf-generator';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -33,6 +34,7 @@ export default function MyTicketsPage() {
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', requester: '' });
+    const [conductorFilter, setConductorFilter] = useState('active'); // 'active', 'inRoute', 'toCoordinate', 'completed'
     const [selectedTickets, setSelectedTickets] = useState([]);
 
     // Route Optimization State
@@ -65,7 +67,9 @@ export default function MyTicketsPage() {
             
             if (isMeByName || isMeById) {
                 const taskStatus = task.status || 'Pendiente';
-                if (['Entregado', 'Finalizado', 'Resuelto', 'Cerrado', 'Caso SFDC Cerrado', 'Cancelado', 'No requiere accion'].includes(taskStatus)) return;
+                const isCompleted = ['Entregado', 'Finalizado', 'Resuelto', 'Cerrado', 'Caso SFDC Cerrado'].includes(taskStatus);
+                const isCancelled = ['Cancelado', 'No requiere accion'].includes(taskStatus);
+                if (isCancelled) return; // Omitir cancelados
 
                 const pTicket = allTickets.find(t => t && String(t.id) === String(task.ticket_id || task.ticketId));
                 
@@ -73,6 +77,7 @@ export default function MyTicketsPage() {
                     id: pTicket?.id || task.ticket_id || 'N/A',
                     taskId: task.id,
                     isMainTicket: false,
+                    isCompleted,
                     displaySubject: task.subject || task.items || pTicket?.subject || 'Gestión de Activos',
                     displayId: task.case_number || task.caseNumber || (pTicket?.id ? String(pTicket.id).substring(0, 8) : 'SUB-CASE'),
                     displayAddress: task.address || pTicket?.logistics?.address || 'Dirección no especificada',
@@ -112,8 +117,9 @@ export default function MyTicketsPage() {
                 const tStatus = ticket.status || 'Abierto';
                 const lStatus = ticket.logistics?.status || 'Pendiente';
                 
-                if (['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado', 'Cancelado'].includes(tStatus)) return;
-                if (['Entregado', 'Finalizado'].includes(lStatus)) return;
+                const isCompleted = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(tStatus) || ['Entregado', 'Finalizado'].includes(lStatus);
+                const isCancelled = tStatus === 'Cancelado' || lStatus === 'Cancelado';
+                if (isCancelled) return; // Omitir cancelados
 
                 items.push({
                     ...ticket,
@@ -123,6 +129,7 @@ export default function MyTicketsPage() {
                     displayDate: ticket.logistics?.date || 'Sin fecha',
                     displayStatus: ticket.logistics?.status || 'Pendiente',
                     isMainTicket: true,
+                    isCompleted,
                     taskId: null,
                     instructions: ticket.instructions || '',
                     hasNewNotes: (() => {
@@ -310,6 +317,19 @@ export default function MyTicketsPage() {
             return matchesSearch && matchesStatus && matchesRequester;
         });
 
+        // Filtrado específico para conductor según la pestaña activa
+        if (isConductor) {
+            if (conductorFilter === 'active') {
+                result = result.filter(item => !item.isCompleted);
+            } else if (conductorFilter === 'inRoute') {
+                result = result.filter(item => !item.isCompleted && item.displayStatus === 'En Transito');
+            } else if (conductorFilter === 'toCoordinate') {
+                result = result.filter(item => !item.isCompleted && (item.displayStatus === 'Para Coordinar' || item.displayStatus === 'Pendiente'));
+            } else if (conductorFilter === 'completed') {
+                result = result.filter(item => item.isCompleted);
+            }
+        }
+
         // Sort: "Para Coordinar" always top, then apply user sort config or default
         result.sort((a, b) => {
             const isCoordA = a.displayStatus === 'Para Coordinar';
@@ -337,7 +357,7 @@ export default function MyTicketsPage() {
         });
 
         return result;
-    }, [myAssignedItems, filter, sortConfig, columnFilters, optimizedOrder]);
+    }, [myAssignedItems, filter, sortConfig, columnFilters, optimizedOrder, conductorFilter]);
 
     const stats = useMemo(() => {
         try {
@@ -346,7 +366,7 @@ export default function MyTicketsPage() {
             const currentYear = now.getFullYear();
             const currentMonth = now.getMonth(); // 0-indexed
             
-            const list = Array.isArray(sortedAndFilteredTickets) ? sortedAndFilteredTickets : [];
+            const list = Array.isArray(myAssignedItems) ? myAssignedItems : [];
             const allTickets = Array.isArray(tickets) ? tickets : [];
             const allTasks = Array.isArray(logisticsTasks) ? logisticsTasks : [];
             
@@ -460,6 +480,94 @@ export default function MyTicketsPage() {
         return <span style={{ marginLeft: '4px', color: 'var(--primary-color)' }}>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>;
     };
 
+    const handleDownloadRemito = (ticket) => {
+        const parentTicket = ticket.parentTicket || ticket;
+        const caseData = ticket.caseData || {};
+        
+        // 1. Normalizar activos de hardware
+        let associatedAssets = [];
+        if (caseData.assets && caseData.assets.length > 0) {
+            associatedAssets = caseData.assets;
+        } else if (parentTicket.associatedAssets && parentTicket.associatedAssets.length > 0) {
+            associatedAssets = parentTicket.associatedAssets;
+        } else if (parentTicket.associatedCases && parentTicket.associatedCases.length > 0 && ticket.legacyCaseIndex !== undefined) {
+            const legCase = parentTicket.associatedCases[ticket.legacyCaseIndex];
+            if (legCase && legCase.assets) associatedAssets = legCase.assets;
+        } else if (parentTicket.assetInfo?.serial) {
+            associatedAssets = [{
+                serial: parentTicket.assetInfo.serial,
+                type: parentTicket.assetInfo.model || 'Hardware',
+                name: parentTicket.assetInfo.name || '-'
+            }];
+        }
+
+        // 2. Normalizar accesorios
+        const mappedAccessories = {};
+        const rawAccessories = caseData.accessories || (ticket.legacyCaseIndex !== undefined ? parentTicket.associatedCases[ticket.legacyCaseIndex]?.accessories : null) || parentTicket.accessories;
+        
+        if (Array.isArray(rawAccessories)) {
+            rawAccessories.forEach(acc => {
+                const name = typeof acc === 'string' ? acc : (acc.name || acc);
+                if (name === 'Mochila Técnica' || name === 'backpack') {
+                    mappedAccessories.backpack = true;
+                } else if (name === 'Filtro de Pantalla' || name === 'screenFilter') {
+                    mappedAccessories.screenFilter = true;
+                } else if (name === 'Mouse Óptico' || name === 'mouse') {
+                    mappedAccessories.mouse = true;
+                } else if (name === 'Teclado USB' || name === 'keyboard') {
+                    mappedAccessories.keyboard = true;
+                } else if (name === 'Auriculares con Micrófono' || name === 'headset') {
+                    mappedAccessories.headset = true;
+                } else if (name === 'Cargador Original' || name === 'charger') {
+                    mappedAccessories.charger = true;
+                } else if (name) {
+                    mappedAccessories[name] = true;
+                }
+            });
+        } else if (rawAccessories && typeof rawAccessories === 'object') {
+            Object.assign(mappedAccessories, rawAccessories);
+        }
+
+        // 3. Normalizar Yubikeys
+        const rawYubikeys = caseData.yubikeys || parentTicket.yubikeys || [];
+        const mappedYubikeys = (Array.isArray(rawYubikeys) ? rawYubikeys : []).map(yk => ({
+            serial: typeof yk === 'string' ? yk : yk.serial,
+            type: (typeof yk === 'object' && yk?.type) || caseData.logistics?.type || parentTicket.logistics?.type || 'Entrega'
+        }));
+
+        // 4. Crear ticket virtual compatible
+        const virtualTicket = {
+            ...parentTicket,
+            id: parentTicket.id,
+            subject: ticket.displaySubject || parentTicket.subject,
+            associatedAssets,
+            accessories: mappedAccessories,
+            yubikeys: mappedYubikeys,
+            logistics: {
+                ...(parentTicket.logistics || {}),
+                method: caseData.method || parentTicket.logistics?.method,
+                date: caseData.date || parentTicket.logistics?.date,
+                timeSlot: caseData.timeSlot || parentTicket.logistics?.timeSlot,
+                status: caseData.status || parentTicket.logistics?.status,
+                phone: parentTicket.logistics?.phone || '',
+                email: parentTicket.logistics?.email || '',
+                address: ticket.displayAddress || parentTicket.logistics?.address || '',
+                deliveryPerson: caseData.deliveryPerson || parentTicket.logistics?.deliveryPerson || '',
+                type: (caseData.method || parentTicket.logistics?.method) === 'Recupero' ? 'Recupero' : 'Entrega'
+            }
+        };
+
+        const deliveryInfo = caseData.deliveryInfo || caseData.delivery_info || parentTicket.deliveryDetails || {};
+
+        generateTicketPDF(virtualTicket, globalAssets, {
+            receivedBy: deliveryInfo.receivedBy || deliveryInfo.received_by || '',
+            dni: deliveryInfo.dni || '',
+            notes: deliveryInfo.notes || '',
+            actualTime: deliveryInfo.actualTime || deliveryInfo.actual_time || '',
+            deliveredAt: deliveryInfo.deliveredAt || deliveryInfo.delivered_at || ''
+        }, 'download');
+    };
+
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             <div className="flex-mobile-column" style={{ 
@@ -486,7 +594,19 @@ export default function MyTicketsPage() {
             }}>
                 {/* CARD 1: TOTAL (Only shown in driver view as first card) */}
                 {isConductor && (
-                    <Card style={{ padding: '0.4rem 0.5rem', position: 'relative', overflow: 'hidden' }}>
+                    <Card 
+                        onClick={() => setConductorFilter('active')}
+                        style={{ 
+                            padding: '0.4rem 0.5rem', 
+                            position: 'relative', 
+                            overflow: 'hidden',
+                            cursor: 'pointer',
+                            border: conductorFilter === 'active' ? '2px solid var(--primary-color)' : '1px solid var(--border)',
+                            transform: conductorFilter === 'active' ? 'scale(1.02)' : 'none',
+                            transition: 'all 0.2s ease',
+                            backgroundColor: conductorFilter === 'active' ? 'rgba(59, 130, 246, 0.04)' : 'var(--surface)'
+                        }}
+                    >
                         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <p style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
@@ -495,13 +615,25 @@ export default function MyTicketsPage() {
                                 <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: 'var(--primary-color)' }} />
                             </div>
                             <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: '0.1rem 0 0 0', color: 'var(--text-main)' }}>
-                                {myAssignedItems.length}
+                                {myAssignedItems.filter(item => !item.isCompleted).length}
                             </h2>
                         </div>
                     </Card>
                 )}
 
-                <Card style={{ padding: isConductor ? '0.4rem 0.5rem' : '1.5rem', position: 'relative', overflow: 'hidden' }}>
+                <Card 
+                    onClick={() => isConductor && setConductorFilter('inRoute')}
+                    style={{ 
+                        padding: isConductor ? '0.4rem 0.5rem' : '1.5rem', 
+                        position: 'relative', 
+                        overflow: 'hidden',
+                        cursor: isConductor ? 'pointer' : 'default',
+                        border: isConductor && conductorFilter === 'inRoute' ? '2px solid #3b82f6' : '1px solid var(--border)',
+                        transform: isConductor && conductorFilter === 'inRoute' ? 'scale(1.02)' : 'none',
+                        transition: 'all 0.2s ease',
+                        backgroundColor: isConductor && conductorFilter === 'inRoute' ? 'rgba(59, 130, 246, 0.04)' : 'var(--surface)'
+                    }}
+                >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ flex: 1 }}>
                             <p style={{ fontSize: isConductor ? '0.62rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0, textTransform: isConductor ? 'uppercase' : 'none', letterSpacing: isConductor ? '0.02em' : 'normal' }}>
@@ -521,7 +653,19 @@ export default function MyTicketsPage() {
                     </div>
                 </Card>
 
-                <Card style={{ padding: isConductor ? '0.4rem 0.5rem' : '1.5rem', position: 'relative', overflow: 'hidden' }}>
+                <Card 
+                    onClick={() => isConductor && setConductorFilter('toCoordinate')}
+                    style={{ 
+                        padding: isConductor ? '0.4rem 0.5rem' : '1.5rem', 
+                        position: 'relative', 
+                        overflow: 'hidden',
+                        cursor: isConductor ? 'pointer' : 'default',
+                        border: isConductor && conductorFilter === 'toCoordinate' ? '2px solid #eab308' : '1px solid var(--border)',
+                        transform: isConductor && conductorFilter === 'toCoordinate' ? 'scale(1.02)' : 'none',
+                        transition: 'all 0.2s ease',
+                        backgroundColor: isConductor && conductorFilter === 'toCoordinate' ? 'rgba(234, 179, 8, 0.04)' : 'var(--surface)'
+                    }}
+                >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ flex: 1 }}>
                             <p style={{ fontSize: isConductor ? '0.62rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0, textTransform: isConductor ? 'uppercase' : 'none', letterSpacing: isConductor ? '0.02em' : 'normal' }}>
@@ -541,7 +685,19 @@ export default function MyTicketsPage() {
                     </div>
                 </Card>
 
-                <Card style={{ padding: isConductor ? '0.4rem 0.5rem' : '1.5rem', position: 'relative', overflow: 'hidden' }}>
+                <Card 
+                    onClick={() => isConductor && setConductorFilter('completed')}
+                    style={{ 
+                        padding: isConductor ? '0.4rem 0.5rem' : '1.5rem', 
+                        position: 'relative', 
+                        overflow: 'hidden',
+                        cursor: isConductor ? 'pointer' : 'default',
+                        border: isConductor && conductorFilter === 'completed' ? '2px solid #22c55e' : '1px solid var(--border)',
+                        transform: isConductor && conductorFilter === 'completed' ? 'scale(1.02)' : 'none',
+                        transition: 'all 0.2s ease',
+                        backgroundColor: isConductor && conductorFilter === 'completed' ? 'rgba(34, 197, 94, 0.04)' : 'var(--surface)'
+                    }}
+                >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ flex: 1 }}>
                             <p style={{ fontSize: isConductor ? '0.62rem' : '0.875rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0, textTransform: isConductor ? 'uppercase' : 'none', letterSpacing: isConductor ? '0.02em' : 'normal' }}>
@@ -728,9 +884,23 @@ export default function MyTicketsPage() {
                                             </Badge>
                                         </td>
                                         <td style={{ padding: '1rem' }}>
-                                            <Link href={`/dashboard/tickets/${ticket.id}`}>
-                                                <Button variant="ghost" size="sm" icon={Eye}>Detalles</Button>
-                                            </Link>
+                                            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                <Link href={`/dashboard/tickets/${ticket.id}`}>
+                                                    <Button variant="ghost" size="sm" icon={Eye}>Detalles</Button>
+                                                </Link>
+                                                {ticket.isCompleted && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        icon={Download} 
+                                                        onClick={() => handleDownloadRemito(ticket)}
+                                                        style={{ color: '#22c55e' }}
+                                                        title="Descargar Remito"
+                                                    >
+                                                        Remito
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -832,8 +1002,28 @@ export default function MyTicketsPage() {
                                             <Button variant="secondary" icon={Eye} style={{ width: '100%', padding: isConductor ? '0.5rem' : '0.9rem', fontSize: isConductor ? '0.78rem' : '0.9rem', height: isConductor ? '36px' : 'auto' }}>DETALLES</Button>
                                         </Link>
                                         
-                                        {/* Atajo de WhatsApp para móvil */}
-                                        {ticket.parentTicket?.deliveryDetails?.contactPhone && (
+                                        {ticket.isCompleted && (
+                                            <Button 
+                                                variant="success" 
+                                                icon={Download}
+                                                onClick={() => handleDownloadRemito(ticket)}
+                                                style={{ 
+                                                    flex: 1, 
+                                                    padding: isConductor ? '0.5rem' : '0.9rem', 
+                                                    fontSize: isConductor ? '0.78rem' : '0.9rem', 
+                                                    height: isConductor ? '36px' : 'auto',
+                                                    backgroundColor: '#22c55e',
+                                                    borderColor: '#22c55e',
+                                                    color: 'white',
+                                                    fontWeight: 'bold'
+                                                }}
+                                            >
+                                                REMITO
+                                            </Button>
+                                        )}
+
+                                        {/* Atajo de WhatsApp para móvil (solo si no está completado) */}
+                                        {!ticket.isCompleted && ticket.parentTicket?.deliveryDetails?.contactPhone && (
                                             <Button 
                                                 variant="success" 
                                                 onClick={() => window.open(`https://wa.me/${ticket.parentTicket.deliveryDetails.contactPhone.replace(/\D/g, '')}`, '_blank')}
@@ -843,8 +1033,8 @@ export default function MyTicketsPage() {
                                             </Button>
                                         )}
 
-                                        {/* Atajo de Navegación para móvil */}
-                                        {ticket.displayAddress !== 'Sin dirección' && (
+                                        {/* Atajo de Navegación para móvil (solo si no está completado) */}
+                                        {!ticket.isCompleted && ticket.displayAddress !== 'Sin dirección' && (
                                             <Button 
                                                 variant="secondary" 
                                                 onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`, '_blank')}
