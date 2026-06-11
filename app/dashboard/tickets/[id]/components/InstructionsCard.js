@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Send, StickyNote, User, Info, Edit3, X, Save } from 'lucide-react';
+import { useSafeSubmit } from '@/lib/useSafeSubmit';
 
 const formatCommentDateTime = (timestamp) => {
     if (!timestamp) return '';
@@ -23,7 +24,7 @@ const formatCommentDateTime = (timestamp) => {
 
 export default function InstructionsCard({ ticket, editedData, setEditedData, updateTicket, currentUser }) {
     const [msgText, setMsgText] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
+    const { isSubmitting: isSaving, safeSubmit: safeSend } = useSafeSubmit();
     const [isEditingContext, setIsEditingContext] = useState(false);
     const [tempContext, setTempContext] = useState(editedData.instructions || '');
     const chatEndRef = useRef(null);
@@ -44,10 +45,6 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
 
     const handleSendMessage = async () => {
         if (!msgText.trim()) return;
-
-        setIsSaving(true);
-        console.log("Enviando mensaje de chat para ticket:", ticket.id);
-        
         const newMessage = {
             id: Date.now(),
             user: currentUser?.name || 'Usuario',
@@ -55,12 +52,10 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
             text: msgText,
             timestamp: new Date().toISOString()
         };
-
         const updatedChat = [...chatLog, newMessage];
-        
-        try {
+        await safeSend(async () => {
+            console.log("Enviando mensaje de chat para ticket:", ticket.id);
             const success = await updateTicket(ticket.id, { chatLog: updatedChat });
-
             if (success) {
                 console.log("Chat guardado exitosamente en DB");
                 setEditedData(prev => ({ ...prev, chatLog: updatedChat }));
@@ -69,30 +64,27 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                 console.error("Fallo al guardar chat en DB (updateTicket devuelto false)");
                 alert("Error: No se pudo guardar el mensaje. Verifique su conexión.");
             }
-        } catch (err) {
+        }).catch(err => {
             console.error("Error crítico enviando chat:", err);
             alert("Error al enviar mensaje: " + err.message);
-        } finally {
-            setIsSaving(false);
-        }
+        });
     };
 
     const handleSaveContext = async () => {
-        setIsSaving(true);
-        const success = await updateTicket(ticket.id, { 
-            instructions: tempContext,
-            instructionsUpdatedBy: currentUser?.name || 'Sistema'
+        await safeSend(async () => {
+            const success = await updateTicket(ticket.id, { 
+                instructions: tempContext,
+                instructionsUpdatedBy: currentUser?.name || 'Sistema'
+            });
+            if (success !== false) {
+                setEditedData(prev => ({ 
+                    ...prev, 
+                    instructions: tempContext, 
+                    instructionsUpdatedBy: currentUser?.name || 'Sistema' 
+                }));
+                setIsEditingContext(false);
+            }
         });
-        
-        if (success !== false) {
-            setEditedData(prev => ({ 
-                ...prev, 
-                instructions: tempContext, 
-                instructionsUpdatedBy: currentUser?.name || 'Sistema' 
-            }));
-            setIsEditingContext(false);
-        }
-        setIsSaving(false);
     };
 
     const handleKeyPress = (e) => {

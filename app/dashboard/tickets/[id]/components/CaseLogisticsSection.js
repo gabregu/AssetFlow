@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useSafeSubmit } from '@/lib/useSafeSubmit';
 import { Badge } from '@/app/components/ui/Badge';
 import { getStatusVariant } from '../../constants';
 import { ChevronDown, ExternalLink, Check } from 'lucide-react';
@@ -99,7 +100,7 @@ export default function CaseLogisticsSection({
         localStateRef.current = initial;
         // setLocalValues(initial); // No se puede llamar set durante render, se hace en useEffect
     }
-    const [isSaving, setIsSaving] = React.useState(false);
+    const { isSubmitting: isSaving, safeSubmit: safeSaveAll } = useSafeSubmit();
     const [isStatusOpen, setIsStatusOpen] = useState(false);
     const statusDropdownRef = useRef(null);
 
@@ -198,46 +199,44 @@ export default function CaseLogisticsSection({
             return { data: true }; // Nada que guardar es éxito
         }
 
-        setIsSaving(true);
-        let currentStatus = state.status || task.status || 'Pendiente';
+        return await safeSaveAll(async () => {
+            let currentStatus = state.status || task.status || 'Pendiente';
 
-        // Aplicar lógica de negocio también en el guardado final
-        const hasLogisticsInfo = !!(state.method || state.delivery_person || state.date);
-        if (hasLogisticsInfo && currentStatus === 'Pendiente') currentStatus = 'Para Coordinar';
-        const readyForTransit = !!(state.date && state.time_slot && currentStatus === 'Para Coordinar');
-        if (readyForTransit) currentStatus = 'En Transito';
+            // Aplicar lógica de negocio también en el guardado final
+            const hasLogisticsInfo = !!(state.method || state.delivery_person || state.date);
+            if (hasLogisticsInfo && currentStatus === 'Pendiente') currentStatus = 'Para Coordinar';
+            const readyForTransit = !!(state.date && state.time_slot && currentStatus === 'Para Coordinar');
+            if (readyForTransit) currentStatus = 'En Transito';
 
-        const payload = {
-            status: currentStatus,
-            method: state.method,
-            delivery_person: state.delivery_person,
-            assigned_to: state.assigned_to,
-            date: state.date,
-            time_slot: state.time_slot,
-            coordinated_by: state.coordinated_by,
-            tracking_number: state.tracking_number,
-            address: state.address,
-            deliveryInfo: state.deliveryInfo,
-        };
+            const payload = {
+                status: currentStatus,
+                method: state.method,
+                delivery_person: state.delivery_person,
+                assigned_to: state.assigned_to,
+                date: state.date,
+                time_slot: state.time_slot,
+                coordinated_by: state.coordinated_by,
+                tracking_number: state.tracking_number,
+                address: state.address,
+                deliveryInfo: state.deliveryInfo,
+            };
 
-        console.log("Sending saveAll payload:", payload);
-
-        try {
+            console.log("Sending saveAll payload:", payload);
             const result = await onUpdateTask(payload);
             console.log("saveAll result:", result);
             
             if (result?.error) {
                 alert("Error al guardar los cambios: " + (result.error.message || "Error desconocido"));
-                return result;
+                throw result.error;
             }
             return result;
-        } catch (err) {
+        }).catch(err => {
             console.error("Save all failed:", err);
-            alert("Error crítico al guardar los cambios.");
+            if (!err?.message?.includes('Error al guardar')) {
+                alert("Error crítico al guardar los cambios.");
+            }
             return { error: err };
-        } finally {
-            setIsSaving(false);
-        }
+        });
     };
 
     // Exponer saveAll al padre vía ref de forma robusta

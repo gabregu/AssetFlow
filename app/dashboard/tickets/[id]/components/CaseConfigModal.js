@@ -11,6 +11,7 @@ import DeliveryVerificationModal from './DeliveryVerificationModal';
 import { FileText } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdf-generator';
 import { Button } from '@/app/components/ui/Button';
+import { useSafeSubmit } from '@/lib/useSafeSubmit';
 
 export default function CaseConfigModal({
     ticket,
@@ -52,6 +53,7 @@ export default function CaseConfigModal({
 
     // Ref para poder llamar saveAll() desde CaseLogisticsSection antes de cerrar
     const logisticsSaveRef = useRef(null);
+    const { isSubmitting: isSavingModal, safeSubmit: safeSaveModal } = useSafeSubmit();
 
     const [subjectInput, setSubjectInput] = useState('');
 
@@ -257,16 +259,17 @@ export default function CaseConfigModal({
                         <div style={{ marginTop: '1rem', paddingTop: '1.5rem', borderTop: '2px solid var(--border)' }}>
                             <Button 
                                 variant="primary" 
-                                style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', fontWeight: 800, borderRadius: '12px' }}
-                                onClick={async () => {
+                                style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', fontWeight: 800, borderRadius: '12px', opacity: isSavingModal ? 0.7 : 1 }}
+                                disabled={isSavingModal}
+                                onClick={() => safeSaveModal(async () => {
                                     if (logisticsSaveRef.current) {
                                         const result = await logisticsSaveRef.current();
                                         if (result?.error) return; // No cerrar si hubo error
                                     }
                                     setSelectedCaseIndex(null);
-                                }}
+                                })}
                             >
-                                LISTO / GUARDAR CAMBIOS
+                                {isSavingModal ? 'Guardando...' : 'LISTO / GUARDAR CAMBIOS'}
                             </Button>
                         </div>
                     </div>

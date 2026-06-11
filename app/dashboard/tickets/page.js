@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
+import { useSafeSubmit } from '../../../lib/useSafeSubmit';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -497,12 +498,10 @@ export default function TicketsPage() {
         }
     };
 
-    const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+    const { isSubmitting: isSubmittingManual, safeSubmit: safeSubmitTicket } = useSafeSubmit();
 
     const handleCreate = async (e) => {
         if (e) e.preventDefault();
-        
-        if (isSubmittingManual) return;
         
         if (!newTicket.subject || !newTicket.requester) {
             showToast("Por favor completa el Asunto y Solicitante", "error");
@@ -510,8 +509,7 @@ export default function TicketsPage() {
             return;
         }
 
-        setIsSubmittingManual(true);
-        try {
+        await safeSubmitTicket(async () => {
             const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t\0]+/g, ' ') : str;
             
             const ticketData = {
@@ -546,13 +544,11 @@ export default function TicketsPage() {
                 showToast("Servicio creado correctamente", "success");
                 router.push(`/dashboard/tickets/${createdTicket.id}`);
             }
-        } catch (error) {
+        }).catch(error => {
             console.error("Error creating ticket:", error);
             showToast("Error al crear el servicio: " + (error.message || "Error desconocido"), "error");
             alert("Error del sistema al guardar: " + (error.message || JSON.stringify(error)) + "\nPor favor avísale a soporte.");
-        } finally {
-            setIsSubmittingManual(false);
-        }
+        });
     };
 
     const handleSort = (key) => {

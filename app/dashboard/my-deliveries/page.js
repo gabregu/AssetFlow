@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSafeSubmit } from '../../../lib/useSafeSubmit';
 import { 
     Truck, CheckCircle, Package, Send, Calendar, Clock, MapPin, Search, ChevronRight, Navigation, CheckCircle2, ChevronDown, ListFilter, LayoutGrid, List, MessageSquare, StickyNote,
     Filter,
@@ -40,13 +41,9 @@ export default function MyDeliveriesPage() {
     const uName = (currentUser?.name || '').trim().toLowerCase();
     const uId = String(currentUser?.id || currentUser?.uid || currentUser?.uuid || '');
 
-    // Refresco automático al cargar y al enfocar la pestaña
+    // Refresco al cargar - sin escuchar window.focus para evitar recargas durante descarga de PDF
     useEffect(() => {
         refreshData();
-        
-        const handleFocus = () => refreshData();
-        window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
     }, []);
 
 
@@ -59,7 +56,7 @@ export default function MyDeliveriesPage() {
     const [editingOrderId, setEditingOrderId] = useState(null);
     const [editOrderValue, setEditOrderValue] = useState("");
     const [isScannerOpen, setIsScannerOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { isSubmitting, safeSubmit: safeRegister } = useSafeSubmit();
     
     // Stats and Toast State
 
@@ -319,15 +316,12 @@ export default function MyDeliveriesPage() {
     const handleDeliverySubmit = async (e) => {
         e.preventDefault();
         
-        if (isSubmitting) return;
-        
         if (!deliveryForm.receivedBy || !deliveryForm.dni) {
             showToast('Nombre y DNI son obligatorios', 'error');
             return;
         }
 
-        setIsSubmitting(true);
-        try {
+        await safeRegister(async () => {
             // Lógica para actualizar usando la nueva tabla de tareas
             if (selectedDelivery.taskId) {
                 // Actualizar la tarea relacional directamente
@@ -390,12 +384,10 @@ export default function MyDeliveriesPage() {
             await refreshData(); // Asegurar sincronización total tras el guardado
             setIsDeliveryModalOpen(false);
             setDeliveryForm({ receivedBy: '', dni: '', notes: '', actualTime: '', sendWhatsapp: false, emailAddress: '' });
-        } catch (error) {
+        }).catch(error => {
             console.error('Error al registrar entrega:', error);
             showToast('Error al guardar los datos', 'error');
-        } finally {
-            setIsSubmitting(false);
-        }
+        });
     };
 
     const handleScanSuccess = (data) => {

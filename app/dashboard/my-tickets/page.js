@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import { useSafeSubmit } from '../../../lib/useSafeSubmit';
 import { generateTicketPDF } from '../../../lib/pdf-generator';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -40,7 +41,7 @@ export default function MyTicketsPage() {
     // Route Optimization State
     const [isOptimizationModalOpen, setIsOptimizationModalOpen] = useState(false);
     const [optimizationOrigin, setOptimizationOrigin] = useState('oficina');
-    const [isOptimizing, setIsOptimizing] = useState(false);
+    const { isSubmitting: isOptimizing, safeSubmit: safeOptimize } = useSafeSubmit();
     const [optimizedOrder, setOptimizedOrder] = useState(null); // Array of ticket IDs in order
 
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'Gerencial';
@@ -211,8 +212,7 @@ export default function MyTicketsPage() {
             alert('El mapa aún se está cargando, por favor intenta nuevamente en unos segundos.');
             return;
         }
-        setIsOptimizing(true);
-        try {
+        await safeOptimize(async () => {
             const geocoder = new window.google.maps.Geocoder();
 
             const originAddress = optimizationOrigin === 'oficina'
@@ -291,13 +291,10 @@ export default function MyTicketsPage() {
             setSortConfig({ key: 'optimized', direction: 'asc' });
             setIsOptimizationModalOpen(false);
             alert('¡Ruta optimizada correctamente!');
-
-        } catch (error) {
+        }).catch(error => {
             console.error(error);
             alert('Error al optimizar ruta: ' + error.message);
-        } finally {
-            setIsOptimizing(false);
-        }
+        });
     };
 
     const sortedAndFilteredTickets = useMemo(() => {
