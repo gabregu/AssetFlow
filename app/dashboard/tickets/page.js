@@ -505,19 +505,20 @@ export default function TicketsPage() {
         
         if (!newTicket.subject || !newTicket.requester) {
             showToast("Por favor completa el Asunto y Solicitante", "error");
-            alert("Por favor completa el Asunto y Solicitante");
             return;
         }
 
         await safeSubmitTicket(async () => {
-            const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t\0]+/g, ' ') : str;
+            const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t\0]+/g, ' ') : String(str || '');
+            
+            const caseNumClean = newTicket.caseNumber ? String(newTicket.caseNumber).trim() : '';
             
             const ticketData = {
                 ...newTicket,
                 subject: clean(newTicket.subject),
                 requester: clean(newTicket.requester),
-                associatedCases: newTicket.caseNumber && newTicket.caseNumber.trim() !== '' ? [{
-                    caseNumber: clean(newTicket.caseNumber).replace(/\s/g, ''),
+                associatedCases: caseNumClean !== '' ? [{
+                    caseNumber: clean(caseNumClean).replace(/\s/g, ''),
                     subject: clean(newTicket.subject),
                     logistics: {
                         address: newTicket.address || newTicket.country ? `${clean(newTicket.address)}, ${clean(newTicket.country)} ${clean(newTicket.zipCode)}`.trim() : '',
@@ -547,7 +548,9 @@ export default function TicketsPage() {
         }).catch(error => {
             console.error("Error creating ticket:", error);
             showToast("Error al crear el servicio: " + (error.message || "Error desconocido"), "error");
-            alert("Error del sistema al guardar: " + (error.message || JSON.stringify(error)) + "\nPor favor avísale a soporte.");
+            setTimeout(() => {
+                alert("Error del sistema al guardar: " + (error.message || JSON.stringify(error)) + "\nPor favor avísale a soporte.");
+            }, 100);
         });
     };
 
