@@ -697,6 +697,8 @@ export default function LogisticsHubPage() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             {(() => {
                                                 const driverName = task.deliveryPerson || task.delivery_person;
+                                                const method = task.method || '';
+                                                
                                                 if (driverName && driverName !== 'Sin Asignar' && driverName !== 'No definido') {
                                                     const initials = getInitials(driverName);
                                                     const color = getDriverColor(driverName);
@@ -722,6 +724,27 @@ export default function LogisticsHubPage() {
                                                         </div>
                                                     );
                                                 }
+                                                
+                                                const methodStr = String(method).toLowerCase();
+                                                const isCorreo = methodStr.includes('correo argentino') || methodStr.trim() === 'correo';
+                                                const isAndreani = methodStr.includes('andreani');
+                                                
+                                                if (isCorreo) {
+                                                    return (
+                                                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#0055A5', color: '#FFE600', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} title="Correo Argentino">
+                                                            CA
+                                                        </div>
+                                                    );
+                                                }
+                                                
+                                                if (isAndreani) {
+                                                    return (
+                                                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#E2001A', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }} title="Andreani">
+                                                            A
+                                                        </div>
+                                                    );
+                                                }
+
                                                 return (
                                                     <>
                                                         <div style={{ width: '24px', height: '24px', background: 'var(--background)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
