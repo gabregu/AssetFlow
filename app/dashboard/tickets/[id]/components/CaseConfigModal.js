@@ -109,7 +109,12 @@ export default function CaseConfigModal({
             caseNumber: currentTask.caseNumber
         };
 
-        generateTicketPDF(virtualTicket, assets, null, action);
+        // setTimeout(0) evita que jsPDF bloquee el hilo principal de React,
+        // lo que causaba que el botón LISTO/GUARDAR CAMBIOS quedara sin respuesta
+        // después de hacer click en "Descargar" en dispositivos móviles.
+        setTimeout(() => {
+            generateTicketPDF(virtualTicket, assets, null, action);
+        }, 0);
     };
 
     return (

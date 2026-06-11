@@ -598,13 +598,16 @@ export default function MyTicketsPage() {
 
         const deliveryInfo = caseData.deliveryInfo || caseData.delivery_info || parentTicket.deliveryDetails || {};
 
-        generateTicketPDF(virtualTicket, globalAssets, {
-            receivedBy: deliveryInfo.receivedBy || deliveryInfo.received_by || '',
-            dni: deliveryInfo.dni || '',
-            notes: deliveryInfo.notes || '',
-            actualTime: deliveryInfo.actualTime || deliveryInfo.actual_time || '',
-            deliveredAt: deliveryInfo.deliveredAt || deliveryInfo.delivered_at || ''
-        }, 'download');
+        // setTimeout(0) evita que jsPDF bloquee el hilo principal en dispositivos móviles
+        setTimeout(() => {
+            generateTicketPDF(virtualTicket, globalAssets, {
+                receivedBy: deliveryInfo.receivedBy || deliveryInfo.received_by || '',
+                dni: deliveryInfo.dni || '',
+                notes: deliveryInfo.notes || '',
+                actualTime: deliveryInfo.actualTime || deliveryInfo.actual_time || '',
+                deliveredAt: deliveryInfo.deliveredAt || deliveryInfo.delivered_at || ''
+            }, 'download');
+        }, 0);
     };
 
     const renderTicketRow = (ticket) => (

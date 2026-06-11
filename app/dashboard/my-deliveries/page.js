@@ -800,10 +800,13 @@ export default function MyDeliveriesPage() {
             )}
 
             {/* Modal de Registro de Entrega */}
+            {/* disableOutsideClick: evita que el modal se cierre al tocar
+                el banner de descarga del PDF en dispositivos mobile */}
             <Modal
                 isOpen={isDeliveryModalOpen}
                 onClose={() => setIsDeliveryModalOpen(false)}
                 title={`Registro de Entrega/Recupero: #${selectedDelivery?.displayId}`}
+                disableOutsideClick={true}
             >
                 <form onSubmit={handleDeliverySubmit}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -966,13 +969,19 @@ export default function MyDeliveriesPage() {
                                         yubikeys: mappedYubikeys
                                     };
 
-                                    generateTicketPDF(virtualTicket, assets, {
-                                        receivedBy: deliveryForm.receivedBy,
-                                        dni: deliveryForm.dni,
-                                        notes: deliveryForm.notes,
-                                        actualTime: deliveryForm.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                        deliveredAt: new Date().toISOString()
-                                    }, 'download');
+                                    // Usamos setTimeout para que el PDF se genere en una
+                                    // microtarea separada y no bloquee el hilo principal de React.
+                                    // Esto evita que el botón CONFIRMAR ENTREGA quede sin respuesta
+                                    // después de descargar el PDF en dispositivos móviles.
+                                    setTimeout(() => {
+                                        generateTicketPDF(virtualTicket, assets, {
+                                            receivedBy: deliveryForm.receivedBy,
+                                            dni: deliveryForm.dni,
+                                            notes: deliveryForm.notes,
+                                            actualTime: deliveryForm.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                            deliveredAt: new Date().toISOString()
+                                        }, 'download');
+                                    }, 0);
                                 }} 
                                 icon={Download}
                                 style={{ 
