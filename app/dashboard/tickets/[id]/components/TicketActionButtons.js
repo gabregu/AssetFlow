@@ -6,15 +6,19 @@ import { Button } from '@/app/components/ui/Button';
 import { useRouter } from 'next/navigation';
 
 export default function TicketActionButtons({
+    ticket,
     editMode,
     setEditMode,
     editedData,
     setEditedData,
     handleUpdate,
-    ticket,
+    handleCreateTask,
+    isLoaded,
     unifiedTasks
 }) {
     const router = useRouter();
+    const [isSaving, setIsSaving] = React.useState(false);
+    const isAssigned = ticket?.status === 'Asignado' || ticket?.status === 'Finalizado';
 
     return (
         <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', gap: '1rem' }}>
@@ -29,8 +33,10 @@ export default function TicketActionButtons({
                             setEditedData(ticket); // Reset
                         }}>Cancelar</Button>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <Button icon={Save} onClick={async () => {
+                            <Button icon={Save} disabled={isSaving} onClick={async () => {
+                                setIsSaving(true);
                                 const result = await handleUpdate();
+                                setIsSaving(false);
                                 if (result && result.error) {
                                     const errSpan = document.getElementById('save-error-msg-main');
                                     if (errSpan) {
@@ -41,7 +47,7 @@ export default function TicketActionButtons({
                                         alert("Error al guardar: " + result.error);
                                     }
                                 }
-                            }}>Guardar Cambios</Button>
+                            }}>{isSaving ? 'Guardando...' : 'Guardar Cambios'}</Button>
                             <span id="save-error-msg-main" style={{ display: 'none', color: 'var(--danger)', fontSize: '0.8rem', fontWeight: 500, maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}></span>
                         </div>
                     </>

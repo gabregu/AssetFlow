@@ -24,6 +24,8 @@ export default function TicketHeader({
     isLoaded,
     unifiedTasks
 }) {
+    const [isSaving, setIsSaving] = React.useState(false);
+
     return (
         <Card style={{ height: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -54,8 +56,10 @@ export default function TicketHeader({
                         <Button variant="ghost" size="sm" onClick={() => setEditContact(true)}>Editar Información</Button>
                     ) : editContact ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <Button size="sm" icon={Save} onClick={async () => {
+                            <Button size="sm" icon={Save} disabled={isSaving} onClick={async () => {
+                                setIsSaving(true);
                                 const result = await handleUpdate();
+                                setIsSaving(false);
                                 if (result && result.success) {
                                     setEditContact(false);
                                 } else if (result && result.error) {
@@ -68,7 +72,7 @@ export default function TicketHeader({
                                         alert("Error al guardar: " + result.error);
                                     }
                                 }
-                            }}>Guardar</Button>
+                            }}>{isSaving ? 'Guardando...' : 'Guardar'}</Button>
                             <span id="save-error-msg" style={{ display: 'none', color: 'var(--danger)', fontSize: '0.8rem', fontWeight: 500, maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}></span>
                         </div>
                     ) : null}
