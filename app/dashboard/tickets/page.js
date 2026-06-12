@@ -619,12 +619,10 @@ export default function TicketsPage() {
                 const valB = b[sortConfig.key] || '';
                 if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
                 if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
-                if (sortConfig.key !== 'requester') {
-                    const reqA = a.requester || '';
-                    const reqB = b.requester || '';
-                    if (reqA < reqB) return -1;
-                    if (reqA > reqB) return 1;
-                }
+                // Si son iguales, ordenamos por ID numérico descendente para que el último creado quede arriba
+                const numA = parseInt((a.id || '').split('-')[1]) || 0;
+                const numB = parseInt((b.id || '').split('-')[1]) || 0;
+                if (numA !== numB) return numB - numA; // Siempre desc para el secundario
                 return 0;
             });
         }
