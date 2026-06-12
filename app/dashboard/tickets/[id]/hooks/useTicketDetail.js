@@ -322,13 +322,12 @@ export function useTicketDetail() {
             if (success !== false) { // updateTicket returns false on error
                 setEditedData(dataToUpdate);
                 setEditMode(false);
-                return true;
+                return { success: true };
             }
-            return false;
+            return { success: false, error: "El servidor rechazó la actualización o la sesión expiró." };
         } catch (error) {
             console.error("Error in handleUpdate:", error);
-            setTimeout(() => alert("Error al actualizar la información del ticket: " + (error.message || error)), 100);
-            return false;
+            return { success: false, error: error.message || String(error) };
         }
     };
 

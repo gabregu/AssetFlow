@@ -53,10 +53,24 @@ export default function TicketHeader({
                     {!editMode && !editContact ? (
                         <Button variant="ghost" size="sm" onClick={() => setEditContact(true)}>Editar Información</Button>
                     ) : editContact ? (
-                        <Button size="sm" icon={Save} onClick={async () => {
-                            const success = await handleUpdate();
-                            if (success) setEditContact(false);
-                        }}>Guardar</Button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <Button size="sm" icon={Save} onClick={async () => {
+                                const result = await handleUpdate();
+                                if (result && result.success) {
+                                    setEditContact(false);
+                                } else if (result && result.error) {
+                                    const errSpan = document.getElementById('save-error-msg');
+                                    if (errSpan) {
+                                        errSpan.textContent = result.error;
+                                        errSpan.style.display = 'block';
+                                        setTimeout(() => { if(errSpan) errSpan.style.display = 'none'; }, 5000);
+                                    } else {
+                                        alert("Error al guardar: " + result.error);
+                                    }
+                                }
+                            }}>Guardar</Button>
+                            <span id="save-error-msg" style={{ display: 'none', color: 'var(--danger)', fontSize: '0.8rem', fontWeight: 500, maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}></span>
+                        </div>
                     ) : null}
                 </div>
             </div>

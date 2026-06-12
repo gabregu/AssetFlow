@@ -28,7 +28,22 @@ export default function TicketActionButtons({
                             setEditMode(false);
                             setEditedData(ticket); // Reset
                         }}>Cancelar</Button>
-                        <Button icon={Save} onClick={handleUpdate}>Guardar Cambios</Button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <Button icon={Save} onClick={async () => {
+                                const result = await handleUpdate();
+                                if (result && result.error) {
+                                    const errSpan = document.getElementById('save-error-msg-main');
+                                    if (errSpan) {
+                                        errSpan.textContent = result.error;
+                                        errSpan.style.display = 'block';
+                                        setTimeout(() => { if(errSpan) errSpan.style.display = 'none'; }, 5000);
+                                    } else {
+                                        alert("Error al guardar: " + result.error);
+                                    }
+                                }
+                            }}>Guardar Cambios</Button>
+                            <span id="save-error-msg-main" style={{ display: 'none', color: 'var(--danger)', fontSize: '0.8rem', fontWeight: 500, maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}></span>
+                        </div>
                     </>
                 ) : (
                     <>
