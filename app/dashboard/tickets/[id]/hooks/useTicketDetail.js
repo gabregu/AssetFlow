@@ -327,7 +327,7 @@ export function useTicketDetail() {
             return false;
         } catch (error) {
             console.error("Error in handleUpdate:", error);
-            alert("Error al actualizar la información del ticket: " + (error.message || error));
+            setTimeout(() => alert("Error al actualizar la información del ticket: " + (error.message || error)), 100);
             return false;
         }
     };
