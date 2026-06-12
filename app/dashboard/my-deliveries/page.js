@@ -56,8 +56,9 @@ export default function MyDeliveriesPage() {
     const [editingOrderId, setEditingOrderId] = useState(null);
     const [editOrderValue, setEditOrderValue] = useState("");
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [showDownloadPrompt, setShowDownloadPrompt] = useState(false);
+    const [completedDeliveryForPdf, setCompletedDeliveryForPdf] = useState(null);
     const { isSubmitting, safeSubmit: safeRegister } = useSafeSubmit();
-    
     // Stats and Toast State
 
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -383,6 +384,11 @@ export default function MyDeliveriesPage() {
             showToast('Entrega registrada correctamente', 'success');
             await refreshData(); // Asegurar sincronización total tras el guardado
             setIsDeliveryModalOpen(false);
+            setCompletedDeliveryForPdf({
+                delivery: selectedDelivery,
+                form: { ...deliveryForm }
+            });
+            setShowDownloadPrompt(true);
             setDeliveryForm({ receivedBy: '', dni: '', notes: '', actualTime: '', sendWhatsapp: false, emailAddress: '' });
         }).catch(error => {
             console.error('Error al registrar entrega:', error);
@@ -904,100 +910,6 @@ export default function MyDeliveriesPage() {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem' }}>
-                            <Button 
-                                type="button" 
-                                onClick={() => {
-                                    if (!deliveryForm.receivedBy || !deliveryForm.dni) {
-                                        showToast('Recomendación: Completa Nombre y DNI antes de descargar', 'warning');
-                                    }
-
-                                    // 1. Normalizar activos de hardware
-                                    let associatedAssets = [];
-                                    if (selectedDelivery.taskAssets && selectedDelivery.taskAssets.length > 0) {
-                                        associatedAssets = selectedDelivery.taskAssets;
-                                    } else if (selectedDelivery.associatedAssets && selectedDelivery.associatedAssets.length > 0) {
-                                        associatedAssets = selectedDelivery.associatedAssets;
-                                    } else if (selectedDelivery.assetInfo?.serial) {
-                                        associatedAssets = [{
-                                            serial: selectedDelivery.assetInfo.serial,
-                                            type: selectedDelivery.assetInfo.model || 'Hardware',
-                                            name: selectedDelivery.assetInfo.name || '-'
-                                        }];
-                                    }
-
-                                    // 2. Normalizar accesorios (objeto de flags esperado por el PDF)
-                                    const mappedAccessories = {};
-                                    if (Array.isArray(selectedDelivery.taskAccessories)) {
-                                        selectedDelivery.taskAccessories.forEach(acc => {
-                                            const name = typeof acc === 'string' ? acc : (acc.name || acc);
-                                            if (name === 'Mochila Técnica' || name === 'backpack') {
-                                                mappedAccessories.backpack = true;
-                                            } else if (name === 'Filtro de Pantalla' || name === 'screenFilter') {
-                                                mappedAccessories.screenFilter = true;
-                                            } else if (name === 'Mouse Óptico' || name === 'mouse') {
-                                                mappedAccessories.mouse = true;
-                                            } else if (name === 'Teclado USB' || name === 'keyboard') {
-                                                mappedAccessories.keyboard = true;
-                                            } else if (name === 'Auriculares con Micrófono' || name === 'headset') {
-                                                mappedAccessories.headset = true;
-                                            } else if (name === 'Cargador Original' || name === 'charger') {
-                                                mappedAccessories.charger = true;
-                                            } else if (name) {
-                                                mappedAccessories[name] = true;
-                                            }
-                                        });
-                                    } else if (selectedDelivery.taskAccessories && typeof selectedDelivery.taskAccessories === 'object') {
-                                        Object.assign(mappedAccessories, selectedDelivery.taskAccessories);
-                                    } else {
-                                        Object.assign(mappedAccessories, selectedDelivery.accessories || {});
-                                    }
-
-                                    // 3. Normalizar Yubikeys
-                                    const mappedYubikeys = (selectedDelivery.taskYubikeys && selectedDelivery.taskYubikeys.length > 0
-                                        ? selectedDelivery.taskYubikeys
-                                        : selectedDelivery.yubikeys || []
-                                    ).map(yk => ({
-                                        serial: typeof yk === 'string' ? yk : yk.serial,
-                                        type: (typeof yk === 'object' && yk?.type) || selectedDelivery.logistics?.type || 'Entrega'
-                                    }));
-
-                                    // 4. Crear ticket virtual compatible
-                                    const virtualTicket = {
-                                        ...selectedDelivery,
-                                        associatedAssets,
-                                        accessories: mappedAccessories,
-                                        yubikeys: mappedYubikeys
-                                    };
-
-                                    // Usamos setTimeout para que el PDF se genere en una
-                                    // microtarea separada y no bloquee el hilo principal de React.
-                                    // Esto evita que el botón CONFIRMAR ENTREGA quede sin respuesta
-                                    // después de descargar el PDF en dispositivos móviles.
-                                    setTimeout(() => {
-                                        generateTicketPDF(virtualTicket, assets, {
-                                            receivedBy: deliveryForm.receivedBy,
-                                            dni: deliveryForm.dni,
-                                            notes: deliveryForm.notes,
-                                            actualTime: deliveryForm.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                            deliveredAt: new Date().toISOString()
-                                        }, 'download');
-                                    }, 0);
-                                }} 
-                                icon={Download}
-                                style={{ 
-                                    padding: '0.75rem 1.5rem', 
-                                    fontSize: '1rem', 
-                                    width: '100%', 
-                                    backgroundColor: '#25D366', 
-                                    borderColor: '#25D366',
-                                    color: 'white',
-                                    fontWeight: 'bold',
-                                    boxShadow: '0 4px 12px rgba(37, 211, 102, 0.2)'
-                                }}
-                            >
-                                DESCARGAR REMITO PDF
-                            </Button>
-                            
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <Button 
                                     type="button" 
@@ -1020,6 +932,110 @@ export default function MyDeliveriesPage() {
                         </div>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Modal de Prompt de Descarga de PDF */}
+            <Modal
+                isOpen={showDownloadPrompt}
+                onClose={() => setShowDownloadPrompt(false)}
+                title="Entrega Registrada con Éxito"
+            >
+                <div style={{ textAlign: 'center', padding: '1rem' }}>
+                    <CheckCircle2 size={48} style={{ color: '#10b981', margin: '0 auto 1rem' }} />
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>La entrega se guardó correctamente.</h3>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>¿Desea descargar el Remito PDF?</p>
+                    
+                    <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
+                        <Button 
+                            type="button" 
+                            onClick={() => {
+                                if (completedDeliveryForPdf) {
+                                    const { delivery, form } = completedDeliveryForPdf;
+                                    // 1. Normalizar activos de hardware
+                                    let associatedAssets = [];
+                                    if (delivery.taskAssets && delivery.taskAssets.length > 0) {
+                                        associatedAssets = delivery.taskAssets;
+                                    } else if (delivery.associatedAssets && delivery.associatedAssets.length > 0) {
+                                        associatedAssets = delivery.associatedAssets;
+                                    } else if (delivery.assetInfo?.serial) {
+                                        associatedAssets = [{
+                                            serial: delivery.assetInfo.serial,
+                                            type: delivery.assetInfo.model || 'Hardware',
+                                            name: delivery.assetInfo.name || '-'
+                                        }];
+                                    }
+
+                                    // 2. Normalizar accesorios
+                                    const mappedAccessories = {};
+                                    if (Array.isArray(delivery.taskAccessories)) {
+                                        delivery.taskAccessories.forEach(acc => {
+                                            const name = typeof acc === 'string' ? acc : (acc.name || acc);
+                                            if (name === 'Mochila Técnica' || name === 'backpack') mappedAccessories.backpack = true;
+                                            else if (name === 'Filtro de Pantalla' || name === 'screenFilter') mappedAccessories.screenFilter = true;
+                                            else if (name === 'Mouse Óptico' || name === 'mouse') mappedAccessories.mouse = true;
+                                            else if (name === 'Teclado USB' || name === 'keyboard') mappedAccessories.keyboard = true;
+                                            else if (name === 'Auriculares con Micrófono' || name === 'headset') mappedAccessories.headset = true;
+                                            else if (name === 'Cargador Original' || name === 'charger') mappedAccessories.charger = true;
+                                            else if (name) mappedAccessories[name] = true;
+                                        });
+                                    } else if (delivery.taskAccessories && typeof delivery.taskAccessories === 'object') {
+                                        Object.assign(mappedAccessories, delivery.taskAccessories);
+                                    } else {
+                                        Object.assign(mappedAccessories, delivery.accessories || {});
+                                    }
+
+                                    // 3. Normalizar Yubikeys
+                                    const mappedYubikeys = (delivery.taskYubikeys && delivery.taskYubikeys.length > 0
+                                        ? delivery.taskYubikeys
+                                        : delivery.yubikeys || []
+                                    ).map(yk => ({
+                                        serial: typeof yk === 'string' ? yk : yk.serial,
+                                        type: (typeof yk === 'object' && yk?.type) || delivery.logistics?.type || 'Entrega'
+                                    }));
+
+                                    // 4. Crear ticket virtual compatible
+                                    const virtualTicket = {
+                                        ...delivery,
+                                        associatedAssets,
+                                        accessories: mappedAccessories,
+                                        yubikeys: mappedYubikeys
+                                    };
+
+                                    setTimeout(() => {
+                                        generateTicketPDF(virtualTicket, assets, {
+                                            receivedBy: form.receivedBy,
+                                            dni: form.dni,
+                                            notes: form.notes,
+                                            actualTime: form.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                            deliveredAt: new Date().toISOString()
+                                        }, 'download');
+                                    }, 0);
+                                }
+                                setShowDownloadPrompt(false);
+                            }}
+                            icon={Download}
+                            style={{ 
+                                padding: '0.75rem 1.5rem', 
+                                fontSize: '1rem', 
+                                backgroundColor: '#25D366', 
+                                borderColor: '#25D366',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                boxShadow: '0 4px 12px rgba(37, 211, 102, 0.2)'
+                            }}
+                        >
+                            SÍ, DESCARGAR PDF
+                        </Button>
+                        <Button 
+                            type="button" 
+                            variant="secondary" 
+                            onClick={() => setShowDownloadPrompt(false)}
+                            style={{ padding: '0.75rem 1.5rem', fontSize: '1rem' }}
+                        >
+                            NO, CERRAR
+                        </Button>
+                    </div>
+                </div>
             </Modal>
 
             {/* QR Scanner Modal */}
