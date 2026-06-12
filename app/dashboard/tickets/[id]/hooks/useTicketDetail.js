@@ -309,6 +309,7 @@ export function useTicketDetail() {
     };
 
     const handleUpdate = async () => {
+        const errSpan = document.getElementById('save-error-msg');
         try {
             let statusUpdate = editedData.status;
             if (editedData.status === 'Abierto' || editedData.status === 'Pendiente') {
@@ -316,9 +317,11 @@ export function useTicketDetail() {
             }
             const dataToUpdate = { ...editedData, status: statusUpdate };
             
+            if (errSpan) errSpan.textContent = "2.1 Preparando actualización...";
             console.log("handleUpdate calling updateTicket with:", dataToUpdate);
             const success = await updateTicket(ticket.id, dataToUpdate);
             
+            if (errSpan) errSpan.textContent = "2.2 Actualización respondida.";
             if (success !== false) { // updateTicket returns false on error
                 setEditedData(dataToUpdate);
                 setEditMode(false);

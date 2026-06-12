@@ -58,22 +58,41 @@ export default function TicketHeader({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <Button size="sm" icon={Save} disabled={isSaving} onClick={async () => {
                                 setIsSaving(true);
-                                const result = await handleUpdate();
-                                setIsSaving(false);
-                                if (result && result.success) {
-                                    setEditContact(false);
-                                } else if (result && result.error) {
-                                    const errSpan = document.getElementById('save-error-msg');
+                                const errSpan = document.getElementById('save-error-msg');
+                                if (errSpan) {
+                                    errSpan.textContent = "1. Iniciando...";
+                                    errSpan.style.display = 'block';
+                                    errSpan.style.color = 'var(--text-secondary)';
+                                }
+                                
+                                try {
+                                    if (errSpan) errSpan.textContent = "2. Ejecutando handleUpdate...";
+                                    const result = await handleUpdate();
+                                    
+                                    if (errSpan) errSpan.textContent = "3. Finalizado handleUpdate.";
+                                    setIsSaving(false);
+                                    
+                                    if (result && result.success) {
+                                        if (errSpan) errSpan.style.display = 'none';
+                                        setEditContact(false);
+                                    } else if (result && result.error) {
+                                        if (errSpan) {
+                                            errSpan.textContent = result.error;
+                                            errSpan.style.color = 'var(--danger)';
+                                            setTimeout(() => { if(errSpan) errSpan.style.display = 'none'; }, 8000);
+                                        } else {
+                                            alert("Error al guardar: " + result.error);
+                                        }
+                                    }
+                                } catch (err) {
+                                    setIsSaving(false);
                                     if (errSpan) {
-                                        errSpan.textContent = result.error;
-                                        errSpan.style.display = 'block';
-                                        setTimeout(() => { if(errSpan) errSpan.style.display = 'none'; }, 5000);
-                                    } else {
-                                        alert("Error al guardar: " + result.error);
+                                        errSpan.textContent = "Error CRÍTICO: " + err.message;
+                                        errSpan.style.color = 'var(--danger)';
                                     }
                                 }
                             }}>{isSaving ? 'Guardando...' : 'Guardar'}</Button>
-                            <span id="save-error-msg" style={{ display: 'none', color: 'var(--danger)', fontSize: '0.8rem', fontWeight: 500, maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}></span>
+                            <span id="save-error-msg" style={{ display: 'none', fontSize: '0.8rem', fontWeight: 500, maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}></span>
                         </div>
                     ) : null}
                 </div>
