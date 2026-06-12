@@ -479,7 +479,7 @@ export default function SFDCCasesPage() {
         setIsSubmittingManual(true);
         console.log("handleCreateManual: Starting submission...");
         try {
-            const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t\0]+/g, ' ') : str;
+            const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t\0]+/g, ' ') : String(str || '');
             
             const ticketData = {
                 ...manualTicket,

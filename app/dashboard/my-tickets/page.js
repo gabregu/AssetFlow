@@ -172,7 +172,7 @@ export default function MyTicketsPage() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
-        const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t]+/g, ' ') : str;
+        const clean = (str) => typeof str === 'string' ? str.trim().replace(/[\r\n\t]+/g, ' ') : String(str || '');
         
         const ticketData = {
             ...newTicket,
