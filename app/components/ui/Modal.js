@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
-export function Modal({ isOpen, onClose, title, children, disableOutsideClick = false }) {
+export function Modal({ isOpen, onClose, title, children, disableOutsideClick = true }) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
