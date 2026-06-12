@@ -1286,7 +1286,7 @@ export default function TicketsPage() {
                 </div>
             </Card>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Servicio">
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Servicio" disableOutsideClick={true}>
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="form-group">
                         <label className="form-label">Número de Caso SFDC (Opcional)</label>
