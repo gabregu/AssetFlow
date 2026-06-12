@@ -59,7 +59,7 @@ export default function DashboardLayout({ children }) {
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--background)' }}>
-            <LocationTracker />
+            {/* <LocationTracker /> */}
             <DeliveryNotificationListener />
             {/* Overlay para móvil */}
             <div
