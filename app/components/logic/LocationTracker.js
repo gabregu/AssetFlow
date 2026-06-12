@@ -28,6 +28,11 @@ export function LocationTracker() {
                 return;
             }
 
+            // Actualizar la referencia INMEDIATAMENTE para evitar que watchPosition lance
+            // múltiples peticiones concurrentes si la petición de supabase se cuelga.
+            // Si se lanzan 6 peticiones concurrentes, el navegador bloquea todas las demás (connection exhaustion).
+            lastUpdateRef.current = now;
+
             const { latitude, longitude } = position.coords;
             console.log("Sending Location Update:", latitude, longitude);
 
@@ -45,8 +50,6 @@ export function LocationTracker() {
 
                 if (error) {
                     console.error("Error updating location:", error);
-                } else {
-                    lastUpdateRef.current = now;
                 }
             } catch (err) {
                 console.error("Exception updating location:", err);
