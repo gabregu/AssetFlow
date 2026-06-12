@@ -1,9 +1,11 @@
 import React from 'react';
 import { useStore } from '../../../lib/store';
 import { Globe, ChevronDown, Building2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export const CountryFilter = () => {
     const { countryFilter, setCountryFilter, entities = [] } = useStore();
+    const router = useRouter();
     const countries = entities.map(e => e.name);
 
     return (
@@ -23,7 +25,10 @@ export const CountryFilter = () => {
             <div style={{ position: 'relative' }}>
                 <select
                     value={countryFilter}
-                    onChange={(e) => setCountryFilter(e.target.value)}
+                    onChange={(e) => {
+                        setCountryFilter(e.target.value);
+                        router.push('/dashboard');
+                    }}
                     style={{
                         width: '100%',
                         padding: '0.75rem 2.5rem 0.75rem 1rem',
