@@ -69,9 +69,20 @@ export default function SFDCCasesPage() {
     // 3. Estadísticas (Moved up to be available for statsByType and filteredCases)
     const countryFilteredCases = useMemo(() => {
         return sfdcCases.filter(c => {
-            return isActiveCaseStatus(c) && isCaseInCountryFilter(c);
+            if (!isActiveCaseStatus(c)) return false;
+            if (!isCaseInCountryFilter(c)) return false;
+
+            // Si el caso ya está asociado a un ticket de AssetFlow que está cerrado, lo ocultamos
+            const relatedTicket = tickets && tickets.find(t => 
+                String(t.id) === String(c.caseNumber) || 
+                (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber) === String(c.caseNumber))) ||
+                (t.subject && t.subject.includes(c.caseNumber))
+            );
+            if (relatedTicket && !isTicketActive(relatedTicket)) return false;
+
+            return true;
         });
-    }, [sfdcCases, countryFilter]);
+    }, [sfdcCases, countryFilter, tickets]);
 
     // Metrics for Buttons (Including NEW HIRE filter)
     const statsByType = useMemo(() => {
@@ -100,17 +111,10 @@ export default function SFDCCasesPage() {
 
     // 1. Filtrado
     const filteredCases = useMemo(() => {
-        return sfdcCases.filter(c => {
-            // Ya no ocultamos los casos que tienen un servicio creado para poder visualizarlos en el backlog
-
-            // Si el caso en SFDC está en estado cerrado/finalizado, también lo ocultamos
-            if (!isActiveCaseStatus(c)) return false;
-
+        return countryFilteredCases.filter(c => {
             const matchesText = String(c.subject || '').toLowerCase().includes(filter.toLowerCase()) ||
                 String(c.requestedFor || '').toLowerCase().includes(filter.toLowerCase()) ||
                 String(c.caseNumber || '').toLowerCase().includes(filter.toLowerCase());
-
-            if (!isCaseInCountryFilter(c)) return false;
 
             // Helper New Hire
             const isNewHire = (c) => {
