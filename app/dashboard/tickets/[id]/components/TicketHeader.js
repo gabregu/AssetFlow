@@ -22,7 +22,8 @@ export default function TicketHeader({
     setAddressStatus,
     validateAddress,
     isLoaded,
-    unifiedTasks
+    unifiedTasks,
+    handleUnlinkCase
 }) {
     const [isSaving, setIsSaving] = React.useState(false);
 
@@ -154,6 +155,7 @@ export default function TicketHeader({
                 validateAddress={validateAddress}
                 isLoaded={isLoaded}
                 unifiedTasks={unifiedTasks}
+                handleUnlinkCase={handleUnlinkCase}
             />
         </Card>
     );

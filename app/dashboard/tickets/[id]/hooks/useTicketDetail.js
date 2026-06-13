@@ -28,7 +28,7 @@ export function useTicketDetail() {
     const router = useRouter();
     const { 
         tickets, assets, consumables, users, sfdcCases, yubikeys, 
-        updateTicket, deleteTicket, addAsset, updateAsset, 
+        addTicket, updateTicket, deleteTicket, addAsset, updateAsset, 
         updateConsumableStock, currentUser,
         logisticsTasks, addLogisticsTask, updateLogisticsTask, deleteLogisticsTask
     } = useStore();
@@ -573,14 +573,74 @@ export function useTicketDetail() {
                     }
                     return c;
                 });
-                setEditedData(prev => ({ ...prev, associatedCases: updatedCases }));
                 
+                setEditedData(prev => ({ ...prev, associatedCases: updatedCases }));
                 const success = await updateTicket(ticket.id, { associatedCases: updatedCases });
                 return success ? { data: true } : { error: { message: "Error al actualizar ticket" } };
             }
         } catch (err) {
             console.error("handleUpdateTask exception:", err);
             return { error: err };
+        }
+    };
+
+    const handleUpdate = async () => {
+        try {
+            await updateTicket(ticket.id, editedData);
+            setEditMode(false);
+            setEditContact(false);
+            setEditSchedule(false);
+        } catch (error) {
+            console.error('Error actualizando ticket:', error);
+            alert('Hubo un error al actualizar el ticket');
+        }
+    };
+
+    const handleUnlinkCase = async (caseToUnlink) => {
+        if (!confirm(`¿Estás seguro de que deseas desvincular el caso ${caseToUnlink.caseNumber} y convertirlo en un servicio independiente?`)) {
+            return;
+        }
+
+        try {
+            const newTicketData = {
+                subject: `[SFDC-${caseToUnlink.caseNumber}] ${caseToUnlink.subject}`,
+                requester: ticket.requester,
+                priority: caseToUnlink.priority === 'High' ? 'Alta' : 'Media',
+                status: 'Abierto',
+                client: ticket.client,
+                internalNotes: [`=== DESVINCULADO ===\nEste caso fue desvinculado del servicio original ${ticket.id} el ${new Date().toLocaleString()}`],
+                logistics: { ...ticket.logistics, address: caseToUnlink.logistics?.address || ticket.logistics?.address || '' },
+                associatedCases: [{
+                    caseNumber: caseToUnlink.caseNumber,
+                    subject: caseToUnlink.subject,
+                    status: caseToUnlink.status,
+                    priority: caseToUnlink.priority,
+                    dateOpened: caseToUnlink.dateOpened,
+                    logistics: { ...caseToUnlink.logistics }
+                }]
+            };
+
+            await addTicket(newTicketData);
+
+            let newAssociatedCases = ticket.associatedCases.filter(ac => ac.caseNumber !== caseToUnlink.caseNumber);
+            let newSubject = ticket.subject;
+            
+            if (newAssociatedCases.length <= 1) {
+                newSubject = newSubject.replace(/\s*\(\+\s*\d+\s*casos agrupados\)/i, '');
+            } else {
+                newSubject = newSubject.replace(/\(\+\s*\d+\s*casos agrupados\)/i, `(+ ${newAssociatedCases.length - 1} casos agrupados)`);
+            }
+
+            await updateTicket(ticket.id, {
+                associatedCases: newAssociatedCases,
+                subject: newSubject,
+                internalNotes: [...(ticket.internalNotes || []), `=== CASO DESVINCULADO ===\nEl caso ${caseToUnlink.caseNumber} fue extraído a un nuevo servicio independiente el ${new Date().toLocaleString()}`]
+            });
+
+            alert('Caso desvinculado exitosamente.');
+        } catch (error) {
+            console.error('Error desvinculando caso:', error);
+            alert('Error al desvincular el caso: ' + error.message);
         }
     };
 
@@ -603,6 +663,7 @@ export function useTicketDetail() {
         inventorySearchQuery, setInventorySearchQuery,
         newAsset, setNewAsset,
         verifyDeliveryModal, setVerifyDeliveryModal,
+        handleUnlinkCase,
         smartRecommendations, setSmartRecommendations,
         assetToReplace, setAssetToReplace,
         isSmartSearchOpen, setIsSmartSearchOpen,

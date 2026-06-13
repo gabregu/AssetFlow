@@ -20,7 +20,8 @@ export default function ContactInfoSection({
     setAddressStatus,
     validateAddress,
     isLoaded,
-    unifiedTasks
+    unifiedTasks,
+    handleUnlinkCase
 }) {
     const isEditing = editMode || editContact;
 
@@ -48,6 +49,15 @@ export default function ContactInfoSection({
                                     <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
                                         {ac.subject}
                                     </span>
+                                    {ticket.subject && !ticket.subject.includes(`[SFDC-${ac.caseNumber}]`) && handleUnlinkCase && (
+                                        <button 
+                                            onClick={() => handleUnlinkCase(ac)}
+                                            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center' }}
+                                            title="Desvincular y extraer a un nuevo servicio"
+                                        >
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 14L21 3"></path><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"></path></svg>
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>

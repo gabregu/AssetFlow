@@ -39,6 +39,7 @@ export default function TicketDetailPage() {
         handleUpdate,
         handleUpdateTask,
         handleDelete,
+        handleUnlinkCase,
         handleAssetSearch,
         handleCreateAsset,
         updateTicket,
@@ -118,6 +119,7 @@ export default function TicketDetailPage() {
                                 validateAddress={validateAddress}
                                 isLoaded={isLoaded}
                                 unifiedTasks={unifiedTasks}
+                                handleUnlinkCase={handleUnlinkCase}
                             />
 
                             <AssociatedCasesCard 
