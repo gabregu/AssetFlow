@@ -100,9 +100,9 @@ export default function TicketHeader({
             </div>
 
             {(() => {
-                const sfdcMatch = (editedData.subject || '').match(/^\[(SFDC-[^\]]+)\]\s*(.*)$/i);
+                const sfdcMatch = (editedData.subject || '').match(/\[(SFDC-[^\]]+)\]/i);
                 const sfdcPrefix = sfdcMatch ? sfdcMatch[1] : '';
-                const cleanSubject = sfdcMatch ? sfdcMatch[2] : (editedData.subject || '');
+                const cleanSubject = sfdcMatch ? (editedData.subject || '').replace(sfdcMatch[0], '').trim() : (editedData.subject || '');
 
                 return editMode || editContact ? (
                     <input
@@ -139,8 +139,8 @@ export default function TicketHeader({
                         </span>
                     )}
                     {(() => {
-                        const displayMatch = (ticket.subject || '').match(/^\[SFDC-[^\]]+\]\s*(.*)$/i);
-                        return displayMatch ? displayMatch[1] : ticket.subject;
+                        const displayMatch = (ticket.subject || '').match(/\[SFDC-[^\]]+\]/i);
+                        return displayMatch ? (ticket.subject || '').replace(displayMatch[0], '').trim() : ticket.subject;
                     })()}
                 </h1>
             );

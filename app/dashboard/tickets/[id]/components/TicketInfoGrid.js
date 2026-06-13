@@ -82,9 +82,13 @@ export default function TicketInfoGrid({
                 <div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>Caso Principal SFDC</p>
                     {(() => {
-                        const sfdcMatch = (editedData.subject || '').match(/^\[(SFDC-[^\]]+)\]\s*(.*)$/i);
-                        const sfdcPrefix = sfdcMatch ? sfdcMatch[1] : '';
-                        const cleanSubject = sfdcMatch ? sfdcMatch[2] : (editedData.subject || '');
+                        const sfdcMatch = (editedData.subject || '').match(/\[(SFDC-[^\]]+)\]/i);
+                        let sfdcPrefix = sfdcMatch ? sfdcMatch[1] : '';
+                        
+                        // Extract subject without the SFDC part
+                        const subjectWithoutSfdc = sfdcMatch 
+                            ? (editedData.subject || '').replace(sfdcMatch[0], '').trim() 
+                            : (editedData.subject || '');
 
                         return editMode ? (
                             <input
@@ -93,8 +97,15 @@ export default function TicketInfoGrid({
                                 placeholder="Ej: SFDC-00123456"
                                 value={sfdcPrefix}
                                 onChange={e => {
-                                    const newPrefix = e.target.value.trim();
-                                    const newSubject = newPrefix ? `[${newPrefix}] ${cleanSubject}` : cleanSubject;
+                                    let rawVal = e.target.value.trim().toUpperCase();
+                                    
+                                    // Make sure it starts with SFDC- if it's not empty and the user just typed numbers
+                                    if (rawVal && !rawVal.startsWith('SFDC-')) {
+                                        // Try to prepend if it looks like a case number
+                                        rawVal = `SFDC-${rawVal}`;
+                                    }
+                                    
+                                    const newSubject = rawVal ? `[${rawVal}] ${subjectWithoutSfdc}` : subjectWithoutSfdc;
                                     setEditedData({ ...editedData, subject: newSubject });
                                 }}
                             />
