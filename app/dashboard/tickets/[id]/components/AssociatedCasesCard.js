@@ -179,6 +179,8 @@ export default function AssociatedCasesCard({
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem', marginLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
                                 <span style={{ fontSize: '0.72rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)', whiteSpace: 'nowrap', marginBottom: 'auto' }}>
                                     {isSelected ? '▲ Configurando' : 'Clic para configurar'}
+                                </span>
+                                <div style={{ display: 'flex', gap: '4px' }}>
                                     {ticket.subject && !ticket.subject.includes(`[SFDC-${task.caseNumber || task.case_number}]`) && handleUnlinkCase && (
                                         <button 
                                             onClick={async (e) => {
