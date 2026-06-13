@@ -198,126 +198,60 @@ export default function TicketsPage() {
                     await importSfdcCases(newCases);
                 }
 
-                const normalizeName = (name) => (name || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-                const normalizeCountry = (country) => (country || '').toLowerCase().trim();
+                let ticketsCreated = 0;
+                let casesProcessed = 0;
+                let ticketsSkipped = 0;
 
-                const groupedCases = {};
                 for (const c of newCases) {
-                    const key = `${normalizeName(c.requestedFor)}|${normalizeCountry(c.country)}`;
-                    if (!groupedCases[key]) groupedCases[key] = [];
-                    groupedCases[key].push(c);
+                    // Check if this specific caseNumber is already in any ticket
+                    const alreadyExists = tickets.some(t => 
+                        (t.subject && t.subject.includes(c.caseNumber)) || 
+                        (t.associatedCases && t.associatedCases.some(ac => ac.caseNumber === c.caseNumber)) ||
+                        (t.internalNotes && t.internalNotes.some(n => n.includes(c.caseNumber)))
+                    );
+
+                    if (alreadyExists) {
+                        ticketsSkipped++;
+                        continue;
+                    }
+
+                    const subject = `[SFDC-${c.caseNumber}] ${c.subject}`;
+                    
+                    const newTicketData = {
+                        subject: subject,
+                        requester: c.requestedFor,
+                        priority: c.priority === 'High' ? 'Alta' : 'Media',
+                        status: 'Abierto',
+                        client: getClientName(c.country),
+                        internalNotes: [],
+                        logistics: {
+                            address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : c.country,
+                            phone: c.mobile || '',
+                            email: c.email || '',
+                            type: 'Entrega'
+                        },
+                        associatedCases: [{
+                            caseNumber: c.caseNumber,
+                            subject: c.subject,
+                            status: c.status,
+                            priority: c.priority,
+                            dateOpened: c.dateOpened,
+                            logistics: {
+                                address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : c.country,
+                                phone: c.mobile || '',
+                                email: c.email || '',
+                                method: '',
+                                status: 'Pendiente'
+                            }
+                        }]
+                    };
+
+                    await addTicket(newTicketData);
+                    ticketsCreated++;
+                    casesProcessed++;
                 }
 
-                let ticketsCreated = 0;
-                let ticketsUpdated = 0;
-                let casesProcessed = 0;
-
-                for (const key of Object.keys(groupedCases)) {
-                    const group = groupedCases[key];
-                    if (group.length === 0) continue;
-
-                    const repCase = group[0];
-                    const reqNameNorm = normalizeName(repCase.requestedFor);
-
-                    const existingActiveTicket = tickets.find(t => {
-                        const isNotResolved = isTicketActive(t);
-                        const tReqNorm = normalizeName(t.requester);
-                        
-                        const hasSameReq = (tReqNorm === reqNameNorm || (tReqNorm.length > 3 && reqNameNorm.length > 3 && (tReqNorm.includes(reqNameNorm) || reqNameNorm.includes(tReqNorm))));
-                        const hasSameClient = t.client === getClientName(repCase.country);
-
-                        return isNotResolved && hasSameReq && hasSameClient;
-                    });
-
-                    if (existingActiveTicket) {
-                        let updatedNotes = existingActiveTicket.internalNotes ? [...existingActiveTicket.internalNotes] : [];
-                        let updatedAssociatedCases = existingActiveTicket.associatedCases ? [...existingActiveTicket.associatedCases] : [];
-                        let addedToExisting = 0;
-
-                        group.forEach(c => {
-                            const alreadyExists = existingActiveTicket.subject.includes(c.caseNumber) ||
-                                                  updatedNotes.some(n => n.includes(c.caseNumber)) ||
-                                                  updatedAssociatedCases.some(ac => ac.caseNumber === c.caseNumber);
-                                                  
-                            if (!alreadyExists) {
-                                const msg = `• Caso Adicional Agregado via CSV: [SFDC-${c.caseNumber}] ${c.subject}`;
-                                updatedNotes.push(msg);
-                                updatedAssociatedCases.push({
-                                    caseNumber: c.caseNumber,
-                                    subject: c.subject,
-                                    status: c.status,
-                                    priority: c.priority,
-                                    dateOpened: c.dateOpened,
-                                    logistics: {
-                                        address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : existingActiveTicket.logistics?.address,
-                                        phone: c.mobile || '',
-                                        email: c.email || '',
-                                        method: '',
-                                        status: 'Pendiente'
-                                    }
-                                });
-                                addedToExisting++;
-                                casesProcessed++;
-                            }
-                        });
-
-                        if (addedToExisting > 0) {
-                            await updateTicket(existingActiveTicket.id, {
-                                internalNotes: updatedNotes,
-                                associatedCases: updatedAssociatedCases,
-                                subject: existingActiveTicket.subject + (existingActiveTicket.subject.includes('casos agrupados') ? '' : ` (+ casos agrupados)`)
-                            });
-                            ticketsUpdated++;
-                        }
-                    } else {
-                        const mainCase = group[0];
-                        const additionalCases = group.slice(1);
-                        
-                        let subject = `[SFDC-${mainCase.caseNumber}] ${mainCase.subject}`;
-                        let internalNotes = [];
-
-                        if (additionalCases.length > 0) {
-                            subject += ` (+ ${additionalCases.length} casos agrupados)`;
-                            const siblingNotes = additionalCases.map(s => `• Caso Adicional: [SFDC-${s.caseNumber}] ${s.subject}`).join('\n');
-                            internalNotes.push(`=== AUTOMATIZACIÓN: CASOS AGRUPADOS (CSV) ===\nSe importaron múltiples casos para ${mainCase.requestedFor}:\n${siblingNotes}`);
-                        }
-
-                        const newTicketData = {
-                            subject: subject,
-                            requester: mainCase.requestedFor,
-                            priority: mainCase.priority === 'High' ? 'Alta' : 'Media',
-                            status: 'Abierto',
-                            client: getClientName(mainCase.country),
-                            internalNotes: internalNotes,
-                            logistics: {
-                                address: mainCase.mailingStreet && mainCase.country ? `${mainCase.mailingStreet}, ${mainCase.country} ${mainCase.zipCode}` : mainCase.country,
-                                phone: mainCase.mobile || '',
-                                email: mainCase.email || '',
-                                type: 'Entrega'
-                            },
-                            associatedCases: group.map(c => ({
-                                caseNumber: c.caseNumber,
-                                subject: c.subject,
-                                status: c.status,
-                                priority: c.priority,
-                                dateOpened: c.dateOpened,
-                                logistics: {
-                                    address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : mainCase.country,
-                                    phone: c.mobile || '',
-                                    email: c.email || '',
-                                    method: '',
-                                    status: 'Pendiente'
-                                }
-                            }))
-                        };
-
-                        await addTicket(newTicketData);
-                        ticketsCreated++;
-                        casesProcessed += group.length;
-                    }
-                } // This closes the for (const key of Object.keys(groupedCases)) loop
-
-                showToast(`Importación completa: ${casesProcessed} casos procesados. ${ticketsCreated} servicios nuevos y ${ticketsUpdated} actualizados.`, 'success');
+                showToast(`Importación completa: ${casesProcessed} casos procesados. ${ticketsCreated} servicios creados (${ticketsSkipped} omitidos por ya existir).`, 'success');
 
             } catch (err) {
                 console.error("Error procesando CSV:", err);
