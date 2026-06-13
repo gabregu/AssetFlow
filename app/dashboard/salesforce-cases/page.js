@@ -66,6 +66,22 @@ export default function SFDCCasesPage() {
         return matchesCountry || forceSycomp;
     };
 
+    const isTicketActive = (t) => {
+        if (!t || !t.status) return false;
+        const status = t.status.toLowerCase().trim();
+        const closedStatuses = [
+            'resuelto',
+            'cerrado',
+            'servicio facturado',
+            'caso sfdc cerrado',
+            'cancelado',
+            'entregado',
+            'finalizado',
+            'no requiere accion'
+        ];
+        return !closedStatuses.includes(status);
+    };
+
     // 3. Estadísticas (Moved up to be available for statsByType and filteredCases)
     const countryFilteredCases = useMemo(() => {
         return sfdcCases.filter(c => {
@@ -227,21 +243,7 @@ export default function SFDCCasesPage() {
         </th>
     );
 
-    const isTicketActive = (t) => {
-        if (!t || !t.status) return false;
-        const status = t.status.toLowerCase().trim();
-        const closedStatuses = [
-            'resuelto',
-            'cerrado',
-            'servicio facturado',
-            'caso sfdc cerrado',
-            'cancelado',
-            'entregado',
-            'finalizado',
-            'no requiere accion'
-        ];
-        return !closedStatuses.includes(status);
-    };
+
 
     const handleOpenCreateService = async (sfdcCase) => {
         // Buscar si ya existe un ticket activo para el mismo usuario
