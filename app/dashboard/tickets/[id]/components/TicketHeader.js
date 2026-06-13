@@ -99,24 +99,30 @@ export default function TicketHeader({
                 </div>
             </div>
 
-            {editMode || editContact ? (
-                <input
-                    style={{
-                        fontSize: '1.75rem',
-                        fontWeight: 700,
-                        width: '100%',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: '2px solid var(--primary-color)',
-                        marginBottom: '1.5rem',
-                        color: 'var(--text-main)',
-                        outline: 'none',
-                        padding: '0.5rem 0'
-                    }}
-                    value={editedData.subject}
-                    onChange={e => setEditedData({ ...editedData, subject: e.target.value })}
-                />
-            ) : (
+            {(() => {
+                const sfdcMatch = (editedData.subject || '').match(/^\[(SFDC-[^\]]+)\]\s*(.*)$/i);
+                const sfdcPrefix = sfdcMatch ? sfdcMatch[1] : '';
+                const cleanSubject = sfdcMatch ? sfdcMatch[2] : (editedData.subject || '');
+
+                return editMode || editContact ? (
+                    <input
+                        style={{
+                            fontSize: '1.75rem',
+                            fontWeight: 700,
+                            width: '100%',
+                            background: 'transparent',
+                            border: 'none',
+                            borderBottom: '2px solid var(--primary-color)',
+                            marginBottom: '1.5rem',
+                            color: 'var(--text-main)',
+                            outline: 'none',
+                            padding: '0.5rem 0'
+                        }}
+                        value={cleanSubject}
+                        onChange={e => setEditedData({ ...editedData, subject: sfdcPrefix ? `[${sfdcPrefix}] ${e.target.value}` : e.target.value })}
+                        placeholder="Título del servicio..."
+                    />
+                ) : (
                 <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'var(--text-main)', lineHeight: 1.3 }}>
                     {ticket.associatedCases && ticket.associatedCases.length > 0 && ticket.associatedCases.some(c => {
                         const ticketIdNum = ticket.id?.split('-').pop();
@@ -132,9 +138,13 @@ export default function TicketHeader({
                                 .join(' · ')}
                         </span>
                     )}
-                    {ticket.subject}
+                    {(() => {
+                        const displayMatch = (ticket.subject || '').match(/^\[SFDC-[^\]]+\]\s*(.*)$/i);
+                        return displayMatch ? displayMatch[1] : ticket.subject;
+                    })()}
                 </h1>
-            )}
+            );
+            })()}
 
             <TicketInfoGrid 
                 ticket={ticket}

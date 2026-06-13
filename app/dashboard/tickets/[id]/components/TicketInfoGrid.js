@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { User, Calendar, Tag } from 'lucide-react';
+import { User, Calendar, Tag, Hash } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 
 export default function TicketInfoGrid({ 
@@ -75,6 +75,35 @@ export default function TicketInfoGrid({
                     ) : (
                         <p style={{ fontWeight: 500, margin: 0 }}>{ticket.priority}</p>
                     )}
+                </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ color: 'var(--text-secondary)' }}><Hash size={18} /></div>
+                <div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>Caso Principal SFDC</p>
+                    {(() => {
+                        const sfdcMatch = (editedData.subject || '').match(/^\[(SFDC-[^\]]+)\]\s*(.*)$/i);
+                        const sfdcPrefix = sfdcMatch ? sfdcMatch[1] : '';
+                        const cleanSubject = sfdcMatch ? sfdcMatch[2] : (editedData.subject || '');
+
+                        return editMode ? (
+                            <input
+                                className="form-input"
+                                style={{ padding: '0.2rem', marginTop: '2px', fontSize: '0.9rem', width: '100%' }}
+                                placeholder="Ej: SFDC-00123456"
+                                value={sfdcPrefix}
+                                onChange={e => {
+                                    const newPrefix = e.target.value.trim();
+                                    const newSubject = newPrefix ? `[${newPrefix}] ${cleanSubject}` : cleanSubject;
+                                    setEditedData({ ...editedData, subject: newSubject });
+                                }}
+                            />
+                        ) : (
+                            <p style={{ fontWeight: 500, margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                                {sfdcPrefix || <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontStyle: 'italic' }}>Sin asignar</span>}
+                            </p>
+                        );
+                    })()}
                 </div>
             </div>
         </div>

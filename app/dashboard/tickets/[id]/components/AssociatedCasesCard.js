@@ -92,7 +92,8 @@ export default function AssociatedCasesCard({
     addLogisticsTask,
     deleteLogisticsTask,
     showAutoCases,
-    setShowAutoCases
+    setShowAutoCases,
+    handleUnlinkCase
 }) {
     const hasAutomaticCases = 
         (editedData?.associatedCases && editedData.associatedCases.some(c => c.caseNumber && c.caseNumber !== 'Caso Principal' && /^\d+$/.test(String(c.caseNumber).trim()))) ||
@@ -178,53 +179,69 @@ export default function AssociatedCasesCard({
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem', marginLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
                                 <span style={{ fontSize: '0.72rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)', whiteSpace: 'nowrap', marginBottom: 'auto' }}>
                                     {isSelected ? '▲ Configurando' : 'Clic para configurar'}
-                                </span>
-                                <button 
-                                     onClick={async (e) => {
-                                         e.stopPropagation();
-                                         if (window.confirm(`¿Seguro que deseas eliminar el caso ${task.caseNumber || 'asociado'}?`)) {
-                                             const caseNum = task.caseNumber || task.case_number;
-                                             
-                                             // 1. Si es una tarea de la base de datos, la eliminamos físicamente
-                                             if (task.id && deleteLogisticsTask) {
-                                                 await deleteLogisticsTask(task.id);
-                                             }
-                                             
-                                             // 2. Siempre desasociamos del JSON del ticket y agregamos a excluidos para evitar re-vinculaciones automáticas
-                                             const updatedCases = (editedData?.associatedCases || []).filter(c => 
-                                                 String(c.caseNumber).trim() !== String(caseNum).trim()
-                                             );
-                                             const currentExcluded = editedData?.excludedCases || [];
-                                             const updatedExcluded = caseNum 
-                                                 ? [...new Set([...currentExcluded, caseNum])]
-                                                 : currentExcluded;
+                                    {ticket.subject && !ticket.subject.includes(`[SFDC-${task.caseNumber || task.case_number}]`) && handleUnlinkCase && (
+                                        <button 
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                await handleUnlinkCase(task);
+                                            }}
+                                            style={{ 
+                                                background: 'transparent', border: 'none', color: isSelected ? 'rgba(255,255,255,0.8)' : '#ef4444', 
+                                                cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center',
+                                                borderRadius: '4px'
+                                            }}
+                                            title="Desvincular y extraer a un nuevo servicio"
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 14L21 3"></path><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"></path></svg>
+                                        </button>
+                                    )}
+                                    <button 
+                                         onClick={async (e) => {
+                                             e.stopPropagation();
+                                             if (window.confirm(`¿Seguro que deseas eliminar el caso ${task.caseNumber || 'asociado'}?`)) {
+                                                 const caseNum = task.caseNumber || task.case_number;
                                                  
-                                             if (setEditedData) {
-                                                 setEditedData(prev => ({ 
-                                                     ...prev, 
-                                                     associatedCases: updatedCases, 
-                                                     excludedCases: updatedExcluded 
-                                                 }));
+                                                 // 1. Si es una tarea de la base de datos, la eliminamos físicamente
+                                                 if (task.id && deleteLogisticsTask) {
+                                                     await deleteLogisticsTask(task.id);
+                                                 }
+                                                 
+                                                 // 2. Siempre desasociamos del JSON del ticket y agregamos a excluidos para evitar re-vinculaciones automáticas
+                                                 const updatedCases = (editedData?.associatedCases || []).filter(c => 
+                                                     String(c.caseNumber).trim() !== String(caseNum).trim()
+                                                 );
+                                                 const currentExcluded = editedData?.excludedCases || [];
+                                                 const updatedExcluded = caseNum 
+                                                     ? [...new Set([...currentExcluded, caseNum])]
+                                                     : currentExcluded;
+                                                     
+                                                 if (setEditedData) {
+                                                     setEditedData(prev => ({ 
+                                                         ...prev, 
+                                                         associatedCases: updatedCases, 
+                                                         excludedCases: updatedExcluded 
+                                                     }));
+                                                 }
+                                                 if (updateTicket) {
+                                                     await updateTicket(ticket.id, { 
+                                                         associatedCases: updatedCases, 
+                                                         excludedCases: updatedExcluded 
+                                                     });
+                                                 }
+                                                 
+                                                 if (selectedCaseIndex === index) setSelectedCaseIndex(null);
                                              }
-                                             if (updateTicket) {
-                                                 await updateTicket(ticket.id, { 
-                                                     associatedCases: updatedCases, 
-                                                     excludedCases: updatedExcluded 
-                                                 });
-                                             }
-                                             
-                                             if (selectedCaseIndex === index) setSelectedCaseIndex(null);
-                                         }
-                                     }}
-                                    style={{ 
-                                        background: 'transparent', border: 'none', color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--accent-red, #ef4444)', 
-                                        cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center',
-                                        borderRadius: '4px'
-                                    }}
-                                    title="Eliminar caso"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                                         }}
+                                        style={{ 
+                                            background: 'transparent', border: 'none', color: isSelected ? 'rgba(255,255,255,0.8)' : 'var(--accent-red, #ef4444)', 
+                                            cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center',
+                                            borderRadius: '4px'
+                                        }}
+                                        title="Eliminar caso"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     );

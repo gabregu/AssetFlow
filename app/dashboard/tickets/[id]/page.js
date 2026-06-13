@@ -137,6 +137,7 @@ export default function TicketDetailPage() {
                                 deleteLogisticsTask={deleteLogisticsTask}
                                 showAutoCases={showAutoCases}
                                 setShowAutoCases={setShowAutoCases}
+                                handleUnlinkCase={handleUnlinkCase}
                             />
 
                             <InstructionsCard
