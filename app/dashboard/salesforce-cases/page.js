@@ -10,10 +10,18 @@ import { useRef, useMemo } from 'react';
 
 
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function SFDCCasesPage() {
     const router = useRouter();
     const { sfdcCases, tickets, logisticsTasks, addTicket, updateTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter, getClientName, entities = [] } = useStore();
+    
+    useEffect(() => {
+        if (countryFilter && !countryFilter.toLowerCase().includes('sfdc')) {
+            router.push('/dashboard');
+        }
+    }, [countryFilter, router]);
+
     const [filter, setFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCase, setSelectedCase] = useState(null);

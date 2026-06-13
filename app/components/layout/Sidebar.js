@@ -12,12 +12,14 @@ import { CountryFilter } from './CountryFilter';
 export function Sidebar({ isOpen, onClose }) {
     const pathname = usePathname();
     const router = useRouter();
-    const { currentUser, logout, onlineUsers, refreshData } = useStore();
+    const { currentUser, logout, onlineUsers, refreshData, countryFilter } = useStore();
     const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+    const isSfdcClient = countryFilter && countryFilter.toLowerCase().includes('sfdc');
 
     const menuItems = [
         { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'Administrativo', 'Gerencial'] },
-        { name: 'Casos SFDC', icon: FileText, path: '/dashboard/salesforce-cases', roles: ['admin', 'Administrativo', 'Gerencial'] },
+        ...(isSfdcClient ? [{ name: 'Casos SFDC', icon: FileText, path: '/dashboard/salesforce-cases', roles: ['admin', 'Administrativo', 'Gerencial'] }] : []),
         { name: 'Servicios', icon: Ticket, path: '/dashboard/tickets', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Tráfico Logística', icon: Activity, path: '/dashboard/logistics', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Envíos', icon: Truck, path: '/dashboard/deliveries', roles: ['admin', 'Administrativo', 'Gerencial'] },
