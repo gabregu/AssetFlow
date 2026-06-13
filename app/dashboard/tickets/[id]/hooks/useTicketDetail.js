@@ -584,26 +584,19 @@ export function useTicketDetail() {
         }
     };
 
-    const handleUpdate = async () => {
-        try {
-            await updateTicket(ticket.id, editedData);
-            setEditMode(false);
-            setEditContact(false);
-            setEditSchedule(false);
-        } catch (error) {
-            console.error('Error actualizando ticket:', error);
-            alert('Hubo un error al actualizar el ticket');
-        }
-    };
+
 
     const handleUnlinkCase = async (caseToUnlink) => {
-        if (!confirm(`¿Estás seguro de que deseas desvincular el caso ${caseToUnlink.caseNumber} y convertirlo en un servicio independiente?`)) {
+        const caseNum = caseToUnlink.caseNumber || caseToUnlink.case_number;
+        const subject = caseToUnlink.subject || caseToUnlink.type || 'Caso Desvinculado';
+        
+        if (!confirm(`¿Estás seguro de que deseas desvincular el caso ${caseNum} y convertirlo en un servicio independiente?`)) {
             return;
         }
 
         try {
             const newTicketData = {
-                subject: `[SFDC-${caseToUnlink.caseNumber}] ${caseToUnlink.subject}`,
+                subject: `[SFDC-${caseNum}] ${subject}`,
                 requester: ticket.requester,
                 priority: caseToUnlink.priority === 'High' ? 'Alta' : 'Media',
                 status: 'Abierto',
@@ -611,18 +604,22 @@ export function useTicketDetail() {
                 internalNotes: [`=== DESVINCULADO ===\nEste caso fue desvinculado del servicio original ${ticket.id} el ${new Date().toLocaleString()}`],
                 logistics: { ...ticket.logistics, address: caseToUnlink.logistics?.address || ticket.logistics?.address || '' },
                 associatedCases: [{
-                    caseNumber: caseToUnlink.caseNumber,
-                    subject: caseToUnlink.subject,
-                    status: caseToUnlink.status,
-                    priority: caseToUnlink.priority,
-                    dateOpened: caseToUnlink.dateOpened,
-                    logistics: { ...caseToUnlink.logistics }
+                    caseNumber: caseNum,
+                    subject: subject,
+                    status: caseToUnlink.status || 'Abierto',
+                    priority: caseToUnlink.priority || 'Medium',
+                    dateOpened: caseToUnlink.dateOpened || new Date().toISOString().split('T')[0],
+                    logistics: { ...(caseToUnlink.logistics || {}) }
                 }]
             };
 
             await addTicket(newTicketData);
 
-            let newAssociatedCases = ticket.associatedCases.filter(ac => ac.caseNumber !== caseToUnlink.caseNumber);
+            if (caseToUnlink.id && caseToUnlink.ticket_id) {
+                await deleteLogisticsTask(caseToUnlink.id);
+            }
+
+            let newAssociatedCases = (ticket.associatedCases || []).filter(ac => ac.caseNumber !== caseNum);
             let newSubject = ticket.subject;
             
             if (newAssociatedCases.length <= 1) {
@@ -634,7 +631,7 @@ export function useTicketDetail() {
             await updateTicket(ticket.id, {
                 associatedCases: newAssociatedCases,
                 subject: newSubject,
-                internalNotes: [...(ticket.internalNotes || []), `=== CASO DESVINCULADO ===\nEl caso ${caseToUnlink.caseNumber} fue extraído a un nuevo servicio independiente el ${new Date().toLocaleString()}`]
+                internalNotes: [...(ticket.internalNotes || []), `=== CASO DESVINCULADO ===\nEl caso ${caseNum} fue extraído a un nuevo servicio independiente el ${new Date().toLocaleString()}`]
             });
 
             alert('Caso desvinculado exitosamente.');
