@@ -57,10 +57,13 @@ export default function TicketActionButtons({
                             variant="primary" 
                             style={{ background: '#0369a1', color: 'white', borderColor: '#0369a1' }}
                             onClick={() => {
-                                const subject = ticket.subject || 'Soporte SFDC';
+                                const isSFDC = /SFDC/i.test(ticket?.client || '');
+                                const subject = ticket.subject || (isSFDC ? 'Soporte SFDC' : 'Soporte');
                                 let caseNumDisplay = ticket.id;
-                                const match = subject.match(/SFDC-\d+/);
-                                if (match) caseNumDisplay = match[0];
+                                const match = isSFDC 
+                                    ? subject.match(/SFDC-[A-Z0-9]+/i) || subject.match(/SFDC-\d+/i)
+                                    : subject.match(/^\[([^\]]+)\]/);
+                                if (match) caseNumDisplay = isSFDC ? match[0] : match[1];
 
                                 const requester = ticket.requester || '';
                                 const phone = editedData.logistics?.phone || '';
@@ -103,7 +106,7 @@ export default function TicketActionButtons({
                                     return list.map(formatAsset).join('\n');
                                 };
 
-                                const body = `Hello,Dear SFDC Support,\n\nCase information:\nDescription: ${subject}\nSFDC Case Number: ${caseNumDisplay}\nName: ${requester}\nPhone: ${phone}\nShipping address: ${address}\nEmail: ${email}\nCase Creation Date: ${creationDate}\n\n--------------------\nDELIVERY DEVICES :\n${generateList(deliveryAssets)}\nBACKPACK :false\nSCREENPROTECT :false\n--------------------\nRECOVERY DEVICES :\n${generateList(recoveryAssets)}\n--------------------`;
+                                const body = `Hello,Dear ${isSFDC ? 'SFDC' : 'SYCOMP'} Support,\n\nCase information:\nDescription: ${subject}\n${isSFDC ? 'SFDC ' : ''}Case Number: ${caseNumDisplay}\nName: ${requester}\nPhone: ${phone}\nShipping address: ${address}\nEmail: ${email}\nCase Creation Date: ${creationDate}\n\n--------------------\nDELIVERY DEVICES :\n${generateList(deliveryAssets)}\nBACKPACK :false\nSCREENPROTECT :false\n--------------------\nRECOVERY DEVICES :\n${generateList(recoveryAssets)}\n--------------------`;
 
                                 let toEmail = 'sfdc_lsupport@sycomp.com';
                                 if (hasMobile && !hasLaptop) {

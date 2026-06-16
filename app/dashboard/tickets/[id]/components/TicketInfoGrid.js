@@ -80,39 +80,50 @@ export default function TicketInfoGrid({
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ color: 'var(--text-secondary)' }}><Hash size={18} /></div>
                 <div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>Caso Principal SFDC</p>
                     {(() => {
-                        const sfdcMatch = (editedData.subject || '').match(/\[(SFDC-[^\]]+)\]/i);
-                        let sfdcPrefix = sfdcMatch ? sfdcMatch[1] : '';
+                        const isSFDC = /SFDC/i.test(ticket?.client || '');
+                        const caseMatch = isSFDC 
+                            ? (editedData.subject || '').match(/\[(SFDC-[^\]]+)\]/i)
+                            : (editedData.subject || '').match(/^\[([^\]]+)\]/);
+                        let casePrefix = caseMatch ? caseMatch[1] : '';
                         
-                        // Extract subject without the SFDC part
-                        const subjectWithoutSfdc = sfdcMatch 
-                            ? (editedData.subject || '').replace(sfdcMatch[0], '').trim() 
+                        // Extract subject without the case part
+                        const subjectWithoutCase = caseMatch 
+                            ? (editedData.subject || '').replace(caseMatch[0], '').trim() 
                             : (editedData.subject || '');
 
-                        return editMode ? (
-                            <input
-                                className="form-input"
-                                style={{ padding: '0.2rem', marginTop: '2px', fontSize: '0.9rem', width: '100%' }}
-                                placeholder="Ej: SFDC-00123456"
-                                value={sfdcPrefix}
-                                onChange={e => {
-                                    let rawVal = e.target.value.trim().toUpperCase();
-                                    
-                                    // Make sure it starts with SFDC- if it's not empty and the user just typed numbers
-                                    if (rawVal && !rawVal.startsWith('SFDC-')) {
-                                        // Try to prepend if it looks like a case number
-                                        rawVal = `SFDC-${rawVal}`;
-                                    }
-                                    
-                                    const newSubject = rawVal ? `[${rawVal}] ${subjectWithoutSfdc}` : subjectWithoutSfdc;
-                                    setEditedData({ ...editedData, subject: newSubject });
-                                }}
-                            />
-                        ) : (
-                            <p style={{ fontWeight: 500, margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                                {sfdcPrefix || <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontStyle: 'italic' }}>Sin asignar</span>}
-                            </p>
+                        return (
+                            <>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                    {isSFDC ? 'Caso Principal SFDC' : 'Caso Principal'}
+                                </p>
+                                {editMode ? (
+                                    <input
+                                        className="form-input"
+                                        style={{ padding: '0.2rem', marginTop: '2px', fontSize: '0.9rem', width: '100%' }}
+                                        placeholder={isSFDC ? "Ej: SFDC-00123456" : "Ej: CAS-00123456"}
+                                        value={casePrefix}
+                                        onChange={e => {
+                                            let rawVal = e.target.value.trim();
+                                            if (isSFDC) {
+                                                rawVal = rawVal.toUpperCase();
+                                                // Make sure it starts with SFDC- if it's not empty and the user just typed numbers
+                                                if (rawVal && !rawVal.startsWith('SFDC-')) {
+                                                    // Try to prepend if it looks like a case number
+                                                    rawVal = `SFDC-${rawVal}`;
+                                                }
+                                            }
+                                            
+                                            const newSubject = rawVal ? `[${rawVal}] ${subjectWithoutCase}` : subjectWithoutCase;
+                                            setEditedData({ ...editedData, subject: newSubject });
+                                        }}
+                                    />
+                                ) : (
+                                    <p style={{ fontWeight: 500, margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                                        {casePrefix || <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontStyle: 'italic' }}>Sin asignar</span>}
+                                    </p>
+                                )}
+                            </>
                         );
                     })()}
                 </div>

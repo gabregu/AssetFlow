@@ -135,7 +135,12 @@ export default function AssociatedCasesCard({
                     else if (status === 'Entregado' || status === 'Finalizado' || status === 'Recuperado') statusVariant = 'success';
                     else if (status === 'No requiere accion') statusVariant = 'secondary';
                     
-                    const isSelected = selectedCaseIndex === index;
+                    const isSFDC = /SFDC/i.test(ticket?.client || '');
+                    const caseNumRaw = task.caseNumber || task.case_number || '';
+                    const caseIdentifier = isSFDC && caseNumRaw && !String(caseNumRaw).toUpperCase().startsWith('SFDC-') && /^\d+$/.test(caseNumRaw)
+                        ? `SFDC-${caseNumRaw}`
+                        : caseNumRaw;
+                    const isLinkedToMain = ticket.subject && ticket.subject.includes(`[${caseIdentifier}]`);
 
                     return (
                         <div key={task.id || index} onClick={() => {
@@ -181,7 +186,7 @@ export default function AssociatedCasesCard({
                                     {isSelected ? '▲ Configurando' : 'Clic para configurar'}
                                 </span>
                                 <div style={{ display: 'flex', gap: '4px' }}>
-                                    {ticket.subject && !ticket.subject.includes(`[SFDC-${task.caseNumber || task.case_number}]`) && handleUnlinkCase && (
+                                    {ticket.subject && !isLinkedToMain && handleUnlinkCase && (
                                         <button 
                                             onClick={async (e) => {
                                                 e.stopPropagation();

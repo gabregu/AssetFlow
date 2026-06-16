@@ -100,9 +100,12 @@ export default function TicketHeader({
             </div>
 
             {(() => {
-                const sfdcMatch = (editedData.subject || '').match(/\[(SFDC-[^\]]+)\]/i);
-                const sfdcPrefix = sfdcMatch ? sfdcMatch[1] : '';
-                const cleanSubject = sfdcMatch ? (editedData.subject || '').replace(sfdcMatch[0], '').trim() : (editedData.subject || '');
+                const isSFDC = /SFDC/i.test(ticket?.client || '');
+                const caseMatch = isSFDC 
+                    ? (editedData.subject || '').match(/\[(SFDC-[^\]]+)\]/i)
+                    : (editedData.subject || '').match(/^\[([^\]]+)\]/);
+                const casePrefix = caseMatch ? caseMatch[1] : '';
+                const cleanSubject = caseMatch ? (editedData.subject || '').replace(caseMatch[0], '').trim() : (editedData.subject || '');
 
                 return editMode || editContact ? (
                     <input
@@ -119,7 +122,7 @@ export default function TicketHeader({
                             padding: '0.5rem 0'
                         }}
                         value={cleanSubject}
-                        onChange={e => setEditedData({ ...editedData, subject: sfdcPrefix ? `[${sfdcPrefix}] ${e.target.value}` : e.target.value })}
+                        onChange={e => setEditedData({ ...editedData, subject: casePrefix ? `[${casePrefix}] ${e.target.value}` : e.target.value })}
                         placeholder="Título del servicio..."
                     />
                 ) : (
@@ -139,7 +142,9 @@ export default function TicketHeader({
                         </span>
                     )}
                     {(() => {
-                        const displayMatch = (ticket.subject || '').match(/\[SFDC-[^\]]+\]/i);
+                        const displayMatch = isSFDC 
+                            ? (ticket.subject || '').match(/\[SFDC-[^\]]+\]/i)
+                            : (ticket.subject || '').match(/^\[[^\]]+\]/);
                         return displayMatch ? (ticket.subject || '').replace(displayMatch[0], '').trim() : ticket.subject;
                     })()}
                 </h1>
