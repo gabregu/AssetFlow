@@ -579,6 +579,7 @@ export default function MyTicketsPage() {
             ...parentTicket,
             id: parentTicket.id,
             subject: ticket.displaySubject || parentTicket.subject,
+            caseNumber: caseData.caseNumber || caseData.case_number || parentTicket.caseNumber || parentTicket.case_number,
             associatedAssets,
             accessories: mappedAccessories,
             yubikeys: mappedYubikeys,

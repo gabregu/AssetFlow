@@ -105,6 +105,7 @@ export default function MyDeliveriesPage() {
                         isMainTicket: false, // Ahora todo se trata como tarea individual
                         displayId: task.case_number || (parentTicket?.id ? String(parentTicket.id).substring(0, 8) : 'SUB-CASE'),
                         displaySubject: task.subject || parentTicket?.subject,
+                        caseNumber: task.caseNumber || task.case_number,
                         displayAddress: task.address || parentTicket?.logistics?.address || 'Sin dirección',
                         displayFloorDept: task.floorDept || task.floor_dept || parentTicket?.logistics?.floorDept || '',
                         displayStatus: task.status || 'Pendiente',
@@ -996,6 +997,8 @@ export default function MyDeliveriesPage() {
                                     // 4. Crear ticket virtual compatible
                                     const virtualTicket = {
                                         ...delivery,
+                                        subject: delivery.displaySubject || delivery.subject,
+                                        caseNumber: delivery.caseNumber || delivery.case_number || (delivery.taskId ? delivery.displayId : ''),
                                         associatedAssets,
                                         accessories: mappedAccessories,
                                         yubikeys: mappedYubikeys
