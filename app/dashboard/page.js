@@ -261,7 +261,7 @@ export default function Dashboard() {
         const entregas = myTickets.filter(t => t.type === 'Entrega' || t.logistics?.type === 'Entrega').length;
         const recolecciones = myTickets.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
         return { ...u, active, entregas, recolecciones, color: USER_COLORS[i % USER_COLORS.length], Icon: USER_ICONS[i % USER_ICONS.length] };
-    });
+    }).filter(u => u.active > 0);
     const maxActive = Math.max(...workloadUsers.map(u => u.active), 1);
 
     // ── Timeline (last 10 days) ────────────────────────────────────────────
