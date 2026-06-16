@@ -67,6 +67,7 @@ export default function WarehousePage() {
     // Mapping and Audit States
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedLocation, setSelectedLocation] = useState(null);
+    const [selectedGroup, setSelectedGroup] = useState(null);
     const [isMappingMode, setIsMappingMode] = useState(false);
     const [isAuditMode, setIsAuditMode] = useState(false);
     const [mappingStep, setMappingStep] = useState(1); // 1: Scan Asset, 2: Scan Location
@@ -470,6 +471,8 @@ export default function WarehousePage() {
             alert("Ubicación no encontrada: " + locationId);
             return;
         }
+
+        setSelectedGroup(null);
 
         if (isAuditMode) {
             setAuditLocation(loc);
@@ -880,8 +883,8 @@ export default function WarehousePage() {
                                     return (
                                         <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <h3 style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                                                    <span>{aisle}</span>
+                                                <h3 onClick={() => { setSelectedGroup(aisle); setSelectedLocation(null); }} style={{ fontSize: '0.78rem', fontWeight: 800, color: selectedGroup === aisle ? 'var(--primary-color)' : 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, cursor: 'pointer' }}>
+                                                    <span style={{ borderBottom: selectedGroup === aisle ? '2px solid var(--primary-color)' : 'none' }}>{aisle}</span>
                                                     {currentUser?.role === 'admin' && (
                                                         <Button 
                                                             variant="ghost" 
@@ -1035,8 +1038,8 @@ export default function WarehousePage() {
                                     return (
                                         <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <h3 style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                                                    <span>{aisle}</span>
+                                                <h3 onClick={() => { setSelectedGroup(aisle); setSelectedLocation(null); }} style={{ fontSize: '0.78rem', fontWeight: 800, color: selectedGroup === aisle ? 'var(--primary-color)' : 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, cursor: 'pointer' }}>
+                                                    <span style={{ borderBottom: selectedGroup === aisle ? '2px solid var(--primary-color)' : 'none' }}>{aisle}</span>
                                                     {currentUser?.role === 'admin' && (
                                                         <Button 
                                                             variant="ghost" 
@@ -1514,6 +1517,49 @@ export default function WarehousePage() {
 
                     {/* Información de Selección */}
                     {(() => {
+                        if (selectedGroup) {
+                            const groupLocs = warehouseLocations.filter(l => l.aisle === selectedGroup && (countryFilter === 'Todos' || l.country === countryFilter));
+                            const groupLocIds = groupLocs.map(l => l.id);
+                            const groupAssets = assets.filter(a => groupLocIds.includes(a.locationId));
+                            
+                            return (
+                                <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
+                                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', position: 'sticky', top: '-1.25rem', backgroundColor: 'var(--surface)', zIndex: 10 }}>
+                                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Información de Grupo</span>
+                                        <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Grupo: {selectedGroup}</h3>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Total: {groupAssets.length} equipos</div>
+                                    </div>
+
+                                    {groupAssets.length > 0 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            {groupAssets.map(asset => (
+                                                <div key={asset.id} style={{ fontSize: '0.8rem', padding: '0.6rem', background: 'var(--background-secondary)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                                    <div style={{ fontWeight: 700, marginBottom: '2px' }}>{asset.name}</div>
+                                                    {asset.hardwareSpec && <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{asset.hardwareSpec}</div>}
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)' }}>{asset.serial || 'N/A'}</span>
+                                                        <span style={{ 
+                                                            padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
+                                                            backgroundColor: ['Mantenimiento', 'Dañado'].includes(asset.status) ? '#fff7ed' : (asset.status === 'Asignado' ? '#f0fdf4' : '#eff6ff'),
+                                                            color: ['Mantenimiento', 'Dañado'].includes(asset.status) ? '#ea580c' : (asset.status === 'Asignado' ? '#16a34a' : '#2563eb'),
+                                                            border: '1px solid currentColor'
+                                                        }}>
+                                                            {asset.status}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                                                        Ubicación: <span style={{ fontWeight: 600 }}>{asset.locationId}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '1rem', fontSize: '0.8rem' }}>No hay equipos en este grupo.</div>
+                                    )}
+                                </Card>
+                            );
+                        }
+
                         if (!selectedLocation) {
                             return (
                                 <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)', minHeight: '180px' }}>
