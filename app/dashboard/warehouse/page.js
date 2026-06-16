@@ -68,6 +68,7 @@ export default function WarehousePage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [selectedGroup, setSelectedGroup] = useState(null);
+    const [selectedAssetId, setSelectedAssetId] = useState(null);
     const [isMappingMode, setIsMappingMode] = useState(false);
     const [isAuditMode, setIsAuditMode] = useState(false);
     const [mappingStep, setMappingStep] = useState(1); // 1: Scan Asset, 2: Scan Location
@@ -484,6 +485,12 @@ export default function WarehousePage() {
             confirmMapping(scannedAsset.id, loc.id);
         } else {
             setSelectedLocation(loc);
+            const locAssets = assets.filter(a => a.locationId === loc.id);
+            if (locAssets.length === 1) {
+                setSelectedAssetId(locAssets[0].id);
+            } else {
+                setSelectedAssetId(null);
+            }
         }
     };
 
@@ -1533,7 +1540,16 @@ export default function WarehousePage() {
                                     {groupAssets.length > 0 ? (
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                             {groupAssets.map(asset => (
-                                                <div key={asset.id} style={{ fontSize: '0.8rem', padding: '0.6rem', background: 'var(--background-secondary)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                                <div 
+                                                    key={asset.id} 
+                                                    onClick={() => {
+                                                        const loc = warehouseLocations.find(l => l.id === asset.locationId);
+                                                        if (loc) setSelectedLocation(loc);
+                                                        setSelectedGroup(null);
+                                                        setSelectedAssetId(asset.id);
+                                                    }}
+                                                    style={{ fontSize: '0.8rem', padding: '0.6rem', background: 'var(--background-secondary)', borderRadius: '6px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                                                >
                                                     <div style={{ fontWeight: 700, marginBottom: '2px' }}>{asset.name}</div>
                                                     {asset.hardwareSpec && <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{asset.hardwareSpec}</div>}
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1569,7 +1585,68 @@ export default function WarehousePage() {
                             );
                         }
                         const locationAssets = assets.filter(a => a.locationId === selectedLocation.id);
-                        const asset = locationAssets[0];
+                        const asset = selectedAssetId ? locationAssets.find(a => a.id === selectedAssetId) : null;
+
+                        if (locationAssets.length > 0 && !asset) {
+                            return (
+                                <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
+                                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', position: 'sticky', top: '-1.25rem', backgroundColor: 'var(--surface)', zIndex: 10 }}>
+                                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Equipos en Ubicación</span>
+                                        <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Ubicación: {selectedLocation.id}</h3>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Total: {locationAssets.length} equipos</div>
+                                    </div>
+                                    
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        {locationAssets.map(a => (
+                                            <div 
+                                                key={a.id} 
+                                                onClick={() => setSelectedAssetId(a.id)}
+                                                style={{ fontSize: '0.8rem', padding: '0.6rem', background: 'var(--background-secondary)', borderRadius: '6px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                                            >
+                                                <div style={{ fontWeight: 700, marginBottom: '2px' }}>{a.name}</div>
+                                                {a.hardwareSpec && <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{a.hardwareSpec}</div>}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)' }}>{a.serial || 'N/A'}</span>
+                                                    <span style={{ 
+                                                        padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
+                                                        backgroundColor: ['Mantenimiento', 'Dañado'].includes(a.status) ? '#fff7ed' : (a.status === 'Asignado' ? '#f0fdf4' : '#eff6ff'),
+                                                        color: ['Mantenimiento', 'Dañado'].includes(a.status) ? '#ea580c' : (a.status === 'Asignado' ? '#16a34a' : '#2563eb'),
+                                                        border: '1px solid currentColor'
+                                                    }}>
+                                                        {a.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            icon={Edit3} 
+                                            onClick={() => {
+                                                setEditLoc({
+                                                    aisle: selectedLocation.aisle,
+                                                    section: selectedLocation.section,
+                                                    level: selectedLocation.level
+                                                });
+                                                setIsEditLocationModalOpen(true);
+                                            }}
+                                            style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
+                                        >Editar</Button>
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            icon={Printer} 
+                                            onClick={() => handlePrintLocationLabel(selectedLocation)}
+                                            style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
+                                        >Etiqueta</Button>
+                                    </div>
+                                </Card>
+                            );
+                        }
+
                         return (
                             <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
@@ -1636,6 +1713,14 @@ export default function WarehousePage() {
                                         onClick={() => handleDeleteLocation(selectedLocation.id)}
                                         style={{ color: '#ef4444', height: '32px', fontSize: '0.75rem', marginTop: '0.25rem' }}
                                     >Eliminar Ubicación</Button>
+                                )}
+                                {locationAssets.length > 1 && (
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => setSelectedAssetId(null)}
+                                        style={{ height: '32px', fontSize: '0.75rem', marginTop: '0.25rem' }}
+                                    >&larr; Ver los otros {locationAssets.length - 1} equipos</Button>
                                 )}
                             </Card>
                         );
