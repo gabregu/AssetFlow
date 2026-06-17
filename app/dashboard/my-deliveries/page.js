@@ -72,6 +72,7 @@ export default function MyDeliveriesPage() {
         receivedBy: '',
         dni: '',
         notes: '',
+        deliveredDate: '',
         actualTime: '',
         photoUrl: null,
         sendWhatsapp: false,
@@ -272,6 +273,15 @@ export default function MyDeliveriesPage() {
             );
 
             if (delivery) {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                const localDateStr = `${year}-${month}-${day}`;
+                const hours = String(today.getHours()).padStart(2, '0');
+                const minutes = String(today.getMinutes()).padStart(2, '0');
+                const localTimeStr = `${hours}:${minutes}`;
+
                 // Reducido delay para mayor velocidad de respuesta
                 setTimeout(() => {
                     setSelectedDelivery(delivery);
@@ -281,7 +291,8 @@ export default function MyDeliveriesPage() {
                         receivedBy: delivery.requester || '',
                         dni: '',
                         notes: '',
-                        actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        deliveredDate: localDateStr,
+                        actualTime: localTimeStr
                     }));
                     showToast('Envío identificado desde QR', 'success');
                     
@@ -323,6 +334,17 @@ export default function MyDeliveriesPage() {
             return;
         }
 
+        // Combinar la fecha y hora manuales del formulario para crear el timestamp en la zona horaria del usuario
+        let finalDeliveredAt = new Date().toISOString();
+        if (deliveryForm.deliveredDate && deliveryForm.actualTime) {
+            const [yr, mo, dy] = deliveryForm.deliveredDate.split('-').map(Number);
+            const [hr, mn] = deliveryForm.actualTime.split(':').map(Number);
+            const localDateObj = new Date(yr, mo - 1, dy, hr, mn);
+            if (!isNaN(localDateObj.getTime())) {
+                finalDeliveredAt = localDateObj.toISOString();
+            }
+        }
+
         await safeRegister(async () => {
             // Lógica para actualizar usando la nueva tabla de tareas
             if (selectedDelivery.taskId) {
@@ -333,7 +355,7 @@ export default function MyDeliveriesPage() {
                         receivedBy: deliveryForm.receivedBy,
                         dni: deliveryForm.dni,
                         notes: deliveryForm.notes,
-                        deliveredAt: new Date().toISOString(),
+                        deliveredAt: finalDeliveredAt,
                         actualTime: deliveryForm.actualTime,
                         sendWhatsapp: deliveryForm.sendWhatsapp,
                         emailAddress: deliveryForm.emailAddress
@@ -348,7 +370,7 @@ export default function MyDeliveriesPage() {
                         receivedBy: deliveryForm.receivedBy,
                         dni: deliveryForm.dni,
                         notes: deliveryForm.notes,
-                        deliveredAt: new Date().toISOString(),
+                        deliveredAt: finalDeliveredAt,
                         actualTime: deliveryForm.actualTime,
                         sendWhatsapp: deliveryForm.sendWhatsapp,
                         emailAddress: deliveryForm.emailAddress
@@ -370,7 +392,7 @@ export default function MyDeliveriesPage() {
                                 receivedBy: deliveryForm.receivedBy,
                                 dni: deliveryForm.dni,
                                 notes: deliveryForm.notes,
-                                deliveredAt: new Date().toISOString(),
+                                deliveredAt: finalDeliveredAt,
                                 actualTime: deliveryForm.actualTime,
                                 sendWhatsapp: deliveryForm.sendWhatsapp,
                                 emailAddress: deliveryForm.emailAddress
@@ -390,7 +412,7 @@ export default function MyDeliveriesPage() {
                 form: { ...deliveryForm }
             });
             setShowDownloadPrompt(true);
-            setDeliveryForm({ receivedBy: '', dni: '', notes: '', actualTime: '', sendWhatsapp: false, emailAddress: '' });
+            setDeliveryForm({ receivedBy: '', dni: '', notes: '', deliveredDate: '', actualTime: '', sendWhatsapp: false, emailAddress: '' });
         }).catch(error => {
             console.error('Error al registrar entrega:', error);
             showToast('Error al guardar los datos', 'error');
@@ -430,13 +452,23 @@ export default function MyDeliveriesPage() {
         );
 
         if (delivery) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const localDateStr = `${year}-${month}-${day}`;
+            const hours = String(today.getHours()).padStart(2, '0');
+            const minutes = String(today.getMinutes()).padStart(2, '0');
+            const localTimeStr = `${hours}:${minutes}`;
+
             setSelectedDelivery(delivery);
             setIsDeliveryModalOpen(true);
             setDeliveryForm({
                 receivedBy: delivery.requester || '',
                 dni: '',
                 notes: '',
-                actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                deliveredDate: localDateStr,
+                actualTime: localTimeStr,
                 sendWhatsapp: false,
                 emailAddress: ''
             });
@@ -718,12 +750,23 @@ export default function MyDeliveriesPage() {
                                                             onClick={() => {
                                                                 setSelectedDelivery(delivery);
                                                                 setIsDeliveryModalOpen(true);
+                                                                
+                                                                const today = new Date();
+                                                                const year = today.getFullYear();
+                                                                const month = String(today.getMonth() + 1).padStart(2, '0');
+                                                                const day = String(today.getDate()).padStart(2, '0');
+                                                                const localDateStr = `${year}-${month}-${day}`;
+                                                                const hours = String(today.getHours()).padStart(2, '0');
+                                                                const minutes = String(today.getMinutes()).padStart(2, '0');
+                                                                const localTimeStr = `${hours}:${minutes}`;
+
                                                                 setDeliveryForm(prev => ({
                                                                     ...prev,
                                                                     receivedBy: delivery.requester || '',
                                                                     dni: '',
                                                                     notes: '',
-                                                                    actualTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                                    deliveredDate: localDateStr,
+                                                                    actualTime: localTimeStr
                                                                 }));
                                                             }}
                                                             style={{ padding: '0.75rem 1.5rem', fontSize: '1rem', width: '100%', backgroundColor: dayColor, borderColor: dayColor }}
@@ -833,7 +876,7 @@ export default function MyDeliveriesPage() {
                             </div>
                         )}
 
-                        {/* Fecha y Hora Auto-detectada */}
+                        {/* Fecha y Hora Editable */}
                         <div style={{ 
                             background: 'var(--surface-active)', 
                             borderRadius: 'var(--radius-md)', 
@@ -841,15 +884,53 @@ export default function MyDeliveriesPage() {
                             border: '1px solid var(--border)',
                             display: 'flex',
                             justifyContent: 'space-between',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            gap: '1rem'
                         }}>
-                            <div>
-                                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-secondary)', display: 'block' }}>Día de Operación</span>
-                                <span style={{ fontWeight: 700 }}>{new Date().toLocaleDateString()}</span>
+                            <div style={{ flex: 1 }}>
+                                <label htmlFor="deliveredDate" style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Día de Operación</label>
+                                <input
+                                    id="deliveredDate"
+                                    type="date"
+                                    value={deliveryForm.deliveredDate}
+                                    onChange={(e) => setDeliveryForm({ ...deliveryForm, deliveredDate: e.target.value })}
+                                    style={{
+                                        fontWeight: 700,
+                                        fontSize: '0.95rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        background: 'var(--surface-main)',
+                                        color: 'var(--text-main)',
+                                        padding: '6px 10px',
+                                        width: '100%',
+                                        boxSizing: 'border-box',
+                                        fontFamily: 'inherit'
+                                    }}
+                                    required
+                                />
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-secondary)', display: 'block' }}>Hora de Registro</span>
-                                <span style={{ fontWeight: 700 }}>{deliveryForm.actualTime}</span>
+                            <div style={{ flex: 1 }}>
+                                <label htmlFor="actualTime" style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px', textAlign: 'right' }}>Hora de Registro</label>
+                                <input
+                                    id="actualTime"
+                                    type="time"
+                                    value={deliveryForm.actualTime}
+                                    onChange={(e) => setDeliveryForm({ ...deliveryForm, actualTime: e.target.value })}
+                                    style={{
+                                        fontWeight: 700,
+                                        fontSize: '0.95rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        background: 'var(--surface-main)',
+                                        color: 'var(--text-main)',
+                                        padding: '6px 10px',
+                                        width: '100%',
+                                        boxSizing: 'border-box',
+                                        textAlign: 'right',
+                                        fontFamily: 'inherit'
+                                    }}
+                                    required
+                                />
                             </div>
                         </div>
 
@@ -1004,13 +1085,25 @@ export default function MyDeliveriesPage() {
                                         yubikeys: mappedYubikeys
                                     };
 
+                                    const deliveredAtTime = (() => {
+                                        if (form.deliveredDate && form.actualTime) {
+                                            const [yr, mo, dy] = form.deliveredDate.split('-').map(Number);
+                                            const [hr, mn] = form.actualTime.split(':').map(Number);
+                                            const localDateObj = new Date(yr, mo - 1, dy, hr, mn);
+                                            if (!isNaN(localDateObj.getTime())) {
+                                                return localDateObj.toISOString();
+                                            }
+                                        }
+                                        return new Date().toISOString();
+                                    })();
+
                                     setTimeout(() => {
                                         generateTicketPDF(virtualTicket, assets, {
                                             receivedBy: form.receivedBy,
                                             dni: form.dni,
                                             notes: form.notes,
                                             actualTime: form.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                            deliveredAt: new Date().toISOString()
+                                            deliveredAt: deliveredAtTime
                                         }, 'download');
                                     }, 0);
                                 }
