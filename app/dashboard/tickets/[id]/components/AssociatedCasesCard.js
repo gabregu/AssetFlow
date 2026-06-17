@@ -141,6 +141,7 @@ export default function AssociatedCasesCard({
                         ? `SFDC-${caseNumRaw}`
                         : caseNumRaw;
                     const isLinkedToMain = ticket.subject && ticket.subject.includes(`[${caseIdentifier}]`);
+                    const isSelected = selectedCaseIndex === index;
 
                     return (
                         <div key={task.id || index} onClick={() => {
