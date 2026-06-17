@@ -275,7 +275,7 @@ export function Sidebar({ isOpen, onClose }) {
                     disabled={isRefreshing}
                     onClick={async () => {
                         setIsRefreshing(true);
-                        await refreshData();
+                        await refreshData(true);
                         // Small extra delay for UX feel
                         setTimeout(() => setIsRefreshing(false), 800);
                     }}
