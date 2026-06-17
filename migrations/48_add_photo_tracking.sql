@@ -15,10 +15,7 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
--- 3. Habilitar RLS en storage.objects (generalmente ya está habilitado, pero por seguridad)
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- 4. Crear políticas de acceso para el bucket 'device-photos'
+-- 3. Crear políticas de acceso para el bucket 'device-photos'
 -- Primero eliminar políticas existentes para evitar duplicados
 DO $$
 BEGIN
