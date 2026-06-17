@@ -144,18 +144,33 @@ export default function AssetDetailPage() {
                     {/* Main Info */}
                     <Card>
                         <div style={{ display: 'flex', gap: '2rem', padding: '1rem' }}>
-                            <div style={{
-                                width: '120px',
-                                height: '120px',
-                                backgroundColor: 'var(--background)',
-                                borderRadius: '16px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'var(--primary-color)',
-                                border: '1px solid var(--border)'
-                            }}>
-                                <Icon size={64} />
+                            <div 
+                                style={{
+                                    width: '120px',
+                                    height: '120px',
+                                    backgroundColor: 'var(--background)',
+                                    borderRadius: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: 'var(--primary-color)',
+                                    border: '1px solid var(--border)',
+                                    overflow: 'hidden',
+                                    cursor: asset.photoUrl ? 'pointer' : 'default',
+                                    flexShrink: 0
+                                }}
+                                onClick={() => {
+                                    if (asset.photoUrl) {
+                                        window.open(asset.photoUrl, '_blank');
+                                    }
+                                }}
+                                title={asset.photoUrl ? "Ver foto en tamaño completo" : ""}
+                            >
+                                {asset.photoUrl ? (
+                                    <img src={asset.photoUrl} alt={asset.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <Icon size={64} />
+                                )}
                             </div>
                             <div style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

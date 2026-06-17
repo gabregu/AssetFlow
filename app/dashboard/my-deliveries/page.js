@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSafeSubmit } from '../../../lib/useSafeSubmit';
 import { 
     Truck, CheckCircle, Package, Send, Calendar, Clock, MapPin, Search, ChevronRight, Navigation, CheckCircle2, ChevronDown, ListFilter, LayoutGrid, List, MessageSquare, StickyNote,
@@ -13,7 +13,8 @@ import {
     ArrowUpRight,
     QrCode,
     Download,
-    Loader2
+    Loader2,
+    Camera
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -23,6 +24,8 @@ import { QRScannerModal } from '@/app/components/ui/QRScannerModal';
 import { useRouter } from 'next/navigation';
 import { useStore } from '../../../lib/store';
 import { generateTicketPDF } from '../../../lib/pdf-generator';
+import { uploadDevicePhoto } from '../../../lib/upload';
+import { supabase } from '../../../lib/supabase';
 
 export default function MyDeliveriesPage() {
     const { 
@@ -60,12 +63,38 @@ export default function MyDeliveriesPage() {
     const [completedDeliveryForPdf, setCompletedDeliveryForPdf] = useState(null);
     const { isSubmitting, safeSubmit: safeRegister } = useSafeSubmit();
     // Stats and Toast State
+    const cameraInputRef = useRef(null);
+    const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
         setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
+    };
+
+    const handlePhotoCapture = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        setIsUploadingPhoto(true);
+        try {
+            const displayId = selectedDelivery?.displayId || 'delivery';
+            const publicUrl = await uploadDevicePhoto(file, `delivery_${displayId}`);
+            setDeliveryForm(prev => ({
+                ...prev,
+                photoUrl: publicUrl
+            }));
+            showToast('Foto cargada correctamente', 'success');
+        } catch (err) {
+            console.error(err);
+            showToast('Error al subir la fotografía', 'error');
+        } finally {
+            setIsUploadingPhoto(false);
+            if (cameraInputRef.current) {
+                cameraInputRef.current.value = '';
+            }
+        }
     };
 
     const [deliveryForm, setDeliveryForm] = useState({
@@ -346,6 +375,34 @@ export default function MyDeliveriesPage() {
         }
 
         await safeRegister(async () => {
+            // Cascaded photo update to assets in inventory
+            if (deliveryForm.photoUrl) {
+                let assetsToUpdate = [];
+                if (selectedDelivery.taskAssets && selectedDelivery.taskAssets.length > 0) {
+                    assetsToUpdate = selectedDelivery.taskAssets;
+                } else if (selectedDelivery.associatedAssets && selectedDelivery.associatedAssets.length > 0) {
+                    assetsToUpdate = selectedDelivery.associatedAssets;
+                } else if (selectedDelivery.assetInfo?.serial) {
+                    assetsToUpdate = [selectedDelivery.assetInfo];
+                }
+
+                for (const asset of assetsToUpdate) {
+                    if (asset.serial || asset.id) {
+                        const currentNotes = asset.notes || '';
+                        const query = supabase.from('assets').update({ 
+                            photo_url: deliveryForm.photoUrl,
+                            notes: `${currentNotes}\n[Estado registrado en entrega/devolución]: ${deliveryForm.notes || 'Sin observaciones'}`.trim()
+                        });
+                        
+                        if (asset.id && String(asset.id).startsWith('AST-')) {
+                            await query.eq('id', asset.id);
+                        } else if (asset.serial) {
+                            await query.eq('serial', asset.serial);
+                        }
+                    }
+                }
+            }
+
             // Lógica para actualizar usando la nueva tabla de tareas
             if (selectedDelivery.taskId) {
                 // Actualizar la tarea relacional directamente
@@ -358,7 +415,8 @@ export default function MyDeliveriesPage() {
                         deliveredAt: finalDeliveredAt,
                         actualTime: deliveryForm.actualTime,
                         sendWhatsapp: deliveryForm.sendWhatsapp,
-                        emailAddress: deliveryForm.emailAddress
+                        emailAddress: deliveryForm.emailAddress,
+                        photoUrl: deliveryForm.photoUrl || null
                     }
                 });
             } else if (selectedDelivery.isMainTicket) {
@@ -373,7 +431,8 @@ export default function MyDeliveriesPage() {
                         deliveredAt: finalDeliveredAt,
                         actualTime: deliveryForm.actualTime,
                         sendWhatsapp: deliveryForm.sendWhatsapp,
-                        emailAddress: deliveryForm.emailAddress
+                        emailAddress: deliveryForm.emailAddress,
+                        photoUrl: deliveryForm.photoUrl || null
                     }
                 };
                 const success = await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
@@ -395,7 +454,8 @@ export default function MyDeliveriesPage() {
                                 deliveredAt: finalDeliveredAt,
                                 actualTime: deliveryForm.actualTime,
                                 sendWhatsapp: deliveryForm.sendWhatsapp,
-                                emailAddress: deliveryForm.emailAddress
+                                emailAddress: deliveryForm.emailAddress,
+                                photoUrl: deliveryForm.photoUrl || null
                             }
                         }
                     };
@@ -412,7 +472,7 @@ export default function MyDeliveriesPage() {
                 form: { ...deliveryForm }
             });
             setShowDownloadPrompt(true);
-            setDeliveryForm({ receivedBy: '', dni: '', notes: '', deliveredDate: '', actualTime: '', sendWhatsapp: false, emailAddress: '' });
+            setDeliveryForm({ receivedBy: '', dni: '', notes: '', deliveredDate: '', actualTime: '', photoUrl: null, sendWhatsapp: false, emailAddress: '' });
         }).catch(error => {
             console.error('Error al registrar entrega:', error);
             showToast('Error al guardar los datos', 'error');
@@ -989,6 +1049,87 @@ export default function MyDeliveriesPage() {
                                 }}
                                 placeholder="Cualquier observación relevante sobre la entrega..."
                             />
+                        </div>
+
+                        {/* Registro Fotográfico (Opcional) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+                            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>Fotografía de Estado (Opcional)</label>
+                            <input 
+                                type="file" 
+                                accept="image/*" 
+                                capture="environment" 
+                                ref={cameraInputRef} 
+                                onChange={handlePhotoCapture} 
+                                style={{ display: 'none' }} 
+                            />
+                            {deliveryForm.photoUrl ? (
+                                <div style={{ position: 'relative', width: '100%', height: '160px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                                    <img 
+                                        src={deliveryForm.photoUrl} 
+                                        alt="Foto de estado" 
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeliveryForm(prev => ({ ...prev, photoUrl: null }))}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '8px',
+                                            right: '8px',
+                                            backgroundColor: '#ef4444',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '50%',
+                                            width: '28px',
+                                            height: '28px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            fontSize: '16px',
+                                            fontWeight: 'bold',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                                        }}
+                                        title="Eliminar foto"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => cameraInputRef.current?.click()}
+                                    disabled={isUploadingPhoto}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '0.5rem',
+                                        padding: '0.75rem',
+                                        border: '1px dashed var(--border)',
+                                        backgroundColor: 'var(--surface-active)',
+                                        color: 'var(--text-main)',
+                                        borderRadius: 'var(--radius-sm)',
+                                        cursor: 'pointer',
+                                        fontWeight: 600,
+                                        fontSize: '0.9rem',
+                                        width: '100%',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {isUploadingPhoto ? (
+                                        <>
+                                            <Loader2 size={18} className="animate-spin" />
+                                            <span>Subiendo fotografía...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Camera size={18} />
+                                            <span>Tomar Foto del Estado</span>
+                                        </>
+                                    )}
+                                </button>
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem' }}>

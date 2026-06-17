@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -11,7 +11,7 @@ import {
     HardDrive, Package, Trash2, Edit3, Eye, ArrowRight,
     TrendingUp, AlertTriangle, CheckCircle, Upload, Download, History,
     ChevronDown, ChevronUp, Key, UserPlus, Truck, MapPin, Box, User,
-    Layers, Activity, Server, Printer
+    Layers, Activity, Server, Printer, Loader2
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
@@ -20,6 +20,7 @@ import Link from 'next/link';
 
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
 import { Camera } from 'lucide-react';
+import { uploadDevicePhoto } from '../../../lib/upload';
 
 const parseAssetName = (name) => {
     if (!name) return { title: '', specs: [] };
@@ -78,6 +79,34 @@ export default function InventoryPage() {
     const [quickScanCode, setQuickScanCode] = useState('');
     const [editingAsset, setEditingAsset] = useState(null);
     const [selectedConsumable, setSelectedConsumable] = useState(null);
+
+    const cameraInputRef = useRef(null);
+    const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+    const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+    const [previewImageUrl, setPreviewImageUrl] = useState('');
+
+    const handlePhotoCapture = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploadingPhoto(true);
+        try {
+            const serial = newAsset.serial || 'new_asset';
+            const publicUrl = await uploadDevicePhoto(file, `asset_${serial}`);
+            setNewAsset(prev => ({
+                ...prev,
+                photoUrl: publicUrl
+            }));
+        } catch (err) {
+            console.error('Error capture photo:', err);
+            alert('Error al subir la fotografía de estado.');
+        } finally {
+            setIsUploadingPhoto(false);
+            if (cameraInputRef.current) {
+                cameraInputRef.current.value = '';
+            }
+        }
+    };
     const [stockChange, setStockChange] = useState(0);
 
     // Yubikey Modals State
@@ -105,7 +134,7 @@ export default function InventoryPage() {
         date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
         modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
         eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina', cod: '', boxNumber: '',
-        locationId: ''
+        locationId: '', photoUrl: null
     });
 
     const uniqueAssetNames = React.useMemo(() => {
@@ -435,7 +464,7 @@ export default function InventoryPage() {
             date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
             modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
             eolDate: '', notes: '', sfdcCase: '', oem: '', cod: '', boxNumber: '', country: 'Argentina',
-            locationId: ''
+            locationId: '', photoUrl: null
         });
     };
 
@@ -2503,7 +2532,36 @@ export default function InventoryPage() {
                                                                         );
                                                                     })()}
                                                                 </Link>
-                                                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{asset.type}</div>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '4px' }}>
+                                                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{asset.type}</span>
+                                                                    {asset.photoUrl && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                e.preventDefault();
+                                                                                setPreviewImageUrl(asset.photoUrl);
+                                                                                setIsImagePreviewOpen(true);
+                                                                            }}
+                                                                            style={{
+                                                                                border: 'none',
+                                                                                background: 'rgba(16, 185, 129, 0.1)',
+                                                                                color: '#10b981',
+                                                                                borderRadius: '4px',
+                                                                                padding: '2px 6px',
+                                                                                fontSize: '0.65rem',
+                                                                                fontWeight: 'bold',
+                                                                                cursor: 'pointer',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '3px'
+                                                                            }}
+                                                                            title="Ver foto del estado"
+                                                                        >
+                                                                            📷 Ver Foto
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </td>
@@ -3167,6 +3225,87 @@ export default function InventoryPage() {
                         />
                     </div>
 
+                    {/* Registro Fotográfico del Dispositivo */}
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                        <label className="form-label">Fotografía del Estado del Dispositivo (Opcional)</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            ref={cameraInputRef}
+                            onChange={handlePhotoCapture}
+                            style={{ display: 'none' }}
+                        />
+                        {newAsset.photoUrl ? (
+                            <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                                <img
+                                    src={newAsset.photoUrl}
+                                    alt="Foto de estado del equipo"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setNewAsset(prev => ({ ...prev, photoUrl: null }))}
+                                    style={{
+                                        position: 'absolute',
+                                        top: '8px',
+                                        right: '8px',
+                                        backgroundColor: '#ef4444',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: '28px',
+                                        height: '28px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        fontSize: '16px',
+                                        fontWeight: 'bold',
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                                    }}
+                                    title="Eliminar foto"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => cameraInputRef.current?.click()}
+                                disabled={isUploadingPhoto}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
+                                    padding: '0.75rem',
+                                    border: '1px dashed var(--border)',
+                                    backgroundColor: 'var(--surface-active)',
+                                    color: 'var(--text-main)',
+                                    borderRadius: 'var(--radius-sm)',
+                                    cursor: 'pointer',
+                                    fontWeight: 600,
+                                    fontSize: '0.9rem',
+                                    width: '100%',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                {isUploadingPhoto ? (
+                                    <>
+                                        <Loader2 size={18} className="animate-spin" />
+                                        <span>Subiendo fotografía...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Camera size={18} />
+                                        <span>Tomar Foto del Estado</span>
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
+
 
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem' }}>
@@ -3243,6 +3382,31 @@ export default function InventoryPage() {
                         <Button type="submit">Buscar y Editar</Button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Modal de Vista Previa de Imagen */}
+            <Modal
+                isOpen={isImagePreviewOpen}
+                onClose={() => setIsImagePreviewOpen(false)}
+                title="Fotografía del Estado del Equipo"
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '0.5rem' }}>
+                    <div style={{ width: '100%', maxHeight: '70vh', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                        <img 
+                            src={previewImageUrl} 
+                            alt="Estado del dispositivo" 
+                            style={{ width: '100%', height: 'auto', maxHeight: '70vh', objectFit: 'contain' }} 
+                        />
+                    </div>
+                    <Button 
+                        type="button" 
+                        variant="secondary" 
+                        onClick={() => setIsImagePreviewOpen(false)}
+                        style={{ width: '100%' }}
+                    >
+                        CERRAR
+                    </Button>
+                </div>
             </Modal>
 
             {/* Modal para Crear Nuevo Accesorio */}
