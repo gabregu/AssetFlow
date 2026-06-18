@@ -838,14 +838,14 @@ export default function WarehousePage() {
                     {words.slice(0, 3).map((w, idx) => {
                         const size = w.length > 6 ? '0.58rem' : (w.length > 4 ? '0.64rem' : '0.76rem');
                         return (
-                            <div key={idx} style={{ fontSize: size, fontWeight: '900', lineHeight: '1.1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{w}</div>
+                            <div key={idx} style={{ fontSize: size, fontWeight: '600', lineHeight: '1.2', letterSpacing: '0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{w}</div>
                         );
                     })}
                     {(() => {
                         const levelStr = String(loc.level || '');
                         const size = levelStr.length > 6 ? '0.55rem' : (levelStr.length > 4 ? '0.6rem' : '0.68rem');
                         return (
-                            <div style={{ fontSize: size, fontWeight: '900', marginTop: '1px', opacity: 0.9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{levelStr}</div>
+                            <div style={{ fontSize: size, fontWeight: '600', lineHeight: '1.2', letterSpacing: '0.02em', marginTop: '1.2px', opacity: 0.9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{levelStr}</div>
                         );
                     })()}
                 </div>
@@ -860,13 +860,13 @@ export default function WarehousePage() {
             
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '2px', color: 'var(--text-secondary)' }}>
-                    <div style={{ fontSize: size1, fontWeight: '800', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center', lineHeight: '1.1' }}>
+                    <div style={{ fontSize: size1, fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center', lineHeight: '1.2', letterSpacing: '0.02em' }}>
                         {part1}
                     </div>
                     {part2 && (() => {
                         const size2 = part2.length > 6 ? '0.55rem' : (part2.length > 4 ? '0.6rem' : '0.68rem');
                         return (
-                            <div style={{ fontSize: size2, fontWeight: '800', opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center', marginTop: '1px' }}>
+                            <div style={{ fontSize: size2, fontWeight: '600', opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center', marginTop: '1.2px', lineHeight: '1.2', letterSpacing: '0.02em' }}>
                                 {part2}
                             </div>
                         );
