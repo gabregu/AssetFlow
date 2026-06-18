@@ -592,38 +592,25 @@ export default function WarehousePage() {
         if (e) e.preventDefault();
         if (!movingAsset || !targetLocationId) return;
 
-        const sourceLocationId = movingAsset.locationId;
         const targetAssets = assets.filter(a => a.locationId === targetLocationId);
         
         try {
             if (targetAssets.length > 0) {
-                const targetAsset = targetAssets[0];
-                const confirmSwap = window.confirm(
-                    `La ubicación destino (${targetLocationId}) está ocupada por el activo:\n` +
-                    `"${targetAsset.name}" (SN: ${targetAsset.serial || 'N/A'}).\n\n` +
-                    `¿Desea intercambiar las ubicaciones de ambos activos?`
+                const confirmMove = window.confirm(
+                    `La ubicación destino (${targetLocationId}) ya está ocupada por el activo:\n` +
+                    `"${targetAssets[0].name}" (SN: ${targetAssets[0].serial || 'N/A'}).\n\n` +
+                    `¿Desea agregar este activo a dicha ubicación?`
                 );
-                if (!confirmSwap) return;
-
-                const res1 = await mapAssetToLocation(targetAsset.id, sourceLocationId);
-                if (res1.error) {
-                    alert("Error al mover el activo de destino: " + (res1.error.message || res1.error));
-                    return;
-                }
-                const res2 = await mapAssetToLocation(movingAsset.id, targetLocationId);
-                if (res2.error) {
-                    alert("Error al mover el activo de origen: " + (res2.error.message || res2.error));
-                    return;
-                }
-                alert("Ubicaciones intercambiadas con éxito.");
-            } else {
-                const res = await mapAssetToLocation(movingAsset.id, targetLocationId);
-                if (res.error) {
-                    alert("Error al mover el activo: " + (res.error.message || res.error));
-                    return;
-                }
-                alert("Activo movido con éxito.");
+                if (!confirmMove) return;
             }
+
+            const res = await mapAssetToLocation(movingAsset.id, targetLocationId);
+            if (res.error) {
+                alert("Error al mover el activo: " + (res.error.message || res.error));
+                return;
+            }
+            alert("Activo movido con éxito.");
+
             setIsMoveAssetModalOpen(false);
             setMovingAsset(null);
             setTargetLocationId('');
@@ -647,41 +634,23 @@ export default function WarehousePage() {
 
         try {
             if (targetAssets.length > 0) {
-                const confirmSwap = window.confirm(
-                    `La ubicación destino (${targetAllLocationId}) está ocupada por ${targetAssets.length} activo(s).\n\n` +
-                    `¿Desea INTERCAMBIAR todos los activos de ambas ubicaciones?\n` +
-                    `(${sourceAssets.length} activos se moverán al destino, y los del destino se moverán a la ubicación actual).`
+                const confirmMove = window.confirm(
+                    `La ubicación destino (${targetAllLocationId}) ya está ocupada por ${targetAssets.length} activo(s).\n\n` +
+                    `¿Desea mover todos los activos (${sourceAssets.length} equipos) a dicha ubicación?`
                 );
-                if (!confirmSwap) return;
-
-                // Move target assets to source location
-                for (const ta of targetAssets) {
-                    const res = await mapAssetToLocation(ta.id, sourceLocId);
-                    if (res.error) {
-                        alert("Error al mover activos de destino: " + (res.error.message || res.error));
-                        return;
-                    }
-                }
-                // Move source assets to target location
-                for (const sa of sourceAssets) {
-                    const res = await mapAssetToLocation(sa.id, targetAllLocationId);
-                    if (res.error) {
-                        alert("Error al mover activos de origen: " + (res.error.message || res.error));
-                        return;
-                    }
-                }
-                alert("¡Éxito! Todos los activos han sido intercambiados.");
-            } else {
-                // Move all source assets to target location (target is empty)
-                for (const sa of sourceAssets) {
-                    const res = await mapAssetToLocation(sa.id, targetAllLocationId);
-                    if (res.error) {
-                        alert("Error al mover activos: " + (res.error.message || res.error));
-                        return;
-                    }
-                }
-                alert("¡Éxito! Todos los activos han sido movidos.");
+                if (!confirmMove) return;
             }
+
+            // Move all source assets to target location
+            for (const sa of sourceAssets) {
+                const res = await mapAssetToLocation(sa.id, targetAllLocationId);
+                if (res.error) {
+                    alert("Error al mover activos: " + (res.error.message || res.error));
+                    return;
+                }
+            }
+            alert("¡Éxito! Todos los activos han sido movidos.");
+
             setIsMoveAllModalOpen(false);
             setMovingAllSourceLocation(null);
             setTargetAllLocationId('');
