@@ -61,7 +61,7 @@ export default function SFDCCasesPage() {
 
     const isActiveCaseStatus = (c) => {
         const status = String(c.status || '').toLowerCase();
-        return status.includes('new') || status.includes('progress') || status.includes('hold') || status.includes('waiting') || status.includes('escalated');
+        return status.includes('new') || status.includes('progress') || status.includes('hold') || status.includes('waiting') || status.includes('escalated') || status.includes('approved');
     };
 
     const isCaseInCountryFilter = (c) => {
