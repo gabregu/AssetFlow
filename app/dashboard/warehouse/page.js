@@ -800,30 +800,45 @@ export default function WarehousePage() {
     // Helper to render customized text lines in grid cells
     const renderCellContent = (loc, assetCount, locationAssets) => {
         if (assetCount > 0) {
-            const asset = locationAssets[0];
-            // Render details (first words of name or specs)
             const words = (loc.section || '').split(' ');
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '2px', textAlign: 'center' }}>
-                    {words.slice(0, 3).map((w, idx) => (
-                        <div key={idx} style={{ fontSize: '0.55rem', fontWeight: '800', lineHeight: '1.05', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{w}</div>
-                    ))}
-                    <div style={{ fontSize: '0.52rem', fontWeight: '900', marginTop: '1px', opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{loc.level}</div>
+                    {words.slice(0, 3).map((w, idx) => {
+                        const size = w.length > 6 ? '0.58rem' : (w.length > 4 ? '0.64rem' : '0.76rem');
+                        return (
+                            <div key={idx} style={{ fontSize: size, fontWeight: '900', lineHeight: '1.1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{w}</div>
+                        );
+                    })}
+                    {(() => {
+                        const levelStr = String(loc.level || '');
+                        const size = levelStr.length > 6 ? '0.55rem' : (levelStr.length > 4 ? '0.6rem' : '0.68rem');
+                        return (
+                            <div style={{ fontSize: size, fontWeight: '900', marginTop: '1px', opacity: 0.9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{levelStr}</div>
+                        );
+                    })()}
                 </div>
             );
         } else {
             // Available
             const label = loc.id.split('-').slice(1).join('-');
+            const part1 = loc.aisle.includes('COD') ? loc.section : label.split(' ')[0] || loc.level;
+            const part2 = label.split(' ')[1];
+
+            const size1 = part1.length > 6 ? '0.6rem' : (part1.length > 4 ? '0.66rem' : '0.78rem');
+            
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '2px', color: 'var(--text-secondary)' }}>
-                    <div style={{ fontSize: '0.58rem', fontWeight: '700', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}>
-                        {loc.aisle.includes('COD') ? loc.section : label.split(' ')[0] || loc.level}
+                    <div style={{ fontSize: size1, fontWeight: '800', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center', lineHeight: '1.1' }}>
+                        {part1}
                     </div>
-                    {label.split(' ')[1] && (
-                        <div style={{ fontSize: '0.52rem', opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }}>
-                            {label.split(' ')[1]}
-                        </div>
-                    )}
+                    {part2 && (() => {
+                        const size2 = part2.length > 6 ? '0.55rem' : (part2.length > 4 ? '0.6rem' : '0.68rem');
+                        return (
+                            <div style={{ fontSize: size2, fontWeight: '800', opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center', marginTop: '1px' }}>
+                                {part2}
+                            </div>
+                        );
+                    })()}
                 </div>
             );
         }
