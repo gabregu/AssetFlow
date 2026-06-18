@@ -78,6 +78,11 @@ export default function WarehousePage() {
     const [isMoveAssetModalOpen, setIsMoveAssetModalOpen] = useState(false);
     const [movingAsset, setMovingAsset] = useState(null);
     const [targetLocationId, setTargetLocationId] = useState('');
+
+    // Move All Assets States
+    const [isMoveAllModalOpen, setIsMoveAllModalOpen] = useState(false);
+    const [movingAllSourceLocation, setMovingAllSourceLocation] = useState(null);
+    const [targetAllLocationId, setTargetAllLocationId] = useState('');
     
     // Audit State
     const [auditLocation, setAuditLocation] = useState(null);
@@ -627,6 +632,64 @@ export default function WarehousePage() {
         } catch (err) {
             console.error(err);
             alert("Ocurrió un error inesperado al mover el activo.");
+        }
+    };
+
+    const handleMoveAllAssets = async (e) => {
+        if (e) e.preventDefault();
+        if (!movingAllSourceLocation || !targetAllLocationId) return;
+
+        const sourceLocId = movingAllSourceLocation.id;
+        const sourceAssets = assets.filter(a => a.locationId === sourceLocId);
+        if (sourceAssets.length === 0) return;
+
+        const targetAssets = assets.filter(a => a.locationId === targetAllLocationId);
+
+        try {
+            if (targetAssets.length > 0) {
+                const confirmSwap = window.confirm(
+                    `La ubicación destino (${targetAllLocationId}) está ocupada por ${targetAssets.length} activo(s).\n\n` +
+                    `¿Desea INTERCAMBIAR todos los activos de ambas ubicaciones?\n` +
+                    `(${sourceAssets.length} activos se moverán al destino, y los del destino se moverán a la ubicación actual).`
+                );
+                if (!confirmSwap) return;
+
+                // Move target assets to source location
+                for (const ta of targetAssets) {
+                    const res = await mapAssetToLocation(ta.id, sourceLocId);
+                    if (res.error) {
+                        alert("Error al mover activos de destino: " + (res.error.message || res.error));
+                        return;
+                    }
+                }
+                // Move source assets to target location
+                for (const sa of sourceAssets) {
+                    const res = await mapAssetToLocation(sa.id, targetAllLocationId);
+                    if (res.error) {
+                        alert("Error al mover activos de origen: " + (res.error.message || res.error));
+                        return;
+                    }
+                }
+                alert("¡Éxito! Todos los activos han sido intercambiados.");
+            } else {
+                // Move all source assets to target location (target is empty)
+                for (const sa of sourceAssets) {
+                    const res = await mapAssetToLocation(sa.id, targetAllLocationId);
+                    if (res.error) {
+                        alert("Error al mover activos: " + (res.error.message || res.error));
+                        return;
+                    }
+                }
+                alert("¡Éxito! Todos los activos han sido movidos.");
+            }
+            setIsMoveAllModalOpen(false);
+            setMovingAllSourceLocation(null);
+            setTargetAllLocationId('');
+            setSelectedLocation(null);
+            setSelectedAssetId(null);
+        } catch (err) {
+            console.error(err);
+            alert("Ocurrió un error inesperado al mover los activos.");
         }
     };
 
@@ -1728,6 +1791,17 @@ export default function WarehousePage() {
                                             style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
                                         >Etiqueta</Button>
                                     </div>
+                                    <Button 
+                                        variant="primary" 
+                                        size="sm" 
+                                        icon={Navigation} 
+                                        onClick={() => {
+                                            setMovingAllSourceLocation(selectedLocation);
+                                            setTargetAllLocationId('');
+                                            setIsMoveAllModalOpen(true);
+                                        }}
+                                        style={{ height: '32px', fontSize: '0.75rem', marginTop: '0.25rem', width: '100%' }}
+                                    >Mover Todos los Activos ({locationAssets.length})</Button>
                                 </Card>
                             );
                         }
@@ -1910,6 +1984,90 @@ export default function WarehousePage() {
                             disabled={!targetLocationId}
                         >
                             Confirmar Movimiento
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Modal Mover Todos los Activos */}
+            <Modal 
+                isOpen={isMoveAllModalOpen} 
+                onClose={() => {
+                    setIsMoveAllModalOpen(false);
+                    setMovingAllSourceLocation(null);
+                    setTargetAllLocationId('');
+                }} 
+                title="Mover Todos los Activos a otra Ubicación"
+            >
+                <form onSubmit={handleMoveAllAssets}>
+                    <div style={{ marginBottom: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <div style={{ fontSize: '0.85rem' }}>
+                            <strong>Origen:</strong> Ubicación {movingAllSourceLocation?.id}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <strong>Cantidad de activos a mover:</strong> {assets.filter(a => a.locationId === movingAllSourceLocation?.id).length} equipos
+                        </div>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                        <label className="form-label">Ubicación Destino</label>
+                        <select
+                            className="form-input"
+                            required
+                            value={targetAllLocationId}
+                            onChange={e => setTargetAllLocationId(e.target.value)}
+                            style={{ 
+                                width: '100%', 
+                                padding: '0.5rem', 
+                                borderRadius: '6px', 
+                                border: '1px solid var(--border)', 
+                                backgroundColor: 'var(--background)', 
+                                color: 'var(--text-main)', 
+                                fontSize: '0.9rem', 
+                                outline: 'none' 
+                            }}
+                        >
+                            <option value="">-- Seleccionar Ubicación Destino --</option>
+                            {Object.keys(targetLocationsGrouped).sort().map(aisle => (
+                                <optgroup key={aisle} label={`GRUPO: ${aisle}`}>
+                                    {targetLocationsGrouped[aisle].map(loc => {
+                                        const locAssetsCount = assets.filter(a => a.locationId === loc.id).length;
+                                        const label = `${loc.id} ${locAssetsCount > 0 ? `(${locAssetsCount} equipos - Ocupado)` : '(Disponible)'}`;
+                                        const isCurrent = loc.id === movingAllSourceLocation?.id;
+                                        
+                                        return (
+                                            <option 
+                                                key={loc.id} 
+                                                value={loc.id}
+                                                disabled={isCurrent}
+                                            >
+                                                {label} {isCurrent ? '(Actual)' : ''}
+                                            </option>
+                                        );
+                                    })}
+                                </optgroup>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            onClick={() => {
+                                setIsMoveAllModalOpen(false);
+                                setMovingAllSourceLocation(null);
+                                setTargetAllLocationId('');
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            variant="primary"
+                            disabled={!targetAllLocationId}
+                        >
+                            Confirmar Movimiento Masivo
                         </Button>
                     </div>
                 </form>
