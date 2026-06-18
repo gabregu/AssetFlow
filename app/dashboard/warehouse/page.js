@@ -73,6 +73,11 @@ export default function WarehousePage() {
     const [isAuditMode, setIsAuditMode] = useState(false);
     const [mappingStep, setMappingStep] = useState(1); // 1: Scan Asset, 2: Scan Location
     const [scannedAsset, setScannedAsset] = useState(null);
+
+    // Move Asset States
+    const [isMoveAssetModalOpen, setIsMoveAssetModalOpen] = useState(false);
+    const [movingAsset, setMovingAsset] = useState(null);
+    const [targetLocationId, setTargetLocationId] = useState('');
     
     // Audit State
     const [auditLocation, setAuditLocation] = useState(null);
@@ -257,6 +262,24 @@ export default function WarehousePage() {
         const actualTotal = filtered.length;
         return { enStock, asignado, mantenimiento, total: actualTotal || 1, actualTotal };
     }, [assets, countryFilter]);
+
+    const targetLocationsGrouped = useMemo(() => {
+        const groups = {};
+        const filtered = warehouseLocations.filter(loc => 
+            countryFilter === 'Todos' || loc.country === countryFilter
+        );
+        filtered.forEach(loc => {
+            if (!groups[loc.aisle]) groups[loc.aisle] = [];
+            groups[loc.aisle].push(loc);
+        });
+        Object.keys(groups).forEach(aisle => {
+            groups[aisle].sort((a, b) => {
+                if (a.section !== b.section) return String(a.section).localeCompare(String(b.section));
+                return String(a.level).localeCompare(String(b.level));
+            });
+        });
+        return groups;
+    }, [warehouseLocations, countryFilter]);
 
     const moveGroup = (aisle, direction) => {
         const isH = isLocH(aisle);
@@ -557,6 +580,53 @@ export default function WarehousePage() {
             alert(`¡Éxito! Activo vinculado a ${locationId}`);
         } else {
             alert("Error al vincular: " + res.error.message);
+        }
+    };
+
+    const handleMoveAsset = async (e) => {
+        if (e) e.preventDefault();
+        if (!movingAsset || !targetLocationId) return;
+
+        const sourceLocationId = movingAsset.locationId;
+        const targetAssets = assets.filter(a => a.locationId === targetLocationId);
+        
+        try {
+            if (targetAssets.length > 0) {
+                const targetAsset = targetAssets[0];
+                const confirmSwap = window.confirm(
+                    `La ubicación destino (${targetLocationId}) está ocupada por el activo:\n` +
+                    `"${targetAsset.name}" (SN: ${targetAsset.serial || 'N/A'}).\n\n` +
+                    `¿Desea intercambiar las ubicaciones de ambos activos?`
+                );
+                if (!confirmSwap) return;
+
+                const res1 = await mapAssetToLocation(targetAsset.id, sourceLocationId);
+                if (res1.error) {
+                    alert("Error al mover el activo de destino: " + (res1.error.message || res1.error));
+                    return;
+                }
+                const res2 = await mapAssetToLocation(movingAsset.id, targetLocationId);
+                if (res2.error) {
+                    alert("Error al mover el activo de origen: " + (res2.error.message || res2.error));
+                    return;
+                }
+                alert("Ubicaciones intercambiadas con éxito.");
+            } else {
+                const res = await mapAssetToLocation(movingAsset.id, targetLocationId);
+                if (res.error) {
+                    alert("Error al mover el activo: " + (res.error.message || res.error));
+                    return;
+                }
+                alert("Activo movido con éxito.");
+            }
+            setIsMoveAssetModalOpen(false);
+            setMovingAsset(null);
+            setTargetLocationId('');
+            setSelectedLocation(null);
+            setSelectedAssetId(null);
+        } catch (err) {
+            console.error(err);
+            alert("Ocurrió un error inesperado al mover el activo.");
         }
     };
 
@@ -1705,6 +1775,19 @@ export default function WarehousePage() {
                                         style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
                                     >Etiqueta</Button>
                                 </div>
+                                {asset && (
+                                    <Button 
+                                        variant="primary" 
+                                        size="sm" 
+                                        icon={Navigation} 
+                                        onClick={() => {
+                                            setMovingAsset(asset);
+                                            setTargetLocationId('');
+                                            setIsMoveAssetModalOpen(true);
+                                        }}
+                                        style={{ height: '32px', fontSize: '0.75rem', marginTop: '0.25rem', width: '100%' }}
+                                    >Mover de Grupo / Ubicación</Button>
+                                )}
                                 {(!asset && (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial')) && (
                                     <Button 
                                         variant="ghost" 
@@ -1727,6 +1810,95 @@ export default function WarehousePage() {
                     })()}
                 </div>
             </div>
+
+            {/* Modal Mover Activo */}
+            <Modal 
+                isOpen={isMoveAssetModalOpen} 
+                onClose={() => {
+                    setIsMoveAssetModalOpen(false);
+                    setMovingAsset(null);
+                    setTargetLocationId('');
+                }} 
+                title="Mover Activo de Grupo / Ubicación"
+            >
+                <form onSubmit={handleMoveAsset}>
+                    <div style={{ marginBottom: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <div style={{ fontSize: '0.85rem' }}>
+                            <strong>Activo a mover:</strong> {movingAsset?.name}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            <strong>Ubicación actual:</strong> {movingAsset?.locationId || 'Ninguna'}
+                        </div>
+                        {movingAsset?.serial && (
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                <strong>N/S:</strong> {movingAsset.serial}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                        <label className="form-label">Destino (Grupo y Ubicación)</label>
+                        <select
+                            className="form-input"
+                            required
+                            value={targetLocationId}
+                            onChange={e => setTargetLocationId(e.target.value)}
+                            style={{ 
+                                width: '100%', 
+                                padding: '0.5rem', 
+                                borderRadius: '6px', 
+                                border: '1px solid var(--border)', 
+                                backgroundColor: 'var(--background)', 
+                                color: 'var(--text-main)', 
+                                fontSize: '0.9rem', 
+                                outline: 'none' 
+                            }}
+                        >
+                            <option value="">-- Seleccionar Ubicación Destino --</option>
+                            {Object.keys(targetLocationsGrouped).sort().map(aisle => (
+                                <optgroup key={aisle} label={`GRUPO: ${aisle}`}>
+                                    {targetLocationsGrouped[aisle].map(loc => {
+                                        const locAssetsCount = assets.filter(a => a.locationId === loc.id).length;
+                                        const label = `${loc.id} ${locAssetsCount > 0 ? '(Ocupado)' : '(Disponible)'}`;
+                                        const isCurrent = loc.id === movingAsset?.locationId;
+                                        
+                                        return (
+                                            <option 
+                                                key={loc.id} 
+                                                value={loc.id}
+                                                disabled={isCurrent}
+                                            >
+                                                {label} {isCurrent ? '(Actual)' : ''}
+                                            </option>
+                                        );
+                                    })}
+                                </optgroup>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            onClick={() => {
+                                setIsMoveAssetModalOpen(false);
+                                setMovingAsset(null);
+                                setTargetLocationId('');
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button 
+                            type="submit" 
+                            variant="primary"
+                            disabled={!targetLocationId}
+                        >
+                            Confirmar Movimiento
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
 
             {/* Modal Nueva Ubicación */}
             <Modal isOpen={isAddLocationModalOpen} onClose={() => setIsAddLocationModalOpen(false)} title="Agregar Ubicación">

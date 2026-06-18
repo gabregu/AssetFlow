@@ -66,7 +66,9 @@ export default function SFDCCasesPage() {
 
     const isCaseInCountryFilter = (c) => {
         const expectedClient = getClientName(countryFilter);
-        const matchesCountry = expectedClient === 'Todos' || (c.country && c.country.toLowerCase() === countryFilter.toLowerCase());
+        if (expectedClient === 'Todos') return true;
+        const caseClient = getClientName(c.country);
+        const matchesCountry = caseClient.toLowerCase() === expectedClient.toLowerCase();
         let forceSycomp = false;
         if (expectedClient === 'Sycomp-SRV' && (String(c.subject || '').includes('1053') || String(c.subject || '').includes('1055') || String(c.subject || '').includes('1056'))) {
             forceSycomp = true;
@@ -96,17 +98,12 @@ export default function SFDCCasesPage() {
             if (!isActiveCaseStatus(c)) return false;
             if (!isCaseInCountryFilter(c)) return false;
 
-            // Si el caso ya está asociado a un ticket de AssetFlow que está cerrado, lo ocultamos
-            const relatedTicket = tickets && tickets.find(t => 
-                String(t.id) === String(c.caseNumber) || 
-                (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber) === String(c.caseNumber))) ||
-                (t.subject && t.subject.includes(c.caseNumber))
-            );
-            if (relatedTicket && !isTicketActive(relatedTicket)) return false;
+            // Si el caso ya tiene un ticket o tarea de logística en el sistema (activo o histórico), lo ocultamos
+            if (hasService(c)) return false;
 
             return true;
         });
-    }, [sfdcCases, countryFilter, tickets]);
+    }, [sfdcCases, countryFilter, tickets, logisticsTasks]);
 
     // Metrics for Buttons (Including NEW HIRE filter)
     const statsByType = useMemo(() => {
@@ -821,7 +818,7 @@ export default function SFDCCasesPage() {
                     caseOwner: getVal(rowValues, 'Case Owner Alias') || '',
                     age: ageDisplay, // Age calculada
                     description: getVal(rowValues, 'Description') || '',
-                    country: overrideRegion ? countryFilter : (getVal(rowValues, 'Mailing Country') || '')
+                    country: getClientName(overrideRegion ? countryFilter : (getVal(rowValues, 'Mailing Country') || ''))
                 };
 
                 // --- VALIDACIÓN ESTRICTA DE PAÍS ---
@@ -1015,7 +1012,7 @@ export default function SFDCCasesPage() {
                                 Nuevos
                             </div>
                             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#8b5cf6', marginTop: '0.25rem' }}>
-                                +{lastImportedCases.filter(c => countryFilter === 'Todos' || (c.country && c.country.toLowerCase().includes(countryFilter.toLowerCase()))).length}
+                                +{lastImportedCases.filter(c => countryFilter === 'Todos' || (c.country && getClientName(c.country).toLowerCase() === getClientName(countryFilter).toLowerCase())).length}
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Última carga</div>
                         </div>
