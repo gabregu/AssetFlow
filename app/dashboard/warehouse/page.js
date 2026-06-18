@@ -96,6 +96,8 @@ export default function WarehousePage() {
     const [isEditLocationModalOpen, setIsEditLocationModalOpen] = useState(false);
     const [isSavingEditLocation, setIsSavingEditLocation] = useState(false);
     const [editLoc, setEditLoc] = useState({ aisle: '', section: '', level: '' });
+    const [newLocationType, setNewLocationType] = useState('W');
+    const [editLocationType, setEditLocationType] = useState('W');
 
     // Premium Dashboard Filters
     const [selectedBrand, setSelectedBrand] = useState('ALL');
@@ -671,8 +673,20 @@ export default function WarehousePage() {
 
         setIsSavingLocation(true);
         try {
-            const fullId = `${newLoc.aisle}-${newLoc.section}-${newLoc.level}`;
-            const res = await addWarehouseLocation({ ...newLoc, id: fullId, country: countryFilter });
+            let aisleName = newLoc.aisle.trim().toUpperCase();
+            if (newLocationType === 'H' && !isLocH(aisleName)) {
+                aisleName = `${aisleName}-H`;
+            } else if (newLocationType === 'W' && isLocH(aisleName)) {
+                if (aisleName.endsWith('-H')) {
+                    aisleName = aisleName.slice(0, -2);
+                } else if (aisleName.startsWith('H-')) {
+                    aisleName = aisleName.slice(2);
+                }
+            }
+
+            const adjustedLoc = { ...newLoc, aisle: aisleName };
+            const fullId = `${aisleName}-${adjustedLoc.section}-${adjustedLoc.level}`;
+            const res = await addWarehouseLocation({ ...adjustedLoc, id: fullId, country: countryFilter });
             
             if (res.error) {
                 if (res.error.code === '23505') {
@@ -683,6 +697,7 @@ export default function WarehousePage() {
             } else {
                 setIsAddLocationModalOpen(false);
                 setNewLoc({ id: '', aisle: '', section: '', level: '' });
+                setNewLocationType('W');
             }
         } catch (err) {
             console.error(err);
@@ -706,9 +721,20 @@ export default function WarehousePage() {
         e.preventDefault();
         setIsSavingEditLocation(true);
         try {
+            let aisleName = editLoc.aisle.trim().toUpperCase();
+            if (editLocationType === 'H' && !isLocH(aisleName)) {
+                aisleName = `${aisleName}-H`;
+            } else if (editLocationType === 'W' && isLocH(aisleName)) {
+                if (aisleName.endsWith('-H')) {
+                    aisleName = aisleName.slice(0, -2);
+                } else if (aisleName.startsWith('H-')) {
+                    aisleName = aisleName.slice(2);
+                }
+            }
+
             const res = await updateWarehouseLocation(selectedLocation.id, {
                 ...selectedLocation,
-                aisle: editLoc.aisle,
+                aisle: aisleName,
                 section: editLoc.section,
                 level: editLoc.level
             });
@@ -961,7 +987,11 @@ export default function WarehousePage() {
                             }}
                         />
                     </div>
-                    <Button icon={Plus} onClick={() => setIsAddLocationModalOpen(true)}>Nueva Ubicación</Button>
+                    <Button icon={Plus} onClick={() => {
+                        setNewLoc({ id: '', aisle: '', section: '', level: '' });
+                        setNewLocationType('W');
+                        setIsAddLocationModalOpen(true);
+                    }}>Nueva Ubicación</Button>
                 </div>
             </div>
 
@@ -1748,6 +1778,7 @@ export default function WarehousePage() {
                                                     section: selectedLocation.section,
                                                     level: selectedLocation.level
                                                 });
+                                                setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
                                                 setIsEditLocationModalOpen(true);
                                             }}
                                             style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
@@ -1821,6 +1852,7 @@ export default function WarehousePage() {
                                                 section: selectedLocation.section,
                                                 level: selectedLocation.level
                                             });
+                                            setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
                                             setIsEditLocationModalOpen(true);
                                         }}
                                         style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
@@ -2046,6 +2078,18 @@ export default function WarehousePage() {
             <Modal isOpen={isAddLocationModalOpen} onClose={() => setIsAddLocationModalOpen(false)} title="Agregar Ubicación">
                 <form onSubmit={handleAddLocation}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label">Ubicación Destino (Zona)</label>
+                            <select 
+                                value={newLocationType} 
+                                onChange={e => setNewLocationType(e.target.value)}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                <option value="W">LOCACIÓN W (Estándar)</option>
+                                <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
+                            </select>
+                        </div>
                         <div className="form-group">
                             <label className="form-label">Grupo (Categoría)</label>
                             <input 
@@ -2092,6 +2136,18 @@ export default function WarehousePage() {
             <Modal isOpen={isEditLocationModalOpen} onClose={() => setIsEditLocationModalOpen(false)} title="Editar Ubicación">
                 <form onSubmit={handleEditLocation}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label">Ubicación Destino (Zona)</label>
+                            <select 
+                                value={editLocationType} 
+                                onChange={e => setEditLocationType(e.target.value)}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                <option value="W">LOCACIÓN W (Estándar)</option>
+                                <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
+                            </select>
+                        </div>
                         <div className="form-group">
                             <label className="form-label">Grupo (Categoría)</label>
                             <input 
