@@ -51,6 +51,37 @@ const isLocH = (aisleName) => {
     );
 };
 
+const combineAisleName = (manufacturer, aisle) => {
+    const m = (manufacturer || '').trim().toUpperCase();
+    const a = (aisle || '').trim().toUpperCase();
+    if (!m || m === 'NINGUNO') return a;
+    if (a.startsWith(m)) return a;
+    return `${m} ${a}`;
+};
+
+const detectManufacturer = (aisleName, manufacturersList = []) => {
+    const upper = (aisleName || '').toUpperCase().replace(/-H$/, '');
+    for (const m of manufacturersList) {
+        const upperM = m.toUpperCase();
+        if (upper === upperM || upper.startsWith(upperM + ' ') || upper.startsWith(upperM + '-')) return upperM;
+    }
+    return 'NINGUNO';
+};
+
+const getGroupedByBrand = (locations, manufacturersList = []) => {
+    const grouped = {};
+    manufacturersList.forEach(m => {
+        grouped[m.toUpperCase()] = [];
+    });
+    grouped['NINGUNO'] = [];
+
+    locations.forEach(([aisle, locs]) => {
+        const m = detectManufacturer(aisle, manufacturersList);
+        grouped[m].push([aisle, locs]);
+    });
+    return grouped;
+};
+
 export default function WarehousePage() {
     const { 
         warehouseLocations,
@@ -98,6 +129,24 @@ export default function WarehousePage() {
     const [editLoc, setEditLoc] = useState({ aisle: '', section: '', level: '' });
     const [newLocationType, setNewLocationType] = useState('W');
     const [editLocationType, setEditLocationType] = useState('W');
+    const [newLocManufacturer, setNewLocManufacturer] = useState('NINGUNO');
+    const [editLocManufacturer, setEditLocManufacturer] = useState('NINGUNO');
+    const [manufacturers, setManufacturers] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('warehouse_manufacturers');
+            return saved ? JSON.parse(saved) : ['APPLE', 'DELL', 'HP', 'SAMSUNG'];
+        }
+        return ['APPLE', 'DELL', 'HP', 'SAMSUNG'];
+    });
+    const [groupByBrand, setGroupByBrand] = useState(false);
+    const [isManageManufacturersOpen, setIsManageManufacturersOpen] = useState(false);
+    const [newManufacturerName, setNewManufacturerName] = useState('');
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('warehouse_manufacturers', JSON.stringify(manufacturers));
+        }
+    }, [manufacturers]);
 
     // Premium Dashboard Filters
     const [selectedBrand, setSelectedBrand] = useState('ALL');
@@ -124,11 +173,13 @@ export default function WarehousePage() {
             // Brand filters
             if (selectedBrand !== 'ALL') {
                 const oem = (asset.oem || '').toUpperCase();
-                if (selectedBrand === 'DELL' && oem !== 'DELL') return false;
-                if (selectedBrand === 'HP' && oem !== 'HP') return false;
-                if (selectedBrand === 'APPLE' && oem !== 'APPLE') return false;
-                if (selectedBrand === 'WINDOWS' && oem === 'APPLE') return false;
-                if (selectedBrand === 'MANTENIMIENTO' && !['Mantenimiento', 'Dañado'].includes(asset.status)) return false;
+                if (selectedBrand === 'WINDOWS') {
+                    if (oem === 'APPLE') return false;
+                } else if (selectedBrand === 'MANTENIMIENTO') {
+                    if (!['Mantenimiento', 'Dañado'].includes(asset.status)) return false;
+                } else {
+                    if (oem !== selectedBrand.toUpperCase()) return false;
+                }
             }
 
             // CPU Filter
@@ -674,6 +725,8 @@ export default function WarehousePage() {
         setIsSavingLocation(true);
         try {
             let aisleName = newLoc.aisle.trim().toUpperCase();
+            aisleName = combineAisleName(newLocManufacturer, aisleName);
+            
             if (newLocationType === 'H' && !isLocH(aisleName)) {
                 aisleName = `${aisleName}-H`;
             } else if (newLocationType === 'W' && isLocH(aisleName)) {
@@ -698,6 +751,7 @@ export default function WarehousePage() {
                 setIsAddLocationModalOpen(false);
                 setNewLoc({ id: '', aisle: '', section: '', level: '' });
                 setNewLocationType('W');
+                setNewLocManufacturer(manufacturers[0] || 'NINGUNO');
             }
         } catch (err) {
             console.error(err);
@@ -722,6 +776,8 @@ export default function WarehousePage() {
         setIsSavingEditLocation(true);
         try {
             let aisleName = editLoc.aisle.trim().toUpperCase();
+            aisleName = combineAisleName(editLocManufacturer, aisleName);
+            
             if (editLocationType === 'H' && !isLocH(aisleName)) {
                 aisleName = `${aisleName}-H`;
             } else if (editLocationType === 'W' && isLocH(aisleName)) {
@@ -848,6 +904,134 @@ export default function WarehousePage() {
             console.error('Print error:', err);
             alert('Error al generar etiqueta');
         }
+    };
+
+    const renderAisle = (aisle, locations, totalAislesCount, listAislesArray, isHZone = false) => {
+        const aisleAssetsCount = assets.filter(a => 
+            (countryFilter === 'Todos' || a.country === countryFilter) &&
+            locations.some(loc => loc.id === a.locationId)
+        ).length;
+        
+        const badgeColor = isHZone ? '#64748b' : '#2563eb';
+        
+        return (
+            <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 onClick={() => { setSelectedGroup(aisle); setSelectedLocation(null); }} style={{ fontSize: '0.78rem', fontWeight: 800, color: selectedGroup === aisle ? 'var(--primary-color)' : 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, cursor: 'pointer' }}>
+                        <span style={{ borderBottom: selectedGroup === aisle ? '2px solid var(--primary-color)' : 'none' }}>{aisle}</span>
+                        {currentUser?.role === 'admin' && (
+                            <Button 
+                                variant="ghost" 
+                                size="xs" 
+                                icon={Edit3} 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const newName = prompt(`Ingrese el nuevo nombre para el grupo "${aisle}":`, aisle);
+                                    if (newName && newName !== aisle) renameWarehouseGroup(aisle, newName.toUpperCase());
+                                }}
+                                style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
+                            />
+                        )}
+                        {!groupByBrand && totalAislesCount > 1 && (
+                            <div style={{ display: 'flex', gap: '1px', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '4px', padding: '1px' }} onClick={e => e.stopPropagation()}>
+                                <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    icon={ChevronUp}
+                                    onClick={() => moveGroup(aisle, 'up')}
+                                    disabled={listAislesArray.findIndex(([a]) => a === aisle) === 0}
+                                    style={{ padding: '2px', height: '16px', width: '16px', opacity: listAislesArray.findIndex(([a]) => a === aisle) === 0 ? 0.25 : 0.6 }}
+                                    title="Mover Arriba"
+                                />
+                                <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    icon={ChevronDown}
+                                    onClick={() => moveGroup(aisle, 'down')}
+                                    disabled={listAislesArray.findIndex(([a]) => a === aisle) === listAislesArray.length - 1}
+                                    style={{ padding: '2px', height: '16px', width: '16px', opacity: listAislesArray.findIndex(([a]) => a === aisle) === listAislesArray.length - 1 ? 0.25 : 0.6 }}
+                                    title="Mover Abajo"
+                                />
+                            </div>
+                        )}
+                    </h3>
+                    <span style={{ fontSize: '0.7rem', color: badgeColor, fontWeight: 700 }}>
+                        {aisleAssetsCount} EQUIPOS
+                    </span>
+                </div>
+                
+                {/* Cell grid box */}
+                <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', 
+                    gap: '6px',
+                    background: 'var(--background-secondary)',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    border: '1px dashed var(--border)'
+                }}>
+                    {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
+                        const locationAssets = assets.filter(a => 
+                            (countryFilter === 'Todos' || a.country === countryFilter) &&
+                            a.locationId === loc.id
+                        );
+                        const assetCount = locationAssets.length;
+                        const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
+                        
+                        let bgColor = 'var(--surface)';
+                        let textColor = 'var(--text-main)';
+                        let borderColor = 'var(--border)';
+                        let borderStyle = 'solid';
+
+                        if (assetCount > 0) {
+                            textColor = 'white';
+                            const status = locationAssets[0]?.status;
+                            if (['Mantenimiento', 'Dañado'].includes(status)) {
+                                bgColor = '#f97316';
+                            } else if (status === 'Asignado') {
+                                bgColor = '#84cc16';
+                            } else {
+                                bgColor = '#2563eb';
+                            }
+                            borderColor = 'transparent';
+                        } else {
+                            borderStyle = 'dashed';
+                        }
+
+                        if (isAuditMode && auditLocation?.id === loc.id) {
+                            bgColor = '#8b5cf6';
+                            textColor = 'white';
+                            borderColor = 'transparent';
+                        }
+
+                        return (
+                            <div 
+                                key={loc.id}
+                                onClick={() => handleScanLocation(loc.id)}
+                                style={{
+                                    aspectRatio: '1.4/1',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: bgColor,
+                                    color: textColor,
+                                    borderRadius: '6px',
+                                    border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : `1px ${borderStyle} ${borderColor}`,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                    boxShadow: isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
+                                    position: 'relative'
+                                }}
+                                title={`${loc.id} (${assetCount} equipos)`}
+                            >
+                                {renderCellContent(loc, assetCount, locationAssets)}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
     };
 
     // Donut chart angles calculation
@@ -987,9 +1171,18 @@ export default function WarehousePage() {
                             }}
                         />
                     </div>
+                    <Button 
+                        variant={groupByBrand ? "primary" : "outline"} 
+                        icon={SlidersHorizontal}
+                        onClick={() => setGroupByBrand(!groupByBrand)}
+                        style={{ borderColor: groupByBrand ? 'transparent' : '#3b82f6', color: groupByBrand ? 'white' : '#3b82f6' }}
+                    >
+                        {groupByBrand ? "Vista Plana" : "Agrupar Fabricantes"}
+                    </Button>
                     <Button icon={Plus} onClick={() => {
                         setNewLoc({ id: '', aisle: '', section: '', level: '' });
                         setNewLocationType('W');
+                        setNewLocManufacturer(manufacturers[0] || 'NINGUNO');
                         setIsAddLocationModalOpen(true);
                     }}>Nueva Ubicación</Button>
                 </div>
@@ -1029,129 +1222,32 @@ export default function WarehousePage() {
                                     <p style={{ fontSize: '0.85rem' }}>No hay grupos coincidentes.</p>
                                 </div>
                             ) : (
-                                locationsW.map(([aisle, locations]) => {
-                                    const aisleAssetsCount = assets.filter(a => 
-                                        (countryFilter === 'Todos' || a.country === countryFilter) &&
-                                        locations.some(loc => loc.id === a.locationId)
-                                    ).length;
-                                    return (
-                                        <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <h3 onClick={() => { setSelectedGroup(aisle); setSelectedLocation(null); }} style={{ fontSize: '0.78rem', fontWeight: 800, color: selectedGroup === aisle ? 'var(--primary-color)' : 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, cursor: 'pointer' }}>
-                                                    <span style={{ borderBottom: selectedGroup === aisle ? '2px solid var(--primary-color)' : 'none' }}>{aisle}</span>
-                                                    {currentUser?.role === 'admin' && (
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="xs" 
-                                                            icon={Edit3} 
-                                                            onClick={() => {
-                                                                const newName = prompt(`Ingrese el nuevo nombre para el grupo "${aisle}":`, aisle);
-                                                                if (newName && newName !== aisle) renameWarehouseGroup(aisle, newName.toUpperCase());
-                                                            }}
-                                                            style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
-                                                        />
-                                                    )}
-                                                    {locationsW.length > 1 && (
-                                                        <div style={{ display: 'flex', gap: '1px', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '4px', padding: '1px' }}>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="xs"
-                                                                icon={ChevronUp}
-                                                                onClick={() => moveGroup(aisle, 'up')}
-                                                                disabled={locationsW.findIndex(([a]) => a === aisle) === 0}
-                                                                style={{ padding: '2px', height: '16px', width: '16px', opacity: locationsW.findIndex(([a]) => a === aisle) === 0 ? 0.25 : 0.6 }}
-                                                                title="Mover Arriba"
-                                                            />
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="xs"
-                                                                icon={ChevronDown}
-                                                                onClick={() => moveGroup(aisle, 'down')}
-                                                                disabled={locationsW.findIndex(([a]) => a === aisle) === locationsW.length - 1}
-                                                                style={{ padding: '2px', height: '16px', width: '16px', opacity: locationsW.findIndex(([a]) => a === aisle) === locationsW.length - 1 ? 0.25 : 0.6 }}
-                                                                title="Mover Abajo"
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </h3>
-                                                <span style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700 }}>
-                                                    {aisleAssetsCount} EQUIPOS
-                                                </span>
-                                            </div>
-                                            
-                                            {/* Cell grid box */}
-                                            <div style={{ 
-                                                display: 'grid', 
-                                                gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', 
-                                                gap: '6px',
-                                                background: 'var(--background-secondary)',
-                                                padding: '8px',
-                                                borderRadius: '8px',
-                                                border: '1px dashed var(--border)'
-                                            }}>
-                                                {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
-                                                    const locationAssets = assets.filter(a => 
-                                                        (countryFilter === 'Todos' || a.country === countryFilter) &&
-                                                        a.locationId === loc.id
-                                                    );
-                                                    const assetCount = locationAssets.length;
-                                                    const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
-                                                    
-                                                    let bgColor = 'var(--surface)';
-                                                    let textColor = 'var(--text-main)';
-                                                    let borderColor = 'var(--border)';
-                                                    let borderStyle = 'solid';
-
-                                                    if (assetCount > 0) {
-                                                        textColor = 'white';
-                                                        const status = locationAssets[0]?.status;
-                                                        if (['Mantenimiento', 'Dañado'].includes(status)) {
-                                                            bgColor = '#f97316';
-                                                        } else if (status === 'Asignado') {
-                                                            bgColor = '#84cc16';
-                                                        } else {
-                                                            bgColor = '#2563eb';
-                                                        }
-                                                        borderColor = 'transparent';
-                                                    } else {
-                                                        borderStyle = 'dashed';
-                                                    }
-
-                                                    if (isAuditMode && auditLocation?.id === loc.id) {
-                                                        bgColor = '#8b5cf6';
-                                                        textColor = 'white';
-                                                        borderColor = 'transparent';
-                                                    }
-
-                                                    return (
-                                                        <div 
-                                                            key={loc.id}
-                                                            onClick={() => handleScanLocation(loc.id)}
-                                                            style={{
-                                                                aspectRatio: '1.4/1',
-                                                                display: 'flex',
-                                                                flexDirection: 'column',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                background: bgColor,
-                                                                color: textColor,
-                                                                borderRadius: '6px',
-                                                                border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : `1px ${borderStyle} ${borderColor}`,
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.15s ease',
-                                                                boxShadow: isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
-                                                                position: 'relative'
-                                                            }}
-                                                            title={`${loc.id} (${assetCount} equipos)`}
-                                                        >
-                                                            {renderCellContent(loc, assetCount, locationAssets)}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    );
-                                })
+                                groupByBrand ? (
+                                    (() => {
+                                        const groupedW = getGroupedByBrand(locationsW, manufacturers);
+                                        return Object.entries(groupedW).filter(([_, items]) => items.length > 0).map(([brandName, items]) => {
+                                            const brandAssetsCount = items.reduce((acc, [_, locations]) => {
+                                                const locIds = locations.map(l => l.id);
+                                                return acc + assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && locIds.includes(a.locationId)).length;
+                                            }, 0);
+                                            return (
+                                                <div key={brandName} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.85rem', background: 'var(--background-secondary)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem', marginBottom: '0.25rem' }}>
+                                                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{brandName}</h3>
+                                                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#2563eb', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '10px' }}>
+                                                            {items.length} grupos • {brandAssetsCount} equipos
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
+                                                        {items.map(([aisle, locations]) => renderAisle(aisle, locations, locationsW.length, locationsW, false))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        });
+                                    })()
+                                ) : (
+                                    locationsW.map(([aisle, locations]) => renderAisle(aisle, locations, locationsW.length, locationsW, false))
+                                )
                             )}
                         </div>
                     </Card>
@@ -1184,129 +1280,32 @@ export default function WarehousePage() {
                                     <p style={{ fontSize: '0.85rem' }}>No hay grupos coincidentes.</p>
                                 </div>
                             ) : (
-                                locationsH.map(([aisle, locations]) => {
-                                    const aisleAssetsCount = assets.filter(a => 
-                                        (countryFilter === 'Todos' || a.country === countryFilter) &&
-                                        locations.some(loc => loc.id === a.locationId)
-                                    ).length;
-                                    return (
-                                        <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <h3 onClick={() => { setSelectedGroup(aisle); setSelectedLocation(null); }} style={{ fontSize: '0.78rem', fontWeight: 800, color: selectedGroup === aisle ? 'var(--primary-color)' : 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, cursor: 'pointer' }}>
-                                                    <span style={{ borderBottom: selectedGroup === aisle ? '2px solid var(--primary-color)' : 'none' }}>{aisle}</span>
-                                                    {currentUser?.role === 'admin' && (
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="xs" 
-                                                            icon={Edit3} 
-                                                            onClick={() => {
-                                                                const newName = prompt(`Ingrese el nuevo nombre para el grupo "${aisle}":`, aisle);
-                                                                if (newName && newName !== aisle) renameWarehouseGroup(aisle, newName.toUpperCase());
-                                                            }}
-                                                            style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
-                                                        />
-                                                    )}
-                                                    {locationsH.length > 1 && (
-                                                        <div style={{ display: 'flex', gap: '1px', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '4px', padding: '1px' }}>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="xs"
-                                                                icon={ChevronUp}
-                                                                onClick={() => moveGroup(aisle, 'up')}
-                                                                disabled={locationsH.findIndex(([a]) => a === aisle) === 0}
-                                                                style={{ padding: '2px', height: '16px', width: '16px', opacity: locationsH.findIndex(([a]) => a === aisle) === 0 ? 0.25 : 0.6 }}
-                                                                title="Mover Arriba"
-                                                            />
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="xs"
-                                                                icon={ChevronDown}
-                                                                onClick={() => moveGroup(aisle, 'down')}
-                                                                disabled={locationsH.findIndex(([a]) => a === aisle) === locationsH.length - 1}
-                                                                style={{ padding: '2px', height: '16px', width: '16px', opacity: locationsH.findIndex(([a]) => a === aisle) === locationsH.length - 1 ? 0.25 : 0.6 }}
-                                                                title="Mover Abajo"
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </h3>
-                                                <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>
-                                                    {aisleAssetsCount} EQUIPOS
-                                                </span>
-                                            </div>
-                                            
-                                            {/* Cell grid box */}
-                                            <div style={{ 
-                                                display: 'grid', 
-                                                gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', 
-                                                gap: '6px',
-                                                background: 'var(--background-secondary)',
-                                                padding: '8px',
-                                                borderRadius: '8px',
-                                                border: '1px dashed var(--border)'
-                                            }}>
-                                                {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
-                                                    const locationAssets = assets.filter(a => 
-                                                        (countryFilter === 'Todos' || a.country === countryFilter) &&
-                                                        a.locationId === loc.id
-                                                    );
-                                                    const assetCount = locationAssets.length;
-                                                    const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
-                                                    
-                                                    let bgColor = 'var(--surface)';
-                                                    let textColor = 'var(--text-main)';
-                                                    let borderColor = 'var(--border)';
-                                                    let borderStyle = 'solid';
-
-                                                    if (assetCount > 0) {
-                                                        textColor = 'white';
-                                                        const status = locationAssets[0]?.status;
-                                                        if (['Mantenimiento', 'Dañado'].includes(status)) {
-                                                            bgColor = '#f97316';
-                                                        } else if (status === 'Asignado') {
-                                                            bgColor = '#84cc16';
-                                                        } else {
-                                                            bgColor = '#2563eb';
-                                                        }
-                                                        borderColor = 'transparent';
-                                                    } else {
-                                                        borderStyle = 'dashed';
-                                                    }
-
-                                                    if (isAuditMode && auditLocation?.id === loc.id) {
-                                                        bgColor = '#8b5cf6';
-                                                        textColor = 'white';
-                                                        borderColor = 'transparent';
-                                                    }
-
-                                                    return (
-                                                        <div 
-                                                            key={loc.id}
-                                                            onClick={() => handleScanLocation(loc.id)}
-                                                            style={{
-                                                                aspectRatio: '1.4/1',
-                                                                display: 'flex',
-                                                                flexDirection: 'column',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                background: bgColor,
-                                                                color: textColor,
-                                                                borderRadius: '6px',
-                                                                border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : `1px ${borderStyle} ${borderColor}`,
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.15s ease',
-                                                                boxShadow: isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
-                                                                position: 'relative'
-                                                            }}
-                                                            title={`${loc.id} (${assetCount} equipos)`}
-                                                        >
-                                                            {renderCellContent(loc, assetCount, locationAssets)}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    );
-                                })
+                                groupByBrand ? (
+                                    (() => {
+                                        const groupedH = getGroupedByBrand(locationsH, manufacturers);
+                                        return Object.entries(groupedH).filter(([_, items]) => items.length > 0).map(([brandName, items]) => {
+                                            const brandAssetsCount = items.reduce((acc, [_, locations]) => {
+                                                const locIds = locations.map(l => l.id);
+                                                return acc + assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && locIds.includes(a.locationId)).length;
+                                            }, 0);
+                                            return (
+                                                <div key={brandName} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.85rem', background: 'var(--background-secondary)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem', marginBottom: '0.25rem' }}>
+                                                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{brandName}</h3>
+                                                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', backgroundColor: '#e2e8f0', padding: '2px 8px', borderRadius: '10px' }}>
+                                                            {items.length} grupos • {brandAssetsCount} equipos
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
+                                                        {items.map(([aisle, locations]) => renderAisle(aisle, locations, locationsH.length, locationsH, true))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        });
+                                    })()
+                                ) : (
+                                    locationsH.map(([aisle, locations]) => renderAisle(aisle, locations, locationsH.length, locationsH, true))
+                                )
                             )}
                         </div>
                     </Card>
@@ -1505,93 +1504,54 @@ export default function WarehousePage() {
                         <div>
                             <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filtros de Marca</h4>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                                {/* DELL */}
-                                <button 
-                                    onClick={() => setSelectedBrand(selectedBrand === 'DELL' ? 'ALL' : 'DELL')}
+                                <button
+                                    onClick={() => setSelectedBrand('ALL')}
                                     style={{
                                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
-                                        background: selectedBrand === 'DELL' ? '#eff6ff' : 'var(--background-secondary)',
-                                        border: `1px solid ${selectedBrand === 'DELL' ? '#3b82f6' : 'var(--border)'}`,
-                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
+                                        background: selectedBrand === 'ALL' ? 'var(--primary-color)' : 'var(--background-secondary)',
+                                        color: selectedBrand === 'ALL' ? 'white' : 'var(--text-main)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px', cursor: 'pointer', outline: 'none',
+                                        transition: 'all 0.15s ease'
                                     }}
                                 >
-                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #0076c0', color: '#0076c0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 900 }}>DELL</div>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Dell</span>
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: selectedBrand === 'ALL' ? 'rgba(255,255,255,0.2)' : '#e2e8f0', color: selectedBrand === 'ALL' ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>★</div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Todos</span>
                                 </button>
-                                {/* HP */}
+
+                                {manufacturers.map(m => {
+                                    const isSel = selectedBrand === m;
+                                    return (
+                                        <button
+                                            key={m}
+                                            onClick={() => setSelectedBrand(m)}
+                                            style={{
+                                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
+                                                background: isSel ? 'var(--primary-color)' : 'var(--background-secondary)',
+                                                color: isSel ? 'white' : 'var(--text-main)',
+                                                border: '1px solid var(--border)',
+                                                borderRadius: '8px', cursor: 'pointer', outline: 'none',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                        >
+                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: isSel ? 'rgba(255,255,255,0.2)' : '#e2e8f0', color: isSel ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
+                                                {m.substring(0, 2)}
+                                            </div>
+                                            <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>{m}</span>
+                                        </button>
+                                    );
+                                })}
+
                                 <button 
-                                    onClick={() => setSelectedBrand(selectedBrand === 'HP' ? 'ALL' : 'HP')}
-                                    style={{
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
-                                        background: selectedBrand === 'HP' ? '#f0fdfa' : 'var(--background-secondary)',
-                                        border: `1px solid ${selectedBrand === 'HP' ? '#0d9488' : 'var(--border)'}`,
-                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
-                                    }}
-                                >
-                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#0096d6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 'bold', fontStyle: 'italic' }}>hp</div>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>HP</span>
-                                </button>
-                                {/* Apple */}
-                                <button 
-                                    onClick={() => setSelectedBrand(selectedBrand === 'APPLE' ? 'ALL' : 'APPLE')}
-                                    style={{
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
-                                        background: selectedBrand === 'APPLE' ? '#f8fafc' : 'var(--background-secondary)',
-                                        border: `1px solid ${selectedBrand === 'APPLE' ? '#475569' : 'var(--border)'}`,
-                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
-                                    }}
-                                >
-                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#000000', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem' }}></div>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Apple</span>
-                                </button>
-                                {/* Windows */}
-                                <button 
-                                    onClick={() => setSelectedBrand(selectedBrand === 'WINDOWS' ? 'ALL' : 'WINDOWS')}
-                                    style={{
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
-                                        background: selectedBrand === 'WINDOWS' ? '#f0f9ff' : 'var(--background-secondary)',
-                                        border: `1px solid ${selectedBrand === 'WINDOWS' ? '#0284c7' : 'var(--border)'}`,
-                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
-                                    }}
-                                >
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', width: '20px', height: '20px', margin: '4px 0' }}>
-                                        <div style={{ backgroundColor: '#f25022' }}></div>
-                                        <div style={{ backgroundColor: '#7fba00' }}></div>
-                                        <div style={{ backgroundColor: '#00a4ef' }}></div>
-                                        <div style={{ backgroundColor: '#ffb900' }}></div>
-                                    </div>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Windows</span>
-                                </button>
-                                {/* Mantenim */}
-                                <button 
-                                    onClick={() => setSelectedBrand(selectedBrand === 'MANTENIMIENTO' ? 'ALL' : 'MANTENIMIENTO')}
-                                    style={{
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
-                                        background: selectedBrand === 'MANTENIMIENTO' ? '#fff7ed' : 'var(--background-secondary)',
-                                        border: `1px solid ${selectedBrand === 'MANTENIMIENTO' ? '#ea580c' : 'var(--border)'}`,
-                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
-                                    }}
-                                >
-                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#f97316', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>🔧</div>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Mantenim</span>
-                                </button>
-                                {/* Clear/All */}
-                                <button 
-                                    onClick={() => {
-                                        setSelectedBrand('ALL');
-                                        setCpuFilter('ALL');
-                                        setRamFilter('ALL');
-                                        setStatusFilter('ALL');
-                                        setLocationSearch('');
-                                    }}
+                                    onClick={() => setIsManageManufacturersOpen(true)}
                                     style={{
                                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
                                         background: 'var(--background-secondary)', border: '1px solid var(--border)',
                                         borderRadius: '8px', cursor: 'pointer', outline: 'none'
                                     }}
                                 >
-                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#e2e8f0', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800 }}>•••</div>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Todos</span>
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#e2e8f0', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800 }}>+</div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Gestionar</span>
                                 </button>
                             </div>
                         </div>
@@ -1779,6 +1739,7 @@ export default function WarehousePage() {
                                                     level: selectedLocation.level
                                                 });
                                                 setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
+                                                setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
                                                 setIsEditLocationModalOpen(true);
                                             }}
                                             style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
@@ -1853,6 +1814,7 @@ export default function WarehousePage() {
                                                 level: selectedLocation.level
                                             });
                                             setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
+                                            setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
                                             setIsEditLocationModalOpen(true);
                                         }}
                                         style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
@@ -2090,6 +2052,21 @@ export default function WarehousePage() {
                                 <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
                             </select>
                         </div>
+                        {/* Fabricante dropdown */}
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label">Fabricante (Pre-agrupación)</label>
+                            <select 
+                                value={newLocManufacturer} 
+                                onChange={e => setNewLocManufacturer(e.target.value)}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                <option value="NINGUNO">Ninguno (Usar solo Grupo)</option>
+                                {manufacturers.map(m => (
+                                    <option key={m} value={m}>{m}</option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="form-group">
                             <label className="form-label">Grupo (Categoría)</label>
                             <input 
@@ -2148,6 +2125,21 @@ export default function WarehousePage() {
                                 <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
                             </select>
                         </div>
+                        {/* Fabricante dropdown */}
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label">Fabricante (Pre-agrupación)</label>
+                            <select 
+                                value={editLocManufacturer} 
+                                onChange={e => setEditLocManufacturer(e.target.value)}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                <option value="NINGUNO">Ninguno (Usar solo Grupo)</option>
+                                {manufacturers.map(m => (
+                                    <option key={m} value={m}>{m}</option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="form-group">
                             <label className="form-label">Grupo (Categoría)</label>
                             <input 
@@ -2188,6 +2180,88 @@ export default function WarehousePage() {
                         </Button>
                     </div>
                 </form>
+            </Modal>
+ 
+            {/* Modal Gestionar Fabricantes */}
+            <Modal isOpen={isManageManufacturersOpen} onClose={() => setIsManageManufacturersOpen(false)} title="Gestionar Fabricantes">
+                <div>
+                    <form onSubmit={(e) => {
+                        e.preventDefault();
+                        const name = newManufacturerName.trim().toUpperCase();
+                        if (!name) return;
+                        if (manufacturers.includes(name)) {
+                            alert("Este fabricante ya existe.");
+                            return;
+                        }
+                        const updated = [...manufacturers, name];
+                        setManufacturers(updated);
+                        setNewManufacturerName('');
+                    }} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
+                        <input
+                            className="form-input"
+                            placeholder="Nuevo Fabricante (Ej: ASUS, LENOVO)"
+                            value={newManufacturerName}
+                            onChange={e => setNewManufacturerName(e.target.value)}
+                            style={{ flex: 1, textTransform: 'uppercase', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            required
+                        />
+                        <Button type="submit">Agregar</Button>
+                    </form>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto' }}>
+                        {manufacturers.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                No hay fabricantes registrados.
+                            </div>
+                        ) : (
+                            manufacturers.map((m, idx) => (
+                                <div key={m} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'var(--background-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                    <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{m}</span>
+                                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                        <Button
+                                            variant="ghost"
+                                            size="xs"
+                                            icon={Edit3}
+                                            onClick={() => {
+                                                const newName = prompt(`Editar fabricante "${m}":`, m);
+                                                if (newName && newName.trim().toUpperCase() !== m) {
+                                                    const updatedName = newName.trim().toUpperCase();
+                                                    if (manufacturers.includes(updatedName)) {
+                                                        alert("Ese fabricante ya existe.");
+                                                        return;
+                                                    }
+                                                    const updated = [...manufacturers];
+                                                    updated[idx] = updatedName;
+                                                    setManufacturers(updated);
+                                                }
+                                            }}
+                                            style={{ padding: '4px' }}
+                                        />
+                                        <Button
+                                            variant="ghost"
+                                            size="xs"
+                                            icon={Trash2}
+                                            onClick={() => {
+                                                if (window.confirm(`¿Está seguro de eliminar el fabricante "${m}"?`)) {
+                                                    const updated = manufacturers.filter(item => item !== m);
+                                                    setManufacturers(updated);
+                                                    if (selectedBrand === m) {
+                                                        setSelectedBrand('ALL');
+                                                    }
+                                                }
+                                            }}
+                                            style={{ padding: '4px', color: '#ef4444' }}
+                                        />
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                        <Button onClick={() => setIsManageManufacturersOpen(false)}>Cerrar</Button>
+                    </div>
+                </div>
             </Modal>
 
             <style jsx>{`
