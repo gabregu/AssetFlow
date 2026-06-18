@@ -271,6 +271,86 @@ export function useTicketDetail() {
         }
     }, [ticket?.id, ticket?.requester, sfdcCases]); // Dependencias estables
 
+    // Migración automática: Si hay casos en ticket.associatedCases (JSON) que ya están configurados 
+    // pero no existen en la tabla real de la base de datos (ticketTasks), los promovemos de forma transparente.
+    useEffect(() => {
+        if (!ticket || !ticket.associatedCases || ticket.associatedCases.length === 0 || !addLogisticsTask || !updateTicket) return;
+        
+        const legacyCases = ticket.associatedCases || [];
+        const baseTasks = ticketTasks || [];
+        
+        // Encontrar casos legacy que estén configurados (que no sean AutoUnconfigured)
+        // y que no existan en baseTasks por caseNumber
+        const casesToMigrate = legacyCases.filter(lc => {
+            const hasNoRealTask = lc.caseNumber && lc.caseNumber !== 'Caso Principal' && 
+                !baseTasks.some(rt => String(rt.caseNumber || rt.case_number).trim() === String(lc.caseNumber).trim());
+            return hasNoRealTask && !isAutoUnconfiguredCase(lc);
+        });
+
+        if (casesToMigrate.length > 0) {
+            console.log(`Auto-migrating ${casesToMigrate.length} configured legacy cases to database for ticket ${ticket.id}`);
+            
+            (async () => {
+                try {
+                    for (const lc of casesToMigrate) {
+                        const caseNum = lc.caseNumber;
+                        
+                        const taskSubject = lc.subject || '';
+                        const taskStatus = lc.status || lc.logistics?.status || 'Pendiente';
+                        const taskMethod = lc.method || lc.logistics?.method || '';
+                        
+                        const taskDeliveryPerson = lc.delivery_person || lc.deliveryPerson || lc.logistics?.deliveryPerson || lc.logistics?.delivery_person || '';
+                        const taskAssignedTo = lc.assigned_to || lc.assignedTo || lc.logistics?.assignedTo || lc.logistics?.assigned_to || '';
+                        
+                        const taskDate = lc.date || lc.logistics?.date || '';
+                        const taskTimeSlot = lc.time_slot || lc.timeSlot || lc.logistics?.timeSlot || lc.logistics?.time_slot || 'AM';
+                        const taskAddress = lc.address || lc.logistics?.address || '';
+                        
+                        const taskTrackingNumber = lc.tracking_number || lc.trackingNumber || lc.logistics?.trackingNumber || lc.logistics?.tracking_number || '';
+                        
+                        const taskAssets = lc.assets || [];
+                        const taskAccessories = lc.accessories || { backpack: false, screenFilter: false, filterSize: '14"' };
+                        const taskYubikeys = lc.yubikeys || [];
+                        const taskDeliveryInfo = lc.deliveryInfo || lc.delivery_info || lc.logistics?.deliveryInfo || {};
+                        const taskCoordinatedBy = lc.coordinated_by || lc.coordinatedBy || lc.logistics?.coordinatedBy || '';
+
+                        const newTask = {
+                            ticketId: ticket.id,
+                            caseNumber: caseNum,
+                            subject: taskSubject,
+                            status: taskStatus,
+                            method: taskMethod,
+                            deliveryPerson: taskDeliveryPerson,
+                            assignedTo: taskAssignedTo,
+                            date: taskDate,
+                            timeSlot: taskTimeSlot,
+                            address: taskAddress,
+                            trackingNumber: taskTrackingNumber,
+                            assets: taskAssets,
+                            accessories: taskAccessories,
+                            yubikeys: taskYubikeys,
+                            deliveryInfo: taskDeliveryInfo,
+                            coordinatedBy: taskCoordinatedBy
+                        };
+
+                        await addLogisticsTask(newTask);
+                    }
+
+                    // Remover los casos migrados del arreglo JSON del ticket
+                    const migratedNumbers = casesToMigrate.map(c => String(c.caseNumber).trim());
+                    const remainingCases = (ticket.associatedCases || []).filter(c => 
+                        !c.caseNumber || !migratedNumbers.includes(String(c.caseNumber).trim())
+                    );
+
+                    await updateTicket(ticket.id, { associatedCases: remainingCases });
+                    console.log(`Auto-migration complete for ticket ${ticket.id}`);
+                } catch (err) {
+                    console.error("Error migrating legacy cases:", err);
+                }
+            })();
+        }
+    }, [ticket?.id, ticket?.associatedCases, ticketTasks, addLogisticsTask, updateTicket]);
+
     const provisioningSuggestions = useMemo(() => {
         if (!ticket || !ticket.subject) return [];
         const subject = (ticket.subject || "").toLowerCase();
