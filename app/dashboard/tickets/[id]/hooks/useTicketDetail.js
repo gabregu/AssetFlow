@@ -16,11 +16,15 @@ const isAutoUnconfiguredCase = (task) => {
     const isSFDCCase = /^\d{8}$/.test(String(caseNum).trim());
     if (!isSFDCCase) return false;
     
-    // Check if it has no assets and is not configured
+    // Check if it has no assets, yubikeys, or active accessories
     const hasNoAssets = !task.assets || task.assets.length === 0;
-    const isUnconfigured = !task.method || task.method === 'Sin método' || task.method === 'Pendiente' || !task.status || task.status === 'No requiere accion' || task.status === 'Pendiente';
+    const hasNoYubikeys = !task.yubikeys || task.yubikeys.length === 0;
+    const hasNoAccessories = !task.accessories || !Object.values(task.accessories).some(v => v === true || v === 'true');
     
-    return hasNoAssets && isUnconfigured;
+    const isUnconfigured = !task.method || task.method === 'Sin método' || task.method === 'Pendiente' || 
+                           !task.status || task.status === 'No requiere accion' || task.status === 'Pendiente';
+    
+    return hasNoAssets && hasNoYubikeys && hasNoAccessories && isUnconfigured;
 };
 
 export function useTicketDetail() {
@@ -52,15 +56,6 @@ export function useTicketDetail() {
     // se fusionan también los asociados automáticos heredados de la columna JSONB.
     const unifiedTasks = useMemo(() => {
         const baseTasks = ticketTasks || [];
-        if (!showAutoCases) {
-            return baseTasks
-                .filter(t => !isAutoUnconfiguredCase(t))
-                .map(t => ({
-                    ...t,
-                    country: t.country || (ticket?.client || ticket?.logistics?.country || 'Argentina')
-                }));
-        }
-
         const legacyCases = (editedData && editedData.associatedCases) || [];
         
         // Deduplicar por caseNumber (evitar duplicar si ya existe en ticketTasks)
@@ -69,6 +64,22 @@ export function useTicketDetail() {
             !baseTasks.some(rt => String(rt.caseNumber || rt.case_number).trim() === String(lc.caseNumber).trim())
         );
 
+        if (!showAutoCases) {
+            // Si showAutoCases es falso, incluimos:
+            // 1. Las tareas reales de base de datos que no estén vacías/inactivas.
+            // 2. Los casos automáticos/legacy que ya han sido configurados (que no sean AutoUnconfigured).
+            const activeBase = baseTasks.filter(t => !isAutoUnconfiguredCase(t));
+            const activeLegacy = filteredLegacy.filter(lc => !isAutoUnconfiguredCase(lc));
+            
+            const tasks = [...activeBase, ...activeLegacy];
+            const ticketClient = ticket?.client || ticket?.logistics?.country || 'Argentina';
+            return tasks.map(t => ({
+                ...t,
+                country: t.country || ticketClient
+            }));
+        }
+
+        // Si showAutoCases es verdadero, mostramos todos (reales y legacy, configurados o no)
         const tasks = [...baseTasks, ...filteredLegacy];
         const ticketClient = ticket?.client || ticket?.logistics?.country || 'Argentina';
         return tasks.map(t => ({
