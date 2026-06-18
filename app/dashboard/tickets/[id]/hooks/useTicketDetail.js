@@ -77,6 +77,30 @@ export function useTicketDetail() {
         }));
     }, [ticketTasks, ticket, showAutoCases, editedData]);
 
+    // Keep selectedCaseIndex locked to the same caseNumber if the list changes/re-orders (e.g. during promotion)
+    const lastSelectedCaseNumberRef = useRef(null);
+    useEffect(() => {
+        const currentTasks = unifiedTasks || [];
+        if (selectedCaseIndex !== null && currentTasks[selectedCaseIndex]) {
+            lastSelectedCaseNumberRef.current = currentTasks[selectedCaseIndex].caseNumber || currentTasks[selectedCaseIndex].case_number;
+        } else if (selectedCaseIndex === null) {
+            lastSelectedCaseNumberRef.current = null;
+        }
+    }, [selectedCaseIndex, unifiedTasks]);
+
+    useEffect(() => {
+        if (lastSelectedCaseNumberRef.current !== null) {
+            const currentTasks = unifiedTasks || [];
+            const newIndex = currentTasks.findIndex(t => 
+                String(t.caseNumber || t.case_number || '').trim() === String(lastSelectedCaseNumberRef.current).trim()
+            );
+            if (newIndex !== -1 && newIndex !== selectedCaseIndex) {
+                console.log(`Adjusting selectedCaseIndex from ${selectedCaseIndex} to ${newIndex} to match caseNumber ${lastSelectedCaseNumberRef.current}`);
+                setSelectedCaseIndex(newIndex);
+            }
+        }
+    }, [unifiedTasks, selectedCaseIndex]);
+
     const [editMode, setEditMode] = useState(false);
     const [editLogistics, setEditLogistics] = useState(false);
     const [editAssets, setEditAssets] = useState(false);
@@ -555,28 +579,85 @@ export function useTicketDetail() {
                 }
                 return await updateLogisticsTask(currentTask.id, partialData);
             } else {
-                // Legacy
+                // Promocionar el caso a la base de datos relacional (logistics_tasks)
                 if (ticket.status === 'Abierto' || ticket.status === 'Pendiente') {
                     await updateTicket(ticket.id, { status: 'En Progreso' });
                 }
 
-                const updatedCases = editedData.associatedCases.map((c, idx) => {
-                    if (idx === selectedCaseIndex) {
-                        const newLogistics = { ...(c.logistics || {}) };
-                        const updatedCase = { ...c, ...partialData };
+                const caseNum = currentTask.caseNumber || currentTask.case_number;
 
-                        Object.keys(partialData).forEach(key => {
-                            newLogistics[key] = partialData[key];
-                        });
-
-                        return { ...updatedCase, logistics: newLogistics };
-                    }
-                    return c;
-                });
+                // Extraer de forma segura buscando tanto en la raíz como en logistics
+                const taskSubject = partialData.subject !== undefined ? partialData.subject : (currentTask.subject || '');
+                const taskStatus = partialData.status !== undefined ? partialData.status : (currentTask.status || currentTask.logistics?.status || 'Pendiente');
+                const taskMethod = partialData.method !== undefined ? partialData.method : (currentTask.method || currentTask.logistics?.method || '');
                 
-                setEditedData(prev => ({ ...prev, associatedCases: updatedCases }));
-                const success = await updateTicket(ticket.id, { associatedCases: updatedCases });
-                return success ? { data: true } : { error: { message: "Error al actualizar ticket" } };
+                const taskDeliveryPerson = partialData.delivery_person !== undefined ? partialData.delivery_person : 
+                                           (partialData.deliveryPerson !== undefined ? partialData.deliveryPerson : 
+                                           (currentTask.delivery_person || currentTask.deliveryPerson || currentTask.logistics?.deliveryPerson || currentTask.logistics?.delivery_person || ''));
+                                           
+                const taskAssignedTo = partialData.assigned_to !== undefined ? partialData.assigned_to : 
+                                       (partialData.assignedTo !== undefined ? partialData.assignedTo : 
+                                       (currentTask.assigned_to || currentTask.assignedTo || currentTask.logistics?.assignedTo || currentTask.logistics?.assigned_to || ''));
+                                       
+                const taskDate = partialData.date !== undefined ? partialData.date : (currentTask.date || currentTask.logistics?.date || '');
+                
+                const taskTimeSlot = partialData.time_slot !== undefined ? partialData.time_slot : 
+                                     (partialData.timeSlot !== undefined ? partialData.timeSlot : 
+                                     (currentTask.time_slot || currentTask.timeSlot || currentTask.logistics?.timeSlot || currentTask.logistics?.time_slot || 'AM'));
+                                     
+                const taskAddress = partialData.address !== undefined ? partialData.address : (currentTask.address || currentTask.logistics?.address || '');
+                
+                const taskTrackingNumber = partialData.tracking_number !== undefined ? partialData.tracking_number : 
+                                           (partialData.trackingNumber !== undefined ? partialData.trackingNumber : 
+                                           (currentTask.tracking_number || currentTask.trackingNumber || currentTask.logistics?.trackingNumber || currentTask.logistics?.tracking_number || ''));
+                                           
+                const taskAssets = partialData.assets !== undefined ? partialData.assets : (currentTask.assets || []);
+                const taskAccessories = partialData.accessories !== undefined ? partialData.accessories : (currentTask.accessories || { backpack: false, screenFilter: false, filterSize: '14"' });
+                const taskYubikeys = partialData.yubikeys !== undefined ? partialData.yubikeys : (currentTask.yubikeys || []);
+                
+                const taskDeliveryInfo = partialData.deliveryInfo !== undefined ? partialData.deliveryInfo : 
+                                         (partialData.delivery_info !== undefined ? partialData.delivery_info : 
+                                         (currentTask.deliveryInfo || currentTask.delivery_info || currentTask.logistics?.deliveryInfo || {}));
+                                         
+                const taskCoordinatedBy = partialData.coordinated_by !== undefined ? partialData.coordinated_by : 
+                                          (partialData.coordinatedBy !== undefined ? partialData.coordinatedBy : 
+                                          (currentTask.coordinated_by || currentTask.coordinatedBy || currentTask.logistics?.coordinatedBy || ''));
+
+                const newTask = {
+                    ticketId: ticket.id,
+                    caseNumber: caseNum,
+                    subject: taskSubject,
+                    status: taskStatus,
+                    method: taskMethod,
+                    deliveryPerson: taskDeliveryPerson,
+                    assignedTo: taskAssignedTo,
+                    date: taskDate,
+                    timeSlot: taskTimeSlot,
+                    address: taskAddress,
+                    trackingNumber: taskTrackingNumber,
+                    assets: taskAssets,
+                    accessories: taskAccessories,
+                    yubikeys: taskYubikeys,
+                    deliveryInfo: taskDeliveryInfo,
+                    coordinatedBy: taskCoordinatedBy
+                };
+
+                console.log("Promoting legacy/auto task to database row:", newTask);
+                const result = await addLogisticsTask(newTask);
+                
+                if (result && !result.error) {
+                    // Remover el caso del arreglo JSON 'associatedCases' del ticket para no tenerlo duplicado
+                    const updatedCases = (editedData.associatedCases || []).filter(c => 
+                        String(c.caseNumber || c.case_number || '').trim() !== String(caseNum).trim()
+                    );
+                    
+                    setEditedData(prev => ({ ...prev, associatedCases: updatedCases }));
+                    await updateTicket(ticket.id, { associatedCases: updatedCases });
+                    
+                    return { data: result.data };
+                } else {
+                    return { error: result?.error || { message: "Error al promover caso asociado a base de datos" } };
+                }
             }
         } catch (err) {
             console.error("handleUpdateTask exception:", err);
