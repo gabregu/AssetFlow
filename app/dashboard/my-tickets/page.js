@@ -215,18 +215,42 @@ export default function MyTicketsPage() {
         await safeOptimize(async () => {
             const geocoder = new window.google.maps.Geocoder();
 
-            const originAddress = optimizationOrigin === 'oficina'
-                ? 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina'
-                : 'Fraga 1312, CABA, Argentina';
-
-            // 1. Geocode Origin
-            const originResult = await new Promise((resolve, reject) => {
-                geocoder.geocode({ address: originAddress }, (results, status) => {
-                    if (status === 'OK') resolve(results[0]);
-                    else reject(status);
+            let originLoc;
+            if (optimizationOrigin === 'gps') {
+                if (!navigator.geolocation) {
+                    alert('La geolocalización no está soportada por tu navegador.');
+                    return;
+                }
+                const pos = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                }).catch(err => {
+                    console.error("GPS error:", err);
+                    let errMsg = 'No se pudo obtener la ubicación GPS.';
+                    if (err.code === 1) errMsg += ' Por favor, permite el acceso a la ubicación en tu navegador.';
+                    else if (err.code === 2) errMsg += ' La ubicación no está disponible.';
+                    else if (err.code === 3) errMsg += ' Se agotó el tiempo de espera.';
+                    alert(errMsg);
+                    throw err;
                 });
-            });
-            const originLoc = originResult.geometry.location;
+                originLoc = new window.google.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+            } else {
+                const originAddress = optimizationOrigin === 'oficina'
+                    ? 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina'
+                    : 'Fraga 1312, CABA, Argentina';
+
+                // 1. Geocode Origin
+                const originResult = await new Promise((resolve, reject) => {
+                    geocoder.geocode({ address: originAddress }, (results, status) => {
+                        if (status === 'OK') resolve(results[0]);
+                        else reject(status);
+                    });
+                });
+                originLoc = originResult.geometry.location;
+            }
 
             // 2. Geocode Tickets (Limit 25 to avoid heavy API usage/limits)
             // Using a simple greedy algorithm: Find nearest to current, then from that finding nearest to next, etc.
@@ -1239,6 +1263,7 @@ export default function MyTicketsPage() {
                         >
                             <option value="oficina">Oficina (Padre Castiglia 1638, Boulogne)</option>
                             <option value="deposito">Depósito (Fraga 1312, CABA)</option>
+                            <option value="gps">Mi Ubicación Actual (GPS)</option>
                         </select>
                     </div>
 
