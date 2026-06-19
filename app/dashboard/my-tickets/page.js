@@ -82,6 +82,7 @@ export default function MyTicketsPage() {
                     displaySubject: task.subject || task.items || pTicket?.subject || 'Gestión de Activos',
                     displayId: task.case_number || task.caseNumber || (pTicket?.id ? String(pTicket.id).substring(0, 8) : 'SUB-CASE'),
                     displayAddress: task.address || pTicket?.logistics?.address || 'Dirección no especificada',
+                    displayFloorDept: task.floorDept || task.floor_dept || pTicket?.logistics?.floorDept || '',
                     displayDate: task.date || 'Pendiente',
                     displayStatus: task.status || 'Pendiente',
                     taskTimeSlot: task.time_slot || task.timeSlot || 'Por definir',
@@ -127,6 +128,7 @@ export default function MyTicketsPage() {
                     displaySubject: ticket.subject,
                     displayId: ticket.id,
                     displayAddress: ticket.logistics?.address || 'Sin dirección',
+                    displayFloorDept: ticket.logistics?.floorDept || '',
                     displayDate: ticket.logistics?.date || 'Sin fecha',
                     displayStatus: ticket.logistics?.status || 'Pendiente',
                     isMainTicket: true,
@@ -671,15 +673,22 @@ export default function MyTicketsPage() {
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     <span>Prioridad: {ticket.priority}</span>
                     {ticket.displayAddress && (
-                        <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: 'var(--primary-color)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            📍 {ticket.displayAddress}
-                        </a>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <a
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.displayAddress)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: 'var(--primary-color)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                📍 {ticket.displayAddress}
+                            </a>
+                            {ticket.displayFloorDept && (
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-main)', background: '#e2e8f0', padding: '1px 6px', borderRadius: '3px', width: 'fit-content', marginLeft: '16px' }}>
+                                    Piso y Depto: {ticket.displayFloorDept}
+                                </span>
+                            )}
+                        </div>
                     )}
                 </div>
             </td>
@@ -793,11 +802,20 @@ export default function MyTicketsPage() {
                     <span style={{ fontWeight: 600 }}>{ticket.requester}</span>
                 </div>
                 {ticket.displayAddress && (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', fontSize: isConductor ? '0.74rem' : '0.82rem', color: 'var(--text-secondary)' }}>
-                        <MapPin size={isConductor ? 11 : 13} style={{ marginTop: '2px', flexShrink: 0 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                            {ticket.displayAddress}
-                        </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', fontSize: isConductor ? '0.74rem' : '0.82rem', color: 'var(--text-secondary)' }}>
+                            <MapPin size={isConductor ? 11 : 13} style={{ marginTop: '2px', flexShrink: 0 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                {ticket.displayAddress}
+                            </span>
+                        </div>
+                        {ticket.displayFloorDept && (
+                            <div style={{ paddingLeft: '1.1rem' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e293b', background: '#e2e8f0', padding: '1px 6px', borderRadius: '3px', width: 'fit-content', display: 'inline-block' }}>
+                                    Piso y Depto: {ticket.displayFloorDept}
+                                </span>
+                            </div>
+                        )}
                     </div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: isConductor ? '0.78rem' : '0.85rem', marginTop: isConductor ? '2px' : '0' }}>

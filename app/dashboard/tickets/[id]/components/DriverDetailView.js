@@ -33,6 +33,7 @@ export default function DriverDetailView({
     const contactName = ticket.requester || 'Destinatario';
     const contactPhone = ticket.deliveryDetails?.contactPhone || '';
     const address = ticket.logistics?.address || 'Dirección no especificada';
+    const floorDept = ticket.logistics?.floorDept || '';
     const status = ticket.logistics?.status || 'Pendiente';
 
     const handleWhatsApp = () => {
@@ -110,7 +111,12 @@ export default function DriverDetailView({
                     </div>
                     <div style={{ flex: 1 }}>
                         <h4 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Dirección de Entrega</h4>
-                        <p style={{ fontSize: '0.95rem', fontWeight: 500, lineHeight: '1.3' }}>{address}</p>
+                        <p style={{ fontSize: '0.95rem', fontWeight: 500, lineHeight: '1.3', margin: 0 }}>{address}</p>
+                        {floorDept && (
+                            <p style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', backgroundColor: '#e2e8f0', padding: '2px 8px', borderRadius: '4px', width: 'fit-content', margin: '4px 0 0 0' }}>
+                                Piso y Depto: {floorDept}
+                            </p>
+                        )}
                     </div>
                 </div>
                 <Button 
