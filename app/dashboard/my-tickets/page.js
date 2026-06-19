@@ -230,13 +230,17 @@ export default function MyTicketsPage() {
 
             // 2. Geocode Tickets (Limit 25 to avoid heavy API usage/limits)
             // Using a simple greedy algorithm: Find nearest to current, then from that finding nearest to next, etc.
-            const ticketsToRoute = sortedAndFilteredTickets.filter(t => t.logistics?.address && t.logistics.address.length > 5);
+            const ticketsToRoute = sortedAndFilteredTickets.filter(t => {
+                const addr = t.displayAddress || t.logistics?.address;
+                return addr && addr.length > 5 && addr !== 'Dirección no especificada' && addr !== 'Sin dirección';
+            });
 
             const ticketsWithLoc = [];
             for (const ticket of ticketsToRoute) {
                 try {
+                    const address = ticket.displayAddress || ticket.logistics?.address;
                     const res = await new Promise((resolve) => {
-                        geocoder.geocode({ address: ticket.logistics.address }, (results, status) => {
+                        geocoder.geocode({ address: address }, (results, status) => {
                             if (status === 'OK') resolve(results[0]);
                             else resolve(null); // Skip if failed
                         });
@@ -244,7 +248,7 @@ export default function MyTicketsPage() {
 
                     if (res) {
                         ticketsWithLoc.push({
-                            id: ticket.id,
+                            uniqueId: ticket.taskId ? `task-${ticket.taskId}` : `ticket-${ticket.id}`,
                             loc: res.geometry.location,
                             ticket: ticket
                         });
@@ -256,7 +260,7 @@ export default function MyTicketsPage() {
 
             // 3. Sort by Nearest Neighbor
             let currentLoc = originLoc;
-            const orderedIds = [];
+            const orderedUniqueIds = [];
             const pool = [...ticketsWithLoc];
 
             while (pool.length > 0) {
@@ -274,7 +278,7 @@ export default function MyTicketsPage() {
 
                 if (nearestIdx !== -1) {
                     const nearest = pool[nearestIdx];
-                    orderedIds.push(nearest.id);
+                    orderedUniqueIds.push(nearest.uniqueId);
                     currentLoc = nearest.loc;
                     pool.splice(nearestIdx, 1);
                 } else {
@@ -283,11 +287,11 @@ export default function MyTicketsPage() {
             }
 
             // Add remaining tickets that couldn't be geocoded at the end
-            const unmappedIds = sortedAndFilteredTickets
-                .filter(t => !orderedIds.includes(t.id))
-                .map(t => t.id);
+            const unmappedUniqueIds = sortedAndFilteredTickets
+                .map(t => t.taskId ? `task-${t.taskId}` : `ticket-${t.id}`)
+                .filter(uid => !orderedUniqueIds.includes(uid));
 
-            setOptimizedOrder([...orderedIds, ...unmappedIds]);
+            setOptimizedOrder([...orderedUniqueIds, ...unmappedUniqueIds]);
             setSortConfig({ key: 'optimized', direction: 'asc' });
             setIsOptimizationModalOpen(false);
             alert('¡Ruta optimizada correctamente!');
@@ -354,8 +358,10 @@ export default function MyTicketsPage() {
 
                 // If both are "Para Coordinar" or both are NOT, apply other sorts
                 if (sortConfig.key === 'optimized' && optimizedOrder) {
-                    const idxA = optimizedOrder.indexOf(a.id);
-                    const idxB = optimizedOrder.indexOf(b.id);
+                    const keyA = a.taskId ? `task-${a.taskId}` : `ticket-${a.id}`;
+                    const keyB = b.taskId ? `task-${b.taskId}` : `ticket-${b.id}`;
+                    const idxA = optimizedOrder.indexOf(keyA);
+                    const idxB = optimizedOrder.indexOf(keyB);
                     const safeIdxA = idxA === -1 ? 9999 : idxA;
                     const safeIdxB = idxB === -1 ? 9999 : idxB;
                     return safeIdxA - safeIdxB;
