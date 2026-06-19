@@ -910,14 +910,11 @@ export default function WarehousePage() {
                                 margin-bottom: 0.5mm;
                             }
                             .loc-aisle { 
-                                font-size: 8pt; 
+                                font-size: 7pt; 
                                 font-weight: 900; 
                                 color: #000; 
                                 text-transform: uppercase;
                                 line-height: 1.2;
-                                white-space: nowrap;
-                                overflow: hidden;
-                                text-overflow: ellipsis;
                             }
                             .loc-details { 
                                 font-size: 8pt; 
@@ -932,8 +929,8 @@ export default function WarehousePage() {
                     </head>
                     <body>
                         <div class="label-container">
-                            <div class="loc-region">${location.country}</div>
-                            <div class="loc-aisle">GRUPO ${location.aisle}</div>
+                            <div class="loc-region">${location.country} - LOCACIÓN ${isLocH(location.aisle) ? 'H' : 'W'}</div>
+                            <div class="loc-aisle">GRUPO ${getDisplayAisle(location.aisle)}</div>
                             <div class="loc-details">${location.section} - ${location.level}</div>
                             <img src="${barcodeDataUrl}" class="barcode-img" />
                             <div style="font-size: 4.5pt; opacity: 0.4; margin-top: 0.5mm; font-weight: 600; text-align: right;">AssetFlow WMS</div>
