@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Card } from '@/app/components/ui/Card';
 import { TrendingUp, DollarSign, Truck, Package, Info } from 'lucide-react';
-import { calculateTicketFinancials } from '@/lib/billing';
+import { calculateTicketFinancials, getExchangeRateForDate } from '@/lib/billing';
 import { useStore } from '@/lib/store';
 
 export function FinancialsSummary({ ticket }) {
@@ -51,6 +51,10 @@ export function FinancialsSummary({ ticket }) {
     const autoServiceRevenue = defaultFinancials ? defaultFinancials.serviceRevenue : serviceRevenue;
     const autoLogisticRevenue = defaultFinancials ? defaultFinancials.logisticRevenue : logisticRevenue;
     const autoLogisticCost = defaultFinancials ? defaultFinancials.logisticCost : logisticCost;
+
+    const isARSMethod = method === 'Correo Argentino' || method === 'Andreani' || method.includes('Correo');
+    const rate = getExchangeRateForDate(rates, ticket.createdAt || new Date());
+    const autoLogisticCostARS = autoLogisticCost * (rate > 0 ? rate : 1);
 
     const formatUSD = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
@@ -234,22 +238,35 @@ export function FinancialsSummary({ ticket }) {
                     </span>
                     {method !== 'N/A' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#ef4444' }}>- $</span>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#ef4444' }}>- {isARSMethod ? 'ARS' : '$'}</span>
                             <input
                                 type="number"
                                 step="0.01"
                                 min="0"
                                 disabled={ticket.deliveryDetails?.financialValuesConfirmed}
-                                value={ticket.deliveryDetails?.customLogisticCost !== undefined && ticket.deliveryDetails?.customLogisticCost !== null ? ticket.deliveryDetails.customLogisticCost : ''}
-                                placeholder={autoLogisticCost.toFixed(2)}
+                                value={isARSMethod ? 
+                                    (ticket.deliveryDetails?.customLogisticCostARS !== undefined && ticket.deliveryDetails?.customLogisticCostARS !== null ? ticket.deliveryDetails.customLogisticCostARS : '') 
+                                    : 
+                                    (ticket.deliveryDetails?.customLogisticCost !== undefined && ticket.deliveryDetails?.customLogisticCost !== null ? ticket.deliveryDetails.customLogisticCost : '')
+                                }
+                                placeholder={(isARSMethod ? autoLogisticCostARS : autoLogisticCost).toFixed(2)}
                                 onChange={async (e) => {
                                     const val = e.target.value === '' ? null : parseFloat(e.target.value);
-                                    await updateTicket(ticket.id, {
-                                        deliveryDetails: {
-                                            ...ticket.deliveryDetails,
-                                            customLogisticCost: val
-                                        }
-                                    });
+                                    if (isARSMethod) {
+                                        await updateTicket(ticket.id, {
+                                            deliveryDetails: {
+                                                ...ticket.deliveryDetails,
+                                                customLogisticCostARS: val
+                                            }
+                                        });
+                                    } else {
+                                        await updateTicket(ticket.id, {
+                                            deliveryDetails: {
+                                                ...ticket.deliveryDetails,
+                                                customLogisticCost: val
+                                            }
+                                        });
+                                    }
                                 }}
                                 style={{
                                     width: '75px',
