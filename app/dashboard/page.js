@@ -9,54 +9,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { CountryFilter } from '../components/layout/CountryFilter';
 
-// ── Mini Donut SVG ──────────────────────────────────────────────────────────
-function DonutChart({ slices, size = 120, thickness = 22, label }) {
-    const r = (size - thickness) / 2;
-    const circ = 2 * Math.PI * r;
-    const total = slices.reduce((s, x) => s + (x.value || 0), 0) || 1;
-    let offset = 0;
-    const segs = slices.map((s) => {
-        const dash = (s.value / total) * circ;
-        const seg = { ...s, dash, gap: circ - dash, offset };
-        offset += dash;
-        return seg;
-    });
-    return (
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-            <circle cx={size / 2} cy={size / 2} r={r} fill="none"
-                stroke="#e5e7eb" strokeWidth={thickness} />
-            {segs.map((s, i) => (
-                <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none"
-                    stroke={s.color} strokeWidth={thickness}
-                    strokeDasharray={`${s.dash} ${s.gap}`}
-                    strokeDashoffset={-s.offset}
-                    style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }} />
-            ))}
-            {label !== undefined && (
-                <>
-                    <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle"
-                        style={{ fontSize: '1.4rem', fontWeight: 700, fill: 'var(--text-main)' }}>
-                        {label}
-                    </text>
-                    <text x="50%" y="64%" textAnchor="middle" dominantBaseline="middle"
-                        style={{ fontSize: '0.55rem', fill: '#9ca3af' }}>
-                        TOTAL
-                    </text>
-                </>
-            )}
-        </svg>
-    );
-}
-
-// ── Bar mini ────────────────────────────────────────────────────────────────
-function MiniBar({ value, max, color }) {
-    const pct = max > 0 ? (value / max) * 100 : 0;
-    return (
-        <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '99px', overflow: 'hidden', flex: 1 }}>
-            <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: '99px', transition: 'width .4s' }} />
-        </div>
-    );
-}
+import { WorkloadSection } from './components/WorkloadSection';
 
 // ── KPI Card ────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, icon: Icon, color, bg, sub, subColor }) {
@@ -115,6 +68,8 @@ export default function Dashboard() {
         apiGateway: { label: 'API Gateway', status: 'Comprobando...', color: '#6b7280' },
         localStorage: { label: 'Persistencia Local', status: 'Comprobando...', color: '#6b7280' },
     });
+
+    const [historicalMonth, setHistoricalMonth] = React.useState('');
 
     React.useEffect(() => {
         let isMounted = true;
@@ -238,66 +193,39 @@ export default function Dashboard() {
     const resolved = filteredTickets.filter(t => ['Resuelto', 'Cerrado'].includes(t.status)).length;
     const assignedAssets = filteredAssets.filter(a => a.assignee && !['Almacén', 'En Almacén'].includes(a.assignee)).length;
 
-    // ── Workload per user ──────────────────────────────────────────────────
-    const workloadUsers = (users || []).map((u, i) => {
-        const un = String(u.name || u.username || '').toLowerCase();
-        const unParts = un.split(' ');
-        const matchesUser = (assigned) => {
-            const a = String(assigned || '').toLowerCase();
-            return a === un || (a && un && a.includes(un)) || (a && unParts.length > 0 && a.includes(unParts[0]));
-        };
-
-        // Get active tickets where user is directly assigned to the ticket
-        const myTickets = filteredTickets.filter(t => {
-            if (['Resuelto', 'Cerrado', 'Cancelado'].includes(t.status)) return false;
-            // Also check if any logistics task for this ticket is assigned to the user
-            const tasks = (logisticsTasks || []).filter(task => String(task.ticket_id) === String(t.id) && !['Resuelto', 'Cerrado', 'Cancelado', 'Entregado'].includes(task.status));
-            const taskAssigned = tasks.some(task => matchesUser(task.delivery_person || task.deliveryPerson || task.assigned_to || task.assignedTo));
-            const ticketAssigned = matchesUser(t.logistics?.deliveryPerson || t.logistics?.delivery_person || t.assignedTo || t.assignee || t.owner);
-            return ticketAssigned || taskAssigned;
+    // ── Months data for historical workloads ────────────────────────────────
+    const availableMonths = React.useMemo(() => {
+        const months = new Set();
+        filteredTickets.forEach(t => {
+            const ticketDateStr = t.created_at || t.createdAt || t.date || t.dateOpened;
+            if (ticketDateStr) {
+                const td = new Date(ticketDateStr);
+                if (!isNaN(td.getTime())) {
+                    months.add(`${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, '0')}`);
+                }
+            }
         });
+        return Array.from(months).sort().reverse();
+    }, [filteredTickets]);
 
-        const active = myTickets.length;
-        const entregas = myTickets.filter(t => t.type === 'Entrega' || t.logistics?.type === 'Entrega').length;
-        const recolecciones = myTickets.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
-        return { ...u, active, entregas, recolecciones, color: USER_COLORS[i % USER_COLORS.length], Icon: USER_ICONS[i % USER_ICONS.length] };
-    }).filter(u => u.active > 0);
-    const maxActive = Math.max(...workloadUsers.map(u => u.active), 1);
+    React.useEffect(() => {
+        if (availableMonths.length > 0 && !historicalMonth) {
+            const current = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+            const prev = availableMonths.find(m => m !== current);
+            setHistoricalMonth(prev || availableMonths[0]);
+        }
+    }, [availableMonths, historicalMonth]);
 
-    // ── Timeline (last 10 days) ────────────────────────────────────────────
-    const today = new Date();
-    const days = Array.from({ length: 10 }, (_, i) => {
-        const d = new Date(today);
-        d.setDate(today.getDate() - (9 - i));
-        const label = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-        const count = filteredTickets.filter(t => {
+    const historicalTickets = React.useMemo(() => {
+        if (!historicalMonth) return [];
+        return filteredTickets.filter(t => {
             const ticketDateStr = t.created_at || t.createdAt || t.date || t.dateOpened;
             if (!ticketDateStr) return false;
             const td = new Date(ticketDateStr);
-            // If the date is invalid, don't count it
             if (isNaN(td.getTime())) return false;
-            return td.toDateString() === d.toDateString();
-        }).length;
-        return { label, count };
-    });
-    const maxCount = Math.max(...days.map(d => d.count), 1);
-
-    // ── Donut data ─────────────────────────────────────────────────────────
-    const entregas = filteredTickets.filter(t => t.type === 'Entrega' || t.logistics?.type === 'Entrega').length;
-    const recolecciones = filteredTickets.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
-    const otros = filteredTickets.length - (entregas + recolecciones);
-    const typeTotal = entregas + recolecciones + otros || 1;
-
-    const donutType = [
-        { value: entregas, color: '#3b82f6' },
-        { value: recolecciones, color: '#f59e0b' },
-        { value: otros, color: '#6b7280' },
-    ];
-    const donutStatus = [
-        { value: openTickets, color: '#3b82f6' },
-        { value: inProgress, color: '#f59e0b' },
-        { value: resolved, color: '#22c55e' },
-    ];
+            return `${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, '0')}` === historicalMonth;
+        });
+    }, [filteredTickets, historicalMonth]);
 
     return (
         <div style={{ animation: 'fadeIn 0.4s ease-out', maxWidth: '1200px' }}>
@@ -337,114 +265,30 @@ export default function Dashboard() {
             </div>
 
             {/* ── Workload + Charts ──────────────────────────────────────── */}
-            <div style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: '14px', padding: '1.5rem', marginBottom: '1.5rem'
-            }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 1.25rem' }}>Carga de Trabajo (Empleados)</h3>
+            <WorkloadSection 
+                title="Carga de Trabajo (Empleados)"
+                tickets={filteredTickets}
+                users={users}
+                logisticsTasks={logisticsTasks}
+                isHistorical={false}
+                userColors={USER_COLORS}
+            />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2rem', alignItems: 'start' }}>
-
-                    {/* Left: user list + timeline */}
-                    <div>
-                        {/* User rows */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                            {workloadUsers.map((u, i) => (
-                                <div key={u.id} style={{
-                                    display: 'flex', alignItems: 'center', gap: '1rem',
-                                    padding: '0.65rem 0',
-                                    borderBottom: i < workloadUsers.length - 1 ? '1px solid var(--border)' : 'none'
-                                }}>
-                                    <div style={{ minWidth: '140px', display: 'flex', flexDirection: 'column' }}>
-                                        <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{u.name}</span>
-                                        <div style={{ display: 'flex', gap: '6px', fontSize: '0.65rem', marginTop: '2px', opacity: 0.8 }}>
-                                            <span style={{ color: '#3b82f6', fontWeight: 600 }}>{u.entregas} Entregas</span>
-                                            <span style={{ color: '#f59e0b', fontWeight: 600 }}>{u.recolecciones} Recolecciones</span>
-                                        </div>
-                                    </div>
-                                    <MiniBar value={u.active} max={maxActive} color={u.color} />
-                                    <div style={{
-                                        minWidth: '28px', height: '28px', borderRadius: '6px',
-                                        background: u.active > 0 ? u.color : '#e5e7eb',
-                                        color: u.active > 0 ? 'white' : '#9ca3af',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '0.8rem', fontWeight: 700
-                                    }}>{u.active}</div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Timeline */}
-                        <div style={{ marginTop: '1.5rem' }}>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500, marginBottom: '0.75rem', textAlign: 'center' }}>
-                                Línea de Tiempo de Casos (Total Histórico)
-                            </p>
-                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '48px', marginBottom: '6px' }}>
-                                {days.map((d, i) => (
-                                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                        <div style={{
-                                            width: '100%', borderRadius: '3px 3px 0 0',
-                                            background: d.count > 0 ? '#3b82f6' : '#e5e7eb',
-                                            height: `${(d.count / maxCount) * 40 + 4}px`,
-                                            transition: 'height .3s'
-                                        }} title={`${d.label}: ${d.count}`} />
-                                    </div>
-                                ))}
-                            </div>
-                            <div style={{ display: 'flex', gap: '2px' }}>
-                                {days.map((d, i) => (
-                                    <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: '0.6rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>
-                                        {d.label}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right: donuts */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', minWidth: '180px' }}>
-                        {/* Type donut */}
-                        <div>
-                            <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>Carga de Trabajo por Tipo</p>
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                <DonutChart slices={donutType} size={110} thickness={20} label={typeTotal === 1 && (entregas + recolecciones + otros) === 0 ? 0 : entregas + recolecciones + otros} />
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    {[
-                                        { label: 'Entregas', color: '#3b82f6', val: entregas },
-                                        { label: 'Recolecciones', color: '#f59e0b', val: recolecciones },
-                                        { label: 'Otros', color: '#6b7280', val: otros },
-                                    ].map(l => (
-                                        <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem' }}>
-                                            <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: l.color, flexShrink: 0 }} />
-                                            {l.label}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Status donut */}
-                        <div>
-                            <p style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>Resueltos vs. Abiertos</p>
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                <DonutChart slices={donutStatus} size={110} thickness={20} label={openTickets + inProgress + resolved} />
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    {[
-                                        { label: `Abiertos: ${openTickets}`, color: '#3b82f6' },
-                                        { label: `En Prog: ${inProgress}`, color: '#f59e0b' },
-                                        { label: `Resueltos: ${resolved}`, color: '#22c55e' },
-                                    ].map(l => (
-                                        <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem' }}>
-                                            <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: l.color, flexShrink: 0 }} />
-                                            {l.label}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {/* ── Historical Workload ────────────────────────────────────── */}
+            {availableMonths.length > 0 && historicalMonth && (
+                <WorkloadSection 
+                    title="Carga de Trabajo (Histórico)"
+                    tickets={historicalTickets}
+                    users={users}
+                    logisticsTasks={logisticsTasks}
+                    isHistorical={true}
+                    monthSelector={true}
+                    selectedMonth={historicalMonth}
+                    onMonthChange={setHistoricalMonth}
+                    availableMonths={availableMonths}
+                    userColors={USER_COLORS}
+                />
+            )}
 
             {/* ── System Status ─────────────────────────────────────────── */}
             <div style={{
