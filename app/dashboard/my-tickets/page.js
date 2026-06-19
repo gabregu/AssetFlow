@@ -621,17 +621,20 @@ export default function MyTicketsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>{ticket.displaySubject}</div>
                     {(ticket.instructions || ticket.hasNewNotes) && (
-                        <div 
-                            title={ticket.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"} 
-                            className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
-                            style={{ 
-                                color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)', 
-                                display: 'flex',
-                                marginRight: '8px'
-                            }}
-                        >
-                            <MessageSquare size={16} fill={ticket.hasUnreadChat ? 'white' : 'none'} stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'} />
-                        </div>
+                        <Link href={`/dashboard/tickets/${ticket.id}?scrollTo=chat`} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                            <div 
+                                title={ticket.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"} 
+                                className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
+                                style={{ 
+                                    color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)', 
+                                    display: 'flex',
+                                    marginRight: '8px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <MessageSquare size={16} fill={ticket.hasUnreadChat ? 'white' : 'none'} stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'} />
+                            </div>
+                        </Link>
                     )}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>ID: {ticket.displayId}</div>
@@ -722,23 +725,26 @@ export default function MyTicketsPage() {
                     <span style={{ fontWeight: 800, color: 'var(--primary-color)', fontSize: isConductor ? '0.8rem' : '1rem' }}>#{ticket.displayId}</span>
                     {!ticket.isMainTicket && <span style={{ fontSize: '0.55rem', background: '#f1f5f9', padding: '1px 3px', borderRadius: '3px' }}>Caso SFDC</span>}
                     {(ticket.instructions || ticket.hasNewNotes) && (
-                        <div 
-                            className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
-                            style={{ 
-                                color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)',
-                                width: ticket.hasUnreadChat ? '16px' : 'auto',
-                                height: ticket.hasUnreadChat ? '16px' : 'auto',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
-                        >
-                            <MessageSquare 
-                                size={isConductor ? 11 : 14} 
-                                fill={ticket.hasUnreadChat ? 'white' : 'none'} 
-                                stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'}
-                            />
-                        </div>
+                        <Link href={`/dashboard/tickets/${ticket.id}?scrollTo=chat`} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                            <div 
+                                className={ticket.hasUnreadChat ? "unread-badge-v2" : ""}
+                                style={{ 
+                                    color: ticket.hasUnreadChat ? 'white' : 'var(--primary-color)',
+                                    width: ticket.hasUnreadChat ? '16px' : 'auto',
+                                    height: ticket.hasUnreadChat ? '16px' : 'auto',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <MessageSquare 
+                                    size={isConductor ? 11 : 14} 
+                                    fill={ticket.hasUnreadChat ? 'white' : 'none'} 
+                                    stroke={ticket.hasUnreadChat ? 'none' : 'currentColor'}
+                                />
+                            </div>
+                        </Link>
                     )}
                 </div>
                 <Badge variant={
