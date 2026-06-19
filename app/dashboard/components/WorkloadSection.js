@@ -102,10 +102,12 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
         });
     } else {
         const today = new Date();
-        days = Array.from({ length: 10 }, (_, i) => {
-            const d = new Date(today);
-            d.setDate(today.getDate() - (9 - i));
-            const label = d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+        const year = today.getFullYear();
+        const month = today.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        days = Array.from({ length: daysInMonth }, (_, i) => {
+            const d = new Date(year, month, i + 1);
+            const label = i % 3 === 0 ? d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }) : '';
             const count = tickets.filter(t => {
                 const ticketDateStr = t.created_at || t.createdAt || t.date || t.dateOpened;
                 if (!ticketDateStr) return false;
@@ -113,7 +115,7 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
                 if (isNaN(td.getTime())) return false;
                 return td.toDateString() === d.toDateString();
             }).length;
-            return { label, count, tooltip: label };
+            return { label, count, tooltip: d.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }) };
         });
     }
     const maxCount = Math.max(...days.map(d => d.count), 1);
@@ -211,7 +213,7 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
                     {/* Timeline */}
                     <div style={{ marginTop: '1.5rem' }}>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500, marginBottom: '0.75rem', textAlign: 'center' }}>
-                            {isHistorical ? 'Línea de Tiempo de Casos (Total del Período)' : 'Línea de Tiempo de Casos (Últimos 10 días)'}
+                            {isHistorical ? 'Línea de Tiempo de Casos (Total del Período)' : 'Línea de Tiempo de Casos (Mes en Curso)'}
                         </p>
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '48px', marginBottom: '6px' }}>
                             {days.map((d, i) => (
