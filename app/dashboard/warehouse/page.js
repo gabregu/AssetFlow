@@ -37,18 +37,20 @@ import { Modal } from '../../components/ui/Modal';
 
 // Helper to classify aisles between Location W and Location H
 const isLocH = (aisleName) => {
-    const lower = (aisleName || '').toLowerCase();
-    return (
-        lower.includes('-h') ||
-        lower.includes('h-') ||
-        lower === 'usados' ||
-        lower === 'cod abril26' ||
-        lower.includes('g11') ||
-        lower.includes('u7') ||
-        lower.includes('premium') ||
-        lower.includes('mba 16 m2 pro') ||
-        lower.includes('series')
-    );
+    const upper = (aisleName || '').toUpperCase();
+    if (upper.endsWith('-H') || upper.startsWith('H-')) return true;
+    if (upper.endsWith('-W') || upper.startsWith('W-')) return false;
+
+    // Exact legacy matches that exist in the DB without -H but belong to H
+    const legacyH = [
+        'USADOS', 'COD ABRIL26', 'DELL PRO 14 U7', 'DELL PRO MAX 16 PREMIUM', 
+        'HP-ZBOOK-FURY 16 G11', 'MBA 16 M2 PRO', 'SERIES'
+    ];
+    return legacyH.includes(upper);
+};
+
+const getDisplayAisle = (aisleName) => {
+    return (aisleName || '').replace(/-H$/i, '').replace(/^H-/i, '').replace(/-W$/i, '').replace(/^W-/i, '').trim();
 };
 
 const combineAisleName = (manufacturer, aisle) => {
@@ -742,13 +744,17 @@ export default function WarehousePage() {
             let aisleName = newLoc.aisle.trim().toUpperCase();
             aisleName = combineAisleName(newLocManufacturer, aisleName);
             
-            if (newLocationType === 'H' && !isLocH(aisleName)) {
-                aisleName = `${aisleName}-H`;
-            } else if (newLocationType === 'W' && isLocH(aisleName)) {
+            if (newLocationType === 'H') {
+                if (!aisleName.endsWith('-H')) aisleName = `${aisleName}-H`;
+            } else if (newLocationType === 'W') {
                 if (aisleName.endsWith('-H')) {
                     aisleName = aisleName.slice(0, -2);
                 } else if (aisleName.startsWith('H-')) {
                     aisleName = aisleName.slice(2);
+                }
+                if (isLocH(aisleName)) {
+                    // Prevent clash with legacy H names
+                    aisleName = `${aisleName}-W`;
                 }
             }
 
@@ -831,13 +837,16 @@ export default function WarehousePage() {
         let newAisle = renameGroupCategory.trim().toUpperCase();
         newAisle = combineAisleName(renameGroupManufacturer, newAisle);
         
-        if (renameGroupType === 'H' && !isLocH(newAisle)) {
-            newAisle = `${newAisle}-H`;
-        } else if (renameGroupType === 'W' && isLocH(newAisle)) {
+        if (renameGroupType === 'H') {
+            if (!newAisle.endsWith('-H')) newAisle = `${newAisle}-H`;
+        } else if (renameGroupType === 'W') {
             if (newAisle.endsWith('-H')) {
                 newAisle = newAisle.slice(0, -2);
             } else if (newAisle.startsWith('H-')) {
                 newAisle = newAisle.slice(2);
+            }
+            if (isLocH(newAisle)) {
+                newAisle = `${newAisle}-W`;
             }
         }
 
@@ -961,7 +970,7 @@ export default function WarehousePage() {
             <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h3 onClick={() => { setSelectedGroup(aisle); setSelectedLocation(null); }} style={{ fontSize: '0.78rem', fontWeight: 800, color: selectedGroup === aisle ? 'var(--primary-color)' : 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, cursor: 'pointer' }}>
-                        <span style={{ borderBottom: selectedGroup === aisle ? '2px solid var(--primary-color)' : 'none' }}>{aisle}</span>
+                        <span style={{ borderBottom: selectedGroup === aisle ? '2px solid var(--primary-color)' : 'none' }}>{getDisplayAisle(aisle)}</span>
                         {currentUser?.role === 'admin' && (
                             <Button 
                                 variant="ghost" 
@@ -973,7 +982,7 @@ export default function WarehousePage() {
                                     
                                     let type = isLocH(aisle) ? 'H' : 'W';
                                     let mfg = detectManufacturer(aisle, manufacturers);
-                                    let cat = aisle.replace(/-H$/i, '').replace(/^H-/i, '').trim();
+                                    let cat = getDisplayAisle(aisle);
                                     
                                     if (mfg !== 'NINGUNO') {
                                         // Handle known Apple prefixes
@@ -1983,7 +1992,7 @@ export default function WarehousePage() {
                         >
                             <option value="">-- Seleccionar Ubicación Destino --</option>
                             {Object.keys(targetLocationsGrouped).sort().map(aisle => (
-                                <optgroup key={aisle} label={`GRUPO: ${aisle}`}>
+                                <optgroup key={aisle} label={`GRUPO: ${getDisplayAisle(aisle)}`}>
                                     {targetLocationsGrouped[aisle].map(loc => {
                                         const locAssetsCount = assets.filter(a => a.locationId === loc.id).length;
                                         const label = `${loc.id} ${locAssetsCount > 0 ? '(Ocupado)' : '(Disponible)'}`;
@@ -2067,7 +2076,7 @@ export default function WarehousePage() {
                         >
                             <option value="">-- Seleccionar Ubicación Destino --</option>
                             {Object.keys(targetLocationsGrouped).sort().map(aisle => (
-                                <optgroup key={aisle} label={`GRUPO: ${aisle}`}>
+                                <optgroup key={aisle} label={`GRUPO: ${getDisplayAisle(aisle)}`}>
                                     {targetLocationsGrouped[aisle].map(loc => {
                                         const locAssetsCount = assets.filter(a => a.locationId === loc.id).length;
                                         const label = `${loc.id} ${locAssetsCount > 0 ? `(${locAssetsCount} equipos - Ocupado)` : '(Disponible)'}`;
