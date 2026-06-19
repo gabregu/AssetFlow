@@ -140,6 +140,28 @@ export function DeliveryNotificationListener() {
                     const oldTask = payload.old;
 
                     const role = (currentUser?.role || '').toLowerCase();
+
+                    // NOTIFICACIÓN PARA ADMINS/STAFF: Tarea individual completada
+                    if ((role === 'admin' || role === 'administrador' || role === 'administrativo' || role === 'staff' || role === 'gerencial') && 
+                        payload.eventType === 'UPDATE' && 
+                        newTask.status === 'Entregado' && 
+                        oldTask?.status !== 'Entregado') {
+                        
+                        const driverName = newTask.delivery_person || newTask.assignedTo || 'Un conductor';
+                        const caseNumber = newTask.case_number || String(newTask.id).substring(0,8);
+                        
+                        setNotification({
+                            type: 'delivery',
+                            title: '¡Entrega/Recupero Registrado!',
+                            message: `El conductor ${driverName} completó el caso #${caseNumber}:`,
+                            subMessage: newTask.subject || 'Tarea Completada',
+                            timestamp: new Date().toLocaleTimeString()
+                        });
+
+                        // Auto-ocultar después de 10 segundos
+                        setTimeout(() => setNotification(null), 10000);
+                    }
+
                     if (currentUser && (role === 'conductor' || role === 'driver' || role === 'employee')) {
                         const uName = (currentUser.name || '').trim().toLowerCase();
                         const uId = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
