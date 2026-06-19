@@ -126,7 +126,7 @@ export default function MyDeliveriesPage() {
             if (isAssignedByName || isAssignedByUid) {
                 // FILTRO: Solo si está en 'En Transito'
                 if (task.status === 'En Transito') {
-                    const parentTicket = tickets.find(t => t.id === task.ticket_id);
+                    const parentTicket = tickets.find(t => t && String(t.id) === String(task.ticket_id || task.ticketId));
                     
                     items.push({
                         ...parentTicket, // Datos base del ticket
@@ -164,7 +164,7 @@ export default function MyDeliveriesPage() {
 
         // 2. Compatibilidad Legacy: Buscar en tickets y sus casos asociados anidados
         tickets.forEach(t => {
-            const hasNewTasks = logisticsTasks.some(tk => tk.ticket_id === t.id);
+            const hasNewTasks = logisticsTasks.some(tk => tk && String(tk.ticket_id || tk.ticketId) === String(t.id));
             if (hasNewTasks) return; // Si ya tiene tareas nuevas, ignoramos el modo legacy
 
             // A. Revisar el ticket principal
