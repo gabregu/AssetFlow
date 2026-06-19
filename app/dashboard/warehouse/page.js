@@ -869,7 +869,7 @@ export default function WarehousePage() {
                 format: "CODE128",
                 displayValue: false,
                 margin: 10,
-                height: 60,
+                height: 80,
                 width: 3.0
             });
             const barcodeDataUrl = canvas.toDataURL("image/png");
@@ -902,29 +902,29 @@ export default function WarehousePage() {
                                 font-family: sans-serif;
                             }
                             .loc-region { 
-                                font-size: 6pt; 
+                                font-size: 5pt; 
                                 font-weight: 800; 
                                 color: #64748b; 
                                 text-transform: uppercase; 
                                 letter-spacing: 0.05em;
-                                margin-bottom: 0.5mm;
+                                margin-bottom: 0.3mm;
                             }
                             .loc-aisle { 
-                                font-size: 7pt; 
+                                font-size: 6pt; 
                                 font-weight: 900; 
                                 color: #000; 
                                 text-transform: uppercase;
                                 line-height: 1.2;
                             }
                             .loc-details { 
-                                font-size: 8pt; 
+                                font-size: 6pt; 
                                 font-weight: 700; 
                                 color: #334155; 
-                                margin-top: 1.5mm;
-                                margin-bottom: 1.5mm;
+                                margin-top: 1mm;
+                                margin-bottom: 1mm;
                                 line-height: 1.2;
                             }
-                            .barcode-img { width: 100%; height: 11mm; object-fit: fill; }
+                            .barcode-img { width: 100%; height: 14mm; object-fit: fill; }
                         </style>
                     </head>
                     <body>
@@ -933,7 +933,7 @@ export default function WarehousePage() {
                             <div class="loc-aisle">GRUPO ${getDisplayAisle(location.aisle)}</div>
                             <div class="loc-details">${location.section} - ${location.level}</div>
                             <img src="${barcodeDataUrl}" class="barcode-img" />
-                            <div style="font-size: 4.5pt; opacity: 0.4; margin-top: 0.5mm; font-weight: 600; text-align: right;">AssetFlow WMS</div>
+                            <div style="font-size: 4pt; opacity: 0.4; font-weight: 600; text-align: right; margin-top: 0;">AssetFlow WMS</div>
                         </div>
                         <script>
                             window.onload = () => {
