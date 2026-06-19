@@ -139,6 +139,11 @@ export default function WarehousePage() {
     const [editLocationType, setEditLocationType] = useState('W');
     const [newLocManufacturer, setNewLocManufacturer] = useState('NINGUNO');
     const [editLocManufacturer, setEditLocManufacturer] = useState('NINGUNO');
+    
+    // Rename Group States
+    const [isRenameGroupModalOpen, setIsRenameGroupModalOpen] = useState(false);
+    const [renameGroupOldName, setRenameGroupOldName] = useState('');
+    const [renameGroupNewName, setRenameGroupNewName] = useState('');
     const [manufacturers, setManufacturers] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('warehouse_manufacturers');
@@ -818,6 +823,21 @@ export default function WarehousePage() {
         }
     };
 
+    const handleRenameGroup = async (e) => {
+        e.preventDefault();
+        const newName = renameGroupNewName.trim().toUpperCase();
+        if (newName && newName !== renameGroupOldName) {
+            const res = await renameWarehouseGroup(renameGroupOldName, newName);
+            if (res?.error) {
+                alert("Error al renombrar: " + res.error.message);
+            } else {
+                setIsRenameGroupModalOpen(false);
+            }
+        } else {
+            setIsRenameGroupModalOpen(false);
+        }
+    };
+
     const handlePrintLocationLabel = async (location) => {
         try {
             const canvas = document.createElement('canvas');
@@ -934,8 +954,9 @@ export default function WarehousePage() {
                                 icon={Edit3} 
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    const newName = prompt(`Ingrese el nuevo nombre para el grupo "${aisle}":`, aisle);
-                                    if (newName && newName !== aisle) renameWarehouseGroup(aisle, newName.toUpperCase());
+                                    setRenameGroupOldName(aisle);
+                                    setRenameGroupNewName(aisle);
+                                    setIsRenameGroupModalOpen(true);
                                 }}
                                 style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
                             />
@@ -2112,6 +2133,35 @@ export default function WarehousePage() {
                         </Button>
                         <Button type="submit" loading={isSavingLocation}>
                             {isSavingLocation ? 'Creando...' : 'Crear Ubicación'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Modal Renombrar Grupo */}
+            <Modal isOpen={isRenameGroupModalOpen} onClose={() => setIsRenameGroupModalOpen(false)} title="Renombrar Grupo">
+                <form onSubmit={handleRenameGroup}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <div className="form-group">
+                            <label className="form-label">Nuevo Nombre para "{renameGroupOldName}"</label>
+                            <input
+                                type="text"
+                                value={renameGroupNewName}
+                                onChange={e => setRenameGroupNewName(e.target.value)}
+                                className="form-input"
+                                placeholder="Ej: DELL PRECISION 3490"
+                                required
+                                autoFocus
+                                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '1rem', outline: 'none' }}
+                            />
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        <Button type="button" variant="ghost" onClick={() => setIsRenameGroupModalOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" variant="primary">
+                            Guardar Cambios
                         </Button>
                     </div>
                 </form>
