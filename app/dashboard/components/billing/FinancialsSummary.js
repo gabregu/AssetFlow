@@ -56,7 +56,7 @@ export function FinancialsSummary({ ticket }) {
     const rate = getExchangeRateForDate(rates, ticket.createdAt || new Date());
     const autoLogisticCostARS = autoLogisticCost * (rate > 0 ? rate : 1);
 
-    const formatUSD = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+    const formatUSD = (val) => 'USD ' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
         <Card style={{ padding: '1.25rem', overflow: 'hidden', position: 'relative' }}>
@@ -123,7 +123,7 @@ export function FinancialsSummary({ ticket }) {
                         <DollarSign size={14} /> Ingreso Servicio
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>$</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>USD</span>
                         <input
                             type="number"
                             step="0.01"
@@ -176,7 +176,7 @@ export function FinancialsSummary({ ticket }) {
                         <Truck size={14} /> Ingreso Logística
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>$</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>USD</span>
                         <input
                             type="number"
                             step="0.01"
@@ -238,7 +238,7 @@ export function FinancialsSummary({ ticket }) {
                     </span>
                     {method !== 'N/A' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#ef4444' }}>- {isARSMethod ? 'ARS' : '$'}</span>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#ef4444' }}>- {isARSMethod ? 'ARS' : 'USD'}</span>
                             <input
                                 type="number"
                                 step="0.01"
