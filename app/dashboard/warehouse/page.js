@@ -143,7 +143,9 @@ export default function WarehousePage() {
     // Rename Group States
     const [isRenameGroupModalOpen, setIsRenameGroupModalOpen] = useState(false);
     const [renameGroupOldName, setRenameGroupOldName] = useState('');
-    const [renameGroupNewName, setRenameGroupNewName] = useState('');
+    const [renameGroupType, setRenameGroupType] = useState('W');
+    const [renameGroupManufacturer, setRenameGroupManufacturer] = useState('NINGUNO');
+    const [renameGroupCategory, setRenameGroupCategory] = useState('');
     const [manufacturers, setManufacturers] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('warehouse_manufacturers');
@@ -825,9 +827,22 @@ export default function WarehousePage() {
 
     const handleRenameGroup = async (e) => {
         e.preventDefault();
-        const newName = renameGroupNewName.trim().toUpperCase();
-        if (newName && newName !== renameGroupOldName) {
-            const res = await renameWarehouseGroup(renameGroupOldName, newName);
+        
+        let newAisle = renameGroupCategory.trim().toUpperCase();
+        newAisle = combineAisleName(renameGroupManufacturer, newAisle);
+        
+        if (renameGroupType === 'H' && !isLocH(newAisle)) {
+            newAisle = `${newAisle}-H`;
+        } else if (renameGroupType === 'W' && isLocH(newAisle)) {
+            if (newAisle.endsWith('-H')) {
+                newAisle = newAisle.slice(0, -2);
+            } else if (newAisle.startsWith('H-')) {
+                newAisle = newAisle.slice(2);
+            }
+        }
+
+        if (newAisle && newAisle !== renameGroupOldName) {
+            const res = await renameWarehouseGroup(renameGroupOldName, newAisle);
             if (res?.error) {
                 alert("Error al renombrar: " + res.error.message);
             } else {
@@ -955,7 +970,38 @@ export default function WarehousePage() {
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setRenameGroupOldName(aisle);
-                                    setRenameGroupNewName(aisle);
+                                    
+                                    let type = isLocH(aisle) ? 'H' : 'W';
+                                    let mfg = detectManufacturer(aisle, manufacturers);
+                                    let cat = aisle.replace(/-H$/i, '').replace(/^H-/i, '').trim();
+                                    
+                                    if (mfg !== 'NINGUNO') {
+                                        // Handle known Apple prefixes
+                                        const aliases = ['MBA ', 'MBA-', 'MBP ', 'MBP-', 'MACBOOK', 'IMAC', 'MAC '];
+                                        let matchedAlias = '';
+                                        if (mfg === 'APPLE') {
+                                            for (let alias of aliases) {
+                                                if (cat.toUpperCase().startsWith(alias)) {
+                                                    matchedAlias = alias;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        
+                                        if (matchedAlias) {
+                                            // Don't strip the alias from the category name for Apple products
+                                            // The category is just the whole thing (e.g., "MBA 13 M4")
+                                        } else if (cat.toUpperCase().startsWith(mfg.toUpperCase())) {
+                                            let substr = cat.substring(mfg.length).trim();
+                                            if (substr.startsWith('-')) substr = substr.substring(1).trim();
+                                            cat = substr;
+                                        }
+                                    }
+
+                                    setRenameGroupType(type);
+                                    setRenameGroupManufacturer(mfg);
+                                    setRenameGroupCategory(cat);
+                                    
                                     setIsRenameGroupModalOpen(true);
                                 }}
                                 style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
@@ -2141,18 +2187,45 @@ export default function WarehousePage() {
             {/* Modal Renombrar Grupo */}
             <Modal isOpen={isRenameGroupModalOpen} onClose={() => setIsRenameGroupModalOpen(false)} title="Renombrar Grupo">
                 <form onSubmit={handleRenameGroup}>
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <div className="form-group">
-                            <label className="form-label">Nuevo Nombre para "{renameGroupOldName}"</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label">Ubicación Destino (Zona)</label>
+                            <select 
+                                value={renameGroupType} 
+                                onChange={e => setRenameGroupType(e.target.value)}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                <option value="W">LOCACIÓN W (Estándar)</option>
+                                <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
+                            </select>
+                        </div>
+                        {/* Fabricante dropdown */}
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label">Fabricante (Pre-agrupación)</label>
+                            <select 
+                                value={renameGroupManufacturer} 
+                                onChange={e => setRenameGroupManufacturer(e.target.value)}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                <option value="NINGUNO">Ninguno (Usar solo Grupo)</option>
+                                {manufacturers.map(m => (
+                                    <option key={m} value={m}>{m}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label">Grupo (Categoría)</label>
                             <input
                                 type="text"
-                                value={renameGroupNewName}
-                                onChange={e => setRenameGroupNewName(e.target.value)}
+                                value={renameGroupCategory}
+                                onChange={e => setRenameGroupCategory(e.target.value)}
                                 className="form-input"
-                                placeholder="Ej: DELL PRECISION 3490"
+                                placeholder="Ej: B, PRECISION 3490"
                                 required
                                 autoFocus
-                                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '1rem', outline: 'none' }}
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                             />
                         </div>
                     </div>
