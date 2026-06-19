@@ -61,24 +61,41 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
             return a === un || (a && un && a.includes(un)) || (a && unParts.length > 0 && a.includes(unParts[0]));
         };
 
-        const myTickets = tickets.filter(t => {
-            // For historical, we don't filter out resolved tickets to see the total workload for that month.
-            if (!isHistorical && ['Resuelto', 'Cerrado', 'Cancelado'].includes(t.status)) return false;
-            
-            const tasks = (logisticsTasks || []).filter(task => {
-                if (String(task.ticket_id) !== String(t.id)) return false;
-                if (!isHistorical && ['Resuelto', 'Cerrado', 'Cancelado', 'Entregado'].includes(task.status)) return false;
-                return true;
-            });
+        const allAssignedTickets = tickets.filter(t => {
+            const tasks = (logisticsTasks || []).filter(task => String(task.ticket_id) === String(t.id));
             const taskAssigned = tasks.some(task => matchesUser(task.delivery_person || task.deliveryPerson || task.assigned_to || task.assignedTo));
             const ticketAssigned = matchesUser(t.logistics?.deliveryPerson || t.logistics?.delivery_person || t.assignedTo || t.assignee || t.owner);
             return ticketAssigned || taskAssigned;
         });
 
-        const active = myTickets.length;
-        const entregas = myTickets.filter(t => t.type === 'Entrega' || t.logistics?.type === 'Entrega').length;
-        const recolecciones = myTickets.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
-        return { ...u, active, entregas, recolecciones, color: userColors[i % userColors.length] };
+        const activeTickets = allAssignedTickets.filter(t => {
+            if (['Resuelto', 'Cerrado', 'Cancelado'].includes(t.status)) return false;
+            const tasks = (logisticsTasks || []).filter(task => String(task.ticket_id) === String(t.id) && !['Resuelto', 'Cerrado', 'Cancelado', 'Entregado'].includes(task.status));
+            const taskAssigned = tasks.some(task => matchesUser(task.delivery_person || task.deliveryPerson || task.assigned_to || task.assignedTo));
+            const ticketAssigned = matchesUser(t.logistics?.deliveryPerson || t.logistics?.delivery_person || t.assignedTo || t.assignee || t.owner);
+            return ticketAssigned || taskAssigned;
+        });
+
+        let monthTotal = 0;
+        if (isHistorical) {
+            monthTotal = allAssignedTickets.length;
+        } else {
+            const currentMonthString = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+            monthTotal = allAssignedTickets.filter(t => {
+                const dateStr = t.created_at || t.createdAt || t.date || t.dateOpened;
+                if (!dateStr) return false;
+                const td = new Date(dateStr);
+                if (isNaN(td.getTime())) return false;
+                return `${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, '0')}` === currentMonthString;
+            }).length;
+        }
+
+        const active = isHistorical ? monthTotal : activeTickets.length;
+        const baseTicketsForTypes = isHistorical ? allAssignedTickets : activeTickets;
+        const entregas = baseTicketsForTypes.filter(t => t.type === 'Entrega' || t.logistics?.type === 'Entrega').length;
+        const recolecciones = baseTicketsForTypes.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
+
+        return { ...u, active, monthTotal, entregas, recolecciones, color: userColors[i % userColors.length] };
     }).filter(u => u.active > 0);
     
     const maxActive = Math.max(...workloadUsers.map(u => u.active), 1);
@@ -191,6 +208,12 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
                                     <div style={{ display: 'flex', gap: '6px', fontSize: '0.65rem', marginTop: '2px', opacity: 0.8 }}>
                                         <span style={{ color: '#3b82f6', fontWeight: 600 }}>{u.entregas} Entregas</span>
                                         <span style={{ color: '#f59e0b', fontWeight: 600 }}>{u.recolecciones} Recolecciones</span>
+                                        {!isHistorical && (
+                                            <>
+                                                <span style={{ color: '#9ca3af' }}>|</span>
+                                                <span style={{ color: '#10b981', fontWeight: 600 }}>Total mes: {u.monthTotal}</span>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                                 <MiniBar value={u.active} max={maxActive} color={u.color} />
