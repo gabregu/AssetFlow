@@ -356,14 +356,61 @@ export default function DeliveriesPage() {
 
         if (sortConfig.key) {
             result.sort((a, b) => {
-                // Orden Primario por la columna seleccionada
-                const valA = a[sortConfig.key] || '';
-                const valB = b[sortConfig.key] || '';
+                // Si la columna es 'date', primero ordenamos por la fecha (día sin AM/PM)
+                if (sortConfig.key === 'date') {
+                    const dateA = (a.date || '').split(' ')[0];
+                    const dateB = (b.date || '').split(' ')[0];
 
-                if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+                    if (dateA !== dateB) {
+                        if (dateA < dateB) return sortConfig.direction === 'asc' ? -1 : 1;
+                        if (dateA > dateB) return sortConfig.direction === 'asc' ? 1 : -1;
+                    }
 
-                // Orden Secundario por Dirección (para agrupar si la fecha o ID es igual)
+                    // Mismo día -> ordenar por visitOrder (menor a mayor, si existe)
+                    const orderA = parseInt(a.visitOrder, 10);
+                    const orderB = parseInt(b.visitOrder, 10);
+                    const hasA = !isNaN(orderA) && orderA > 0;
+                    const hasB = !isNaN(orderB) && orderB > 0;
+
+                    if (hasA && hasB) {
+                        if (orderA !== orderB) return orderA - orderB;
+                    } else if (hasA) {
+                        return -1; // Con orden va antes
+                    } else if (hasB) {
+                        return 1;  // Con orden va antes
+                    }
+
+                    // Si ambos tienen o no tienen orden, comparar AM/PM (fecha completa)
+                    const fullA = a.date || '';
+                    const fullB = b.date || '';
+                    if (fullA !== fullB) {
+                        if (fullA < fullB) return sortConfig.direction === 'asc' ? -1 : 1;
+                        if (fullA > fullB) return sortConfig.direction === 'asc' ? 1 : -1;
+                    }
+                } else {
+                    // Para otras columnas
+                    const valA = a[sortConfig.key] || '';
+                    const valB = b[sortConfig.key] || '';
+
+                    if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
+
+                    // Si son iguales, intentar ordenar por visitOrder (menor a mayor)
+                    const orderA = parseInt(a.visitOrder, 10);
+                    const orderB = parseInt(b.visitOrder, 10);
+                    const hasA = !isNaN(orderA) && orderA > 0;
+                    const hasB = !isNaN(orderB) && orderB > 0;
+
+                    if (hasA && hasB) {
+                        if (orderA !== orderB) return orderA - orderB;
+                    } else if (hasA) {
+                        return -1;
+                    } else if (hasB) {
+                        return 1;
+                    }
+                }
+
+                // Orden Secundario por Dirección (si las comparaciones anteriores son iguales)
                 if (sortConfig.key !== 'address') {
                     const addrA = a.address || '';
                     const addrB = b.address || '';
