@@ -49,11 +49,11 @@ export function useTicketDetail() {
         }));
     }, [logisticsTasks, params.id, ticket]);
 
-    const [showAutoCases, setShowAutoCases] = useState(false);
+    const [showAutoCases, setShowAutoCases] = useState(true);
 
-    // Lista unificada: Mostrar únicamente las tareas reales de la base de datos (Casos Consolidados/Manuales) 
-    // en la sección inferior de Casos Asociados por defecto. Si el usuario activa "showAutoCases",
-    // se fusionan también los asociados automáticos heredados de la columna JSONB.
+    // Lista unificada: Mostrar las tareas reales de la base de datos (Casos Consolidados/Manuales) 
+    // y los asociados automáticos heredados de la columna JSONB por defecto (showAutoCases = true).
+    // Si el usuario desactiva "showAutoCases", se ocultan los automáticos legacy.
     const unifiedTasks = useMemo(() => {
         const baseTasks = ticketTasks || [];
         const legacyCases = (editedData && editedData.associatedCases) || [];
