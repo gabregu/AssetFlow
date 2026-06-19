@@ -61,6 +61,14 @@ const combineAisleName = (manufacturer, aisle) => {
 
 const detectManufacturer = (aisleName, manufacturersList = []) => {
     const upper = (aisleName || '').toUpperCase().replace(/-H$/, '');
+    
+    // Hardcoded aliases for known brands
+    if (upper.startsWith('MBA ') || upper.startsWith('MBA-') || upper.startsWith('MBP ') || upper.startsWith('MBP-') || upper.startsWith('MACBOOK') || upper.startsWith('IMAC') || upper.startsWith('MAC ')) {
+        if (manufacturersList.map(m => m.toUpperCase()).includes('APPLE')) {
+            return 'APPLE';
+        }
+    }
+
     for (const m of manufacturersList) {
         const upperM = m.toUpperCase();
         if (upper === upperM || upper.startsWith(upperM + ' ') || upper.startsWith(upperM + '-')) return upperM;
