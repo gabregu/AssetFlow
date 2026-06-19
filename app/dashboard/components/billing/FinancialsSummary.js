@@ -124,6 +124,7 @@ export function FinancialsSummary({ ticket }) {
                             type="number"
                             step="0.01"
                             min="0"
+                            disabled={ticket.deliveryDetails?.financialValuesConfirmed}
                             value={ticket.deliveryDetails?.customServiceRevenue !== undefined && ticket.deliveryDetails?.customServiceRevenue !== null ? ticket.deliveryDetails.customServiceRevenue : ''}
                             placeholder={autoServiceRevenue.toFixed(2)}
                             onChange={async (e) => {
@@ -146,15 +147,21 @@ export function FinancialsSummary({ ticket }) {
                                 textAlign: 'right',
                                 outline: 'none',
                                 transition: 'border-color 0.2s, background-color 0.2s',
-                                fontSize: '0.875rem'
+                                fontSize: '0.875rem',
+                                opacity: ticket.deliveryDetails?.financialValuesConfirmed ? 0.6 : 1,
+                                cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'text'
                             }}
                             onFocus={(e) => {
-                                e.target.style.borderColor = 'var(--primary-color)';
-                                e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                                if (!ticket.deliveryDetails?.financialValuesConfirmed) {
+                                    e.target.style.borderColor = 'var(--primary-color)';
+                                    e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                                }
                             }}
                             onBlur={(e) => {
-                                e.target.style.borderColor = 'var(--border)';
-                                e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                                if (!ticket.deliveryDetails?.financialValuesConfirmed) {
+                                    e.target.style.borderColor = 'var(--border)';
+                                    e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                                }
                             }}
                         />
                     </div>
@@ -170,6 +177,7 @@ export function FinancialsSummary({ ticket }) {
                             type="number"
                             step="0.01"
                             min="0"
+                            disabled={ticket.deliveryDetails?.financialValuesConfirmed}
                             value={ticket.deliveryDetails?.customLogisticRevenue !== undefined && ticket.deliveryDetails?.customLogisticRevenue !== null ? ticket.deliveryDetails.customLogisticRevenue : ''}
                             placeholder={autoLogisticRevenue.toFixed(2)}
                             onChange={async (e) => {
@@ -192,15 +200,21 @@ export function FinancialsSummary({ ticket }) {
                                 textAlign: 'right',
                                 outline: 'none',
                                 transition: 'border-color 0.2s, background-color 0.2s',
-                                fontSize: '0.875rem'
+                                fontSize: '0.875rem',
+                                opacity: ticket.deliveryDetails?.financialValuesConfirmed ? 0.6 : 1,
+                                cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'text'
                             }}
                             onFocus={(e) => {
-                                e.target.style.borderColor = 'var(--primary-color)';
-                                e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                                if (!ticket.deliveryDetails?.financialValuesConfirmed) {
+                                    e.target.style.borderColor = 'var(--primary-color)';
+                                    e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                                }
                             }}
                             onBlur={(e) => {
-                                e.target.style.borderColor = 'var(--border)';
-                                e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                                if (!ticket.deliveryDetails?.financialValuesConfirmed) {
+                                    e.target.style.borderColor = 'var(--border)';
+                                    e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                                }
                             }}
                         />
                     </div>
@@ -225,6 +239,7 @@ export function FinancialsSummary({ ticket }) {
                                 type="number"
                                 step="0.01"
                                 min="0"
+                                disabled={ticket.deliveryDetails?.financialValuesConfirmed}
                                 value={ticket.deliveryDetails?.customLogisticCost !== undefined && ticket.deliveryDetails?.customLogisticCost !== null ? ticket.deliveryDetails.customLogisticCost : ''}
                                 placeholder={autoLogisticCost.toFixed(2)}
                                 onChange={async (e) => {
@@ -247,15 +262,21 @@ export function FinancialsSummary({ ticket }) {
                                     textAlign: 'right',
                                     outline: 'none',
                                     transition: 'border-color 0.2s, background-color 0.2s',
-                                    fontSize: '0.875rem'
+                                    fontSize: '0.875rem',
+                                    opacity: ticket.deliveryDetails?.financialValuesConfirmed ? 0.6 : 1,
+                                    cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'text'
                                 }}
                                 onFocus={(e) => {
-                                    e.target.style.borderColor = 'var(--primary-color)';
-                                    e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                                    if (!ticket.deliveryDetails?.financialValuesConfirmed) {
+                                        e.target.style.borderColor = 'var(--primary-color)';
+                                        e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                                    }
                                 }}
                                 onBlur={(e) => {
-                                    e.target.style.borderColor = 'var(--border)';
-                                    e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                                    if (!ticket.deliveryDetails?.financialValuesConfirmed) {
+                                        e.target.style.borderColor = 'var(--border)';
+                                        e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                                    }
                                 }}
                             />
                         </div>
@@ -265,12 +286,13 @@ export function FinancialsSummary({ ticket }) {
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '0.25rem' }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'pointer', opacity: ticket.deliveryDetails?.financialValuesConfirmed ? 0.6 : 1 }}>
                         <input 
                             type="checkbox" 
+                            disabled={ticket.deliveryDetails?.financialValuesConfirmed}
                             checked={ticket.deliveryDetails?.hasSecondVisitSurcharge || false}
                             onChange={async (e) => await updateTicket(ticket.id, { deliveryDetails: { ...ticket.deliveryDetails, hasSecondVisitSurcharge: e.target.checked } })}
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'pointer' }}
                         />
                         Recargo por 2ª visita
                     </label>
@@ -284,6 +306,31 @@ export function FinancialsSummary({ ticket }) {
                         <span style={{ fontWeight: 600, color: '#ef4444' }}>- {formatUSD(operationalCost)}</span>
                     </div>
                 )}
+
+                <div style={{ 
+                    height: '1px', 
+                    background: 'var(--border)', 
+                    margin: '0.5rem 0',
+                    borderStyle: 'dashed',
+                    borderWidth: '0 0 1px 0'
+                }} />
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '0.25rem' }}>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={ticket.deliveryDetails?.financialValuesConfirmed || false}
+                            onChange={async (e) => await updateTicket(ticket.id, { deliveryDetails: { ...ticket.deliveryDetails, financialValuesConfirmed: e.target.checked } })}
+                            style={{ 
+                                cursor: 'pointer',
+                                width: '16px',
+                                height: '16px',
+                                accentColor: 'var(--primary-color)'
+                            }}
+                        />
+                        Confirmado Valores del servicio
+                    </label>
+                </div>
 
                 <div style={{
                     marginTop: '0.5rem',
