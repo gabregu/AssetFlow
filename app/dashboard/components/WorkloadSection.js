@@ -96,7 +96,7 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
         const recolecciones = baseTicketsForTypes.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
 
         return { ...u, active, monthTotal, entregas, recolecciones, color: userColors[i % userColors.length] };
-    }).filter(u => u.active > 0);
+    }).filter(u => u.active > 0 || u.monthTotal > 0);
     
     const maxActive = Math.max(...workloadUsers.map(u => u.active), 1);
 
