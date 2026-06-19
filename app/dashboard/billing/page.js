@@ -499,7 +499,29 @@ export default function BillingPage() {
                                                 </td>
 
                                                 <td style={{ padding: '1rem', color: 'var(--text-main)' }}>
-                                                    {(method === 'Repartidor Propio' || method === 'Envío Interno' || String(method || '').includes('Propio')) && deliveryPerson ? `${method} (${deliveryPerson})` : (method || 'N/A')}
+                                                    {(method === 'Repartidor Propio' || method === 'Envío Interno' || String(method || '').includes('Propio')) && deliveryPerson ? (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span>{method}</span>
+                                                            <div 
+                                                                title={deliveryPerson}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    width: '22px',
+                                                                    height: '22px',
+                                                                    borderRadius: '50%',
+                                                                    backgroundColor: 'var(--primary-color)',
+                                                                    color: 'white',
+                                                                    fontSize: '0.6rem',
+                                                                    fontWeight: 700,
+                                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                                }}
+                                                            >
+                                                                {deliveryPerson.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                                            </div>
+                                                        </div>
+                                                    ) : (method || 'N/A')}
                                                 </td>
 
                                                 {/* Revenue Column */}
