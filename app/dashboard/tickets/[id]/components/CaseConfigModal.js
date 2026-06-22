@@ -8,7 +8,8 @@ import YubiKeySection from './YubiKeySection';
 import CaseLogisticsSection from './CaseLogisticsSection';
 import ManualAssetModal from './ManualAssetModal';
 import DeliveryVerificationModal from './DeliveryVerificationModal';
-import { FileText } from 'lucide-react';
+import { isDeliveryCase, isCollectionCase } from './AssociatedCasesCard';
+import { FileText, Package, RotateCcw, Boxes } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdf-generator';
 import { Button } from '@/app/components/ui/Button';
 import { useSafeSubmit } from '@/lib/useSafeSubmit';
@@ -56,12 +57,25 @@ export default function CaseConfigModal({
     const { isSubmitting: isSavingModal, safeSubmit: safeSaveModal } = useSafeSubmit();
 
     const [subjectInput, setSubjectInput] = useState('');
+    const [caseTypeInput, setCaseTypeInput] = useState('independiente');
 
+    // Auto-detect case type from subject when task changes
     useEffect(() => {
         if (currentTask) {
             setSubjectInput(currentTask.subject || '');
+            // Use stored case_type first, then auto-detect from subject
+            const stored = currentTask.case_type || currentTask.caseType || 'independiente';
+            if (stored !== 'independiente') {
+                setCaseTypeInput(stored);
+            } else if (isDeliveryCase(currentTask.subject || '')) {
+                setCaseTypeInput('entrega');
+            } else if (isCollectionCase(currentTask.subject || '')) {
+                setCaseTypeInput('recoleccion');
+            } else {
+                setCaseTypeInput('independiente');
+            }
         }
-    }, [currentTask?.id, currentTask?.subject]);
+    }, [currentTask?.id, currentTask?.subject, currentTask?.case_type]);
     // handleUpdateTask was moved to hook for centralization
     const handleGenerateRemito = (action = 'download') => {
         if (!currentTask) return;
@@ -168,6 +182,65 @@ export default function CaseConfigModal({
                                             {opt}
                                         </button>
                                     ))}
+                                </div>
+
+                                {/* Case Type Selector for Staged Workflow */}
+                                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                                    <label className="form-label" style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.025em', display: 'block', marginBottom: '0.5rem' }}>
+                                        Tipo de caso
+                                    </label>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        {[
+                                            { value: 'entrega', label: 'Entrega', Icon: Package, color: '#0369a1', bg: '#e0f2fe' },
+                                            { value: 'recoleccion', label: 'Recolección', Icon: RotateCcw, color: '#7c3aed', bg: 'rgba(124,58,237,0.08)' },
+                                            { value: 'independiente', label: 'Independiente', Icon: Boxes, color: 'var(--text-secondary)', bg: 'transparent' }
+                                        ].map(({ value, label, Icon, color, bg }) => {
+                                            const isActive = caseTypeInput === value;
+                                            return (
+                                                <button
+                                                    key={value}
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        setCaseTypeInput(value);
+                                                        let dependsOn = [];
+                                                        if (value === 'recoleccion' && currentTasks.length > 0) {
+                                                            // Auto-link to all delivery sibling tasks
+                                                            dependsOn = currentTasks
+                                                                .filter(t => t.id !== currentTask.id && (
+                                                                    (t.case_type || t.caseType) === 'entrega' ||
+                                                                    isDeliveryCase(t.subject || '')
+                                                                ))
+                                                                .map(t => t.id)
+                                                                .filter(Boolean);
+                                                        }
+                                                        await handleUpdateTask({ case_type: value, depends_on: dependsOn });
+                                                    }}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        fontSize: '0.72rem',
+                                                        padding: '5px 10px',
+                                                        borderRadius: '6px',
+                                                        border: `1px solid ${isActive ? color : 'var(--border)'}`,
+                                                        background: isActive ? bg : 'transparent',
+                                                        color: isActive ? color : 'var(--text-secondary)',
+                                                        cursor: 'pointer',
+                                                        fontWeight: isActive ? 700 : 500,
+                                                        transition: 'all 0.15s'
+                                                    }}
+                                                >
+                                                    <Icon size={11} />
+                                                    {label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {caseTypeInput === 'recoleccion' && (
+                                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.7rem', color: '#7c3aed', fontStyle: 'italic' }}>
+                                            🔒 Este caso quedará Bloqueado hasta que el caso de Entrega sea marcado como Entregado.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         )}

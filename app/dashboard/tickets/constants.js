@@ -14,11 +14,14 @@ export const getStatusVariant = (status) => {
             return 'danger-soft';
         case 'Bloqueado / A la Espera':
             return 'danger-soft';
+        case 'Bloqueado':
+            return 'secondary';
         case 'En Progreso':
             return 'info';
         case 'Resuelto':
         case 'Finalizado':
         case 'Entregado':
+        case 'Recuperado':
             return 'success';
         case 'Pendiente':
             return 'warning';
@@ -28,6 +31,8 @@ export const getStatusVariant = (status) => {
             return 'primary';
         case 'No requiere accion':
             return 'default';
+        case 'Cancelado':
+            return 'danger';
         case 'Caso SFDC Cerrado':
             return 'success';
         case 'Servicio Facturado':

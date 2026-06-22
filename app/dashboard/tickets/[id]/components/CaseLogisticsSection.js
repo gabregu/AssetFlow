@@ -80,6 +80,9 @@ export default function CaseLogisticsSection({
 }) {
     if (!task) return null;
 
+    // Whether this task is blocked (waiting for a dependency to complete)
+    const isBlocked = task.status === 'Bloqueado';
+
     const [localValues, setLocalValues] = React.useState({});
     const localStateRef = React.useRef({});
     
@@ -159,7 +162,9 @@ export default function CaseLogisticsSection({
         // --- AUTOMATIZACIÓN A: Pendiente -> Para Coordinar ---
         const hasExplicitLogisticsInfo = !!(absoluteState.method || absoluteState.delivery_person || absoluteState.date);
         
-        if (hasExplicitLogisticsInfo && currentStatus === 'Pendiente') {
+        // Don't auto-progress if status was explicitly set (or if blocked)
+        const isExplicitStatus = incomingUpdates.status !== undefined;
+        if (!isExplicitStatus && hasExplicitLogisticsInfo && currentStatus === 'Pendiente') {
             currentStatus = 'Para Coordinar';
             finalUpdates.status = 'Para Coordinar';
         }
@@ -244,6 +249,27 @@ export default function CaseLogisticsSection({
 
     return (
         <div style={{ marginTop: '0.5rem' }}>
+            {/* Blocked Case Banner */}
+            {isBlocked && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.875rem 1rem',
+                    background: 'rgba(100,116,139,0.08)',
+                    border: '1px solid rgba(100,116,139,0.25)',
+                    borderRadius: 'var(--radius-md)',
+                    marginBottom: '1.25rem'
+                }}>
+                    <span style={{ fontSize: '1.25rem' }}>&#x1F512;</span>
+                    <div>
+                        <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Caso Bloqueado</p>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                            Este caso estar&aacute; disponible para coordinar cuando el caso de Entrega correspondiente sea marcado como <strong>Entregado</strong>.
+                        </p>
+                    </div>
+                </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
                 <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-color)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
                     Logística y Estado
@@ -318,7 +344,8 @@ export default function CaseLogisticsSection({
                                 'Para Coordinar',
                                 'En Transito',
                                 'Entregado',
-                                'No requiere accion'
+                                'No requiere accion',
+                                'Cancelado'
                             ].map(s => {
                                 const isSelected = (localValues.status || 'Pendiente') === s;
                                 const variant = getStatusVariant(s);

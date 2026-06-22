@@ -2,7 +2,17 @@ import React from 'react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
-import { ExternalLink, Check, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, Check, Plus, Trash2, Lock, Package, RotateCcw } from 'lucide-react';
+
+// --- Helpers: Staged Workflow Type Detection ---
+export const isDeliveryCase = (subject = '') => {
+    const s = subject.toLowerCase();
+    return /provisioning|breakfix|new hire|entrega|swap|deploy|nueva asignaci/.test(s);
+};
+export const isCollectionCase = (subject = '') => {
+    const s = subject.toLowerCase();
+    return /collection|recupero|recovery|recolecci|return|retiro/.test(s);
+};
 
 const TrackingBadge = ({ method, trackingNumber, isSelected }) => {
     const [copied, setCopied] = React.useState(false);
@@ -130,10 +140,20 @@ export default function AssociatedCasesCard({
                     const status = task.status || 'Pendiente';
                     let statusVariant = 'default';
                     
-                    if (status === 'Para Coordinar') statusVariant = 'warning';
+                    const isBlocked = status === 'Bloqueado';
+                    const isCancelled = status === 'Cancelado';
+                    if (isBlocked) statusVariant = 'secondary';
+                    else if (isCancelled) statusVariant = 'danger';
+                    else if (status === 'Para Coordinar') statusVariant = 'warning';
                     else if (status === 'En Transito') statusVariant = 'info';
                     else if (status === 'Entregado' || status === 'Finalizado' || status === 'Recuperado') statusVariant = 'success';
                     else if (status === 'No requiere accion') statusVariant = 'secondary';
+
+                    // Determine visual case type (from stored field or auto-detect)
+                    const storedCaseType = task.case_type || task.caseType || 'independiente';
+                    const detectedIsDelivery = storedCaseType === 'entrega' || (storedCaseType === 'independiente' && isDeliveryCase(task.subject || ''));
+                    const detectedIsCollection = storedCaseType === 'recoleccion' || (storedCaseType === 'independiente' && isCollectionCase(task.subject || ''));
+                    const CaseTypeIcon = detectedIsCollection ? RotateCcw : Package;
                     
                     const isSFDC = /SFDC/i.test(ticket?.client || '');
                     const caseNumRaw = task.caseNumber || task.case_number || '';
@@ -145,26 +165,42 @@ export default function AssociatedCasesCard({
 
                     return (
                         <div key={task.id || index} onClick={() => {
+                            if (isBlocked) return; // Can't select blocked cases
                             setSelectedCaseIndex(isSelected ? null : index);
                             if (resetSearchStates) resetSearchStates();
                         }} style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                             padding: '0.875rem 1rem',
-                            background: isSelected ? 'var(--primary-color)' : (status === 'No requiere accion' ? 'rgba(0,0,0,0.03)' : 'var(--background)'),
-                            border: `2px solid ${isSelected ? 'var(--primary-color)' : 'var(--border)'}`,
+                            background: isBlocked
+                                ? 'rgba(0,0,0,0.04)'
+                                : isCancelled
+                                    ? 'rgba(239,68,68,0.04)'
+                                    : isSelected ? 'var(--primary-color)' : (status === 'No requiere accion' ? 'rgba(0,0,0,0.03)' : 'var(--background)'),
+                            border: `2px solid ${isBlocked ? 'rgba(0,0,0,0.1)' : isCancelled ? 'rgba(239,68,68,0.2)' : isSelected ? 'var(--primary-color)' : 'var(--border)'}`,
                             borderRadius: 'var(--radius-md)',
-                            cursor: 'pointer',
-                            opacity: (status === 'No requiere accion' && !isSelected) ? 0.6 : 1,
+                            cursor: isBlocked ? 'not-allowed' : 'pointer',
+                            opacity: (isBlocked || (status === 'No requiere accion' && !isSelected)) ? 0.65 : 1,
                             transition: 'all 0.2s'
                         }}>
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                    {isBlocked && (
+                                        <span title="Esperando que el caso de Entrega esté Entregado" style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', fontSize: '0.7rem', fontWeight: 700, color: '#64748b', background: 'rgba(100,116,139,0.1)', padding: '1px 5px', borderRadius: '4px', border: '1px solid rgba(100,116,139,0.2)' }}>
+                                            <Lock size={9} strokeWidth={2.5} /> Bloqueado
+                                        </span>
+                                    )}
+                                    {(detectedIsDelivery || detectedIsCollection) && (
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', fontSize: '0.65rem', fontWeight: 600, color: isSelected ? 'rgba(255,255,255,0.7)' : detectedIsCollection ? '#7c3aed' : '#0369a1', background: isSelected ? 'rgba(255,255,255,0.1)' : detectedIsCollection ? 'rgba(124,58,237,0.08)' : '#e0f2fe', padding: '1px 5px', borderRadius: '4px' }}>
+                                            <CaseTypeIcon size={9} />
+                                            {detectedIsCollection ? 'Recolección' : 'Entrega'}
+                                        </span>
+                                    )}
                                     {task.caseNumber && (
                                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: isSelected ? 'rgba(255,255,255,0.8)' : '#0369a1', background: isSelected ? 'rgba(255,255,255,0.15)' : '#e0f2fe', padding: '1px 6px', borderRadius: '4px' }}>
                                             {task.caseNumber}
                                         </span>
                                     )}
-                                    <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: isSelected ? 'white' : 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '250px' }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: isBlocked ? 'var(--text-secondary)' : isSelected ? 'white' : 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '220px' }}>
                                         {task.subject}
                                     </h4>
                                 </div>
@@ -173,9 +209,9 @@ export default function AssociatedCasesCard({
                                         {caseAssets.length} Equipos
                                     </Badge>
                                      <Badge variant={statusVariant} style={{ fontSize: '0.65rem', opacity: isSelected ? 0.85 : 1 }}>
-                                         {status}: {task.method || 'Sin método'}
-                                         {task.method === 'Repartidor Propio' && task.delivery_person && ` - ${task.delivery_person}`}
-                                         {(task.method === 'Andreani' || task.method === 'Correo Argentino') && task.tracking_number && ` - ${task.tracking_number}`}
+                                         {isBlocked ? '🔒 Bloqueado' : status}{!isBlocked && `: ${task.method || 'Sin método'}`}
+                                         {!isBlocked && task.method === 'Repartidor Propio' && task.delivery_person && ` - ${task.delivery_person}`}
+                                         {!isBlocked && (task.method === 'Andreani' || task.method === 'Correo Argentino') && task.tracking_number && ` - ${task.tracking_number}`}
                                      </Badge>
                                      {task.tracking_number && (task.method === 'Andreani' || task.method === 'Correo Argentino') && (
                                          <TrackingBadge method={task.method} trackingNumber={task.tracking_number} isSelected={isSelected} />
@@ -183,8 +219,8 @@ export default function AssociatedCasesCard({
                                 </div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem', marginLeft: '0.5rem' }} onClick={e => e.stopPropagation()}>
-                                <span style={{ fontSize: '0.72rem', color: isSelected ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)', whiteSpace: 'nowrap', marginBottom: 'auto' }}>
-                                    {isSelected ? '▲ Configurando' : 'Clic para configurar'}
+                                <span style={{ fontSize: '0.72rem', color: isSelected ? 'rgba(255,255,255,0.7)' : isBlocked ? '#94a3b8' : 'var(--text-secondary)', whiteSpace: 'nowrap', marginBottom: 'auto' }}>
+                                    {isBlocked ? '🔒 Pendiente de entrega previa' : isSelected ? '▲ Configurando' : 'Clic para configurar'}
                                 </span>
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                     {ticket.subject && !isLinkedToMain && handleUnlinkCase && (
