@@ -69,7 +69,7 @@ export default function CaseConfigModal({
         } else {
             setLocalTask(null);
         }
-    }, [currentTask]);
+    }, [currentTask?.id]);
 
     // Use localTask as the source of truth for the UI
     const activeTask = localTask || currentTask;
