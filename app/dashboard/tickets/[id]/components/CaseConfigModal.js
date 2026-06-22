@@ -58,6 +58,12 @@ export default function CaseConfigModal({
 
     const [subjectInput, setSubjectInput] = useState('');
     const [caseTypeInput, setCaseTypeInput] = useState('independiente');
+    const [pendingTaskUpdates, setPendingTaskUpdates] = useState({});
+
+    // Reset pending updates when task changes
+    useEffect(() => {
+        setPendingTaskUpdates({});
+    }, [currentTask?.id]);
 
     // Auto-detect case type from subject when task changes
     useEffect(() => {
@@ -144,7 +150,7 @@ export default function CaseConfigModal({
                                     onChange={(e) => setSubjectInput(e.target.value)}
                                     onBlur={() => {
                                         if (subjectInput.trim() !== '' && subjectInput !== currentTask.subject) {
-                                            handleUpdateTask({ subject: subjectInput.trim() });
+                                            setPendingTaskUpdates(prev => ({ ...prev, subject: subjectInput.trim() }));
                                         }
                                     }}
                                     placeholder="Ej: Entrega de Laptop, Recupero de Monitor..."
@@ -165,7 +171,7 @@ export default function CaseConfigModal({
                                             type="button"
                                             onClick={() => {
                                                 setSubjectInput(opt);
-                                                handleUpdateTask({ subject: opt });
+                                                setPendingTaskUpdates(prev => ({ ...prev, subject: opt }));
                                             }}
                                             style={{
                                                 fontSize: '0.7rem',
@@ -200,7 +206,7 @@ export default function CaseConfigModal({
                                                 <button
                                                     key={value}
                                                     type="button"
-                                                    onClick={async () => {
+                                                    onClick={() => {
                                                         setCaseTypeInput(value);
                                                         let dependsOn = [];
                                                         if (value === 'recoleccion' && currentTasks.length > 0) {
@@ -213,7 +219,7 @@ export default function CaseConfigModal({
                                                                 .map(t => t.id)
                                                                 .filter(Boolean);
                                                         }
-                                                        await handleUpdateTask({ case_type: value, depends_on: dependsOn });
+                                                        setPendingTaskUpdates(prev => ({ ...prev, case_type: value, depends_on: dependsOn }));
                                                     }}
                                                     style={{
                                                         display: 'inline-flex',
@@ -328,6 +334,13 @@ export default function CaseConfigModal({
                                 style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', fontWeight: 800, borderRadius: '12px', opacity: isSavingModal ? 0.7 : 1 }}
                                 disabled={isSavingModal}
                                 onClick={() => safeSaveModal(async () => {
+                                    // Save pending task updates (Subject, Case Type)
+                                    if (Object.keys(pendingTaskUpdates).length > 0) {
+                                        await handleUpdateTask(pendingTaskUpdates);
+                                        setPendingTaskUpdates({}); // clear
+                                    }
+
+                                    // Save logistics info
                                     if (logisticsSaveRef.current) {
                                         const result = await logisticsSaveRef.current();
                                         if (result?.error) return; // No cerrar si hubo error
