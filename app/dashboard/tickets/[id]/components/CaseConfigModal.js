@@ -59,29 +59,43 @@ export default function CaseConfigModal({
     const [subjectInput, setSubjectInput] = useState('');
     const [caseTypeInput, setCaseTypeInput] = useState('independiente');
     const [pendingTaskUpdates, setPendingTaskUpdates] = useState({});
+    const [localTask, setLocalTask] = useState(null);
 
-    // Reset pending updates when task changes
+    // Reset pending updates and init local task when task changes
     useEffect(() => {
         setPendingTaskUpdates({});
-    }, [currentTask?.id]);
+        if (currentTask) {
+            setLocalTask({ ...currentTask });
+        } else {
+            setLocalTask(null);
+        }
+    }, [currentTask]);
+
+    // Use localTask as the source of truth for the UI
+    const activeTask = localTask || currentTask;
+
+    const handleBufferedUpdate = (updates) => {
+        setLocalTask(prev => prev ? { ...prev, ...updates } : null);
+        setPendingTaskUpdates(prev => ({ ...prev, ...updates }));
+    };
 
     // Auto-detect case type from subject when task changes
     useEffect(() => {
-        if (currentTask) {
-            setSubjectInput(currentTask.subject || '');
+        if (activeTask) {
+            setSubjectInput(activeTask.subject || '');
             // Use stored case_type first, then auto-detect from subject
-            const stored = currentTask.case_type || currentTask.caseType || 'independiente';
+            const stored = activeTask.case_type || activeTask.caseType || 'independiente';
             if (stored !== 'independiente') {
                 setCaseTypeInput(stored);
-            } else if (isDeliveryCase(currentTask.subject || '')) {
+            } else if (isDeliveryCase(activeTask.subject || '')) {
                 setCaseTypeInput('entrega');
-            } else if (isCollectionCase(currentTask.subject || '')) {
+            } else if (isCollectionCase(activeTask.subject || '')) {
                 setCaseTypeInput('recoleccion');
             } else {
                 setCaseTypeInput('independiente');
             }
         }
-    }, [currentTask?.id, currentTask?.subject, currentTask?.case_type]);
+    }, [activeTask?.id, activeTask?.subject, activeTask?.case_type]);
     // handleUpdateTask was moved to hook for centralization
     const handleGenerateRemito = (action = 'download') => {
         if (!currentTask) return;
@@ -149,8 +163,8 @@ export default function CaseConfigModal({
                                     value={subjectInput}
                                     onChange={(e) => setSubjectInput(e.target.value)}
                                     onBlur={() => {
-                                        if (subjectInput.trim() !== '' && subjectInput !== currentTask.subject) {
-                                            setPendingTaskUpdates(prev => ({ ...prev, subject: subjectInput.trim() }));
+                                        if (subjectInput.trim() !== '' && subjectInput !== activeTask?.subject) {
+                                            handleBufferedUpdate({ subject: subjectInput.trim() });
                                         }
                                     }}
                                     placeholder="Ej: Entrega de Laptop, Recupero de Monitor..."
@@ -171,15 +185,15 @@ export default function CaseConfigModal({
                                             type="button"
                                             onClick={() => {
                                                 setSubjectInput(opt);
-                                                setPendingTaskUpdates(prev => ({ ...prev, subject: opt }));
+                                                handleBufferedUpdate({ subject: opt });
                                             }}
                                             style={{
                                                 fontSize: '0.7rem',
                                                 padding: '4px 8px',
                                                 borderRadius: '4px',
-                                                border: `1px solid ${currentTask.subject === opt ? 'var(--primary-color)' : 'var(--border)'}`,
-                                                background: currentTask.subject === opt ? 'rgba(37, 99, 235, 0.1)' : 'var(--background)',
-                                                color: currentTask.subject === opt ? 'var(--primary-color)' : 'var(--text-secondary)',
+                                                border: `1px solid ${activeTask?.subject === opt ? 'var(--primary-color)' : 'var(--border)'}`,
+                                                background: activeTask?.subject === opt ? 'rgba(37, 99, 235, 0.1)' : 'var(--background)',
+                                                color: activeTask?.subject === opt ? 'var(--primary-color)' : 'var(--text-secondary)',
                                                 cursor: 'pointer',
                                                 fontWeight: 600,
                                                 transition: 'all 0.15s'
@@ -212,14 +226,14 @@ export default function CaseConfigModal({
                                                         if (value === 'recoleccion' && currentTasks.length > 0) {
                                                             // Auto-link to all delivery sibling tasks
                                                             dependsOn = currentTasks
-                                                                .filter(t => t.id !== currentTask.id && (
+                                                                .filter(t => t.id !== activeTask?.id && (
                                                                     (t.case_type || t.caseType) === 'entrega' ||
                                                                     isDeliveryCase(t.subject || '')
                                                                 ))
                                                                 .map(t => t.id)
                                                                 .filter(Boolean);
                                                         }
-                                                        setPendingTaskUpdates(prev => ({ ...prev, case_type: value, depends_on: dependsOn }));
+                                                        handleBufferedUpdate({ case_type: value, depends_on: dependsOn });
                                                     }}
                                                     style={{
                                                         display: 'inline-flex',
@@ -251,8 +265,8 @@ export default function CaseConfigModal({
                             </div>
                         )}
                         <AssetListSection
-                            task={currentTask}
-                            onUpdateTask={handleUpdateTask}
+                            task={activeTask}
+                            onUpdateTask={handleBufferedUpdate}
                             assets={assets}
                             serialQuery={serialQuery}
                             setSerialQuery={setSerialQuery}
@@ -268,21 +282,21 @@ export default function CaseConfigModal({
                         />
 
                         <AccessoriesSection
-                            task={currentTask}
-                            onUpdateTask={handleUpdateTask}
+                            task={activeTask}
+                            onUpdateTask={handleBufferedUpdate}
                             consumables={consumables}
-                            ticketCountry={currentTask.country || ticket?.logistics?.country || 'Argentina'}
+                            ticketCountry={activeTask?.country || ticket?.logistics?.country || 'Argentina'}
                             updateConsumableStock={updateConsumableStock}
                         />
 
                         <YubiKeySection
-                            task={currentTask}
-                            onUpdateTask={handleUpdateTask}
+                            task={activeTask}
+                            onUpdateTask={handleBufferedUpdate}
                             yubikeys={yubikeys}
                         />
 
                         <CaseLogisticsSection
-                            task={currentTask}
+                            task={activeTask}
                             onUpdateTask={handleUpdateTask}
                             users={users}
                             currentUser={currentUser}
