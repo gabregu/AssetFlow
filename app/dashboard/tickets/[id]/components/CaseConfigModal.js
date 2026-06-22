@@ -178,31 +178,7 @@ export default function CaseConfigModal({
                                         fontSize: '0.9rem'
                                     }}
                                 />
-                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                                    {['Entrega', 'Recupero', 'Entrega y Recupero', 'Servicio Técnico'].map(opt => (
-                                        <button
-                                            key={opt}
-                                            type="button"
-                                            onClick={() => {
-                                                setSubjectInput(opt);
-                                                handleBufferedUpdate({ subject: opt });
-                                            }}
-                                            style={{
-                                                fontSize: '0.7rem',
-                                                padding: '4px 8px',
-                                                borderRadius: '4px',
-                                                border: `1px solid ${activeTask?.subject === opt ? 'var(--primary-color)' : 'var(--border)'}`,
-                                                background: activeTask?.subject === opt ? 'rgba(37, 99, 235, 0.1)' : 'var(--background)',
-                                                color: activeTask?.subject === opt ? 'var(--primary-color)' : 'var(--text-secondary)',
-                                                cursor: 'pointer',
-                                                fontWeight: 600,
-                                                transition: 'all 0.15s'
-                                            }}
-                                        >
-                                            {opt}
-                                        </button>
-                                    ))}
-                                </div>
+
 
                                 {/* Case Type Selector for Staged Workflow */}
                                 <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
