@@ -29,6 +29,11 @@ export default function AssetListSection({
     React.useEffect(() => {
         if (!task || !task.caseNumber) return;
         
+        // Skip auto-sync for tasks that live in the DB (have a real UUID id).
+        // Those tasks are managed via handleUpdateTask and the local draft.
+        // Running this sync would overwrite the buffered draft with stale data.
+        if (task.id) return;
+        
         const caseKey = `${task.id || task.caseNumber}`;
         if (lastSyncedCaseRef.current === caseKey) return;
         
