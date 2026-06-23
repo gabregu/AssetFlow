@@ -61,7 +61,7 @@ export default function CaseConfigModal({
     const [pendingTaskUpdates, setPendingTaskUpdates] = useState({});
     const [localTask, setLocalTask] = useState(null);
 
-    // Reset pending updates and init local task when task changes
+    // Init localTask when switching to a different task
     useEffect(() => {
         setPendingTaskUpdates({});
         if (currentTask) {
@@ -70,6 +70,34 @@ export default function CaseConfigModal({
             setLocalTask(null);
         }
     }, [currentTask?.id]);
+
+    // Smart merge: when currentTask changes (Supabase realtime), merge DB fields
+    // that we DON'T buffer locally (assets written via InventorySelectorModal or
+    // handleUpdateTask directly) back into localTask so they appear in the UI.
+    useEffect(() => {
+        if (!currentTask || !localTask || currentTask.id !== localTask.id) return;
+
+        // Fields that get written directly to DB (not buffered) — sync them in.
+        // Fields that ARE buffered (subject, case_type, accessories, yubikeys) stay
+        // local until Guardar is clicked, so we only sync what pendingTaskUpdates
+        // does NOT already have.
+        setLocalTask(prev => {
+            if (!prev) return prev;
+            const merged = { ...prev };
+
+            // Always merge assets from DB unless the user has a local pending override
+            if (!pendingTaskUpdates.hasOwnProperty('assets')) {
+                merged.assets = currentTask.assets || prev.assets || [];
+            }
+            // Merge status changes (e.g. auto-unlock from store triggers)
+            if (!pendingTaskUpdates.hasOwnProperty('status')) {
+                merged.status = currentTask.status || prev.status;
+            }
+
+            return merged;
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentTask]);
 
     // Use localTask as the source of truth for the UI
     const activeTask = localTask || currentTask;
