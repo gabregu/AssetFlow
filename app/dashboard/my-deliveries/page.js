@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useSafeSubmit } from '../../../lib/useSafeSubmit';
+import { useForm } from '../../../lib/useForm';
 import { 
     Truck, CheckCircle, Package, Send, Calendar, Clock, MapPin, Search, ChevronRight, Navigation, CheckCircle2, ChevronDown, ListFilter, LayoutGrid, List, MessageSquare, StickyNote,
     Filter,
@@ -61,8 +61,6 @@ export default function MyDeliveriesPage() {
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [showDownloadPrompt, setShowDownloadPrompt] = useState(false);
     const [completedDeliveryForPdf, setCompletedDeliveryForPdf] = useState(null);
-    const { isSubmitting, safeSubmit: safeRegister } = useSafeSubmit();
-    // Stats and Toast State
     const cameraInputRef = useRef(null);
     const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
@@ -81,10 +79,7 @@ export default function MyDeliveriesPage() {
         try {
             const displayId = selectedDelivery?.displayId || 'delivery';
             const publicUrl = await uploadDevicePhoto(file, `delivery_${displayId}`);
-            setDeliveryForm(prev => ({
-                ...prev,
-                photoUrl: publicUrl
-            }));
+            setFieldValue('photoUrl', publicUrl);
             showToast('Foto cargada correctamente', 'success');
         } catch (err) {
             console.error(err);
@@ -97,15 +92,141 @@ export default function MyDeliveriesPage() {
         }
     };
 
-    const [deliveryForm, setDeliveryForm] = useState({
-        receivedBy: '',
-        dni: '',
-        notes: '',
-        deliveredDate: '',
-        actualTime: '',
-        photoUrl: null,
-        sendWhatsapp: false,
-        emailAddress: ''
+    const {
+        values: deliveryForm,
+        setValues: setDeliveryForm,
+        setFieldValue,
+        isSubmitting,
+        handleChange,
+        handleSubmit: handleDeliverySubmit
+    } = useForm({
+        initialValues: {
+            receivedBy: '',
+            dni: '',
+            notes: '',
+            deliveredDate: '',
+            actualTime: '',
+            photoUrl: null,
+            sendWhatsapp: false,
+            emailAddress: ''
+        },
+        validate: (vals) => {
+            const errs = {};
+            if (!vals.receivedBy) errs.receivedBy = 'El nombre es obligatorio';
+            if (!vals.dni) errs.dni = 'El DNI es obligatorio';
+            return errs;
+        },
+        onSubmit: async (formValues) => {
+            // Combinar la fecha y hora manuales del formulario para crear el timestamp en la zona horaria del usuario
+            let finalDeliveredAt = new Date().toISOString();
+            if (formValues.deliveredDate && formValues.actualTime) {
+                const [yr, mo, dy] = formValues.deliveredDate.split('-').map(Number);
+                const [hr, mn] = formValues.actualTime.split(':').map(Number);
+                const localDateObj = new Date(yr, mo - 1, dy, hr, mn);
+                if (!isNaN(localDateObj.getTime())) {
+                    finalDeliveredAt = localDateObj.toISOString();
+                }
+            }
+
+            // Cascaded photo update to assets in inventory
+            if (formValues.photoUrl) {
+                let assetsToUpdate = [];
+                if (selectedDelivery.taskAssets && selectedDelivery.taskAssets.length > 0) {
+                    assetsToUpdate = selectedDelivery.taskAssets;
+                } else if (selectedDelivery.associatedAssets && selectedDelivery.associatedAssets.length > 0) {
+                    assetsToUpdate = selectedDelivery.associatedAssets;
+                } else if (selectedDelivery.assetInfo?.serial) {
+                    assetsToUpdate = [selectedDelivery.assetInfo];
+                }
+
+                for (const asset of assetsToUpdate) {
+                    if (asset.serial || asset.id) {
+                        const currentNotes = asset.notes || '';
+                        const query = supabase.from('assets').update({ 
+                            photo_url: formValues.photoUrl,
+                            notes: `${currentNotes}\n[Estado registrado en entrega/devolución]: ${formValues.notes || 'Sin observaciones'}`.trim()
+                        });
+                        
+                        if (asset.id && String(asset.id).startsWith('AST-')) {
+                            await query.eq('id', asset.id);
+                        } else if (asset.serial) {
+                            await query.eq('serial', asset.serial);
+                        }
+                    }
+                }
+            }
+
+            // Lógica para actualizar usando la nueva tabla de tareas
+            if (selectedDelivery.taskId) {
+                // Actualizar la tarea relacional directamente
+                await updateLogisticsTask(selectedDelivery.taskId, {
+                    status: 'Entregado',
+                    deliveryInfo: {
+                        receivedBy: formValues.receivedBy,
+                        dni: formValues.dni,
+                        notes: formValues.notes,
+                        deliveredAt: finalDeliveredAt,
+                        actualTime: formValues.actualTime,
+                        sendWhatsapp: formValues.sendWhatsapp,
+                        emailAddress: formValues.emailAddress,
+                        photoUrl: formValues.photoUrl || null
+                    }
+                });
+            } else if (selectedDelivery.isMainTicket) {
+                // Caso legacy: Ticket principal sin tareas asignadas
+                const updatedLogistics = {
+                    ...selectedDelivery.logistics,
+                    status: 'Entregado',
+                    deliveryInfo: {
+                        receivedBy: formValues.receivedBy,
+                        dni: formValues.dni,
+                        notes: formValues.notes,
+                        deliveredAt: finalDeliveredAt,
+                        actualTime: formValues.actualTime,
+                        sendWhatsapp: formValues.sendWhatsapp,
+                        emailAddress: formValues.emailAddress,
+                        photoUrl: formValues.photoUrl || null
+                    }
+                };
+                const success = await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
+                if (!success) throw new Error('Error al actualizar el ticket principal');
+            } else if (selectedDelivery.legacyCaseIndex !== undefined) {
+                // Caso legacy: Sub-caso anidado en associatedCases del ticket principal
+                const parentTicket = tickets.find(t => t.id === selectedDelivery.id);
+                if (parentTicket && parentTicket.associatedCases) {
+                    const updatedCases = [...parentTicket.associatedCases];
+                    updatedCases[selectedDelivery.legacyCaseIndex] = {
+                        ...updatedCases[selectedDelivery.legacyCaseIndex],
+                        logistics: {
+                            ...updatedCases[selectedDelivery.legacyCaseIndex].logistics,
+                            status: 'Entregado',
+                            deliveryInfo: {
+                                receivedBy: formValues.receivedBy,
+                                dni: formValues.dni,
+                                notes: formValues.notes,
+                                deliveredAt: finalDeliveredAt,
+                                actualTime: formValues.actualTime,
+                                sendWhatsapp: formValues.sendWhatsapp,
+                                emailAddress: formValues.emailAddress,
+                                photoUrl: formValues.photoUrl || null
+                            }
+                        }
+                    };
+                    const success = await updateTicket(parentTicket.id, { associatedCases: updatedCases });
+                    if (!success) throw new Error('Error al actualizar el sub-caso');
+                }
+            }
+            
+            showToast('Entrega registrada correctamente', 'success');
+            await refreshData(); // Sincronización total tras el guardado
+            setIsDeliveryModalOpen(false);
+            setCompletedDeliveryForPdf({
+                delivery: selectedDelivery,
+                form: { ...formValues }
+            });
+            setShowDownloadPrompt(true);
+            setDeliveryForm({ receivedBy: '', dni: '', notes: '', deliveredDate: '', actualTime: '', photoUrl: null, sendWhatsapp: false, emailAddress: '' });
+        }
     });
 
     // 1. APLANAR DATOS: Convertir las tareas relacionales en una lista de Entregas individuales
@@ -355,129 +476,7 @@ export default function MyDeliveriesPage() {
         }
     };
 
-    const handleDeliverySubmit = async (e) => {
-        e.preventDefault();
-        
-        if (!deliveryForm.receivedBy || !deliveryForm.dni) {
-            showToast('Nombre y DNI son obligatorios', 'error');
-            return;
-        }
 
-        // Combinar la fecha y hora manuales del formulario para crear el timestamp en la zona horaria del usuario
-        let finalDeliveredAt = new Date().toISOString();
-        if (deliveryForm.deliveredDate && deliveryForm.actualTime) {
-            const [yr, mo, dy] = deliveryForm.deliveredDate.split('-').map(Number);
-            const [hr, mn] = deliveryForm.actualTime.split(':').map(Number);
-            const localDateObj = new Date(yr, mo - 1, dy, hr, mn);
-            if (!isNaN(localDateObj.getTime())) {
-                finalDeliveredAt = localDateObj.toISOString();
-            }
-        }
-
-        await safeRegister(async () => {
-            // Cascaded photo update to assets in inventory
-            if (deliveryForm.photoUrl) {
-                let assetsToUpdate = [];
-                if (selectedDelivery.taskAssets && selectedDelivery.taskAssets.length > 0) {
-                    assetsToUpdate = selectedDelivery.taskAssets;
-                } else if (selectedDelivery.associatedAssets && selectedDelivery.associatedAssets.length > 0) {
-                    assetsToUpdate = selectedDelivery.associatedAssets;
-                } else if (selectedDelivery.assetInfo?.serial) {
-                    assetsToUpdate = [selectedDelivery.assetInfo];
-                }
-
-                for (const asset of assetsToUpdate) {
-                    if (asset.serial || asset.id) {
-                        const currentNotes = asset.notes || '';
-                        const query = supabase.from('assets').update({ 
-                            photo_url: deliveryForm.photoUrl,
-                            notes: `${currentNotes}\n[Estado registrado en entrega/devolución]: ${deliveryForm.notes || 'Sin observaciones'}`.trim()
-                        });
-                        
-                        if (asset.id && String(asset.id).startsWith('AST-')) {
-                            await query.eq('id', asset.id);
-                        } else if (asset.serial) {
-                            await query.eq('serial', asset.serial);
-                        }
-                    }
-                }
-            }
-
-            // Lógica para actualizar usando la nueva tabla de tareas
-            if (selectedDelivery.taskId) {
-                // Actualizar la tarea relacional directamente
-                await updateLogisticsTask(selectedDelivery.taskId, {
-                    status: 'Entregado',
-                    deliveryInfo: {
-                        receivedBy: deliveryForm.receivedBy,
-                        dni: deliveryForm.dni,
-                        notes: deliveryForm.notes,
-                        deliveredAt: finalDeliveredAt,
-                        actualTime: deliveryForm.actualTime,
-                        sendWhatsapp: deliveryForm.sendWhatsapp,
-                        emailAddress: deliveryForm.emailAddress,
-                        photoUrl: deliveryForm.photoUrl || null
-                    }
-                });
-            } else if (selectedDelivery.isMainTicket) {
-                // Caso legacy: Ticket principal sin tareas asignadas
-                const updatedLogistics = {
-                    ...selectedDelivery.logistics,
-                    status: 'Entregado',
-                    deliveryInfo: {
-                        receivedBy: deliveryForm.receivedBy,
-                        dni: deliveryForm.dni,
-                        notes: deliveryForm.notes,
-                        deliveredAt: finalDeliveredAt,
-                        actualTime: deliveryForm.actualTime,
-                        sendWhatsapp: deliveryForm.sendWhatsapp,
-                        emailAddress: deliveryForm.emailAddress,
-                        photoUrl: deliveryForm.photoUrl || null
-                    }
-                };
-                const success = await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
-                if (!success) throw new Error('Error al actualizar el ticket principal');
-            } else if (selectedDelivery.legacyCaseIndex !== undefined) {
-                // Caso legacy: Sub-caso anidado en associatedCases del ticket principal
-                const parentTicket = tickets.find(t => t.id === selectedDelivery.id);
-                if (parentTicket && parentTicket.associatedCases) {
-                    const updatedCases = [...parentTicket.associatedCases];
-                    updatedCases[selectedDelivery.legacyCaseIndex] = {
-                        ...updatedCases[selectedDelivery.legacyCaseIndex],
-                        logistics: {
-                            ...updatedCases[selectedDelivery.legacyCaseIndex].logistics,
-                            status: 'Entregado',
-                            deliveryInfo: {
-                                receivedBy: deliveryForm.receivedBy,
-                                dni: deliveryForm.dni,
-                                notes: deliveryForm.notes,
-                                deliveredAt: finalDeliveredAt,
-                                actualTime: deliveryForm.actualTime,
-                                sendWhatsapp: deliveryForm.sendWhatsapp,
-                                emailAddress: deliveryForm.emailAddress,
-                                photoUrl: deliveryForm.photoUrl || null
-                            }
-                        }
-                    };
-                    const success = await updateTicket(parentTicket.id, { associatedCases: updatedCases });
-                    if (!success) throw new Error('Error al actualizar el sub-caso');
-                }
-            }
-            
-            showToast('Entrega registrada correctamente', 'success');
-            await refreshData(); // Asegurar sincronización total tras el guardado
-            setIsDeliveryModalOpen(false);
-            setCompletedDeliveryForPdf({
-                delivery: selectedDelivery,
-                form: { ...deliveryForm }
-            });
-            setShowDownloadPrompt(true);
-            setDeliveryForm({ receivedBy: '', dni: '', notes: '', deliveredDate: '', actualTime: '', photoUrl: null, sendWhatsapp: false, emailAddress: '' });
-        }).catch(error => {
-            console.error('Error al registrar entrega:', error);
-            showToast('Error al guardar los datos', 'error');
-        });
-    };
 
     const handleScanSuccess = (data) => {
         setIsScannerOpen(false);
