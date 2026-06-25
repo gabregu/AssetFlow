@@ -658,7 +658,7 @@ export default function SFDCCasesPage() {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             const buffer = event.target.result;
             const decoder = new TextDecoder('utf-8');
             let text = decoder.decode(buffer);
@@ -834,58 +834,64 @@ export default function SFDCCasesPage() {
                 newCases.push(newCase);
             }
 
-            // Filtrar duplicados en INBOX
-            const existingInboxCaseNumbers = new Set(sfdcCases.map(c => c.caseNumber));
+            // 1. Limpiar casos previos de los países/regiones que estamos importando en este archivo
+            // para que los viejos desaparezcan y solo queden los nuevos de esta carga.
+            const countriesToClear = [...new Set(newCases.map(c => c.country).filter(Boolean))];
+            for (const country of countriesToClear) {
+                await clearSfdcCases(country);
+            }
 
-            // Filtrar duplicados ya convertidos a SERVICIOS/TICKETS
+            // 2. Deduplicar internamente el CSV por número de caso para evitar duplicados en el mismo archivo
+            const seenCaseNumbers = new Set();
+            const deduplicatedNewCases = newCases.filter(c => {
+                if (seenCaseNumbers.has(c.caseNumber)) return false;
+                seenCaseNumbers.add(c.caseNumber);
+                return true;
+            });
+
+            // 3. Filtrar duplicados ya convertidos a SERVICIOS/TICKETS
             // Buscamos si el caseNumber está PRESENTE en el asunto de algún ticket existente
-            // Esto es más robusto que solo buscar [SFDC-XXXX] al inicio
             const existingConvertedCaseNumbers = new Set();
 
             // Recorremos todos los tickets una sola vez para extraer posibles casos
             tickets.forEach(t => {
                 if (!t.subject) return;
-                // Si el asunto contiene el número de caso (ej: "00168969"), lo marcamos como existente
-                // Usamos una verificación simple de inclusión string para máxima cobertura
-                // pero validamos contra la lista de nuevos casos para no falsos positivos random
-                newCases.forEach(nc => {
+                deduplicatedNewCases.forEach(nc => {
                     if (t.subject.includes(nc.caseNumber)) {
                         existingConvertedCaseNumbers.add(nc.caseNumber);
                     }
                 });
             });
 
-            const uniqueCases = newCases.filter(c => {
-                const isInData = existingInboxCaseNumbers.has(c.caseNumber);
+            // Como acabamos de borrar el inbox de la base de datos para estos países,
+            // no es necesario filtrar contra existingInboxCaseNumbers (que ya no existen).
+            // Solo filtramos contra los que ya se convirtieron a tickets en el sistema.
+            const uniqueCases = deduplicatedNewCases.filter(c => {
                 const isConverted = existingConvertedCaseNumbers.has(c.caseNumber);
 
                 // Debug log para ver qué estamos saltando
                 if (isConverted) console.log(`Skipping Case ${c.caseNumber} (Already valid Ticket)`);
 
-                return !isInData && !isConverted;
+                return !isConverted;
             });
 
             if (uniqueCases.length > 0) {
                 // En lugar de solo importar, los procesamos para crear servicios de inmediato
                 processCasesToTickets(uniqueCases);
                 
-                // Opcional: También los guardamos en el store como respaldo por si acaso 
-                // pero si se crearon servicios, quizás el usuario prefiere que ya no aparezcan en "Casos SFDC"
-                // El comportamiento anterior de "Crear Casos" era removerlos de SFDC_CASOS al crearlos.
-                // Así que aquí NO llamamos a importSfdcCases si queremos que sea directo.
-                // Sin embargo, para mantener coherencia con el estado global, los importamos y la función procesadora los quitará si es necesario.
-                // Pero como processCasesToTickets corre asíncrono, mejor importarlos primero.
+                // Los guardamos en el store como respaldo. Como acabamos de vaciar la tabla para estos países,
+                // esto insertará únicamente la nueva tanda de casos.
                 importSfdcCases(uniqueCases);
                 
                 const skippedCount = newCases.length - uniqueCases.length;
                 showToast(`Se detectaron ${uniqueCases.length} casos nuevos. Iniciando creación automática...`, 'info');
-                alert(`Importación completada:\n- ${uniqueCases.length} casos nuevos agregados.\n- ${skippedCount} casos omitidos (ya existían).`);
+                alert(`Importación completada:\n- ${uniqueCases.length} casos nuevos agregados.\n- ${skippedCount} casos omitidos (ya existían como servicios).`);
                 
                 // Ordenar los casos nuevos arriba y los más viejos abajo (fecha descendente)
                 setSortConfig({ key: 'dateOpened', direction: 'descending' });
             } else {
                 showToast('No se encontraron casos nuevos.', 'info');
-                alert('No se agregaron casos nuevos.\nTodos los casos en el archivo CSV ya existen en el sistema.');
+                alert('No se agregaron casos nuevos.\nTodos los casos en el archivo CSV ya existen en el sistema (como servicios).');
             }
 
             e.target.value = null; // Reset input
