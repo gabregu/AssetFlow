@@ -26,10 +26,12 @@ import {
     ChevronDown,
     ArrowUpDown,
     Laptop,
-    SlidersHorizontal
+    SlidersHorizontal,
+    Download
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+import * as XLSX from 'xlsx';
 import { useStore } from '../../../lib/store';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -1720,9 +1722,40 @@ export default function WarehousePage() {
                             return (
                                 <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
                                     <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', position: 'sticky', top: '-1.25rem', backgroundColor: 'var(--surface)', zIndex: 10 }}>
-                                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Información de Grupo</span>
-                                        <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Grupo: {selectedGroup}</h3>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Total: {groupAssets.length} equipos</div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Información de Grupo</span>
+                                                <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Grupo: {selectedGroup}</h3>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Total: {groupAssets.length} equipos</div>
+                                            </div>
+                                            {groupAssets.length > 0 && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    icon={Download} 
+                                                    onClick={() => {
+                                                        const wb = XLSX.utils.book_new();
+                                                        const dataToExport = groupAssets.map(a => ({
+                                                            'ID': a.id,
+                                                            'Nombre': a.name,
+                                                            'Modelo': a.modelNumber || a.hardwareSpec || 'N/A',
+                                                            'Número de Serie': a.serial || 'N/A',
+                                                            'Estado': a.status,
+                                                            'Ubicación': a.locationId || 'N/A',
+                                                            'Asignado a': a.assignee || 'Almacén',
+                                                            'Última Actualización': a.date_last_update ? new Date(a.date_last_update).toLocaleDateString() : 'N/A',
+                                                            'Notas': a.notes || ''
+                                                        }));
+                                                        const ws = XLSX.utils.json_to_sheet(dataToExport);
+                                                        XLSX.utils.book_append_sheet(wb, ws, "Equipos");
+                                                        XLSX.writeFile(wb, `Equipos_Grupo_${selectedGroup}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                                                    }}
+                                                    style={{ height: '28px', fontSize: '0.75rem', padding: '0 8px' }}
+                                                >
+                                                    Exportar
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {groupAssets.length > 0 ? (
@@ -1779,9 +1812,41 @@ export default function WarehousePage() {
                             return (
                                 <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
                                     <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', position: 'sticky', top: '-1.25rem', backgroundColor: 'var(--surface)', zIndex: 10 }}>
-                                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Equipos en Ubicación</span>
-                                        <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Ubicación: {selectedLocation.id}</h3>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Total: {locationAssets.length} equipos</div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Equipos en Ubicación</span>
+                                                <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Ubicación: {selectedLocation.id}</h3>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Total: {locationAssets.length} equipos</div>
+                                            </div>
+                                            {locationAssets.length > 0 && (
+                                                <Button 
+                                                    variant="outline" 
+                                                    size="sm" 
+                                                    icon={Download} 
+                                                    onClick={() => {
+                                                        const wb = XLSX.utils.book_new();
+                                                        // Prepare data for export
+                                                        const dataToExport = locationAssets.map(a => ({
+                                                            'ID': a.id,
+                                                            'Nombre': a.name,
+                                                            'Modelo': a.modelNumber || a.hardwareSpec || 'N/A',
+                                                            'Número de Serie': a.serial || 'N/A',
+                                                            'Estado': a.status,
+                                                            'Ubicación': a.locationId || 'N/A',
+                                                            'Asignado a': a.assignee || 'Almacén',
+                                                            'Última Actualización': a.date_last_update ? new Date(a.date_last_update).toLocaleDateString() : 'N/A',
+                                                            'Notas': a.notes || ''
+                                                        }));
+                                                        const ws = XLSX.utils.json_to_sheet(dataToExport);
+                                                        XLSX.utils.book_append_sheet(wb, ws, "Equipos");
+                                                        XLSX.writeFile(wb, `Equipos_${selectedLocation.id}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                                                    }}
+                                                    style={{ height: '28px', fontSize: '0.75rem', padding: '0 8px' }}
+                                                >
+                                                    Exportar
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
                                     
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
