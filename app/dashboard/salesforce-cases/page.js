@@ -92,14 +92,47 @@ export default function SFDCCasesPage() {
         return !closedStatuses.includes(status);
     };
 
+    const isTaskActive = (tk) => {
+        if (!tk || !tk.status) return false;
+        const status = tk.status.toLowerCase().trim();
+        const closedStatuses = ['entregado', 'completado', 'cancelado', 'resuelto'];
+        return !closedStatuses.includes(status);
+    };
+
+    const shouldHideCase = (c) => {
+        const relatedTickets = tickets ? tickets.filter(t => 
+            String(t.id) === String(c.caseNumber) || 
+            (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber) === String(c.caseNumber))) ||
+            (t.subject && t.subject.includes(c.caseNumber))
+        ) : [];
+
+        const relatedTasks = logisticsTasks ? logisticsTasks.filter(tk => 
+            String(tk.case_number) === String(c.caseNumber)
+        ) : [];
+
+        // Si no tiene ningún servicio (ticket o tarea) asociado aún, no se oculta
+        if (relatedTickets.length === 0 && relatedTasks.length === 0) {
+            return false;
+        }
+
+        // Si tiene algún servicio asociado que está abierto/activo, no se oculta (sigue visible)
+        const hasOpenService = relatedTickets.some(t => isTicketActive(t)) || relatedTasks.some(tk => isTaskActive(tk));
+        if (hasOpenService) {
+            return false;
+        }
+
+        // Si todos los servicios asociados están cerrados, entonces se oculta
+        return true;
+    };
+
     // 3. Estadísticas (Moved up to be available for statsByType and filteredCases)
     const countryFilteredCases = useMemo(() => {
         return sfdcCases.filter(c => {
             if (!isActiveCaseStatus(c)) return false;
             if (!isCaseInCountryFilter(c)) return false;
 
-            // Si el caso ya tiene un ticket o tarea de logística en el sistema (activo o histórico), lo ocultamos
-            if (hasService(c)) return false;
+            // Ocultamos el caso solo si todos sus servicios asociados ya están cerrados/finalizados
+            if (shouldHideCase(c)) return false;
 
             return true;
         });
