@@ -123,7 +123,7 @@ export default function CaseLogisticsSection({
             status: task.status || 'Pendiente',
             method: task.method || '',
             delivery_person: task.delivery_person || task.deliveryPerson || '',
-            coordinated_by: task.coordinated_by || task.coordinatedBy || '',
+            coordinated_by: task.coordinated_by || task.coordinatedBy || currentUser?.name || '',
             tracking_number: task.tracking_number || task.trackingNumber || '',
             date: task.date || '',
             time_slot: task.time_slot || task.timeSlot || 'AM',
@@ -133,7 +133,7 @@ export default function CaseLogisticsSection({
         };
         setLocalValues(initialState);
         localStateRef.current = initialState;
-    }, [task]);
+    }, [task, currentUser]);
 
     // Intentar obtener la dirección del ticket padre (si existe)
     // Esto es para mostrar al usuario de dónde se hereda
@@ -159,22 +159,23 @@ export default function CaseLogisticsSection({
         const finalUpdates = { ...incomingUpdates };
         let currentStatus = incomingUpdates.status !== undefined ? incomingUpdates.status : absoluteState.status;
 
-        // --- AUTOMATIZACIÓN A: Pendiente -> Para Coordinar ---
-        const hasExplicitLogisticsInfo = !!(absoluteState.method || absoluteState.delivery_person || absoluteState.date);
-        
-        // Don't auto-progress if status was explicitly set (or if blocked)
+        // --- AUTOMATIZACIÓN DE ESTADO ---
+        // Aplicar solo si no es un estado terminal
+        const TERMINAL_STATUSES = ['Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado'];
         const isExplicitStatus = incomingUpdates.status !== undefined;
-        if (!isExplicitStatus && hasExplicitLogisticsInfo && currentStatus === 'Pendiente') {
-            currentStatus = 'Para Coordinar';
-            finalUpdates.status = 'Para Coordinar';
-        }
 
-        // --- AUTOMATIZACIÓN B: Para Coordinar -> En Transito ---
-        // Evaluar con el estado unificado, asumiendo 'time_slot' (que tiene AM default) y 'date'
-        const readyForTransit = !!(absoluteState.date && absoluteState.time_slot && currentStatus === 'Para Coordinar');
-        if (readyForTransit) {
-            currentStatus = 'En Transito';
-            finalUpdates.status = 'En Transito';
+        if (!isExplicitStatus && !TERMINAL_STATUSES.includes(currentStatus)) {
+            const hasDriver = !!absoluteState.delivery_person;
+            const hasDate = !!absoluteState.date;
+            const hasTimeSlot = !!absoluteState.time_slot;
+
+            if (hasDate && hasTimeSlot) {
+                currentStatus = 'En Transito';
+                finalUpdates.status = 'En Transito';
+            } else if (hasDriver && !hasDate) {
+                currentStatus = 'Para Coordinar';
+                finalUpdates.status = 'Para Coordinar';
+            }
         }
 
         // Si cambiamos el repartidor, buscamos su UID (assigned_to)
@@ -208,10 +209,18 @@ export default function CaseLogisticsSection({
             let currentStatus = state.status || task.status || 'Pendiente';
 
             // Aplicar lógica de negocio también en el guardado final
-            const hasLogisticsInfo = !!(state.method || state.delivery_person || state.date);
-            if (hasLogisticsInfo && currentStatus === 'Pendiente') currentStatus = 'Para Coordinar';
-            const readyForTransit = !!(state.date && state.time_slot && currentStatus === 'Para Coordinar');
-            if (readyForTransit) currentStatus = 'En Transito';
+            const TERMINAL_STATUSES = ['Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado'];
+            if (!TERMINAL_STATUSES.includes(currentStatus)) {
+                const hasDriver = !!state.delivery_person;
+                const hasDate = !!state.date;
+                const hasTimeSlot = !!state.time_slot;
+
+                if (hasDate && hasTimeSlot) {
+                    currentStatus = 'En Transito';
+                } else if (hasDriver && !hasDate) {
+                    currentStatus = 'Para Coordinar';
+                }
+            }
 
             const payload = {
                 status: currentStatus,
@@ -549,11 +558,19 @@ export default function CaseLogisticsSection({
                         onChange={e => updateLogistics('coordinated_by', e.target.value)}
                     >
                         <option value="">Seleccionar responsable...</option>
-                        {users.map(u => (
-                            <option key={u.id} value={u.name}>
-                                {u.name} {u.role ? `(${u.role})` : ''}
+                        {currentUser?.name && (
+                            <option value={currentUser.name}>
+                                {currentUser.name} (Tú)
                             </option>
-                        ))}
+                        )}
+                        {users
+                            .filter(u => u.name !== currentUser?.name)
+                            .map(u => (
+                                <option key={u.id} value={u.name}>
+                                    {u.name} {u.role ? `(${u.role})` : ''}
+                                </option>
+                            ))
+                        }
                     </select>
                 </div>
 
