@@ -37,7 +37,7 @@ export default function AssetListSection({
         const caseKey = `${task.id || task.caseNumber}`;
         if (lastSyncedCaseRef.current === caseKey) return;
         
-        const caseSerials = caseAssets.map(item => (typeof item === 'string' ? item : item.serial).toLowerCase());
+        const caseSerials = caseAssets.map(item => (typeof item === 'string' ? item : item.serial || '').toLowerCase());
         
         const dbLinkedAssets = assets.filter(a => 
             a.sfdcCase && 
@@ -45,7 +45,7 @@ export default function AssetListSection({
         );
         
         const missingAssets = dbLinkedAssets.filter(dbAsset => 
-            !caseSerials.includes(dbAsset.serial.toLowerCase())
+            dbAsset.serial && !caseSerials.includes(dbAsset.serial.toLowerCase())
         );
         
         if (missingAssets.length > 0) {
@@ -69,11 +69,13 @@ export default function AssetListSection({
             await onUpdateTask({ assets: newAssets });
             
             // Si tenemos el asset en local, desvincularlo también en la tabla Assets
-            const fullAsset = assets.find(a => a.serial === item.serial);
+            const itemSerial = typeof item === 'string' ? item : item.serial;
+            const fullAsset = assets.find(a => a.serial && itemSerial && a.serial.toLowerCase() === itemSerial.toLowerCase());
             if (fullAsset && updateAsset) {
                 await updateAsset(fullAsset.id, {
                     status: 'Disponible',
                     assignee: 'Almacén',
+                    sfdcCase: null,
                     notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') + 
                            `[${new Date().toLocaleDateString()}] Desvinculado de Ticket #${task.ticket_id || 'N/A'}. Regresa a Almacén.`
                 });
@@ -97,7 +99,12 @@ export default function AssetListSection({
     };
 
     const handleLinkToCase = async (serial) => {
-        if (!caseAssets.some(a => a.serial === serial)) {
+        const alreadyLinked = caseAssets.some(a => {
+            const s = typeof a === 'string' ? a : a.serial;
+            return s && s.toLowerCase() === serial.toLowerCase();
+        });
+
+        if (!alreadyLinked) {
             const newAssets = [...caseAssets, { serial: serial, type: '' }];
             const updates = { assets: newAssets };
             
@@ -110,17 +117,26 @@ export default function AssetListSection({
                 await onUpdateTask(updates);
 
                 // Actualizar el activo en la tabla de inventario
-                const fullAsset = assets.find(a => a.serial.toLowerCase() === serial.toLowerCase());
+                const fullAsset = assets.find(a => a.serial && a.serial.toLowerCase() === serial.toLowerCase());
                 if (fullAsset && updateAsset) {
                     const parentTicketId = task.ticket_id;
-                    const assignee = task.subject?.toLowerCase().includes('recupero') ? 'Almacén' : (currentUser?.name || 'Usuario Final');
+                    const taskCaseNumber = task.case_number || task.caseNumber;
+                    const targetSfdcCase = taskCaseNumber || parentTicketId;
+                    
+                    // Automación para detectar destinatario (Almacén para recolecciones/retitros, etc.)
+                    const subjectNormalized = (task.subject || '').toLowerCase();
+                    const isCollection = subjectNormalized.includes('recupero') || 
+                                         subjectNormalized.includes('collection') || 
+                                         subjectNormalized.includes('recoleccion') || 
+                                         subjectNormalized.includes('retiro');
+                    const assignee = isCollection ? 'Almacén' : (currentUser?.name || 'Usuario Final');
                     
                     await updateAsset(fullAsset.id, {
                         status: 'Asignado',
                         assignee: assignee,
-                        sfdcCase: parentTicketId,
+                        sfdcCase: targetSfdcCase,
                         notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') + 
-                               `[${new Date().toLocaleDateString()}] Vinculado a Caso #${task.case_number || task.id} vía Ticket #${parentTicketId || 'N/A'}`
+                               `[${new Date().toLocaleDateString()}] Vinculado a Caso #${taskCaseNumber || task.id} vía Ticket #${parentTicketId || 'N/A'}`
                     });
                 }
             } catch (err) {
@@ -146,7 +162,7 @@ export default function AssetListSection({
                     caseAssets.map((item, idxx) => {
                         // Soporte para formato legacy (string) y nuevo (objeto)
                         const itemSerial = typeof item === 'string' ? item : item.serial;
-                        const assetInfo = assets.find(a => a.serial === itemSerial);
+                        const assetInfo = assets.find(a => a.serial && itemSerial && a.serial.toLowerCase() === itemSerial.toLowerCase());
                         
                         return (
                             <div key={`${idxx}-${itemSerial}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '6px', border: '1px solid var(--border)' }}>

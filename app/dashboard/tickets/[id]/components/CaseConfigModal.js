@@ -61,6 +61,11 @@ export default function CaseConfigModal({
     const [pendingTaskUpdates, setPendingTaskUpdates] = useState({});
     const [localTask, setLocalTask] = useState(null);
 
+    const pendingUpdatesRef = useRef({});
+    useEffect(() => {
+        pendingUpdatesRef.current = pendingTaskUpdates;
+    }, [pendingTaskUpdates]);
+
     // Init localTask when switching to a different task
     useEffect(() => {
         setPendingTaskUpdates({});
@@ -75,28 +80,26 @@ export default function CaseConfigModal({
     // that we DON'T buffer locally (assets written via InventorySelectorModal or
     // handleUpdateTask directly) back into localTask so they appear in the UI.
     useEffect(() => {
-        if (!currentTask || !localTask || currentTask.id !== localTask.id) return;
+        if (!currentTask) return;
 
-        // Fields that get written directly to DB (not buffered) — sync them in.
-        // Fields that ARE buffered (subject, case_type, accessories, yubikeys) stay
-        // local until Guardar is clicked, so we only sync what pendingTaskUpdates
-        // does NOT already have.
         setLocalTask(prev => {
             if (!prev) return prev;
+            // Only merge if it's the same task (same ID)
+            if (currentTask.id !== prev.id) return prev;
+            
             const merged = { ...prev };
 
             // Always merge assets from DB unless the user has a local pending override
-            if (!pendingTaskUpdates.hasOwnProperty('assets')) {
+            if (!pendingUpdatesRef.current.hasOwnProperty('assets')) {
                 merged.assets = currentTask.assets || prev.assets || [];
             }
             // Merge status changes (e.g. auto-unlock from store triggers)
-            if (!pendingTaskUpdates.hasOwnProperty('status')) {
+            if (!pendingUpdatesRef.current.hasOwnProperty('status')) {
                 merged.status = currentTask.status || prev.status;
             }
 
             return merged;
         });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentTask]);
 
     // Use localTask as the source of truth for the UI

@@ -39,7 +39,29 @@ export function useTicketDetail() {
 
     const [editedData, setEditedData] = useState({});
     const [selectedCaseIndex, setSelectedCaseIndex] = useState(null);
-    const ticket = useMemo(() => tickets.find(t => t.id === params.id), [tickets, params.id]);
+    const ticket = useMemo(() => {
+        let found = tickets.find(t => t.id === params.id);
+        if (found) return found;
+
+        const paramIdStr = String(params.id).trim();
+
+        // Check if it's a case number in logisticsTasks
+        const matchingTask = logisticsTasks.find(lt => String(lt.case_number || lt.caseNumber || '').trim() === paramIdStr);
+        if (matchingTask && matchingTask.ticket_id) {
+            found = tickets.find(t => t.id === matchingTask.ticket_id);
+            if (found) return found;
+        }
+
+        // Fallback: Check in legacy associatedCases or main subject
+        found = tickets.find(t => {
+            const mainCaseMatch = (t.subject || '').match(/SFDC-(\d+)/);
+            if (mainCaseMatch && mainCaseMatch[1] === paramIdStr) return true;
+            
+            const assocCases = t.associatedCases || [];
+            return assocCases.some(ac => String(ac.caseNumber || ac.case_number || '').trim() === paramIdStr);
+        });
+        return found;
+    }, [tickets, params.id, logisticsTasks]);
     const ticketTasks = useMemo(() => {
         const tasks = logisticsTasks.filter(t => t.ticket_id === params.id);
         const ticketClient = ticket?.client || ticket?.logistics?.country || 'Argentina';
@@ -112,6 +134,24 @@ export function useTicketDetail() {
         }
     }, [unifiedTasks, selectedCaseIndex]);
 
+    // Auto-select case if URL parameter is a case number
+    useEffect(() => {
+        if (!params.id || !unifiedTasks || unifiedTasks.length === 0 || selectedCaseIndex !== null) return;
+
+        const paramIdStr = String(params.id).trim();
+        // Match 8-digit SFDC case or custom consolidated format (ej: CAS-1201-1358)
+        const isCaseNumber = /^\d{8}$/.test(paramIdStr) || /^CAS-\d+-\d+$/i.test(paramIdStr);
+        if (isCaseNumber) {
+            const idx = unifiedTasks.findIndex(t => 
+                String(t.caseNumber || t.case_number || '').trim() === paramIdStr
+            );
+            if (idx !== -1) {
+                console.log(`Auto-selecting case number ${paramIdStr} at index ${idx}`);
+                setSelectedCaseIndex(idx);
+            }
+        }
+    }, [params.id, unifiedTasks, selectedCaseIndex]);
+
     const [editMode, setEditMode] = useState(false);
     const [editLogistics, setEditLogistics] = useState(false);
     const [editAssets, setEditAssets] = useState(false);
@@ -172,7 +212,9 @@ export function useTicketDetail() {
         if (needsInitialSync || ((needsBackgroundSync || needsChatSync) && !isActivelyEditing)) {
             console.log("Synchronizing editedData with store ticket:", ticket.id);
             
-            let normalizedCases = hasRealTasks ? (editedData.associatedCases || []) : [...storeCases];
+            let normalizedCases = needsInitialSync 
+                ? [...storeCases] 
+                : (hasRealTasks ? (editedData.associatedCases || []) : [...storeCases]);
             
             if (!hasRealTasks && normalizedCases.length === 0) {
                 const oldAssets = ticket.associatedAssets || (ticket.associatedAssetSerial ? [{ serial: ticket.associatedAssetSerial, type: ticket.logistics?.type || 'Entrega' }] : []);
@@ -390,7 +432,7 @@ export function useTicketDetail() {
 
         // Search for the asset in the specific region
         const found = assets.find(a => {
-            const assetSerialLower = a.serial.toLowerCase();
+            const assetSerialLower = (a.serial || '').toLowerCase();
             return (assetSerialLower === normalizedQuery || assetSerialLower === queryWithoutS) && 
                    (!ticketCountry || a.country === ticketCountry);
         });
@@ -406,7 +448,7 @@ export function useTicketDetail() {
         } else {
             // Check if it exists in another region for better UX feedback
             const inOtherRegion = assets.find(a => {
-                const assetSerialLower = a.serial.toLowerCase();
+                const assetSerialLower = (a.serial || '').toLowerCase();
                 return assetSerialLower === normalizedQuery || assetSerialLower === queryWithoutS;
             });
             if (inOtherRegion) {
@@ -477,12 +519,13 @@ export function useTicketDetail() {
                 const automatedData = automateDeliveryStatus(newData);
                 updateTicket(ticket.id, automatedData);
                 setEditedData(automatedData);
-                const fullAsset = assets.find(a => a.serial.toLowerCase() === serialToLink.toLowerCase());
+                const fullAsset = assets.find(a => a.serial && a.serial.toLowerCase() === serialToLink.toLowerCase());
                 if (fullAsset) {
                     const requesterName = editedData.requester || ticket.requester;
                     updateAsset(fullAsset.id, {
                         status: 'Asignado',
                         assignee: requesterName,
+                        sfdcCase: ticket.id,
                         notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') +
                             `[${new Date().toLocaleDateString()}] Auto-asignado vía Ticket #${ticket.id} (${requesterName})`
                     });
@@ -503,11 +546,12 @@ export function useTicketDetail() {
             return newData;
         });
 
-        const fullAsset = assets.find(a => a.serial.toLowerCase() === serial.toLowerCase());
+        const fullAsset = assets.find(a => a.serial && a.serial.toLowerCase() === serial.toLowerCase());
         if (fullAsset) {
             updateAsset(fullAsset.id, {
                 status: 'Disponible',
                 assignee: 'Almacén',
+                sfdcCase: null,
                 notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') +
                     `[${new Date().toLocaleDateString()}] Desvinculado de Ticket #${ticket.id}. Vuelve a Almacén.`
             });
@@ -534,7 +578,7 @@ export function useTicketDetail() {
             status: 'Asignado',
             assignee: editedData.requester || ticket.requester,
             country: taskCountry,
-            sfdcCase: ticket.id
+            sfdcCase: currentTask?.caseNumber || currentTask?.case_number || ticket.id
         };
         
         // 1. Guardar en el inventario global de base de datos
