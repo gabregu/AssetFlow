@@ -74,7 +74,7 @@ export default function CaseConfigModal({
         } else {
             setLocalTask(null);
         }
-    }, [currentTask?.id]);
+    }, [currentTask?.id, currentTask?.caseNumber, currentTask?.case_number]);
 
     // Smart merge: when currentTask changes (Supabase realtime), merge DB fields
     // that we DON'T buffer locally (assets written via InventorySelectorModal or
