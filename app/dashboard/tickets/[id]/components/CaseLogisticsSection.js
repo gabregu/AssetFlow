@@ -161,7 +161,7 @@ export default function CaseLogisticsSection({
 
         // --- AUTOMATIZACIÓN DE ESTADO ---
         // Aplicar solo si no es un estado terminal
-        const TERMINAL_STATUSES = ['Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado'];
+        const TERMINAL_STATUSES = ['Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado', 'No requiere accion'];
         const isExplicitStatus = incomingUpdates.status !== undefined;
 
         if (!isExplicitStatus && !TERMINAL_STATUSES.includes(currentStatus)) {
@@ -209,7 +209,7 @@ export default function CaseLogisticsSection({
             let currentStatus = state.status || task.status || 'Pendiente';
 
             // Aplicar lógica de negocio también en el guardado final
-            const TERMINAL_STATUSES = ['Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado'];
+            const TERMINAL_STATUSES = ['Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado', 'No requiere accion'];
             if (!TERMINAL_STATUSES.includes(currentStatus)) {
                 const hasDriver = !!state.delivery_person;
                 const hasDate = !!state.date;
