@@ -355,16 +355,15 @@ export default function CaseConfigModal({
                                 style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', fontWeight: 800, borderRadius: '12px', opacity: isSavingModal ? 0.7 : 1 }}
                                 disabled={isSavingModal}
                                 onClick={() => safeSaveModal(async () => {
-                                    // Save pending task updates (Subject, Case Type)
-                                    if (Object.keys(pendingTaskUpdates).length > 0) {
-                                        await handleUpdateTask(pendingTaskUpdates);
-                                        setPendingTaskUpdates({}); // clear
-                                    }
-
-                                    // Save logistics info
+                                    // Mergear las actualizaciones pendientes de la tarea (como assets) con la logística
                                     if (logisticsSaveRef.current) {
-                                        const result = await logisticsSaveRef.current();
+                                        const result = await logisticsSaveRef.current(pendingTaskUpdates);
                                         if (result?.error) return; // No cerrar si hubo error
+                                        setPendingTaskUpdates({}); // clear
+                                    } else if (Object.keys(pendingTaskUpdates).length > 0) {
+                                        const result = await handleUpdateTask(pendingTaskUpdates);
+                                        if (result?.error) return;
+                                        setPendingTaskUpdates({});
                                     }
                                     setSelectedCaseIndex(null);
                                 })}

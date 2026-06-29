@@ -196,7 +196,7 @@ export default function CaseLogisticsSection({
     };
 
     // Función de guardado COMPLETO: envía el estado local total a la DB de una vez
-    const saveAll = async () => {
+    const saveAll = async (extraUpdates = {}) => {
         const state = localStateRef.current;
         console.log("saveAll triggered in CaseLogisticsSection. Current state:", state);
         
@@ -233,6 +233,7 @@ export default function CaseLogisticsSection({
                 tracking_number: state.tracking_number,
                 address: state.address,
                 deliveryInfo: state.deliveryInfo,
+                ...extraUpdates
             };
 
             console.log("Sending saveAll payload:", payload);
