@@ -175,6 +175,8 @@ export default function ContactInfoSection({
                                 <><CheckCircle size={12} /> OK</>
                             ) : addressStatus === 'invalid' ? (
                                 <span style={{ color: '#ef4444' }}>No válida</span>
+                            ) : addressStatus === 'api_error' ? (
+                                <span style={{ color: '#f59e0b' }}>Omitida</span>
                             ) : (
                                 'Validar'
                             )}
@@ -184,6 +186,11 @@ export default function ContactInfoSection({
                 {addressStatus === 'invalid' && (
                     <p style={{ color: '#ef4444', fontSize: '0.7rem', marginTop: '4px', margin: 0 }}>
                         ⚠️ Dirección no encontrada en Google Maps.
+                    </p>
+                )}
+                {addressStatus === 'api_error' && (
+                    <p style={{ color: '#f59e0b', fontSize: '0.7rem', marginTop: '4px', margin: 0 }}>
+                        ⚠️ El servicio de verificación de Google Maps no tiene la facturación habilitada. La dirección se guardará tal cual.
                     </p>
                 )}
             </div>

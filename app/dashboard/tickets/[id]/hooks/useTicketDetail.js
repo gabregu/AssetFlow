@@ -379,8 +379,11 @@ export function useTicketDetail() {
                     ...prev,
                     logistics: { ...(prev.logistics || {}), address: results[0].formatted_address }
                 }));
-            } else {
+            } else if (status === 'ZERO_RESULTS') {
                 setAddressStatus('invalid');
+            } else {
+                console.error("Google Maps Geocoding failed with status:", status);
+                setAddressStatus('api_error');
             }
         });
     };
