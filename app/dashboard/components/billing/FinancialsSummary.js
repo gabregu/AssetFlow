@@ -58,6 +58,14 @@ export function FinancialsSummary({ ticket }) {
 
     const formatUSD = (val) => 'USD ' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    const serviceCurrency = ticket.deliveryDetails?.customServiceRevenueCurrency || 'USD';
+    const logisticRevenueCurrency = ticket.deliveryDetails?.customLogisticRevenueCurrency || 'USD';
+    const logisticCostCurrency = ticket.deliveryDetails?.customLogisticCostCurrency || (isARSMethod ? 'ARS' : 'USD');
+
+    const placeholderServiceRevenue = (serviceCurrency === 'ARS') ? autoServiceRevenue * (rate > 0 ? rate : 1) : autoServiceRevenue;
+    const placeholderLogisticRevenue = (logisticRevenueCurrency === 'ARS') ? autoLogisticRevenue * (rate > 0 ? rate : 1) : autoLogisticRevenue;
+    const placeholderLogisticCost = (logisticCostCurrency === 'ARS') ? autoLogisticCost * (rate > 0 ? rate : 1) : autoLogisticCost;
+
     return (
         <Card style={{ padding: '1.25rem', overflow: 'hidden', position: 'relative' }}>
             <div style={{
@@ -123,14 +131,38 @@ export function FinancialsSummary({ ticket }) {
                         <DollarSign size={14} /> Ingreso Servicio
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>USD</span>
+                        <select
+                            disabled={ticket.deliveryDetails?.financialValuesConfirmed}
+                            value={serviceCurrency}
+                            onChange={async (e) => {
+                                await updateTicket(ticket.id, {
+                                    deliveryDetails: {
+                                        ...ticket.deliveryDetails,
+                                        customServiceRevenueCurrency: e.target.value
+                                    }
+                                });
+                            }}
+                            style={{
+                                fontSize: '0.85rem',
+                                fontWeight: 700,
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--text-main)',
+                                cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'pointer',
+                                outline: 'none',
+                                paddingRight: '2px'
+                            }}
+                        >
+                            <option value="USD" style={{ color: '#000000' }}>USD</option>
+                            <option value="ARS" style={{ color: '#000000' }}>ARS</option>
+                        </select>
                         <input
                             type="number"
                             step="0.01"
                             min="0"
                             disabled={ticket.deliveryDetails?.financialValuesConfirmed}
                             value={ticket.deliveryDetails?.customServiceRevenue !== undefined && ticket.deliveryDetails?.customServiceRevenue !== null ? ticket.deliveryDetails.customServiceRevenue : ''}
-                            placeholder={autoServiceRevenue.toFixed(2)}
+                            placeholder={placeholderServiceRevenue.toFixed(2)}
                             onChange={async (e) => {
                                 const val = e.target.value === '' ? null : parseFloat(e.target.value);
                                 await updateTicket(ticket.id, {
@@ -176,14 +208,38 @@ export function FinancialsSummary({ ticket }) {
                         <Truck size={14} /> Ingreso Logística
                     </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>USD</span>
+                        <select
+                            disabled={ticket.deliveryDetails?.financialValuesConfirmed}
+                            value={logisticRevenueCurrency}
+                            onChange={async (e) => {
+                                await updateTicket(ticket.id, {
+                                    deliveryDetails: {
+                                        ...ticket.deliveryDetails,
+                                        customLogisticRevenueCurrency: e.target.value
+                                    }
+                                });
+                            }}
+                            style={{
+                                fontSize: '0.85rem',
+                                fontWeight: 700,
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--text-main)',
+                                cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'pointer',
+                                outline: 'none',
+                                paddingRight: '2px'
+                            }}
+                        >
+                            <option value="USD" style={{ color: '#000000' }}>USD</option>
+                            <option value="ARS" style={{ color: '#000000' }}>ARS</option>
+                        </select>
                         <input
                             type="number"
                             step="0.01"
                             min="0"
                             disabled={ticket.deliveryDetails?.financialValuesConfirmed}
                             value={ticket.deliveryDetails?.customLogisticRevenue !== undefined && ticket.deliveryDetails?.customLogisticRevenue !== null ? ticket.deliveryDetails.customLogisticRevenue : ''}
-                            placeholder={autoLogisticRevenue.toFixed(2)}
+                            placeholder={placeholderLogisticRevenue.toFixed(2)}
                             onChange={async (e) => {
                                 const val = e.target.value === '' ? null : parseFloat(e.target.value);
                                 await updateTicket(ticket.id, {
@@ -238,35 +294,54 @@ export function FinancialsSummary({ ticket }) {
                     </span>
                     {method !== 'N/A' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#ef4444' }}>- {isARSMethod ? 'ARS' : 'USD'}</span>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#ef4444' }}>-</span>
+                            <select
+                                disabled={ticket.deliveryDetails?.financialValuesConfirmed}
+                                value={logisticCostCurrency}
+                                onChange={async (e) => {
+                                    await updateTicket(ticket.id, {
+                                        deliveryDetails: {
+                                            ...ticket.deliveryDetails,
+                                            customLogisticCostCurrency: e.target.value
+                                        }
+                                    });
+                                }}
+                                style={{
+                                    fontSize: '0.85rem',
+                                    fontWeight: 700,
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#ef4444',
+                                    cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'pointer',
+                                    outline: 'none',
+                                    paddingRight: '2px'
+                                }}
+                            >
+                                <option value="USD" style={{ color: '#000000' }}>USD</option>
+                                <option value="ARS" style={{ color: '#000000' }}>ARS</option>
+                            </select>
                             <input
                                 type="number"
                                 step="0.01"
                                 min="0"
                                 disabled={ticket.deliveryDetails?.financialValuesConfirmed}
-                                value={isARSMethod ? 
-                                    (ticket.deliveryDetails?.customLogisticCostARS !== undefined && ticket.deliveryDetails?.customLogisticCostARS !== null ? ticket.deliveryDetails.customLogisticCostARS : '') 
-                                    : 
-                                    (ticket.deliveryDetails?.customLogisticCost !== undefined && ticket.deliveryDetails?.customLogisticCost !== null ? ticket.deliveryDetails.customLogisticCost : '')
+                                value={
+                                    ticket.deliveryDetails?.customLogisticCost !== undefined && ticket.deliveryDetails?.customLogisticCost !== null 
+                                        ? ticket.deliveryDetails.customLogisticCost 
+                                        : (logisticCostCurrency === 'ARS' && ticket.deliveryDetails?.customLogisticCostARS !== undefined && ticket.deliveryDetails?.customLogisticCostARS !== null
+                                            ? ticket.deliveryDetails.customLogisticCostARS
+                                            : '')
                                 }
-                                placeholder={(isARSMethod ? autoLogisticCostARS : autoLogisticCost).toFixed(2)}
+                                placeholder={placeholderLogisticCost.toFixed(2)}
                                 onChange={async (e) => {
                                     const val = e.target.value === '' ? null : parseFloat(e.target.value);
-                                    if (isARSMethod) {
-                                        await updateTicket(ticket.id, {
-                                            deliveryDetails: {
-                                                ...ticket.deliveryDetails,
-                                                customLogisticCostARS: val
-                                            }
-                                        });
-                                    } else {
-                                        await updateTicket(ticket.id, {
-                                            deliveryDetails: {
-                                                ...ticket.deliveryDetails,
-                                                customLogisticCost: val
-                                            }
-                                        });
-                                    }
+                                    await updateTicket(ticket.id, {
+                                        deliveryDetails: {
+                                            ...ticket.deliveryDetails,
+                                            customLogisticCost: val,
+                                            customLogisticCostCurrency: logisticCostCurrency
+                                        }
+                                    });
                                 }}
                                 style={{
                                     width: '75px',
