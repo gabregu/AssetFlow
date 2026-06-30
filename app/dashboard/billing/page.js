@@ -28,6 +28,7 @@ import {
 
 import { calculateTicketFinancials, resolveTicketServiceDetails, calculateTaskFinancials, getExchangeRateForDate } from '@/lib/billing';
 import Link from 'next/link';
+import * as XLSX from 'xlsx';
 
 export default function BillingPage() {
     const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, countryFilter, getClientName, logisticsTasks, updateTicket } = useStore();
@@ -310,6 +311,58 @@ export default function BillingPage() {
             deleteTickets(Array.from(selectedTickets));
             setSelectedTickets(new Set());
         }
+    };
+
+    const handleDownloadExcel = () => {
+        const expectedClient = getClientName(countryFilter) || 'Sycomp';
+        const formattedDate = new Date().toLocaleDateString('es-AR');
+        
+        // Rows mapping
+        const rows = Array.from(selectedTickets).map(id => {
+            const ticket = tickets.find(t => t.id === id);
+            if (!ticket) return null;
+            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
+            if (!financials) return null;
+            
+            return {
+                'Caso': ticket.id,
+                'Descripción / Asunto': ticket.subject || 'Sin Asunto',
+                'Solicitante': ticket.requester || 'Sin Solicitante',
+                'Servicio (USD)': Number(financials.serviceRevenue.toFixed(2)),
+                'Logística (USD)': Number(financials.logisticRevenue.toFixed(2)),
+                'Subtotal (USD)': Number(financials.totalRevenue.toFixed(2))
+            };
+        }).filter(Boolean);
+
+        // Add empty row
+        rows.push({});
+        
+        // Totals
+        rows.push({
+            'Caso': 'TOTAL SERVICIOS:',
+            'Descripción / Asunto': `USD ${invoiceTotals.serviceRevenue.toFixed(2)}`
+        });
+        rows.push({
+            'Caso': 'TOTAL LOGÍSTICA:',
+            'Descripción / Asunto': `USD ${invoiceTotals.logisticRevenue.toFixed(2)}`
+        });
+        rows.push({
+            'Caso': 'TOTAL A FACTURAR:',
+            'Descripción / Asunto': `USD ${invoiceTotals.totalRevenue.toFixed(2)}`
+        });
+        rows.push({
+            'Caso': 'TOTAL A FACTURAR (ARS):',
+            'Descripción / Asunto': `ARS ${(invoiceTotals.totalRevenue * (selectedExchangeRate || 1)).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+        });
+        rows.push({
+            'Caso': 'Tipo de cambio:',
+            'Descripción / Asunto': `1 USD = ${selectedExchangeRate ? selectedExchangeRate.toLocaleString('es-AR') : '-'} ARS`
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Factura");
+        XLSX.writeFile(workbook, `Factura_${expectedClient}_${formattedDate.replace(/\//g, '-')}.xlsx`);
     };
 
     const handlePrintInvoice = () => {
@@ -1760,6 +1813,13 @@ export default function BillingPage() {
                 <div style={{ padding: '0.5rem', maxHeight: '80vh', overflowY: 'auto' }}>
                     {/* Toolbar */}
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                        <Button 
+                            icon={Download} 
+                            onClick={handleDownloadExcel}
+                            style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#10b981' }}
+                        >
+                            Descargar Excel
+                        </Button>
                         <Button 
                             icon={Printer} 
                             onClick={handlePrintInvoice}
