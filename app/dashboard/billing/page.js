@@ -322,12 +322,26 @@ export default function BillingPage() {
                 <head>
                     <title>Pre-Factura de Servicios - ${expectedClient}</title>
                     <style>
+                        @page {
+                            size: A4;
+                            margin: 1.5cm;
+                        }
                         body {
                             font-family: system-ui, -apple-system, sans-serif;
                             color: #1e293b;
-                            padding: 40px;
+                            padding: 0;
+                            margin: 0;
                             background: #fff;
                             line-height: 1.5;
+                        }
+                        .invoice-wrapper {
+                            border: 1px solid #334155;
+                            padding: 30px;
+                            box-sizing: border-box;
+                            min-height: 26.2cm;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: space-between;
                         }
                         .header {
                             display: flex;
@@ -396,98 +410,101 @@ export default function BillingPage() {
                             color: #1e3a8a;
                         }
                         .footer {
-                            margin-top: 120px;
                             text-align: center;
                             font-size: 11px;
                             color: #94a3b8;
                             border-top: 1px solid #e2e8f0;
                             padding-top: 15px;
                             line-height: 1.5;
+                            margin-top: 40px;
                         }
                         @media print {
                             body {
                                 padding: 0;
                             }
-                            @page {
-                                margin: 2cm;
-                            }
                         }
                     </style>
                 </head>
                 <body>
-                    <div class="header">
+                    <div class="invoice-wrapper">
                         <div>
-                            <div class="title">DETALLE DE SERVICIOS A FACTURAR</div>
-                            <div style="font-size: 14px; color: #64748b; font-weight: 600; margin-top: 4px;">AssetFlow Logistics</div>
-                        </div>
-                        <div style="text-align: right; font-size: 13px; color: #475569;">
-                            <strong>Fecha Emisión:</strong> ${new Date().toLocaleDateString('es-ES')}<br/>
-                            <strong>Período:</strong> ${period}
-                        </div>
-                    </div>
-                    
-                    <div class="details">
-                        <div>
-                            <div style="color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Cliente</div>
-                            <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${expectedClient}</div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Resumen de Lote</div>
-                            <div><strong>Servicios Facturados:</strong> ${selectedTickets.size} caso(s)</div>
-                        </div>
-                    </div>
+                            <div class="header">
+                                <div>
+                                    <div class="title">DETALLE DE SERVICIOS A FACTURAR</div>
+                                    <div style="font-size: 14px; color: #64748b; font-weight: 600; margin-top: 4px;">AssetFlow Logistics</div>
+                                </div>
+                                <div style="text-align: right; font-size: 13px; color: #475569;">
+                                    <strong>Fecha Emisión:</strong> ${new Date().toLocaleDateString('es-ES')}<br/>
+                                    <strong>Período:</strong> ${period}
+                                </div>
+                            </div>
+                            
+                            <div class="details">
+                                <div>
+                                    <div style="color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Cliente</div>
+                                    <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${expectedClient}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Resumen de Lote</div>
+                                    <div><strong>Servicios Facturados:</strong> ${selectedTickets.size} caso(s)</div>
+                                </div>
+                            </div>
 
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Caso</th>
-                                <th>Descripción / Asunto</th>
-                                <th>Solicitante</th>
-                                <th style="text-align: right;">Servicio</th>
-                                <th style="text-align: right;">Logística</th>
-                                <th style="text-align: right;">Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${Array.from(selectedTickets).map(id => {
-                                const ticket = tickets.find(t => t.id === id);
-                                if (!ticket) return '';
-                                const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
-                                if (!financials) return '';
-                                return `
+                            <table>
+                                <thead>
                                     <tr>
-                                        <td><strong style="color: #1e3a8a;">${ticket.id}</strong></td>
-                                        <td>${ticket.subject || 'Sin Asunto'}</td>
-                                        <td>${ticket.requester || 'Sin Solicitante'}</td>
-                                        <td style="text-align: right;">USD ${financials.serviceRevenue.toFixed(2)}</td>
-                                        <td style="text-align: right;">USD ${financials.logisticRevenue.toFixed(2)}</td>
-                                        <td style="text-align: right; font-weight: 700; color: #0f172a;">USD ${financials.totalRevenue.toFixed(2)}</td>
+                                        <th>Caso</th>
+                                        <th>Descripción / Asunto</th>
+                                        <th>Solicitante</th>
+                                        <th style="text-align: right;">Servicio</th>
+                                        <th style="text-align: right;">Logística</th>
+                                        <th style="text-align: right;">Subtotal</th>
                                     </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                    
-                    <div class="totals-container">
-                        <div class="totals-box">
-                            <div class="totals-row">
-                                <span>Total Ingreso Servicios:</span>
-                                <span><strong>USD ${invoiceTotals.serviceRevenue.toFixed(2)}</strong></span>
+                                </thead>
+                                <tbody>
+                                    ${Array.from(selectedTickets).map(id => {
+                                        const ticket = tickets.find(t => t.id === id);
+                                        if (!ticket) return '';
+                                        const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
+                                        if (!financials) return '';
+                                        return `
+                                            <tr>
+                                                <td><strong style="color: #1e3a8a;">${ticket.id}</strong></td>
+                                                <td>${ticket.subject || 'Sin Asunto'}</td>
+                                                <td>${ticket.requester || 'Sin Solicitante'}</td>
+                                                <td style="text-align: right;">USD ${financials.serviceRevenue.toFixed(2)}</td>
+                                                <td style="text-align: right;">USD ${financials.logisticRevenue.toFixed(2)}</td>
+                                                <td style="text-align: right; font-weight: 700; color: #0f172a;">USD ${financials.totalRevenue.toFixed(2)}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div>
+                            <div class="totals-container">
+                                <div class="totals-box">
+                                    <div class="totals-row">
+                                        <span>Total Ingreso Servicios:</span>
+                                        <span><strong>USD ${invoiceTotals.serviceRevenue.toFixed(2)}</strong></span>
+                                    </div>
+                                    <div class="totals-row">
+                                        <span>Total Ingreso Logística:</span>
+                                        <span><strong>USD ${invoiceTotals.logisticRevenue.toFixed(2)}</strong></span>
+                                    </div>
+                                    <div class="totals-row grand-total">
+                                        <span>TOTAL A FACTURAR:</span>
+                                        <span>USD ${invoiceTotals.totalRevenue.toFixed(2)}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="totals-row">
-                                <span>Total Ingreso Logística:</span>
-                                <span><strong>USD ${invoiceTotals.logisticRevenue.toFixed(2)}</strong></span>
-                            </div>
-                            <div class="totals-row grand-total">
-                                <span>TOTAL A FACTURAR:</span>
-                                <span>USD ${invoiceTotals.totalRevenue.toFixed(2)}</span>
+                            
+                            <div class="footer">
+                                Este documento es un resumen proforma emitido por AssetFlow con fines informativos de liquidación.<br/>
+                                No posee validez fiscal ni impositiva formal.
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="footer">
-                        Este documento es un resumen proforma emitido por AssetFlow con fines informativos de liquidación.<br/>
-                        No posee validez fiscal ni impositiva formal.
                     </div>
                     
                     <script>
@@ -1755,99 +1772,108 @@ export default function BillingPage() {
                     <div style={{
                         background: '#ffffff',
                         color: '#1e293b',
-                        padding: '2.5rem',
-                        borderRadius: '8px',
-                        border: '1px solid #e2e8f0',
+                        padding: '30px',
+                        borderRadius: '0px',
+                        border: '1px solid #334155',
                         boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.02)',
-                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                        fontFamily: 'system-ui, -apple-system, sans-serif',
+                        minHeight: '26.2cm',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        boxSizing: 'border-box'
                     }}>
-                        {/* Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #334155', paddingBottom: '1.25rem', marginBottom: '2rem' }}>
-                            <div>
-                                <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e3a8a', margin: 0, letterSpacing: '-0.025em' }}>DETALLE DE SERVICIOS A FACTURAR</h1>
-                                <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>AssetFlow Logistics</span>
-                            </div>
-                            <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
-                                <div><strong>Fecha Emisión:</strong> {new Date().toLocaleDateString('es-ES')}</div>
-                                <div><strong>Período:</strong> {period}</div>
-                            </div>
-                        </div>
-
-                        {/* Customer & Summary Details */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', fontSize: '0.875rem', color: '#334155' }}>
-                            <div>
-                                <div style={{ color: '#64748b', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '4px' }}>Cliente</div>
-                                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{getClientName(countryFilter) || 'Sycomp'}</div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ color: '#64748b', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '4px' }}>Resumen de Lote</div>
-                                <div><strong>Servicios seleccionados:</strong> {selectedTickets.size} caso(s)</div>
-                            </div>
-                        </div>
-
-                        {/* Table */}
-                        <div style={{ overflowX: 'auto', marginBottom: '2rem' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                                        <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Caso</th>
-                                        <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Descripción / Asunto</th>
-                                        <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Solicitante</th>
-                                        <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 700 }}>Servicio</th>
-                                        <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 700 }}>Logística</th>
-                                        <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 700 }}>Subtotal</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {Array.from(selectedTickets).map(id => {
-                                        const ticket = tickets.find(t => t.id === id);
-                                        if (!ticket) return null;
-                                        const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
-                                        if (!financials) return null;
-                                        return (
-                                            <tr key={ticket.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                                <td style={{ padding: '10px', fontWeight: 700, color: '#1e3a8a' }}>{ticket.id}</td>
-                                                <td style={{ padding: '10px', color: '#334155' }}>{ticket.subject || 'Sin Asunto'}</td>
-                                                <td style={{ padding: '10px', color: '#64748b' }}>{ticket.requester || 'Sin Solicitante'}</td>
-                                                <td style={{ padding: '10px', textAlign: 'right', color: '#334155' }}>USD {financials.serviceRevenue.toFixed(2)}</td>
-                                                <td style={{ padding: '10px', textAlign: 'right', color: '#334155' }}>USD {financials.logisticRevenue.toFixed(2)}</td>
-                                                <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>USD {financials.totalRevenue.toFixed(2)}</td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Totals */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                            <div style={{
-                                width: '320px',
-                                background: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '6px',
-                                padding: '1.25rem',
-                                fontSize: '0.85rem'
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#475569' }}>
-                                    <span>Total Ingreso Servicios:</span>
-                                    <span style={{ fontWeight: 600 }}>USD {invoiceTotals.serviceRevenue.toFixed(2)}</span>
+                        <div>
+                            {/* Header */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #334155', paddingBottom: '1.25rem', marginBottom: '2rem' }}>
+                                <div>
+                                    <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e3a8a', margin: 0, letterSpacing: '-0.025em' }}>DETALLE DE SERVICIOS A FACTURAR</h1>
+                                    <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>AssetFlow Logistics</span>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#475569' }}>
-                                    <span>Total Ingreso Logística:</span>
-                                    <span style={{ fontWeight: 600 }}>USD {invoiceTotals.logisticRevenue.toFixed(2)}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #cbd5e1', paddingTop: '10px', fontWeight: 800, fontSize: '1rem', color: '#1e3a8a' }}>
-                                    <span>TOTAL FACTURAR:</span>
-                                    <span>USD {invoiceTotals.totalRevenue.toFixed(2)}</span>
+                                <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
+                                    <div><strong>Fecha Emisión:</strong> {new Date().toLocaleDateString('es-ES')}</div>
+                                    <div><strong>Período:</strong> {period}</div>
                                 </div>
                             </div>
+
+                            {/* Customer & Summary Details */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', fontSize: '0.875rem', color: '#334155' }}>
+                                <div>
+                                    <div style={{ color: '#64748b', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '4px' }}>Cliente</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{getClientName(countryFilter) || 'Sycomp'}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ color: '#64748b', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '4px' }}>Resumen de Lote</div>
+                                    <div><strong>Servicios seleccionados:</strong> {selectedTickets.size} caso(s)</div>
+                                </div>
+                            </div>
+
+                            {/* Table */}
+                            <div style={{ overflowX: 'auto', marginBottom: '2rem' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
+                                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Caso</th>
+                                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Descripción / Asunto</th>
+                                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Solicitante</th>
+                                            <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 700 }}>Servicio</th>
+                                            <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 700 }}>Logística</th>
+                                            <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 700 }}>Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Array.from(selectedTickets).map(id => {
+                                            const ticket = tickets.find(t => t.id === id);
+                                            if (!ticket) return null;
+                                            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
+                                            if (!financials) return null;
+                                            return (
+                                                <tr key={ticket.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                    <td style={{ padding: '10px', fontWeight: 700, color: '#1e3a8a' }}>{ticket.id}</td>
+                                                    <td style={{ padding: '10px', color: '#334155' }}>{ticket.subject || 'Sin Asunto'}</td>
+                                                    <td style={{ padding: '10px', color: '#64748b' }}>{ticket.requester || 'Sin Solicitante'}</td>
+                                                    <td style={{ padding: '10px', textAlign: 'right', color: '#334155' }}>USD {financials.serviceRevenue.toFixed(2)}</td>
+                                                    <td style={{ padding: '10px', textAlign: 'right', color: '#334155' }}>USD {financials.logisticRevenue.toFixed(2)}</td>
+                                                    <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>USD {financials.totalRevenue.toFixed(2)}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
-                        {/* Note */}
-                        <div style={{ marginTop: '2.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', textAlign: 'center', fontSize: '0.7rem', color: '#94a3b8', lineHeight: 1.5 }}>
-                            Este documento es un resumen proforma emitido por AssetFlow con fines informativos de liquidación.<br/>
-                            No posee validez fiscal ni impositiva formal.
+                        <div>
+                            {/* Totals */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <div style={{
+                                    width: '320px',
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '6px',
+                                    padding: '1.25rem',
+                                    fontSize: '0.85rem'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#475569' }}>
+                                        <span>Total Ingreso Servicios:</span>
+                                        <span style={{ fontWeight: 600 }}>USD {invoiceTotals.serviceRevenue.toFixed(2)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#475569' }}>
+                                        <span>Total Ingreso Logística:</span>
+                                        <span style={{ fontWeight: 600 }}>USD {invoiceTotals.logisticRevenue.toFixed(2)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #cbd5e1', paddingTop: '10px', fontWeight: 800, fontSize: '1rem', color: '#1e3a8a' }}>
+                                        <span>TOTAL FACTURAR:</span>
+                                        <span>USD {invoiceTotals.totalRevenue.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Note */}
+                            <div style={{ marginTop: '2.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', textAlign: 'center', fontSize: '0.7rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                                Este documento es un resumen proforma emitido por AssetFlow con fines informativos de liquidación.<br/>
+                                No posee validez fiscal ni impositiva formal.
+                            </div>
                         </div>
                     </div>
                 </div>
