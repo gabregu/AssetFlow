@@ -287,10 +287,10 @@ export default function HistoryPage() {
                                     </div>
                                 </th>
                                 <th
-                                    onClick={() => handleSort('date')}
+                                    onClick={() => handleSort('completedDate')}
                                     style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
                                 >
-                                    Fecha Inicio <SortIcon column="date" />
+                                    Fecha Fin <SortIcon column="completedDate" />
                                 </th>
                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
                                     Estado Servicio
@@ -358,7 +358,7 @@ export default function HistoryPage() {
                                                             {ticket.requester || 'Sin Solicitante'}
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{String(ticket.date || '')}</td>
+                                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{getLocalCompletedDateStr(ticket)}</td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                                                             <Badge variant={getStatusVariant(ticket.status)}>{ticket.status}</Badge>
