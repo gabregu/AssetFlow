@@ -64,7 +64,7 @@ export default function ReportsPage() {
 
             let matchesMonth = true;
             if (selectedMonth !== 'All') {
-                const rawDate = t.deliveryDetails?.customBillingDate || t.deliveryCompletedDate || t.closedDate || t.date;
+                const rawDate = t.deliveryDetails?.customBillingDate || t.deliveryCompletedDate;
                 const localStr = getLocalCompletedDateStr(rawDate);
                 if (localStr) {
                     const [yyyy, mm] = localStr.split('-');
@@ -102,7 +102,7 @@ export default function ReportsPage() {
                 data[key] = { label, count: 0 };
             }
             informativeTickets.forEach(t => {
-                const rawDate = t.deliveryDetails?.customBillingDate || t.deliveryCompletedDate || t.closedDate || t.date;
+                const rawDate = t.deliveryDetails?.customBillingDate || t.deliveryCompletedDate;
                 const localStr = getLocalCompletedDateStr(rawDate);
                 if (localStr) {
                     const [yyyy, mm] = localStr.split('-');
@@ -119,7 +119,7 @@ export default function ReportsPage() {
                 data[key] = { label: i.toString(), count: 0 };
             }
             informativeTickets.forEach(t => {
-                const rawDate = t.deliveryDetails?.customBillingDate || t.deliveryCompletedDate || t.closedDate || t.date;
+                const rawDate = t.deliveryDetails?.customBillingDate || t.deliveryCompletedDate;
                 const localStr = getLocalCompletedDateStr(rawDate);
                 if (localStr) {
                     const [yyyy, mm, dd] = localStr.split('-');
@@ -284,7 +284,7 @@ export default function ReportsPage() {
                             {(() => {
                                 const grouped = {};
                                 sortedAndFilteredTickets.forEach(t => {
-                                    const rawDate = t.deliveryDetails?.customBillingDate || t.deliveryCompletedDate || t.closedDate || t.date;
+                                    const rawDate = t.deliveryDetails?.customBillingDate || t.deliveryCompletedDate;
                                     const localStr = getLocalCompletedDateStr(rawDate);
                                     if (!localStr) return;
                                     

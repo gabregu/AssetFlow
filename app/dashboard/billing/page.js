@@ -101,9 +101,16 @@ export default function BillingPage() {
             if (ticket.deliveryDetails?.customBillingDate) {
                 const [yyyy, mm, dd] = ticket.deliveryDetails.customBillingDate.split('-');
                 ticketDate = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+            } else if (ticket.deliveryCompletedDate) {
+                const dateStr = typeof ticket.deliveryCompletedDate === 'string' ? ticket.deliveryCompletedDate.substring(0, 10) : '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                    const [yyyy, mm, dd] = dateStr.split('-');
+                    ticketDate = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+                } else {
+                    ticketDate = new Date(ticket.deliveryCompletedDate);
+                }
             } else {
-                const rawDate = ticket.deliveryCompletedDate || ticket.closedDate || ticket.date || Date.now();
-                ticketDate = new Date(rawDate);
+                return false; // Exclude completely if no delivery completed date or billing date
             }
             const isDateMatch = ticketDate.getMonth() === selectedMonth && ticketDate.getFullYear() === selectedYear;
             const isStatusMatch = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
