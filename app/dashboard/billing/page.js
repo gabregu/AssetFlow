@@ -97,7 +97,14 @@ export default function BillingPage() {
         const currencyKey = 'USD';
 
         const filtered = tickets.filter(ticket => {
-            const ticketDate = new Date(ticket.deliveryCompletedDate || ticket.closedDate || ticket.date || Date.now());
+            let ticketDate;
+            if (ticket.deliveryDetails?.customBillingDate) {
+                const [yyyy, mm, dd] = ticket.deliveryDetails.customBillingDate.split('-');
+                ticketDate = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+            } else {
+                const rawDate = ticket.deliveryCompletedDate || ticket.closedDate || ticket.date || Date.now();
+                ticketDate = new Date(rawDate);
+            }
             const isDateMatch = ticketDate.getMonth() === selectedMonth && ticketDate.getFullYear() === selectedYear;
             const isStatusMatch = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
 

@@ -17,7 +17,7 @@ export default function HistoryPage() {
 
     // Helper to get local resolution/delivery completed date cleanly without timezone shifts
     const getLocalCompletedDateStr = (t) => {
-        const rawDate = t.deliveryCompletedDate || t.closedDate || t.updatedAt || t.updated_at || t.date;
+        const rawDate = t.deliveryDetails?.customBillingDate || t.deliveryCompletedDate || t.closedDate || t.updatedAt || t.updated_at || t.date;
         if (!rawDate) return '';
         
         if (typeof rawDate === 'string') {

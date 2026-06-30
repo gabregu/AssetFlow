@@ -424,6 +424,37 @@ export function FinancialsSummary({ ticket }) {
                     </label>
                 </div>
 
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '0.5rem' }}>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                        Fecha de Facturación
+                    </label>
+                    <input
+                        type="date"
+                        disabled={ticket.deliveryDetails?.financialValuesConfirmed}
+                        value={ticket.deliveryDetails?.customBillingDate || ''}
+                        onChange={async (e) => {
+                            await updateTicket(ticket.id, {
+                                deliveryDetails: {
+                                    ...ticket.deliveryDetails,
+                                    customBillingDate: e.target.value || null
+                                }
+                            });
+                        }}
+                        style={{
+                            width: '100%',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border)',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            color: 'var(--text-main)',
+                            fontSize: '0.875rem',
+                            outline: 'none',
+                            opacity: ticket.deliveryDetails?.financialValuesConfirmed ? 0.6 : 1,
+                            cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'text'
+                        }}
+                    />
+                </div>
+
                 <div style={{
                     marginTop: '0.5rem',
                     padding: '1rem',
