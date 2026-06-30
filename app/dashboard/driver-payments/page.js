@@ -96,8 +96,10 @@ export default function DriverPaymentsPage() {
         const inputVal = paymentInputs[driverName];
         if (inputVal === undefined || inputVal === '') return; // No change
         
-        const numericVal = parseFloat(inputVal);
-        if (isNaN(numericVal)) return;
+        const numericValARS = parseFloat(inputVal);
+        if (isNaN(numericValARS)) return;
+        
+        const numericValUSD = exchangeRate > 0 ? numericValARS / exchangeRate : numericValARS;
 
         const currentActualPayments = rates?.driverActualPayments || {};
         const monthPayments = currentActualPayments[monthKey] || {};
@@ -108,7 +110,7 @@ export default function DriverPaymentsPage() {
                 ...currentActualPayments,
                 [monthKey]: {
                     ...monthPayments,
-                    [driverName]: numericVal
+                    [driverName]: numericValUSD
                 }
             }
         };
@@ -224,11 +226,12 @@ export default function DriverPaymentsPage() {
                     {Object.entries(driverStats)
                         .filter(([name]) => selectedDriver === 'Todos' || name === selectedDriver)
                         .sort((a,b) => b[1].total - a[1].total).map(([name, data]) => {
-                        const savedPayment = rates?.driverActualPayments?.[monthKey]?.[name];
+                        const savedPaymentUSD = rates?.driverActualPayments?.[monthKey]?.[name];
+                        const savedPaymentARS = savedPaymentUSD !== undefined ? (exchangeRate > 0 ? savedPaymentUSD * exchangeRate : savedPaymentUSD) : undefined;
                         const inputRaw = paymentInputs[name];
-                        const inputVal = inputRaw !== undefined ? inputRaw : (savedPayment !== undefined ? String(savedPayment) : '');
-                        const isPaid = savedPayment !== undefined && savedPayment > 0;
-                        const isFullyPaid = savedPayment >= data.total;
+                        const inputVal = inputRaw !== undefined ? inputRaw : (savedPaymentARS !== undefined ? String(savedPaymentARS.toFixed(2)) : '');
+                        const isPaid = savedPaymentUSD !== undefined && savedPaymentUSD > 0;
+                        const isFullyPaid = savedPaymentUSD >= data.total - 0.01; // Allow 1 cent tolerance for float
 
                         return (
                             <Card key={name} style={{ border: isPaid ? (isFullyPaid ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(245, 158, 11, 0.4)') : undefined }}>
@@ -279,7 +282,7 @@ export default function DriverPaymentsPage() {
                                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>PAGADO (REAL)</label>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                             <div style={{ position: 'relative', flex: 1, maxWidth: '250px' }}>
-                                                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>USD</span>
+                                                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>ARS</span>
                                                 <input 
                                                     type="number"
                                                     value={inputVal}
@@ -301,7 +304,7 @@ export default function DriverPaymentsPage() {
                                             {isFullyPaid ? (
                                                 <Badge style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>Completado</Badge>
                                             ) : (
-                                                <Badge style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>Pago Parcial (Deuda: USD {(data.total - Number(savedPayment)).toFixed(2)})</Badge>
+                                                <Badge style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>Pago Parcial (Deuda: USD {(data.total - Number(savedPaymentUSD)).toFixed(2)})</Badge>
                                             )}
                                         </div>
                                     )}
