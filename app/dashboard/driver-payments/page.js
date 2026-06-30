@@ -13,6 +13,7 @@ export default function DriverPaymentsPage() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [paymentInputs, setPaymentInputs] = useState({});
+    const [selectedDriver, setSelectedDriver] = useState('Todos');
     
     const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
 
@@ -26,22 +27,22 @@ export default function DriverPaymentsPage() {
             const date = new Date(ticketDateStr);
             if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
 
-            const method = ticket.logistics?.method || '';
+            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
+            if (!financials) return;
+
+            const method = financials.method || '';
             if (method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local')) {
-                const driverName = ticket.logistics?.deliveryPerson;
-                if (driverName) {
-                    const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
-                    if (financials && financials.logisticCost > 0) {
-                        if (!stats[driverName]) stats[driverName] = { total: 0, items: [] };
-                        stats[driverName].total += financials.logisticCost;
-                        stats[driverName].items.push({
-                            id: ticket.id,
-                            type: 'Ticket',
-                            description: ticket.subject || 'Sin Asunto',
-                            cost: financials.logisticCost,
-                            date: ticketDateStr
-                        });
-                    }
+                const driverName = financials.deliveryPerson;
+                if (driverName && driverName !== 'N/A' && driverName !== 'Múltiple' && financials.logisticCost > 0) {
+                    if (!stats[driverName]) stats[driverName] = { total: 0, items: [] };
+                    stats[driverName].total += financials.logisticCost;
+                    stats[driverName].items.push({
+                        id: ticket.id,
+                        type: 'Ticket',
+                        description: ticket.subject || 'Sin Asunto',
+                        cost: financials.logisticCost,
+                        date: ticketDateStr
+                    });
                 }
             }
         });
@@ -148,6 +149,22 @@ export default function DriverPaymentsPage() {
                         <ChevronRight size={18} />
                     </Button>
                 </div>
+                
+                {Object.keys(driverStats).length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--background)', padding: '0.5rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                        <User size={18} style={{ color: 'var(--text-secondary)', marginLeft: '0.5rem' }} />
+                        <select 
+                            value={selectedDriver}
+                            onChange={(e) => setSelectedDriver(e.target.value)}
+                            style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'transparent', color: 'var(--text-main)', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+                        >
+                            <option value="Todos">Todos los Conductores</option>
+                            {Object.keys(driverStats).sort().map(name => (
+                                <option key={name} value={name}>{name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
             </div>
 
             {/* Resumen General */}
@@ -198,7 +215,9 @@ export default function DriverPaymentsPage() {
                 </Card>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    {Object.entries(driverStats).sort((a,b) => b[1].total - a[1].total).map(([name, data]) => {
+                    {Object.entries(driverStats)
+                        .filter(([name]) => selectedDriver === 'Todos' || name === selectedDriver)
+                        .sort((a,b) => b[1].total - a[1].total).map(([name, data]) => {
                         const savedPayment = rates?.driverActualPayments?.[monthKey]?.[name];
                         const inputRaw = paymentInputs[name];
                         const inputVal = inputRaw !== undefined ? inputRaw : (savedPayment !== undefined ? String(savedPayment) : '');
