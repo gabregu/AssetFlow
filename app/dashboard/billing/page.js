@@ -1218,14 +1218,20 @@ export default function BillingPage() {
                         // If no sub-tasks, fall back to ticket-level calculation
                         const fallbackF = calculateTicketFinancials(t, rates, globalAssets, users, logisticsTasks);
                         
-                        // Grand totals
-                        const grandTotalRevenue = taskFinancials.length > 0
-                            ? taskFinancials.reduce((s, f) => s + f.totalRevenue, 0)
-                            : (fallbackF?.totalRevenue || 0);
-                        const grandTotalCost = taskFinancials.length > 0
-                            ? taskFinancials.reduce((s, f) => s + f.totalCost, 0)
-                            : (fallbackF?.totalCost || 0);
-                        const grandProfit = grandTotalRevenue - grandTotalCost;
+                        // Use fallbackF (ticket-level financials which include custom overrides) as the source of truth for grand totals
+                        const grandTotalRevenue = fallbackF?.totalRevenue || 0;
+                        const grandTotalCost = fallbackF?.totalCost || 0;
+                        const grandProfit = fallbackF?.profit || 0;
+
+                        // If there is only one sub-task, apply the custom overrides to it so the breakdown matches the grand totals
+                        if (taskFinancials.length === 1 && fallbackF) {
+                            taskFinancials[0].serviceRevenue = fallbackF.serviceRevenue;
+                            taskFinancials[0].logisticRevenue = fallbackF.logisticRevenue;
+                            taskFinancials[0].logisticCost = fallbackF.logisticCost;
+                            taskFinancials[0].totalRevenue = fallbackF.totalRevenue;
+                            taskFinancials[0].totalCost = fallbackF.totalCost;
+                            taskFinancials[0].profit = fallbackF.profit;
+                        }
 
                         const fmt = (n) => `USD ${(n || 0).toFixed(2)}`;
 
@@ -1257,6 +1263,28 @@ export default function BillingPage() {
                                         <div style={{ fontSize: '1.5rem', fontWeight: 900, color: grandProfit >= 0 ? '#16a34a' : '#dc2626' }}>{fmt(grandProfit)}</div>
                                     </div>
                                 </div>
+
+                                {/* Custom values warning */}
+                                {(t.deliveryDetails?.customServiceRevenue !== null && t.deliveryDetails?.customServiceRevenue !== undefined || 
+                                  t.deliveryDetails?.customLogisticRevenue !== null && t.deliveryDetails?.customLogisticRevenue !== undefined || 
+                                  t.deliveryDetails?.customLogisticCost !== null && t.deliveryDetails?.customLogisticCost !== undefined ||
+                                  t.deliveryDetails?.customLogisticCostARS !== null && t.deliveryDetails?.customLogisticCostARS !== undefined) && (
+                                    <div style={{ 
+                                        padding: '0.6rem 0.85rem', 
+                                        background: 'rgba(245, 158, 11, 0.05)', 
+                                        border: '1px solid rgba(245, 158, 11, 0.2)', 
+                                        borderRadius: '8px', 
+                                        color: '#b45309', 
+                                        fontSize: '0.75rem', 
+                                        fontWeight: 600, 
+                                        marginBottom: '1rem', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '6px' 
+                                    }}>
+                                        <Info size={14} /> Valores personalizados aplicados a nivel de servicio
+                                    </div>
+                                )}
 
                                 {/* Per-task blocks */}
                                 {taskFinancials.length > 0 ? (
