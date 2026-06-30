@@ -506,6 +506,11 @@ export default function BillingPage() {
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     <span style={{ fontWeight: 600, color: 'var(--text-main)', display: 'block' }}>{ticket.id}</span>
+                                                    {ticket.subject && (
+                                                        <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-main)', display: 'block', margin: '2px 0 4px 0', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={ticket.subject}>
+                                                            {ticket.subject}
+                                                        </span>
+                                                    )}
                                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{ticket.requester}</span>
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
