@@ -486,16 +486,23 @@ export default function BillingPage() {
                             <div class="totals-container">
                                 <div class="totals-box">
                                     <div class="totals-row">
-                                        <span>Total Ingreso Servicios:</span>
+                                        <span>Total Servicios:</span>
                                         <span><strong>USD ${invoiceTotals.serviceRevenue.toFixed(2)}</strong></span>
                                     </div>
                                     <div class="totals-row">
-                                        <span>Total Ingreso Logística:</span>
+                                        <span>Total Logística:</span>
                                         <span><strong>USD ${invoiceTotals.logisticRevenue.toFixed(2)}</strong></span>
                                     </div>
                                     <div class="totals-row grand-total">
                                         <span>TOTAL A FACTURAR:</span>
                                         <span>USD ${invoiceTotals.totalRevenue.toFixed(2)}</span>
+                                    </div>
+                                    <div class="totals-row grand-total" style="border-top: none; padding-top: 0; color: #64748b; font-size: 0.95rem;">
+                                        <span>TOTAL A FACTURAR (ARS):</span>
+                                        <span>ARS ${(invoiceTotals.totalRevenue * (selectedExchangeRate || 1)).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                    </div>
+                                    <div style="text-align: right; font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">
+                                        * Tipo de cambio aplicado: 1 USD = ${selectedExchangeRate ? selectedExchangeRate.toLocaleString('es-AR') : '-'} ARS
                                     </div>
                                 </div>
                             </div>
@@ -1855,16 +1862,23 @@ export default function BillingPage() {
                                     fontSize: '0.85rem'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#475569' }}>
-                                        <span>Total Ingreso Servicios:</span>
+                                        <span>Total Servicios:</span>
                                         <span style={{ fontWeight: 600 }}>USD {invoiceTotals.serviceRevenue.toFixed(2)}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#475569' }}>
-                                        <span>Total Ingreso Logística:</span>
+                                        <span>Total Logística:</span>
                                         <span style={{ fontWeight: 600 }}>USD {invoiceTotals.logisticRevenue.toFixed(2)}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #cbd5e1', paddingTop: '10px', fontWeight: 800, fontSize: '1rem', color: '#1e3a8a' }}>
-                                        <span>TOTAL FACTURAR:</span>
+                                        <span>TOTAL A FACTURAR:</span>
                                         <span>USD {invoiceTotals.totalRevenue.toFixed(2)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px', fontWeight: 700, fontSize: '0.95rem', color: '#64748b' }}>
+                                        <span>TOTAL A FACTURAR (ARS):</span>
+                                        <span>ARS {(invoiceTotals.totalRevenue * (selectedExchangeRate || 1)).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
+                                    <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>
+                                        * Tipo de cambio aplicado: 1 USD = {selectedExchangeRate ? selectedExchangeRate.toLocaleString('es-AR') : '-'} ARS
                                     </div>
                                 </div>
                             </div>
