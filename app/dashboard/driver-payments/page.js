@@ -4,7 +4,7 @@ import { useStore } from '../../../lib/store';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { calculateTicketFinancials, calculateTaskFinancials } from '@/lib/billing';
+import { calculateTicketFinancials, calculateTaskFinancials, getExchangeRateForDate } from '@/lib/billing';
 import { CreditCard, Save, ChevronLeft, ChevronRight, Truck, Calendar, User } from 'lucide-react';
 import Link from 'next/link';
 
@@ -16,6 +16,10 @@ export default function DriverPaymentsPage() {
     const [selectedDriver, setSelectedDriver] = useState('Todos');
     
     const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
+    
+    const exchangeRate = useMemo(() => {
+        return getExchangeRateForDate(rates, new Date(selectedYear, selectedMonth, 1));
+    }, [rates, selectedMonth, selectedYear]);
 
     const { driverStats, totalDue, totalPaid } = useMemo(() => {
         const stats = {};
@@ -188,6 +192,7 @@ export default function DriverPaymentsPage() {
                         <div>
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>TOTAL A PAGAR</p>
                             <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>USD {totalDue.toFixed(2)}</h3>
+                            {exchangeRate > 0 && <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(totalDue * exchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>}
                         </div>
                     </div>
                 </Card>
@@ -199,6 +204,7 @@ export default function DriverPaymentsPage() {
                         <div>
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>TOTAL PAGADO</p>
                             <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>USD {totalPaid.toFixed(2)}</h3>
+                            {exchangeRate > 0 && <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>ARS {(totalPaid * exchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</p>}
                         </div>
                     </div>
                 </Card>
@@ -239,6 +245,7 @@ export default function DriverPaymentsPage() {
                                     <div style={{ textAlign: 'right' }}>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>A PAGAR</div>
                                         <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>USD {data.total.toFixed(2)}</div>
+                                        {exchangeRate > 0 && <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>ARS {(data.total * exchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</div>}
                                     </div>
                                 </div>
 
