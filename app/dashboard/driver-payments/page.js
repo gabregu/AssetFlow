@@ -31,17 +31,33 @@ export default function DriverPaymentsPage() {
         
         // 1. Process Tickets
         tickets.forEach(ticket => {
-            const ticketDateStr = ticket.deliveryCompletedDate || ticket.createdAt;
-            if (!ticketDateStr) return;
-            const date = new Date(ticketDateStr);
-            if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
-
             const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
             if (!financials) return;
 
+            const ticketDateStr = ticket.deliveryCompletedDate || ticket.createdAt;
+
             if (financials.taskFinancials && financials.taskFinancials.length > 0) {
-                // If it has sub-tasks, attribute costs to each driver individually
+                // If it has sub-tasks, attribute costs to each driver individually based on the sub-task's date
                 financials.taskFinancials.forEach(tFin => {
+                    const taskObj = logisticsTasks.find(lt => String(lt.id) === String(tFin.taskId));
+                    
+                    // Unified task stable date
+                    let taskDateStr = null;
+                    if (taskObj) {
+                        if (taskObj.date && taskObj.date !== 'Pendiente' && taskObj.date !== 'Sin fecha') {
+                            taskDateStr = taskObj.date;
+                        } else if (taskObj.delivery_info?.deliveredAt) {
+                            taskDateStr = taskObj.delivery_info.deliveredAt.substring(0, 10);
+                        } else {
+                            taskDateStr = taskObj.created_at ? taskObj.created_at.substring(0, 10) : null;
+                        }
+                    }
+                    if (!taskDateStr) taskDateStr = tFin.date || ticketDateStr;
+                    if (!taskDateStr) return;
+
+                    const date = new Date(taskDateStr.toString().includes('T') ? taskDateStr : taskDateStr + 'T00:00:00');
+                    if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
+
                     if (tFin.taskId) processedTaskIds.add(String(tFin.taskId));
                     
                     const method = tFin.method || '';
@@ -81,7 +97,7 @@ export default function DriverPaymentsPage() {
                                 })(),
                                 requester: ticket.requester || null,
                                 cost: tFin.logisticCost,
-                                date: ticketDateStr,
+                                date: taskDateStr,
                                 client: ticket.client || 'N/A'
                             });
                         }
@@ -89,6 +105,10 @@ export default function DriverPaymentsPage() {
                 });
             } else {
                 // Normal single ticket
+                if (!ticketDateStr) return;
+                const date = new Date(ticketDateStr);
+                if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
+
                 const method = financials.method || '';
                 if (method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local')) {
                     const driverName = financials.deliveryPerson;
@@ -112,9 +132,19 @@ export default function DriverPaymentsPage() {
         // 2. Process Logistic Tasks
         logisticsTasks.forEach(task => {
             if (task.id && processedTaskIds.has(String(task.id))) return;
-            const taskDateStr = task.completed_at || task.created_at;
+            
+            // Unified task stable date
+            let taskDateStr = null;
+            if (task.date && task.date !== 'Pendiente' && task.date !== 'Sin fecha') {
+                taskDateStr = task.date;
+            } else if (task.delivery_info?.deliveredAt) {
+                taskDateStr = task.delivery_info.deliveredAt.substring(0, 10);
+            } else {
+                taskDateStr = task.created_at ? task.created_at.substring(0, 10) : null;
+            }
             if (!taskDateStr || task.status !== 'Completada') return;
-            const date = new Date(taskDateStr);
+
+            const date = new Date(taskDateStr.toString().includes('T') ? taskDateStr : taskDateStr + 'T00:00:00');
             if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
 
             const method = task.delivery_method || '';

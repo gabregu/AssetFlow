@@ -116,6 +116,7 @@ export default function BillingPage() {
         let pendingDeliveriesCount = 0;
 
         const driverPayments = {};
+        const processedTaskIds = new Set();
 
         // Currency Conversion Logic
         // Usar la cotización del MES SELECCIONADO, no la actual
@@ -245,23 +246,60 @@ export default function BillingPage() {
 
         // ── DRIVER TRACKING FOR DRIVER PAYMENTS (cross-client visibility) ──
         // Calculate driver payments using all tickets of the selected period across all clients
-        allPeriodTickets.forEach(ticket => {
+        tickets.forEach(ticket => {
             const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
             if (!financials) return;
 
-            const { logisticCost, moveType, method } = financials;
+            const ticketDateStr = ticket.deliveryCompletedDate || ticket.createdAt;
 
-            const hasRelatedTasks = (logisticsTasks || []).some(tk =>
-                String(tk.ticket_id || tk.ticketId) === String(ticket.id)
-            );
+            if (financials.taskFinancials && financials.taskFinancials.length > 0) {
+                // Process sub-tasks based on sub-task date
+                financials.taskFinancials.forEach(tFin => {
+                    const taskObj = logisticsTasks.find(lt => String(lt.id) === String(tFin.taskId));
+                    let taskDateStr = null;
+                    if (taskObj) {
+                        if (taskObj.date && taskObj.date !== 'Pendiente' && taskObj.date !== 'Sin fecha') {
+                            taskDateStr = taskObj.date;
+                        } else if (taskObj.delivery_info?.deliveredAt) {
+                            taskDateStr = taskObj.delivery_info.deliveredAt.substring(0, 10);
+                        } else {
+                            taskDateStr = taskObj.created_at ? taskObj.created_at.substring(0, 10) : null;
+                        }
+                    }
+                    if (!taskDateStr) taskDateStr = tFin.date || ticketDateStr;
+                    if (!taskDateStr) return;
 
-            if (!hasRelatedTasks) {
-                const isDelivery = String(moveType || '').toLowerCase().includes('entrega') || String(moveType || '').toLowerCase().includes('alta');
-                const isRecovery = String(moveType || '').toLowerCase().includes('recupero') || String(moveType || '').toLowerCase().includes('retiro') || String(moveType || '').toLowerCase().includes('baja');
+                    const date = new Date(taskDateStr.toString().includes('T') ? taskDateStr : taskDateStr + 'T00:00:00');
+                    if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
 
+                    if (tFin.taskId) processedTaskIds.add(String(tFin.taskId));
+
+                    const method = tFin.method || '';
+                    if (method.includes('Repartidor Propio') || method === 'Envío Interno' || method.includes('Propio')) {
+                        const driver = (tFin.deliveryPerson || '').trim();
+                        if (driver) {
+                            const isDelivery = (tFin.moveType || '').toLowerCase().includes('entrega') || (tFin.moveType || '').toLowerCase().includes('alta');
+                            const isRecovery = (tFin.moveType || '').toLowerCase().includes('recupero') || (tFin.moveType || '').toLowerCase().includes('retiro') || (tFin.moveType || '').toLowerCase().includes('baja');
+                            if (!driverPayments[driver]) driverPayments[driver] = { count: 0, total: 0, deliveries: 0, recoveries: 0 };
+                            driverPayments[driver].count += 1;
+                            driverPayments[driver].total += tFin.logisticCost || 0;
+                            if (isDelivery) driverPayments[driver].deliveries += 1;
+                            if (isRecovery) driverPayments[driver].recoveries += 1;
+                        }
+                    }
+                });
+            } else {
+                // Normal single ticket based on ticket date
+                if (!ticketDateStr) return;
+                const date = new Date(ticketDateStr);
+                if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
+
+                const { logisticCost, moveType, method } = financials;
                 if (String(method || '').includes('Repartidor Propio') || String(method || '').includes('Envío Interno') || String(method || '').includes('Propio')) {
-                    const driver = ticket.logistics?.deliveryPerson || '';
+                    const driver = (ticket.logistics?.deliveryPerson || '').trim();
                     if (driver) {
+                        const isDelivery = String(moveType || '').toLowerCase().includes('entrega') || String(moveType || '').toLowerCase().includes('alta');
+                        const isRecovery = String(moveType || '').toLowerCase().includes('recupero') || String(moveType || '').toLowerCase().includes('retiro') || String(moveType || '').toLowerCase().includes('baja');
                         if (!driverPayments[driver]) driverPayments[driver] = { count: 0, total: 0, deliveries: 0, recoveries: 0 };
                         driverPayments[driver].count += 1;
                         driverPayments[driver].total += logisticCost;
@@ -273,12 +311,22 @@ export default function BillingPage() {
         });
 
         // Track driver payments via logisticsTasks for all period tickets (cross-client)
-        const allTasksForDrivers = (logisticsTasks || []).filter(task => {
-            const parentTicket = allPeriodTickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
-            return !!parentTicket;
-        });
+        logisticsTasks.forEach(task => {
+            if (task.id && processedTaskIds.has(String(task.id))) return;
+            
+            let taskDateStr = null;
+            if (task.date && task.date !== 'Pendiente' && task.date !== 'Sin fecha') {
+                taskDateStr = task.date;
+            } else if (task.delivery_info?.deliveredAt) {
+                taskDateStr = task.delivery_info.deliveredAt.substring(0, 10);
+            } else {
+                taskDateStr = task.created_at ? task.created_at.substring(0, 10) : null;
+            }
+            if (!taskDateStr || task.status !== 'Completada') return;
 
-        allTasksForDrivers.forEach(task => {
+            const date = new Date(taskDateStr.toString().includes('T') ? taskDateStr : taskDateStr + 'T00:00:00');
+            if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
+
             const taskF = calculateTaskFinancials(task, rates, globalAssets, users);
             if (!taskF) return;
 

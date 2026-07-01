@@ -53,7 +53,15 @@ export default function MyStatsPage() {
                     isMainTicket: false,
                     displayDate: task.date || 'Pendiente',
                     displayStatus: task.status || 'Pendiente',
-                    deliveryCompletedDate: task.updated_at,
+                    deliveryCompletedDate: (() => {
+                        if (task.date && task.date !== 'Pendiente' && task.date !== 'Sin fecha') {
+                            return task.date;
+                        }
+                        if (task.delivery_info?.deliveredAt) {
+                            return task.delivery_info.deliveredAt.substring(0, 10);
+                        }
+                        return task.updated_at ? task.updated_at.substring(0, 10) : null;
+                    })(),
                     parentTicket: pTicket,
                     caseData: task,
                 });
@@ -808,11 +816,12 @@ export default function MyStatsPage() {
                             <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
                                 <div>
                                     <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Pagado Real</span>
-                                    <strong style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>
-                                        {exchangeRate > 0 ? (
-                                            <>ARS {(savedPaymentUSD * exchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</>
-                                        ) : (
-                                            <>USD {savedPaymentUSD.toFixed(2)}</>
+                                    <strong style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        <span>USD {savedPaymentUSD.toFixed(2)}</span>
+                                        {exchangeRate > 0 && (
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                                                ARS {(savedPaymentUSD * exchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })} (T/C: {exchangeRate})
+                                            </span>
                                         )}
                                     </strong>
                                 </div>
