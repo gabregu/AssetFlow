@@ -23,8 +23,6 @@ export function Sidebar({ isOpen, onClose }) {
         { name: 'Servicios', icon: Ticket, path: '/dashboard/tickets', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Tráfico Logística', icon: Activity, path: '/dashboard/logistics', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Envíos', icon: Truck, path: '/dashboard/deliveries', roles: ['admin', 'Administrativo', 'Gerencial'] },
-        { name: 'Facturación', icon: DollarSign, path: '/dashboard/billing', roles: ['admin', 'Gerencial'] },
-        { name: 'Pago a Conductores', icon: Banknote, path: '/dashboard/driver-payments', roles: ['admin', 'Gerencial'] },
         { name: 'Histórico', icon: History, path: '/dashboard/history', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Inventario', icon: Package, path: '/dashboard/inventory', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Mapeo Depósito', icon: Map, path: '/dashboard/warehouse', roles: ['admin', 'Administrativo', 'Gerencial'] },
@@ -40,6 +38,11 @@ export function Sidebar({ isOpen, onClose }) {
         { name: 'Vista General', icon: FileText, path: '/dashboard/reports', roles: ['admin', 'Administrativo', 'Gerencial'] },
     ];
 
+    const financialItems = [
+        { name: 'Facturación', icon: DollarSign, path: '/dashboard/billing', roles: ['admin', 'Gerencial'] },
+        { name: 'Pago a Conductores', icon: Banknote, path: '/dashboard/driver-payments', roles: ['admin', 'Gerencial'] },
+    ];
+
     const filterByRole = (items) => items.filter(item =>
         !item.roles || (currentUser && item.roles.includes(currentUser.role))
     );
@@ -47,6 +50,7 @@ export function Sidebar({ isOpen, onClose }) {
     const filteredMainItems = filterByRole(menuItems);
     const filteredPersonalItems = filterByRole(personalItems);
     const filteredReportItems = filterByRole(reportItems);
+    const filteredFinancialItems = filterByRole(financialItems);
 
     const renderMenuItem = (item) => {
         const isActive = pathname === item.path;
@@ -188,6 +192,29 @@ export function Sidebar({ isOpen, onClose }) {
                 )}
 
                 {filteredReportItems.map(renderMenuItem)}
+
+                {filteredFinancialItems.length > 0 && (
+                    <div style={{
+                        margin: '1.5rem 0 0.5rem 0',
+                        padding: '0 1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem'
+                    }}>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border)' }} />
+                        <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            color: 'var(--text-secondary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.1em',
+                            whiteSpace: 'nowrap'
+                        }}>Info Financiera</span>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border)' }} />
+                    </div>
+                )}
+
+                {filteredFinancialItems.map(renderMenuItem)}
             </nav>
 
             <div style={{ 
