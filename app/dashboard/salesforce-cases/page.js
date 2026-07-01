@@ -102,7 +102,9 @@ export default function SFDCCasesPage() {
     const shouldHideCase = (c) => {
         const relatedTickets = tickets ? tickets.filter(t => 
             String(t.id) === String(c.caseNumber) || 
-            (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber) === String(c.caseNumber))) ||
+            (t.salesforceCase && String(t.salesforceCase).trim() === String(c.caseNumber).trim()) ||
+            (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber).trim() === String(c.caseNumber).trim())) ||
+            (t.excludedCases && t.excludedCases.some(ec => String(ec).trim() === String(c.caseNumber).trim())) ||
             (t.subject && t.subject.includes(c.caseNumber))
         ) : [];
 
@@ -883,14 +885,34 @@ export default function SFDCCasesPage() {
             });
 
             // 3. Filtrar duplicados ya convertidos a SERVICIOS/TICKETS
-            // Buscamos si el caseNumber está PRESENTE en el asunto de algún ticket existente
+            // Buscamos si el caseNumber está asociado a algún ticket existente en cualquiera de sus campos
             const existingConvertedCaseNumbers = new Set();
 
-            // Recorremos todos los tickets una sola vez para extraer posibles casos
             tickets.forEach(t => {
-                if (!t.subject) return;
                 deduplicatedNewCases.forEach(nc => {
-                    if (t.subject.includes(nc.caseNumber)) {
+                    const caseNumStr = String(nc.caseNumber).trim();
+                    if (!caseNumStr) return;
+
+                    // 3.1 En el ID del ticket
+                    const isIdMatch = t.id && String(t.id).trim().includes(caseNumStr);
+
+                    // 3.2 En el asunto (subject)
+                    const isSubjectMatch = t.subject && t.subject.includes(caseNumStr);
+
+                    // 3.3 En el campo explícito de Salesforce Case
+                    const isSfdcMatch = t.salesforceCase && String(t.salesforceCase).trim() === caseNumStr;
+
+                    // 3.4 En la lista de casos agrupados/consolidados
+                    const isAssociatedMatch = t.associatedCases && t.associatedCases.some(ac => 
+                        ac.caseNumber && String(ac.caseNumber).trim() === caseNumStr
+                    );
+
+                    // 3.5 En la lista de casos excluidos
+                    const isExcludedMatch = t.excludedCases && t.excludedCases.some(ec => 
+                        String(ec).trim() === caseNumStr
+                    );
+
+                    if (isIdMatch || isSubjectMatch || isSfdcMatch || isAssociatedMatch || isExcludedMatch) {
                         existingConvertedCaseNumbers.add(nc.caseNumber);
                     }
                 });
@@ -903,7 +925,7 @@ export default function SFDCCasesPage() {
                 const isConverted = existingConvertedCaseNumbers.has(c.caseNumber);
 
                 // Debug log para ver qué estamos saltando
-                if (isConverted) console.log(`Skipping Case ${c.caseNumber} (Already valid Ticket)`);
+                if (isConverted) console.log(`Skipping Case ${c.caseNumber} (Already valid/associated Ticket)`);
 
                 return !isConverted;
             });
