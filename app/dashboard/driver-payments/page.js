@@ -48,11 +48,11 @@ export default function DriverPaymentsPage() {
                             if (!stats[driverName]) stats[driverName] = { total: 0, items: [] };
                             stats[driverName].total += tFin.logisticCost;
                             stats[driverName].items.push({
-                                id: tFin.taskId || ticket.id,
+                                id: ticket.id,
                                 type: 'Sub-caso',
-                                description: tFin.taskSubject || ticket.subject || 'Sin Asunto',
-                                requester: ticket.requester || null,
-                                salesforceCase: tFin.taskRef || ticket.salesforceCase || null,
+                                description: ticket.salesforceCase && !(tFin.taskSubject || '').includes(ticket.salesforceCase) 
+                                    ? `[${ticket.salesforceCase}] ${tFin.taskSubject || ticket.subject || 'Sin Asunto'}` 
+                                    : (tFin.taskSubject || ticket.subject || 'Sin Asunto'),
                                 cost: tFin.logisticCost,
                                 date: ticketDateStr
                             });
@@ -71,8 +71,6 @@ export default function DriverPaymentsPage() {
                             id: ticket.id,
                             type: 'Ticket',
                             description: ticket.subject || 'Sin Asunto',
-                            requester: ticket.requester || null,
-                            salesforceCase: ticket.salesforceCase || null,
                             cost: financials.logisticCost,
                             date: ticketDateStr
                         });
@@ -101,7 +99,6 @@ export default function DriverPaymentsPage() {
                             id: task.id || 'Tarea Logística',
                             type: 'Tarea',
                             description: task.description || 'Movimiento de Inventario',
-                            requester: null,
                             cost: financials.logisticCost,
                             date: taskDateStr
                         });
@@ -197,13 +194,10 @@ export default function DriverPaymentsPage() {
         
         let itemsHtml = '';
         data.items.forEach(item => {
-            const req = item.requester || '-';
-            const sfdc = item.salesforceCase ? `[${item.salesforceCase}] ` : '';
             itemsHtml += `
                 <tr>
                     <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${item.id}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${sfdc}${item.description}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${req}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${item.description}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold;">USD ${item.cost.toFixed(2)}</td>
                 </tr>
             `;
@@ -244,7 +238,6 @@ export default function DriverPaymentsPage() {
                             <tr>
                                 <th>ID</th>
                                 <th>Descripción</th>
-                                <th style="text-align: center;">Solicitante</th>
                                 <th style="text-align: right;">Costo</th>
                             </tr>
                         </thead>
@@ -431,7 +424,6 @@ export default function DriverPaymentsPage() {
                                                 <th style={{ padding: '0.75rem 1rem', width: '40px', textAlign: 'center' }}></th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>ID</th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>Descripción</th>
-                                                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>Solicitante</th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 600 }}>Costo Logístico</th>
                                             </tr>
                                         </thead>
@@ -459,18 +451,7 @@ export default function DriverPaymentsPage() {
                                                             <span>{item.description}</span>
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', opacity: isChecked ? 0.6 : 1 }}>
-                                                        {item.requester ? (
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>
-                                                                    {String(item.requester).charAt(0).toUpperCase()}
-                                                                </div>
-                                                                <div style={{ fontSize: '0.85rem' }}>{item.requester}</div>
-                                                            </div>
-                                                        ) : (
-                                                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>-</span>
-                                                        )}
-                                                    </td>
+
                                                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-main)', opacity: isChecked ? 0.6 : 1 }}>USD {item.cost.toFixed(2)}</td>
                                                 </tr>
                                                 );
