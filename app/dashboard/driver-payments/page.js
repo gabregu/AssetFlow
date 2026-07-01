@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { calculateTicketFinancials, calculateTaskFinancials, getExchangeRateForDate } from '@/lib/billing';
-import { CreditCard, Save, ChevronLeft, ChevronRight, Truck, Calendar, User } from 'lucide-react';
+import { CreditCard, Save, ChevronLeft, ChevronRight, Truck, Calendar, User, Printer } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DriverPaymentsPage() {
@@ -156,6 +156,110 @@ export default function DriverPaymentsPage() {
         });
         
         alert(`Liquidación guardada para ${driverName}`);
+    };
+
+    const handlePrintDriverCases = (driverName, data, savedPaymentUSD) => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return alert('Por favor, permite las ventanas emergentes (pop-ups) en tu navegador.');
+        
+        const period = `${monthNames[selectedMonth]} de ${selectedYear}`;
+        const totalARS = exchangeRate > 0 ? (data.total * exchangeRate).toFixed(2) : '0.00';
+        const paidUSD = savedPaymentUSD || 0;
+        const debtUSD = data.total - paidUSD;
+        
+        let itemsHtml = '';
+        data.items.forEach(item => {
+            const req = item.requester || '-';
+            const sfdc = item.salesforceCase ? `[${item.salesforceCase}] ` : '';
+            itemsHtml += `
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${item.id}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${sfdc}${item.description}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${req}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold;">USD ${item.cost.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        const arsHtml = exchangeRate > 0 ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px; color: #64748b;">
+                <span>Total a Pagar (ARS):</span>
+                <strong>ARS ${totalARS}</strong>
+            </div>` : '';
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Liquidación de Servicios - ${driverName}</title>
+                    <style>
+                        @page { size: A4; margin: 1.5cm; }
+                        body { font-family: system-ui, -apple-system, sans-serif; color: #1e293b; line-height: 1.5; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+                        th { background: #f8fafc; padding: 10px; text-align: left; font-weight: 600; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
+                    </style>
+                </head>
+                <body>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #334155; padding-bottom: 15px; margin-bottom: 20px;">
+                        <div>
+                            <h1 style="margin: 0; font-size: 24px;">Liquidación de Servicios Logísticos</h1>
+                            <p style="margin: 5px 0 0; color: #64748b; font-size: 16px;">Conductor: <strong>${driverName}</strong></p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase;">Período</div>
+                            <div style="font-size: 18px; font-weight: bold;">${period}</div>
+                            <div style="margin-top: 5px; font-size: 12px; color: #64748b;">Tipo de Cambio: ${exchangeRate > 0 ? '1 USD = ' + exchangeRate + ' ARS' : 'N/A'}</div>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Descripción</th>
+                                <th style="text-align: center;">Solicitante</th>
+                                <th style="text-align: right;">Costo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
+                        <div style="width: 300px; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                <span style="color: #64748b;">Servicios Completados:</span>
+                                <strong>${data.items.length}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 18px;">
+                                <span>Total a Pagar (USD):</span>
+                                <strong>USD ${data.total.toFixed(2)}</strong>
+                            </div>
+                            </div>
+                            ${arsHtml}
+                            <div style="border-top: 1px solid #cbd5e1; margin: 10px 0;"></div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #10b981;">
+                                <span>Monto Abonado:</span>
+                                <strong>USD ${paidUSD.toFixed(2)}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; color: ${debtUSD > 0.01 ? '#f59e0b' : '#64748b'};">
+                                <span>Saldo Pendiente:</span>
+                                <strong>USD ${debtUSD > 0.01 ? debtUSD.toFixed(2) : '0.00'}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 50px; text-align: center; color: #94a3b8; font-size: 12px;">
+                        Documento generado desde el panel de control de AssetFlow.
+                    </div>
+                    
+                    <script>
+                        window.onload = function() { window.print(); }
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
     };
 
     const handleMonthChange = (delta) => {
@@ -371,6 +475,13 @@ export default function DriverPaymentsPage() {
                                                 style={{ backgroundColor: 'var(--primary-color)', color: 'white', borderColor: 'var(--primary-color)' }}
                                             >
                                                 <Save size={16} style={{ marginRight: '6px' }}/> Guardar
+                                            </Button>
+                                            <Button 
+                                                variant="secondary"
+                                                onClick={() => handlePrintDriverCases(name, data, savedPaymentUSD)}
+                                                style={{ padding: '0.6rem 1rem', border: '1px solid var(--border)' }}
+                                            >
+                                                <Printer size={16} style={{ marginRight: '6px' }}/> PDF
                                             </Button>
                                         </div>
                                     </div>
