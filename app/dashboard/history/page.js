@@ -343,11 +343,7 @@ export default function HistoryPage() {
                                                     <td style={{ padding: '1rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                             <div style={{ fontWeight: 500 }}>{String(ticket.subject || 'Sin Asunto')}</div>
-                                                            {ticket.client && (
-                                                                <Badge variant="secondary" style={{ fontSize: '0.65rem', padding: '2px 6px', opacity: 0.8 }}>
-                                                                    {ticket.client}
-                                                                </Badge>
-                                                            )}
+
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>
