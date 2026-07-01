@@ -50,9 +50,18 @@ export default function DriverPaymentsPage() {
                             stats[driverName].items.push({
                                 id: ticket.id,
                                 type: 'Sub-caso',
-                                description: ticket.salesforceCase && !(tFin.taskSubject || '').includes(ticket.salesforceCase) 
-                                    ? `[${ticket.salesforceCase}] ${tFin.taskSubject || ticket.subject || 'Sin Asunto'}` 
-                                    : (tFin.taskSubject || ticket.subject || 'Sin Asunto'),
+                                description: (() => {
+                                    const ref = tFin.taskRef || ticket.salesforceCase;
+                                    const subject = tFin.taskSubject || ticket.subject || 'Sin Asunto';
+                                    if (ref) {
+                                        const cleanRef = String(ref).trim();
+                                        const prefix = /^\d+$/.test(cleanRef) ? `SFDC-${cleanRef}` : cleanRef;
+                                        if (!subject.includes(prefix)) {
+                                            return `[${prefix}] ${subject}`;
+                                        }
+                                    }
+                                    return subject;
+                                })(),
                                 cost: tFin.logisticCost,
                                 date: ticketDateStr
                             });
@@ -443,7 +452,7 @@ export default function DriverPaymentsPage() {
                                                         />
                                                     </td>
                                                     <td style={{ padding: '0.75rem 1rem', fontWeight: 500, color: 'var(--primary-color)' }}>
-                                                        {item.type === 'Ticket' ? <Link href={`/dashboard/tickets/${item.id}`}>{item.id}</Link> : item.id}
+                                                        {item.type === 'Ticket' || item.type === 'Sub-caso' ? <Link href={`/dashboard/tickets/${item.id}`}>{item.id}</Link> : item.id}
                                                     </td>
                                                     <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', textDecoration: isChecked ? 'line-through' : 'none', opacity: isChecked ? 0.6 : 1 }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
