@@ -24,6 +24,7 @@ export default function DriverPaymentsPage() {
 
     const { driverStats, totalDue, totalPaid } = useMemo(() => {
         const stats = {};
+        const processedTaskIds = new Set();
         
         // 1. Process Tickets
         tickets.forEach(ticket => {
@@ -35,27 +36,54 @@ export default function DriverPaymentsPage() {
             const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
             if (!financials) return;
 
-            const method = financials.method || '';
-            if (method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local')) {
-                const driverName = financials.deliveryPerson;
-                if (driverName && driverName !== 'N/A' && driverName !== 'Múltiple' && financials.logisticCost > 0) {
-                    if (!stats[driverName]) stats[driverName] = { total: 0, items: [] };
-                    stats[driverName].total += financials.logisticCost;
-                    stats[driverName].items.push({
-                        id: ticket.id,
-                        type: 'Ticket',
-                        description: ticket.subject || 'Sin Asunto',
-                        requester: ticket.requester || null,
-                        salesforceCase: ticket.salesforceCase || null,
-                        cost: financials.logisticCost,
-                        date: ticketDateStr
-                    });
+            if (financials.taskFinancials && financials.taskFinancials.length > 0) {
+                // If it has sub-tasks, attribute costs to each driver individually
+                financials.taskFinancials.forEach(tFin => {
+                    if (tFin.taskId) processedTaskIds.add(String(tFin.taskId));
+                    
+                    const method = tFin.method || '';
+                    if (method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local')) {
+                        const driverName = tFin.deliveryPerson;
+                        if (driverName && driverName !== 'N/A' && driverName !== 'Múltiple' && tFin.logisticCost > 0) {
+                            if (!stats[driverName]) stats[driverName] = { total: 0, items: [] };
+                            stats[driverName].total += tFin.logisticCost;
+                            stats[driverName].items.push({
+                                id: tFin.taskId || ticket.id,
+                                type: 'Sub-caso',
+                                description: tFin.taskSubject || ticket.subject || 'Sin Asunto',
+                                requester: ticket.requester || null,
+                                salesforceCase: tFin.taskRef || ticket.salesforceCase || null,
+                                cost: tFin.logisticCost,
+                                date: ticketDateStr
+                            });
+                        }
+                    }
+                });
+            } else {
+                // Normal single ticket
+                const method = financials.method || '';
+                if (method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local')) {
+                    const driverName = financials.deliveryPerson;
+                    if (driverName && driverName !== 'N/A' && driverName !== 'Múltiple' && financials.logisticCost > 0) {
+                        if (!stats[driverName]) stats[driverName] = { total: 0, items: [] };
+                        stats[driverName].total += financials.logisticCost;
+                        stats[driverName].items.push({
+                            id: ticket.id,
+                            type: 'Ticket',
+                            description: ticket.subject || 'Sin Asunto',
+                            requester: ticket.requester || null,
+                            salesforceCase: ticket.salesforceCase || null,
+                            cost: financials.logisticCost,
+                            date: ticketDateStr
+                        });
+                    }
                 }
             }
         });
 
         // 2. Process Logistic Tasks
         logisticsTasks.forEach(task => {
+            if (task.id && processedTaskIds.has(String(task.id))) return;
             const taskDateStr = task.completed_at || task.created_at;
             if (!taskDateStr || task.status !== 'Completada') return;
             const date = new Date(taskDateStr);
