@@ -13,6 +13,7 @@ export default function DriverPaymentsPage() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [paymentInputs, setPaymentInputs] = useState({});
+    const [localChecks, setLocalChecks] = useState({});
     const [selectedDriver, setSelectedDriver] = useState('Todos');
     
     const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
@@ -94,15 +95,33 @@ export default function DriverPaymentsPage() {
 
     const handleSavePayment = async (driverName) => {
         const inputVal = paymentInputs[driverName];
-        if (inputVal === undefined || inputVal === '') return; // No change
         
-        const numericValARS = parseFloat(inputVal);
-        if (isNaN(numericValARS)) return;
-        
-        const numericValUSD = exchangeRate > 0 ? numericValARS / exchangeRate : numericValARS;
-
+        // 1. Process Payment Value
         const currentActualPayments = rates?.driverActualPayments || {};
         const monthPayments = currentActualPayments[monthKey] || {};
+        let numericValUSD = monthPayments[driverName]; // Keep existing by default
+
+        if (inputVal !== undefined && inputVal !== '') {
+            const numericValARS = parseFloat(inputVal);
+            if (!isNaN(numericValARS)) {
+                numericValUSD = exchangeRate > 0 ? numericValARS / exchangeRate : numericValARS;
+            }
+        }
+
+        // 2. Process Checkboxes
+        const currentItemChecks = rates?.driverItemChecks || {};
+        const monthChecks = currentItemChecks[monthKey] || {};
+        const driverChecks = monthChecks[driverName] || {};
+        
+        let newDriverChecks = { ...driverChecks };
+        
+        const items = driverStats[driverName]?.items || [];
+        items.forEach(item => {
+            const key = `${driverName}-${item.id}`;
+            if (localChecks[key] !== undefined) {
+                newDriverChecks[item.id] = localChecks[key];
+            }
+        });
         
         const newRates = {
             ...rates,
@@ -112,11 +131,28 @@ export default function DriverPaymentsPage() {
                     ...monthPayments,
                     [driverName]: numericValUSD
                 }
+            },
+            driverItemChecks: {
+                ...currentItemChecks,
+                [monthKey]: {
+                    ...monthChecks,
+                    [driverName]: newDriverChecks
+                }
             }
         };
 
         await updateRates(newRates, true);
-        alert(`Pago guardado para ${driverName}`);
+        
+        // Clear local checks for this driver so they read from rates again
+        setLocalChecks(prev => {
+            const next = { ...prev };
+            items.forEach(item => {
+                delete next[`${driverName}-${item.id}`];
+            });
+            return next;
+        });
+        
+        alert(`Liquidación guardada para ${driverName}`);
     };
 
     const handleMonthChange = (delta) => {
@@ -257,21 +293,35 @@ export default function DriverPaymentsPage() {
                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                                         <thead>
                                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                                <th style={{ padding: '0.75rem 1rem', width: '40px', textAlign: 'center' }}></th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>ID</th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>Descripción</th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 600 }}>Costo Logístico</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {data.items.map((item, idx) => (
-                                                <tr key={idx} style={{ borderBottom: idx < data.items.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                                            {data.items.map((item, idx) => {
+                                                const checkKey = `${name}-${item.id}`;
+                                                const isChecked = localChecks[checkKey] ?? (rates?.driverItemChecks?.[monthKey]?.[name]?.[item.id] || false);
+                                                
+                                                return (
+                                                <tr key={idx} style={{ borderBottom: idx < data.items.length - 1 ? '1px solid var(--border)' : 'none', background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'transparent' }}>
+                                                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={isChecked}
+                                                            onChange={() => setLocalChecks(prev => ({...prev, [checkKey]: !isChecked}))}
+                                                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                        />
+                                                    </td>
                                                     <td style={{ padding: '0.75rem 1rem', fontWeight: 500, color: 'var(--primary-color)' }}>
                                                         {item.type === 'Ticket' ? <Link href={`/dashboard/tickets/${item.id}`}>{item.id}</Link> : item.id}
                                                     </td>
-                                                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)' }}>{item.description}</td>
-                                                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-main)' }}>USD {item.cost.toFixed(2)}</td>
+                                                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', textDecoration: isChecked ? 'line-through' : 'none', opacity: isChecked ? 0.6 : 1 }}>{item.description}</td>
+                                                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-main)', opacity: isChecked ? 0.6 : 1 }}>USD {item.cost.toFixed(2)}</td>
                                                 </tr>
-                                            ))}
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>
