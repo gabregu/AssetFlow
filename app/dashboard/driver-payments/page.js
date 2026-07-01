@@ -51,8 +51,21 @@ export default function DriverPaymentsPage() {
                                 id: ticket.id,
                                 type: 'Sub-caso',
                                 description: (() => {
+                                    const assetRefs = tFin.assetCases || [];
+                                    let subject = tFin.taskSubject || ticket.subject || 'Sin Asunto';
+                                    
+                                    if (assetRefs.length > 0) {
+                                        assetRefs.forEach(ref => {
+                                            const cleanRef = String(ref).trim();
+                                            const prefix = /^\d+$/.test(cleanRef) ? `SFDC-${cleanRef}` : cleanRef;
+                                            if (!subject.includes(prefix)) {
+                                                subject = `[${prefix}] ${subject}`;
+                                            }
+                                        });
+                                        return subject;
+                                    }
+                                    
                                     const ref = tFin.taskRef || ticket.salesforceCase;
-                                    const subject = tFin.taskSubject || ticket.subject || 'Sin Asunto';
                                     if (ref) {
                                         const cleanRef = String(ref).trim();
                                         const prefix = /^\d+$/.test(cleanRef) ? `SFDC-${cleanRef}` : cleanRef;
