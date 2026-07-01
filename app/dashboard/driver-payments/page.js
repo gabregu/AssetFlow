@@ -45,6 +45,7 @@ export default function DriverPaymentsPage() {
                         id: ticket.id,
                         type: 'Ticket',
                         description: ticket.subject || 'Sin Asunto',
+                        salesforceCase: ticket.salesforceCase || null,
                         cost: financials.logisticCost,
                         date: ticketDateStr
                     });
@@ -317,7 +318,16 @@ export default function DriverPaymentsPage() {
                                                     <td style={{ padding: '0.75rem 1rem', fontWeight: 500, color: 'var(--primary-color)' }}>
                                                         {item.type === 'Ticket' ? <Link href={`/dashboard/tickets/${item.id}`}>{item.id}</Link> : item.id}
                                                     </td>
-                                                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', textDecoration: isChecked ? 'line-through' : 'none', opacity: isChecked ? 0.6 : 1 }}>{item.description}</td>
+                                                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', textDecoration: isChecked ? 'line-through' : 'none', opacity: isChecked ? 0.6 : 1 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                            {item.salesforceCase && (
+                                                                <span style={{ fontSize: '0.7rem', fontWeight: 'bold', backgroundColor: 'var(--primary-color)', color: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                                                                    {item.salesforceCase}
+                                                                </span>
+                                                            )}
+                                                            <span>{item.description}</span>
+                                                        </div>
+                                                    </td>
                                                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-main)', opacity: isChecked ? 0.6 : 1 }}>USD {item.cost.toFixed(2)}</td>
                                                 </tr>
                                                 );
