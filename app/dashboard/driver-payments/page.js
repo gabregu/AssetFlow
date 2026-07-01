@@ -9,7 +9,7 @@ import { CreditCard, Save, ChevronLeft, ChevronRight, Truck, Calendar, User, Pri
 import Link from 'next/link';
 
 export default function DriverPaymentsPage() {
-    const { tickets, logisticsTasks, rates, updateRates, globalAssets, users } = useStore();
+    const { tickets, logisticsTasks, rates, updateRates, assets: globalAssets, users } = useStore();
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [paymentInputs, setPaymentInputs] = useState({});
