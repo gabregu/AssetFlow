@@ -1,11 +1,11 @@
 'use client';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useStore } from '../../../lib/store';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { calculateTicketFinancials, calculateTaskFinancials, getExchangeRateForDate } from '@/lib/billing';
-import { CreditCard, Save, ChevronLeft, ChevronRight, Truck, Calendar, User, Printer } from 'lucide-react';
+import { CreditCard, Save, ChevronLeft, ChevronRight, Truck, Calendar, User, Printer, Briefcase } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DriverPaymentsPage() {
@@ -17,6 +17,7 @@ export default function DriverPaymentsPage() {
     const [paymentMethods, setPaymentMethods] = useState({});
     const [localChecks, setLocalChecks] = useState({});
     const [selectedDriver, setSelectedDriver] = useState('Todos');
+    const [selectedClientFilter, setSelectedClientFilter] = useState('Todos');
     
     const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
     
@@ -80,7 +81,8 @@ export default function DriverPaymentsPage() {
                                 })(),
                                 requester: ticket.requester || null,
                                 cost: tFin.logisticCost,
-                                date: ticketDateStr
+                                date: ticketDateStr,
+                                client: ticket.client || 'N/A'
                             });
                         }
                     }
@@ -99,7 +101,8 @@ export default function DriverPaymentsPage() {
                             description: ticket.subject || 'Sin Asunto',
                             requester: ticket.requester || null,
                             cost: financials.logisticCost,
-                            date: ticketDateStr
+                            date: ticketDateStr,
+                            client: ticket.client || 'N/A'
                         });
                     }
                 }
@@ -128,7 +131,8 @@ export default function DriverPaymentsPage() {
                             description: task.description || 'Movimiento de Inventario',
                             requester: null,
                             cost: financials.logisticCost,
-                            date: taskDateStr
+                            date: taskDateStr,
+                            client: 'Inventario'
                         });
                     }
                 }
@@ -148,6 +152,22 @@ export default function DriverPaymentsPage() {
 
         return { driverStats: stats, totalDue: tDue, totalPaid: tPaid };
     }, [tickets, logisticsTasks, rates, selectedMonth, selectedYear, monthKey, globalAssets, users]);
+
+    const availableClients = useMemo(() => {
+        const clients = new Set();
+        Object.values(driverStats).forEach(driver => {
+            driver.items.forEach(item => {
+                if (item.client) clients.add(item.client);
+            });
+        });
+        return ['Todos', ...Array.from(clients).sort()];
+    }, [driverStats]);
+
+    useEffect(() => {
+        if (!availableClients.includes(selectedClientFilter)) {
+            setSelectedClientFilter('Todos');
+        }
+    }, [availableClients, selectedClientFilter]);
 
     const handleSavePayment = async (driverName) => {
         const inputVal = paymentInputs[driverName];
@@ -273,10 +293,12 @@ export default function DriverPaymentsPage() {
         let itemsHtml = '';
         data.items.forEach(item => {
             const req = item.requester || '-';
+            const clientVal = item.client || 'N/A';
             itemsHtml += `
                 <tr>
                     <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${item.id}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${item.description}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${clientVal}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${req}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold;">USD ${item.cost.toFixed(2)}</td>
                 </tr>
@@ -318,6 +340,7 @@ export default function DriverPaymentsPage() {
                             <tr>
                                 <th>ID</th>
                                 <th>Descripción</th>
+                                <th style="text-align: center;">Cliente</th>
                                 <th style="text-align: center;">Solicitante</th>
                                 <th style="text-align: right;">Costo</th>
                             </tr>
@@ -384,40 +407,59 @@ export default function DriverPaymentsPage() {
 
     return (
         <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                     <h1 style={{ fontSize: '1.75rem', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '0.25rem' }}>Pago a Conductores</h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Liquidación mensual detallada de servicios logísticos internos</p>
                 </div>
                 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--background)', padding: '0.5rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                    <Button variant="secondary" onClick={() => handleMonthChange(-1)} style={{ padding: '0.5rem' }}>
-                        <ChevronLeft size={18} />
-                    </Button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, minWidth: '130px', justifyContent: 'center' }}>
-                        <Calendar size={18} style={{ color: 'var(--primary-color)' }} />
-                        {monthNames[selectedMonth]} {selectedYear}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--background)', padding: '0.5rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                        <Button variant="secondary" onClick={() => handleMonthChange(-1)} style={{ padding: '0.5rem' }}>
+                            <ChevronLeft size={18} />
+                        </Button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, minWidth: '130px', justifyContent: 'center' }}>
+                            <Calendar size={18} style={{ color: 'var(--primary-color)' }} />
+                            {monthNames[selectedMonth]} {selectedYear}
+                        </div>
+                        <Button variant="secondary" onClick={() => handleMonthChange(1)} style={{ padding: '0.5rem' }}>
+                            <ChevronRight size={18} />
+                        </Button>
                     </div>
-                    <Button variant="secondary" onClick={() => handleMonthChange(1)} style={{ padding: '0.5rem' }}>
-                        <ChevronRight size={18} />
-                    </Button>
+                    
+                    {Object.keys(driverStats).length > 0 && (
+                        <>
+                            {/* Selector de Cliente */}
+                            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--background)', padding: '0.5rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                <Briefcase size={18} style={{ color: 'var(--text-secondary)', marginLeft: '0.5rem' }} />
+                                <select 
+                                    value={selectedClientFilter}
+                                    onChange={(e) => setSelectedClientFilter(e.target.value)}
+                                    style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'transparent', color: 'var(--text-main)', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+                                >
+                                    {availableClients.map(client => (
+                                        <option key={client} value={client}>{client === 'Todos' ? 'Todos los Clientes' : client}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Selector de Conductor */}
+                            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--background)', padding: '0.5rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                <User size={18} style={{ color: 'var(--text-secondary)', marginLeft: '0.5rem' }} />
+                                <select 
+                                    value={selectedDriver}
+                                    onChange={(e) => setSelectedDriver(e.target.value)}
+                                    style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'transparent', color: 'var(--text-main)', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+                                >
+                                    <option value="Todos">Todos los Conductores</option>
+                                    {Object.keys(driverStats).sort().map(name => (
+                                        <option key={name} value={name}>{name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </>
+                    )}
                 </div>
-                
-                {Object.keys(driverStats).length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--background)', padding: '0.5rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                        <User size={18} style={{ color: 'var(--text-secondary)', marginLeft: '0.5rem' }} />
-                        <select 
-                            value={selectedDriver}
-                            onChange={(e) => setSelectedDriver(e.target.value)}
-                            style={{ padding: '0.25rem 0.5rem', border: 'none', background: 'transparent', color: 'var(--text-main)', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
-                        >
-                            <option value="Todos">Todos los Conductores</option>
-                            {Object.keys(driverStats).sort().map(name => (
-                                <option key={name} value={name}>{name}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
             </div>
 
             {/* Resumen General */}
@@ -480,6 +522,9 @@ export default function DriverPaymentsPage() {
                         const isPaid = savedPaymentUSD !== undefined && savedPaymentUSD > 0;
                         const isFullyPaid = savedPaymentUSD >= data.total - 0.01; // Allow 1 cent tolerance for float
 
+                        const filteredItems = data.items.filter(item => selectedClientFilter === 'Todos' || item.client === selectedClientFilter);
+                        const filteredTotal = filteredItems.reduce((sum, item) => sum + item.cost, 0);
+
                         return (
                             <Card key={name} style={{ border: isPaid ? (isFullyPaid ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(245, 158, 11, 0.4)') : undefined }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -489,13 +534,25 @@ export default function DriverPaymentsPage() {
                                         </div>
                                         <div>
                                             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>{name}</h3>
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>{data.items.length} servicios completados</p>
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                                {selectedClientFilter === 'Todos' 
+                                                    ? `${data.items.length} servicios completados` 
+                                                    : `${filteredItems.length} de ${data.items.length} servicios completados`}
+                                            </p>
                                         </div>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>A PAGAR</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>A PAGAR (TOTAL)</div>
                                         <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>USD {data.total.toFixed(2)}</div>
                                         {exchangeRate > 0 && <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>ARS {(data.total * exchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</div>}
+                                        
+                                        {selectedClientFilter !== 'Todos' && (
+                                            <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border)' }}>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>FILTRADO ({selectedClientFilter})</div>
+                                                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary-color)' }}>USD {filteredTotal.toFixed(2)}</div>
+                                                {exchangeRate > 0 && <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ARS {(filteredTotal * exchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</div>}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -507,17 +564,18 @@ export default function DriverPaymentsPage() {
                                                 <th style={{ padding: '0.75rem 1rem', width: '40px', textAlign: 'center' }}></th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>ID</th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>Descripción</th>
+                                                <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>Cliente</th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>Solicitante</th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 600 }}>Costo Logístico</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {data.items.map((item, idx) => {
+                                            {filteredItems.map((item, idx) => {
                                                 const checkKey = `${name}-${item.id}`;
                                                 const isChecked = localChecks[checkKey] ?? (rates?.driverItemChecks?.[monthKey]?.[name]?.[item.id] || false);
                                                 
                                                 return (
-                                                <tr key={idx} style={{ borderBottom: idx < data.items.length - 1 ? '1px solid var(--border)' : 'none', background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'transparent' }}>
+                                                <tr key={idx} style={{ borderBottom: idx < filteredItems.length - 1 ? '1px solid var(--border)' : 'none', background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'transparent' }}>
                                                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                                                         <input 
                                                             type="checkbox" 
@@ -531,18 +589,29 @@ export default function DriverPaymentsPage() {
                                                     </td>
                                                     <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', textDecoration: isChecked ? 'line-through' : 'none', opacity: isChecked ? 0.6 : 1 }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-
                                                             <span>{item.description}</span>
                                                         </div>
+                                                    </td>
+                                                    <td style={{ padding: '0.75rem 1rem', opacity: isChecked ? 0.6 : 1 }}>
+                                                         <span style={{ 
+                                                             padding: '0.2rem 0.5rem', 
+                                                             borderRadius: '6px', 
+                                                             fontSize: '0.75rem', 
+                                                             fontWeight: 600,
+                                                             backgroundColor: item.client === 'SFDC-Argentina' ? 'rgba(59, 130, 246, 0.1)' : (item.client === 'Inventario' ? 'rgba(107, 114, 128, 0.1)' : 'rgba(139, 92, 246, 0.1)'),
+                                                             color: item.client === 'SFDC-Argentina' ? '#3b82f6' : (item.client === 'Inventario' ? '#6b7280' : '#8b5cf6')
+                                                         }}>
+                                                             {item.client}
+                                                         </span>
                                                     </td>
                                                     <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', opacity: isChecked ? 0.6 : 1 }}>
                                                         {item.requester ? (
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>
-                                                                    {String(item.requester).charAt(0).toUpperCase()}
-                                                                </div>
-                                                                <div style={{ fontSize: '0.85rem' }}>{item.requester}</div>
-                                                            </div>
+                                                                 <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>
+                                                                     {String(item.requester).charAt(0).toUpperCase()}
+                                                                 </div>
+                                                                 <div style={{ fontSize: '0.85rem' }}>{item.requester}</div>
+                                                             </div>
                                                         ) : (
                                                             <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>-</span>
                                                         )}
@@ -602,7 +671,7 @@ export default function DriverPaymentsPage() {
                                             </Button>
                                             <Button 
                                                 variant="secondary"
-                                                onClick={() => handlePrintDriverCases(name, data, savedPaymentUSD)}
+                                                onClick={() => handlePrintDriverCases(name, { ...data, items: filteredItems, total: filteredTotal }, savedPaymentUSD)}
                                                 style={{ padding: '0.5rem 1rem', border: '1px solid var(--border)' }}
                                             >
                                                 <Printer size={16} style={{ marginRight: '6px' }}/> PDF

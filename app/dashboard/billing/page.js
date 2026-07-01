@@ -126,6 +126,27 @@ export default function BillingPage() {
         const multiplier = 1;
         const currencyKey = 'USD';
 
+        const allPeriodTickets = tickets.filter(ticket => {
+            let ticketDate;
+            if (ticket.deliveryDetails?.customBillingDate) {
+                const [yyyy, mm, dd] = ticket.deliveryDetails.customBillingDate.split('-');
+                ticketDate = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+            } else if (ticket.deliveryCompletedDate) {
+                const dateStr = typeof ticket.deliveryCompletedDate === 'string' ? ticket.deliveryCompletedDate.substring(0, 10) : '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                    const [yyyy, mm, dd] = dateStr.split('-');
+                    ticketDate = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+                } else {
+                    ticketDate = new Date(ticket.deliveryCompletedDate);
+                }
+            } else {
+                return false;
+            }
+            const isDateMatch = ticketDate.getMonth() === selectedMonth && ticketDate.getFullYear() === selectedYear;
+            const isStatusMatch = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
+            return isDateMatch && isStatusMatch;
+        });
+
         const filtered = tickets.filter(ticket => {
             let ticketDate;
             if (ticket.deliveryDetails?.customBillingDate) {
@@ -182,7 +203,54 @@ export default function BillingPage() {
             totalLogisticsCost += logisticCost;
             totalOperationalCost += ticketOperationalCost;
 
-            // Driver Payment Tracking - only for tickets WITHOUT logisticsTasks (legacy)
+            // Driver Payment Tracking for active client metrics (legacy model)
+            const hasRelatedTasks = (logisticsTasks || []).some(tk =>
+                String(tk.ticket_id || tk.ticketId) === String(ticket.id)
+            );
+
+            if (!hasRelatedTasks) {
+                if (String(method || '').includes('Repartidor Propio') || String(method || '').includes('Envío Interno') || String(method || '').includes('Propio')) {
+                    totalDriverCost += logisticCost;
+                } else if (String(method || '').includes('Andreani') || String(method || '').includes('Correo Argentino') || String(method || '').includes('Correo')) {
+                    totalPostalCost += logisticCost;
+                }
+            }
+
+            // Pending deliveries count
+            if (ticket.status === 'Abierto' || ticket.status === 'En Progreso') {
+                pendingDeliveriesCount += 1;
+            }
+        });
+
+        // Driver cost tracking via logisticsTasks for active client metrics (new model)
+        const filteredTasksForMetrics = (logisticsTasks || []).filter(task => {
+            const parentTicket = filtered.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
+            return !!parentTicket;
+        });
+
+        filteredTasksForMetrics.forEach(task => {
+            const taskF = calculateTaskFinancials(task, rates, globalAssets, users);
+            if (!taskF) return;
+
+            const taskMethod = taskF.method || task.method || '';
+            const isPropio = taskMethod === 'Repartidor Propio' || taskMethod === 'Envío Interno' || taskMethod.includes('Propio');
+            const isPostal = taskMethod === 'Andreani' || taskMethod === 'Correo Argentino' || taskMethod.includes('Correo');
+
+            if (isPropio) {
+                totalDriverCost += taskF.logisticCost || 0;
+            } else if (isPostal) {
+                totalPostalCost += taskF.logisticCost || 0;
+            }
+        });
+
+        // ── DRIVER TRACKING FOR DRIVER PAYMENTS (cross-client visibility) ──
+        // Calculate driver payments using all tickets of the selected period across all clients
+        allPeriodTickets.forEach(ticket => {
+            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
+            if (!financials) return;
+
+            const { logisticCost, moveType, method } = financials;
+
             const hasRelatedTasks = (logisticsTasks || []).some(tk =>
                 String(tk.ticket_id || tk.ticketId) === String(ticket.id)
             );
@@ -200,34 +268,22 @@ export default function BillingPage() {
                         if (isDelivery) driverPayments[driver].deliveries += 1;
                         if (isRecovery) driverPayments[driver].recoveries += 1;
                     }
-                    totalDriverCost += logisticCost;
-                } else if (String(method || '').includes('Andreani') || String(method || '').includes('Correo Argentino') || String(method || '').includes('Correo')) {
-                    totalPostalCost += logisticCost;
                 }
             }
-
-            // Pending deliveries count
-            if (ticket.status === 'Abierto' || ticket.status === 'En Progreso') {
-                pendingDeliveriesCount += 1;
-            }
         });
 
-        // ── DRIVER TRACKING via logisticsTasks (new model) ──
-        // Iterate each task of the filtered period and accumulate per-driver
-        const filteredTasksForDrivers = (logisticsTasks || []).filter(task => {
-            // Only tasks belonging to filtered tickets
-            const parentTicket = filtered.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
-            if (!parentTicket) return false;
-            return true;
+        // Track driver payments via logisticsTasks for all period tickets (cross-client)
+        const allTasksForDrivers = (logisticsTasks || []).filter(task => {
+            const parentTicket = allPeriodTickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
+            return !!parentTicket;
         });
 
-        filteredTasksForDrivers.forEach(task => {
+        allTasksForDrivers.forEach(task => {
             const taskF = calculateTaskFinancials(task, rates, globalAssets, users);
             if (!taskF) return;
 
             const taskMethod = taskF.method || task.method || '';
             const isPropio = taskMethod === 'Repartidor Propio' || taskMethod === 'Envío Interno' || taskMethod.includes('Propio');
-            const isPostal = taskMethod === 'Andreani' || taskMethod === 'Correo Argentino' || taskMethod.includes('Correo');
 
             if (isPropio) {
                 const driver = (task.delivery_person || task.deliveryPerson || taskF.deliveryPerson || '').trim();
@@ -239,10 +295,7 @@ export default function BillingPage() {
                     driverPayments[driver].total += taskF.logisticCost || 0;
                     if (isDelivery) driverPayments[driver].deliveries += 1;
                     if (isRecovery) driverPayments[driver].recoveries += 1;
-                    totalDriverCost += taskF.logisticCost || 0;
                 }
-            } else if (isPostal) {
-                totalPostalCost += taskF.logisticCost || 0;
             }
         });
 

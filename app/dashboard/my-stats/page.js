@@ -335,7 +335,8 @@ export default function MyStatsPage() {
                     description,
                     requester: t.requester || null,
                     cost,
-                    date: rawDate
+                    date: rawDate,
+                    client: t.client || 'N/A'
                 });
             }
         });
@@ -381,10 +382,12 @@ export default function MyStatsPage() {
         let itemsHtml = '';
         data.items.forEach(item => {
             const req = item.requester || '-';
+            const clientVal = item.client || 'N/A';
             itemsHtml += `
                 <tr>
                     <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${item.id}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${item.description}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${clientVal}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${req}</td>
                     <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold;">USD ${item.cost.toFixed(2)}</td>
                 </tr>
@@ -440,6 +443,7 @@ export default function MyStatsPage() {
                                 <tr>
                                     <th>ID</th>
                                     <th>Descripción</th>
+                                    <th style="text-align: center;">Cliente</th>
                                     <th style="text-align: center;">Solicitante</th>
                                     <th style="text-align: right;">Costo</th>
                                 </tr>
@@ -739,6 +743,7 @@ export default function MyStatsPage() {
                                         <th style={{ padding: '0.75rem 1rem', width: '40px', textAlign: 'center' }}></th>
                                         <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.8rem' }}>ID</th>
                                         <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.8rem' }}>Descripción</th>
+                                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.8rem' }}>Cliente</th>
                                         <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.8rem' }}>Solicitante</th>
                                         <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.8rem' }}>Costo Logístico</th>
                                     </tr>
@@ -763,6 +768,18 @@ export default function MyStatsPage() {
                                                 </td>
                                                 <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', textDecoration: isChecked ? 'line-through' : 'none', opacity: isChecked ? 0.6 : 1, fontSize: '0.85rem' }}>
                                                     {item.description}
+                                                </td>
+                                                <td style={{ padding: '0.75rem 1rem', opacity: isChecked ? 0.6 : 1 }}>
+                                                    <span style={{ 
+                                                        padding: '0.2rem 0.5rem', 
+                                                        borderRadius: '6px', 
+                                                        fontSize: '0.75rem', 
+                                                        fontWeight: 600,
+                                                        backgroundColor: item.client === 'SFDC-Argentina' ? 'rgba(59, 130, 246, 0.1)' : (item.client === 'Inventario' ? 'rgba(107, 114, 128, 0.1)' : 'rgba(139, 92, 246, 0.1)'),
+                                                        color: item.client === 'SFDC-Argentina' ? '#3b82f6' : (item.client === 'Inventario' ? '#6b7280' : '#8b5cf6')
+                                                    }}>
+                                                        {item.client}
+                                                    </span>
                                                 </td>
                                                 <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', opacity: isChecked ? 0.6 : 1, fontSize: '0.85rem' }}>
                                                     {item.requester ? (
