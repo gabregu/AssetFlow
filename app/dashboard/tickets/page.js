@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { getStatusVariant } from './constants';
 import { Modal } from '../../components/ui/Modal';
 import { supabase } from '../../../lib/supabase';
+import { CopyButton } from '../../components/ui/CopyButton';
 
 export default function TicketsPage() {
     const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks, entities, getClientName, refreshData } = useStore();
@@ -1093,10 +1094,18 @@ export default function TicketsPage() {
                                             />
                                         </td>
                                     )}
-                                    <td style={{ padding: '1rem', fontWeight: 500 }}>{ticket.id}</td>
+                                    <td style={{ padding: '1rem', fontWeight: 500 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {ticket.id}
+                                            <CopyButton text={ticket.id} />
+                                        </div>
+                                    </td>
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                            <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{String(ticket.subject || 'Sin Asunto')}</div>
+                                            <div style={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                {String(ticket.subject || 'Sin Asunto')}
+                                                <CopyButton text={ticket.subject} />
+                                            </div>
                                             {ticket.client && (
                                                 <Badge variant="secondary" style={{ fontSize: '0.65rem', padding: '2px 6px', opacity: 0.8 }}>
                                                     {ticket.client}
@@ -1105,23 +1114,25 @@ export default function TicketsPage() {
                                         </div>
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Prioridad: {String(ticket.priority || 'Normal')}</div>
                                         {ticket.logistics?.address && (
-                                            <a 
-                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.logistics.address)}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{ 
-                                                    fontSize: '0.7rem', 
-                                                    color: 'var(--primary-color)', 
-                                                    marginTop: '2px', 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    gap: '3px',
-                                                    textDecoration: 'underline',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                <Map size={12} /> {ticket.logistics.address}
-                                            </a>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                                <a 
+                                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.logistics.address)}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{ 
+                                                        fontSize: '0.7rem', 
+                                                        color: 'var(--primary-color)', 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        gap: '3px',
+                                                        textDecoration: 'underline',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <Map size={12} /> {ticket.logistics.address}
+                                                </a>
+                                                <CopyButton text={ticket.logistics.address} style={{ color: 'var(--primary-color)' }} />
+                                            </div>
                                         )}
                                     </td>
                                     <td style={{ padding: '1rem' }}>
@@ -1129,10 +1140,16 @@ export default function TicketsPage() {
                                             <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
                                                 {String(ticket.requester || '?').charAt(0)}
                                             </div>
-                                            {ticket.requester || 'Sin Solicitante'}
+                                            <span>{ticket.requester || 'Sin Solicitante'}</span>
+                                            {ticket.requester && <CopyButton text={ticket.requester} />}
                                         </div>
                                     </td>
-                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{String(ticket.date || '')}</td>
+                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {String(ticket.date || '')}
+                                            {ticket.date && <CopyButton text={ticket.date} />}
+                                        </div>
+                                    </td>
                                     <td style={{ padding: '1rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
                                             {(() => {

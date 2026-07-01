@@ -3,6 +3,7 @@
 import React from 'react';
 import { Search, Package, Trash2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
+import { CopyButton } from '@/app/components/ui/CopyButton';
 
 export default function AssetListSection({
     task,
@@ -167,7 +168,10 @@ export default function AssetListSection({
                         return (
                             <div key={`${idxx}-${itemSerial}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '6px', border: '1px solid var(--border)' }}>
                                 <div>
-                                    <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0 }}>{assetInfo?.name || 'Hardware'} (S/N: {itemSerial})</p>
+                                    <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <span>{assetInfo?.name || 'Hardware'} (S/N: {itemSerial})</span>
+                                        {itemSerial && <CopyButton text={itemSerial} iconSize={11} />}
+                                    </p>
                                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '4px' }}>
                                         <select
                                             className="form-select"

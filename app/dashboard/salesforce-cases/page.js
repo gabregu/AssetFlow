@@ -11,6 +11,7 @@ import { useRef, useMemo } from 'react';
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { CopyButton } from '../../components/ui/CopyButton';
 
 export default function SFDCCasesPage() {
     const router = useRouter();
@@ -1294,7 +1295,12 @@ export default function SFDCCasesPage() {
                                             style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                                         />
                                     </td>
-                                    <td style={{ padding: '1rem', fontWeight: 500 }}>{c.caseNumber}</td>
+                                    <td style={{ padding: '1rem', fontWeight: 500 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {c.caseNumber}
+                                            <CopyButton text={c.caseNumber} />
+                                        </div>
+                                    </td>
                                     <td style={{ padding: '0.75rem' }}>
                                         {c.country && (
                                             <span style={{
@@ -1320,11 +1326,19 @@ export default function SFDCCasesPage() {
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{c.age}</td>
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{c.dateOpened}</td>
                                     <td style={{ padding: '1rem', fontWeight: 500 }}>
-                                        <div style={{ maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={c.subject}>
-                                            {c.subject}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <div style={{ maxWidth: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={c.subject}>
+                                                {c.subject}
+                                            </div>
+                                            <CopyButton text={c.subject} />
                                         </div>
                                     </td>
-                                    <td style={{ padding: '1rem' }}>{c.requestedFor}</td>
+                                    <td style={{ padding: '1rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {c.requestedFor}
+                                            {c.requestedFor && <CopyButton text={c.requestedFor} />}
+                                        </div>
+                                    </td>
                                     <td style={{ padding: '1rem' }}>
                                         {(() => {
                                             const linkedTicket = 

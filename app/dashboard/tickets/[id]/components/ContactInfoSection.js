@@ -3,6 +3,7 @@
 import React from 'react';
 import { Mail, Phone, MapPin, Hash, Calendar, CheckCircle2, CheckCircle, Loader2 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/Badge';
+import { CopyButton } from '@/app/components/ui/CopyButton';
 
 const Slack = ({ size = 24 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -46,9 +47,11 @@ export default function ContactInfoSection({
                                     border: '1px solid var(--border)'
                                 }}>
                                     <span style={{ fontWeight: 600, color: '#0369a1' }}>#{ac.caseNumber}</span>
-                                    <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                                    <CopyButton text={ac.caseNumber} iconSize={11} />
+                                    <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }}>
                                         {ac.subject}
                                     </span>
+                                    <CopyButton text={ac.subject} iconSize={11} />
                                     {ticket.subject && !ticket.subject.includes(`[SFDC-${ac.caseNumber}]`) && handleUnlinkCase && (
                                         <button 
                                             onClick={() => handleUnlinkCase(ac)}
@@ -65,11 +68,11 @@ export default function ContactInfoSection({
                 ) : (
                     <>
                         <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Segundo Caso SFDC (Opcional)</label>
-                        <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                             <Hash size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
                             <input
                                 className="form-input"
-                                style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
+                                style={{ paddingLeft: '2.2rem', paddingRight: '2rem', height: '32px', fontSize: '0.85rem', width: '100%' }}
                                 disabled={!isEditing}
                                 value={editedData.logistics?.additionalCase || ''}
                                 onChange={e => setEditedData({
@@ -77,6 +80,9 @@ export default function ContactInfoSection({
                                     logistics: { ...(editedData.logistics || {}), additionalCase: e.target.value }
                                 })}
                             />
+                            {editedData.logistics?.additionalCase && (
+                                <CopyButton text={editedData.logistics.additionalCase} style={{ position: 'absolute', right: '8px' }} />
+                            )}
                         </div>
                     </>
                 )}
@@ -142,9 +148,11 @@ export default function ContactInfoSection({
                             minHeight: '42px',
                             display: 'flex',
                             alignItems: 'center',
-                            wordBreak: 'break-word'
+                            wordBreak: 'break-word',
+                            gap: '8px'
                         }}>
-                            {editedData.logistics?.address || 'Sin dirección registrada'}
+                            <span>{editedData.logistics?.address || 'Sin dirección registrada'}</span>
+                            {editedData.logistics?.address && <CopyButton text={editedData.logistics.address} />}
                         </div>
                     )}
                     {isEditing && isLoaded && (
@@ -230,9 +238,11 @@ export default function ContactInfoSection({
                             minHeight: '42px',
                             display: 'flex',
                             alignItems: 'center',
-                            wordBreak: 'break-word'
+                            wordBreak: 'break-word',
+                            gap: '8px'
                         }}>
-                            {editedData.logistics?.floorDept || '-'}
+                            <span>{editedData.logistics?.floorDept || '-'}</span>
+                            {editedData.logistics?.floorDept && editedData.logistics?.floorDept !== '-' && <CopyButton text={editedData.logistics.floorDept} />}
                         </div>
                     )}
                 </div>
@@ -240,11 +250,11 @@ export default function ContactInfoSection({
 
             <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Correo Electrónico</label>
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <Mail size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
                     <input
                         className="form-input"
-                        style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
+                        style={{ paddingLeft: '2.2rem', paddingRight: '2rem', height: '32px', fontSize: '0.85rem', width: '100%' }}
                         disabled={!isEditing}
                         value={editedData.logistics?.email || ''}
                         onChange={e => setEditedData({
@@ -252,16 +262,19 @@ export default function ContactInfoSection({
                             logistics: { ...(editedData.logistics || {}), email: e.target.value }
                         })}
                     />
+                    {editedData.logistics?.email && (
+                        <CopyButton text={editedData.logistics.email} style={{ position: 'absolute', right: '8px' }} />
+                    )}
                 </div>
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Teléfono de Contacto</label>
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <Phone size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
                     <input
                         className="form-input"
-                        style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
+                        style={{ paddingLeft: '2.2rem', paddingRight: '2rem', height: '32px', fontSize: '0.85rem', width: '100%' }}
                         disabled={!isEditing}
                         value={editedData.logistics?.phone || ''}
                         onChange={e => setEditedData({
@@ -269,17 +282,20 @@ export default function ContactInfoSection({
                             logistics: { ...(editedData.logistics || {}), phone: e.target.value }
                         })}
                     />
+                    {editedData.logistics?.phone && (
+                        <CopyButton text={editedData.logistics.phone} style={{ position: 'absolute', right: '8px' }} />
+                    )}
                 </div>
             </div>
 
             {/* SYCOMP CASE Row */}
             <div className="form-group" style={{ gridColumn: 'span 2', marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>SYCOMP CASE</label>
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                     <Hash size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
                     <input
                         className="form-input"
-                        style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
+                        style={{ paddingLeft: '2.2rem', paddingRight: '2rem', height: '32px', fontSize: '0.85rem', width: '100%' }}
                         disabled={!isEditing}
                         value={editedData.logistics?.sycompCase || ''}
                         placeholder="Registra aquí el caso de Sycomp recibido por correo..."
@@ -288,6 +304,9 @@ export default function ContactInfoSection({
                             logistics: { ...(editedData.logistics || {}), sycompCase: e.target.value }
                         })}
                     />
+                    {editedData.logistics?.sycompCase && (
+                        <CopyButton text={editedData.logistics.sycompCase} style={{ position: 'absolute', right: '8px' }} />
+                    )}
                 </div>
             </div>
 

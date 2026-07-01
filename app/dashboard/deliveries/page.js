@@ -10,6 +10,7 @@ import { useStore } from '../../../lib/store';
 import { Plus, Search, Truck, MapPin, Calendar, CheckCircle, Clock, Loader2, Trash2, ChevronDown, ChevronUp, Sun, Moon, Archive, QrCode, Printer, ExternalLink, Check } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+import { CopyButton } from '../../components/ui/CopyButton';
 
 const TrackingBadge = ({ method, trackingNumber }) => {
     const [copied, setCopied] = React.useState(false);
@@ -1280,10 +1281,16 @@ export default function DeliveriesPage() {
                                                 }}
                                             >
                                                 <td style={{ padding: '1rem' }}>
-                                                    <span style={{ fontWeight: 700, color: displayColor, fontSize: '0.875rem' }}>{delivery.id}</span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <span style={{ fontWeight: 700, color: displayColor, fontSize: '0.875rem' }}>{delivery.id}</span>
+                                                        <CopyButton text={delivery.id} />
+                                                    </div>
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{delivery.recipient}</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{delivery.recipient}</div>
+                                                        {delivery.recipient && <CopyButton text={delivery.recipient} />}
+                                                    </div>
                                                     {(() => {
                                                         const hasPerson = !!delivery.deliveryPerson && delivery.deliveryPerson !== 'No definido';
                                                         const hasMethod = !!delivery.courier && delivery.courier !== 'No definido';
@@ -1329,14 +1336,15 @@ export default function DeliveriesPage() {
                                                 <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                         <MapPin size={14} style={{ color: displayColor, flexShrink: 0 }} />
-                                                        {delivery.address}
-                                                        {delivery.floorDept && ` - ${delivery.floorDept}`}
+                                                        <span>{delivery.address}{delivery.floorDept && ` - ${delivery.floorDept}`}</span>
+                                                        <CopyButton text={`${delivery.address}${delivery.floorDept ? ` - ${delivery.floorDept}` : ''}`} />
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                         <Calendar size={14} />
-                                                        {delivery.date}
+                                                        <span>{delivery.date}</span>
+                                                        {delivery.date && <CopyButton text={delivery.date} />}
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>

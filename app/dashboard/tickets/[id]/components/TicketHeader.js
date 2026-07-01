@@ -8,6 +8,7 @@ import { Save } from 'lucide-react';
 import { getStatusVariant } from '@/app/dashboard/tickets/constants';
 import TicketInfoGrid from './TicketInfoGrid';
 import ContactInfoSection from './ContactInfoSection';
+import { CopyButton } from '@/app/components/ui/CopyButton';
 
 export default function TicketHeader({
     ticket,
@@ -30,8 +31,9 @@ export default function TicketHeader({
     return (
         <Card style={{ height: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Badge variant="outline">{ticket.id}</Badge>
+                    <CopyButton text={ticket.id} />
                     {editMode || editContact ? (
                         <select 
                             className="form-select"

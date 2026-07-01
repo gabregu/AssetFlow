@@ -3,6 +3,7 @@
 import React from 'react';
 import { User, Calendar, Tag, Hash } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
+import { CopyButton } from '@/app/components/ui/CopyButton';
 
 export default function TicketInfoGrid({ 
     ticket, 
@@ -27,6 +28,7 @@ export default function TicketInfoGrid({
                     ) : (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <p style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>{ticket.requester}</p>
+                            {ticket.requester && <CopyButton text={ticket.requester} />}
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -119,9 +121,12 @@ export default function TicketInfoGrid({
                                         }}
                                     />
                                 ) : (
-                                    <p style={{ fontWeight: 500, margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                                        {casePrefix || <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontStyle: 'italic' }}>Sin asignar</span>}
-                                    </p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <p style={{ fontWeight: 500, margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                                            {casePrefix || <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontStyle: 'italic' }}>Sin asignar</span>}
+                                        </p>
+                                        {casePrefix && <CopyButton text={casePrefix} />}
+                                    </div>
                                 )}
                             </>
                         );
