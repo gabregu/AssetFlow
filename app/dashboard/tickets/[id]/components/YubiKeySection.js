@@ -7,7 +7,9 @@ import { Button } from '@/app/components/ui/Button';
 export default function YubiKeySection({
     task,
     onUpdateTask,
-    yubikeys
+    yubikeys,
+    associatedCases = [],
+    allTasks = []
 }) {
     if (!task) return null;
     
@@ -57,16 +59,56 @@ export default function YubiKeySection({
                                         <Key size={12} style={{ marginRight: '4px', display: 'inline' }} />
                                         {ykInfo?.type || 'YubiKey'} — S/N: {yk.serial}
                                     </p>
-                                    <select
-                                        className="form-select"
-                                        style={{ fontSize: '0.75rem', padding: '2px 6px', height: '26px', marginTop: '4px', width: 'auto' }}
-                                        value={yk.type || ''}
-                                        onChange={(e) => handleUpdateYubiKeyType(ykIdx, e.target.value)}
-                                    >
-                                        <option value="">Selecciona Acción</option>
-                                        <option value="Entrega">Entrega</option>
-                                        <option value="Recupero">Recupero</option>
-                                    </select>
+                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '4px' }}>
+                                        <select
+                                            className="form-select"
+                                            style={{ fontSize: '0.75rem', padding: '2px 6px', height: '26px', width: 'auto' }}
+                                            value={yk.type || ''}
+                                            onChange={(e) => handleUpdateYubiKeyType(ykIdx, e.target.value)}
+                                        >
+                                            <option value="">Selecciona Acción</option>
+                                            <option value="Entrega">Entrega</option>
+                                            <option value="Recupero">Recupero</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ marginTop: '4px' }}>
+                                        <input
+                                            type="text"
+                                            list={`yk-related-cases-list-${ykIdx}`}
+                                            className="form-input"
+                                            placeholder="N° Caso Relacionado (Opcional)"
+                                            style={{ fontSize: '0.75rem', padding: '2px 6px', height: '26px', width: '100%', maxWidth: '200px' }}
+                                            value={yk.related_case || ''}
+                                            onChange={async (e) => {
+                                                const newYKs = [...caseYubikeys];
+                                                newYKs[ykIdx] = { ...newYKs[ykIdx], related_case: e.target.value };
+                                                await onUpdateTask({ yubikeys: newYKs });
+                                            }}
+                                        />
+                                        <datalist id={`yk-related-cases-list-${ykIdx}`}>
+                                            {(associatedCases || []).map((ac, acIdx) => {
+                                                const caseNum = ac.caseNumber;
+                                                if (caseNum && caseNum !== 'Caso Principal') {
+                                                    return (
+                                                        <option key={`auto-${acIdx}`} value={caseNum}>
+                                                            {ac.subject || 'Caso Asociado'}
+                                                        </option>
+                                                    );
+                                                }
+                                                return null;
+                                            })}
+                                            {allTasks.map((t, tIdx) => {
+                                                const caseNum = t.caseNumber || t.case_number;
+                                                if (caseNum && caseNum !== (task.caseNumber || task.case_number)) {
+                                                    const alreadyListed = (associatedCases || []).some(ac => ac.caseNumber === caseNum);
+                                                    if (!alreadyListed) {
+                                                        return <option key={`task-${tIdx}`} value={caseNum}>{t.subject || ''}</option>;
+                                                    }
+                                                }
+                                                return null;
+                                            })}
+                                        </datalist>
+                                    </div>
                                 </div>
                                 <Button variant="ghost" size="sm" onClick={() => handleRemoveYubiKey(ykIdx)} style={{ color: '#ef4444', padding: '4px' }}>
                                     <Trash2 size={16} />

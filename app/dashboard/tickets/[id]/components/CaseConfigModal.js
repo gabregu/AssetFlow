@@ -300,6 +300,8 @@ export default function CaseConfigModal({
                             task={activeTask}
                             onUpdateTask={handleBufferedUpdate}
                             yubikeys={yubikeys}
+                            associatedCases={editedData?.associatedCases || ticket?.associatedCases || []}
+                            allTasks={currentTasks}
                         />
 
                         <CaseLogisticsSection
