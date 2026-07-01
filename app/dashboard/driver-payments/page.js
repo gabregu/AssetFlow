@@ -455,11 +455,7 @@ export default function DriverPaymentsPage() {
                                                     </td>
                                                     <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', textDecoration: isChecked ? 'line-through' : 'none', opacity: isChecked ? 0.6 : 1 }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                            {item.salesforceCase && (
-                                                                <span style={{ fontSize: '0.7rem', fontWeight: 'bold', backgroundColor: 'var(--primary-color)', color: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
-                                                                    {item.salesforceCase}
-                                                                </span>
-                                                            )}
+
                                                             <span>{item.description}</span>
                                                         </div>
                                                     </td>
