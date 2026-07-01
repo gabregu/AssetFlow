@@ -13,6 +13,8 @@ export default function DriverPaymentsPage() {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [paymentInputs, setPaymentInputs] = useState({});
+    const [paymentDates, setPaymentDates] = useState({});
+    const [paymentMethods, setPaymentMethods] = useState({});
     const [localChecks, setLocalChecks] = useState({});
     const [selectedDriver, setSelectedDriver] = useState('Todos');
     
@@ -149,6 +151,8 @@ export default function DriverPaymentsPage() {
 
     const handleSavePayment = async (driverName) => {
         const inputVal = paymentInputs[driverName];
+        const dateVal = paymentDates[driverName];
+        const methodVal = paymentMethods[driverName];
         
         // 1. Process Payment Value
         const currentActualPayments = rates?.driverActualPayments || {};
@@ -161,6 +165,15 @@ export default function DriverPaymentsPage() {
                 numericValUSD = exchangeRate > 0 ? numericValARS / exchangeRate : numericValARS;
             }
         }
+
+        // Process Date and Method
+        const currentPaymentDates = rates?.driverPaymentDates || {};
+        const monthPaymentDates = currentPaymentDates[monthKey] || {};
+        const savedDate = dateVal !== undefined ? dateVal : (monthPaymentDates[driverName] || null);
+
+        const currentPaymentMethods = rates?.driverPaymentMethods || {};
+        const monthPaymentMethods = currentPaymentMethods[monthKey] || {};
+        const savedMethod = methodVal !== undefined ? methodVal : (monthPaymentMethods[driverName] || null);
 
         // 2. Process Checkboxes
         const currentItemChecks = rates?.driverItemChecks || {};
@@ -184,6 +197,20 @@ export default function DriverPaymentsPage() {
                 [monthKey]: {
                     ...monthPayments,
                     [driverName]: numericValUSD
+                }
+            },
+            driverPaymentDates: {
+                ...currentPaymentDates,
+                [monthKey]: {
+                    ...monthPaymentDates,
+                    [driverName]: savedDate
+                }
+            },
+            driverPaymentMethods: {
+                ...currentPaymentMethods,
+                [monthKey]: {
+                    ...monthPaymentMethods,
+                    [driverName]: savedMethod
                 }
             },
             driverItemChecks: {
@@ -217,6 +244,31 @@ export default function DriverPaymentsPage() {
         const totalARS = exchangeRate > 0 ? (data.total * exchangeRate).toFixed(2) : '0.00';
         const paidUSD = savedPaymentUSD || 0;
         const debtUSD = data.total - paidUSD;
+
+        const savedDate = rates?.driverPaymentDates?.[monthKey]?.[driverName];
+        const savedMethod = rates?.driverPaymentMethods?.[monthKey]?.[driverName];
+        
+        let dateHtml = '';
+        if (savedDate) {
+            const parts = savedDate.split('-');
+            const formattedDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : savedDate;
+            dateHtml = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; color: #475569;">
+                    <span>Fecha de Pago:</span>
+                    <strong>${formattedDate}</strong>
+                </div>
+            `;
+        }
+        
+        let methodHtml = '';
+        if (savedMethod) {
+            methodHtml = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; color: #475569;">
+                    <span>Medio de Pago:</span>
+                    <strong>${savedMethod}</strong>
+                </div>
+            `;
+        }
         
         let itemsHtml = '';
         data.items.forEach(item => {
@@ -287,6 +339,8 @@ export default function DriverPaymentsPage() {
                             </div>
                             </div>
                             ${arsHtml}
+                            ${dateHtml}
+                            ${methodHtml}
                             <div style="border-top: 1px solid #cbd5e1; margin: 10px 0;"></div>
                             <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #10b981;">
                                 <span>Monto Abonado:</span>
@@ -503,44 +557,85 @@ export default function DriverPaymentsPage() {
                                 </div>
 
                                 {/* Area de pago */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: isFullyPaid ? 'rgba(16, 185, 129, 0.05)' : (isPaid ? 'rgba(245, 158, 11, 0.05)' : 'rgba(0,0,0,0.02)'), borderRadius: '8px', flexWrap: 'wrap', gap: '1rem' }}>
-                                    <div style={{ flex: 1, minWidth: '200px' }}>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>PAGADO (REAL)</label>
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <div style={{ position: 'relative', flex: 1, maxWidth: '250px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', background: isFullyPaid ? 'rgba(16, 185, 129, 0.05)' : (isPaid ? 'rgba(245, 158, 11, 0.05)' : 'rgba(0,0,0,0.02)'), borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                                        <div style={{ flex: '1 1 200px', minWidth: '150px' }}>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>PAGADO (REAL)</label>
+                                            <div style={{ position: 'relative' }}>
                                                 <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>ARS</span>
                                                 <input 
                                                     type="number"
                                                     value={inputVal}
                                                     onChange={(e) => setPaymentInputs({...paymentInputs, [name]: e.target.value})}
-                                                    style={{ width: '100%', padding: '0.6rem 1rem 0.6rem 2.5rem', borderRadius: '6px', border: `1px solid ${isFullyPaid ? '#10b981' : 'var(--border)'}`, background: 'var(--card-bg)', color: 'var(--text-main)' }}
+                                                    style={{ width: '100%', padding: '0.45rem 1rem 0.45rem 2.5rem', borderRadius: '6px', border: `1px solid ${isFullyPaid ? '#10b981' : 'var(--border)'}`, background: 'var(--card-bg)', color: 'var(--text-main)', fontSize: '0.85rem' }}
                                                     placeholder="0.00"
                                                 />
                                             </div>
+                                        </div>
+                                        <div style={{ flex: '1 1 150px', minWidth: '130px' }}>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>FECHA DE PAGO</label>
+                                            <input 
+                                                type="date"
+                                                value={paymentDates[name] ?? (rates?.driverPaymentDates?.[monthKey]?.[name] || '')}
+                                                onChange={(e) => setPaymentDates({...paymentDates, [name]: e.target.value})}
+                                                style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                            />
+                                        </div>
+                                        <div style={{ flex: '1 1 150px', minWidth: '130px' }}>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>MEDIO DE PAGO</label>
+                                            <select 
+                                                value={paymentMethods[name] ?? (rates?.driverPaymentMethods?.[monthKey]?.[name] || '')}
+                                                onChange={(e) => setPaymentMethods({...paymentMethods, [name]: e.target.value})}
+                                                style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                            >
+                                                <option value="">Selecciona...</option>
+                                                <option value="Efectivo">Efectivo</option>
+                                                <option value="Transferencia">Transferencia</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             <Button 
                                                 onClick={() => handleSavePayment(name)}
-                                                style={{ backgroundColor: 'var(--primary-color)', color: 'white', borderColor: 'var(--primary-color)' }}
+                                                style={{ backgroundColor: 'var(--primary-color)', color: 'white', borderColor: 'var(--primary-color)', padding: '0.5rem 1rem' }}
                                             >
                                                 <Save size={16} style={{ marginRight: '6px' }}/> Guardar
                                             </Button>
                                             <Button 
                                                 variant="secondary"
                                                 onClick={() => handlePrintDriverCases(name, data, savedPaymentUSD)}
-                                                style={{ padding: '0.6rem 1rem', border: '1px solid var(--border)' }}
+                                                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border)' }}
                                             >
                                                 <Printer size={16} style={{ marginRight: '6px' }}/> PDF
                                             </Button>
                                         </div>
                                     </div>
-                                    {isPaid && (
-                                        <div style={{ textAlign: 'right' }}>
-                                            {isFullyPaid ? (
-                                                <Badge style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>Completado</Badge>
-                                            ) : (
-                                                <Badge style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>Pago Parcial (Deuda: USD {(data.total - Number(savedPaymentUSD)).toFixed(2)})</Badge>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                            {rates?.driverPaymentDates?.[monthKey]?.[name] && (
+                                                <span style={{ marginRight: '1rem' }}>
+                                                    📅 Pagado el: <strong>{(() => {
+                                                        const d = rates.driverPaymentDates[monthKey][name];
+                                                        const parts = d.split('-');
+                                                        return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : d;
+                                                    })()}</strong>
+                                                </span>
+                                            )}
+                                            {rates?.driverPaymentMethods?.[monthKey]?.[name] && (
+                                                <span>
+                                                    💳 Medio: <strong>{rates.driverPaymentMethods[monthKey][name]}</strong>
+                                                </span>
                                             )}
                                         </div>
-                                    )}
+                                        {isPaid && (
+                                            <div style={{ textAlign: 'right' }}>
+                                                {isFullyPaid ? (
+                                                    <Badge style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>Completado</Badge>
+                                                ) : (
+                                                    <Badge style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>Pago Parcial (Deuda: USD {(data.total - Number(savedPaymentUSD)).toFixed(2)})</Badge>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </Card>
                         );
