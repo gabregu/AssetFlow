@@ -99,45 +99,7 @@ const TrackingBadge = ({ method, trackingNumber }) => {
 };
 
 
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error, errorInfo) {
-    console.error("ErrorBoundary caught error", error, errorInfo);
-    this.setState({ errorInfo });
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div style={{ padding: '2rem', color: 'red' }}>
-          <h2>Algo salió mal en Ruta Logística.</h2>
-          <details style={{ whiteSpace: 'pre-wrap' }}>
-            <summary>Click para ver detalles del error</summary>
-            {this.state.error && this.state.error.toString()}
-            <br />
-            {this.state.errorInfo && this.state.errorInfo.componentStack}
-          </details>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-export default function LogisticsHubPageWrapper() {
-    return (
-        <ErrorBoundary>
-            <LogisticsHubPage />
-        </ErrorBoundary>
-    );
-}
-
-function LogisticsHubPage() {
+export default function LogisticsHubPage() {
 
     const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter, getClientName, currentUser } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
@@ -690,7 +652,7 @@ function LogisticsHubPage() {
                         onClick={() => setShowMap(!showMap)}
                     >
                         <h3 style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>
-                            <Map size={18} style={{ color: 'var(--primary-color)' }} /> Mapa de Operaciones
+                            <MapIcon size={18} style={{ color: 'var(--primary-color)' }} /> Mapa de Operaciones
                         </h3>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             {showMap ? <ChevronUp size={20} style={{ color: 'var(--text-secondary)' }} /> : <ChevronDown size={20} style={{ color: 'var(--text-secondary)' }} />}
