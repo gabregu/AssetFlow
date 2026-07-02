@@ -948,7 +948,7 @@ export default function TicketsPage() {
                             onChange={e => setNewTicket({ ...newTicket, type: e.target.value })}
                         >
                             <option value="Entrega">Entrega</option>
-                            <option value="Recolección">Retiro (Recolección)</option>
+                            <option value="Recolección">Retiro</option>
                             <option value="Reemplazo">Reemplazo</option>
                         </select>
                     </div>
