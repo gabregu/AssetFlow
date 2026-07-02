@@ -433,6 +433,24 @@ export default function TicketsPage() {
 
     const { isSubmitting: isSubmittingManual, safeSubmit: safeSubmitTicket } = useSafeSubmit();
 
+    
+    // Auto-complete logic when requester loses focus or changes
+    useEffect(() => {
+        if (!newTicket.requester || newTicket.requester.length < 3) return;
+        const exactMatch = tickets.find(t => 
+            String(t.requester).toLowerCase() === String(newTicket.requester).toLowerCase()
+        );
+        if (exactMatch) {
+            setNewTicket(prev => ({
+                ...prev,
+                address: prev.address ? prev.address : (exactMatch.logistics?.address || exactMatch.address || ''),
+                phone: prev.phone ? prev.phone : (exactMatch.logistics?.phone || exactMatch.phone || ''),
+                email: prev.email ? prev.email : (exactMatch.logistics?.email || exactMatch.email || ''),
+                floor: prev.floor ? prev.floor : (exactMatch.logistics?.floor || exactMatch.floor || '')
+            }));
+        }
+    }, [newTicket.requester, tickets]);
+
     const handleCreate = async (e) => {
         if (e) e.preventDefault();
         
@@ -992,7 +1010,19 @@ export default function TicketsPage() {
                     {/* 4) Direccion & 5) Piso / Dpto */}
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
                         <div className="form-group">
-                            <label className="form-label">Dirección</label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                <label className="form-label" style={{ marginBottom: 0 }}>Dirección</label>
+                                {newTicket.address && (
+                                    <a 
+                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newTicket.address)}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        style={{ fontSize: '0.75rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'underline' }}
+                                    >
+                                        <Map size={12} /> Validar Dirección
+                                    </a>
+                                )}
+                            </div>
                             <input
                                 className="form-input"
                                 placeholder="Ej: Av. Siempreviva 742"
