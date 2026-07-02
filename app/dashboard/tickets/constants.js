@@ -1,5 +1,4 @@
 export const TICKET_STATUSES = [
-    'Abierto',
     'En Progreso',
     'Pendiente',
     'Bloqueado / A la Espera',
@@ -10,8 +9,6 @@ export const TICKET_STATUSES = [
 
 export const getStatusVariant = (status) => {
     switch (status) {
-        case 'Abierto':
-            return 'danger-soft';
         case 'Bloqueado / A la Espera':
             return 'danger-soft';
         case 'Bloqueado':

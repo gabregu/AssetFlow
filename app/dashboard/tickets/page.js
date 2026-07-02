@@ -33,7 +33,7 @@ export default function TicketsPage() {
     
     // Manual Creation State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
 
     // Similar active tickets for warnings on manual creation
     const [similarTickets, setSimilarTickets] = useState([]);
@@ -222,7 +222,7 @@ export default function TicketsPage() {
                         subject: subject,
                         requester: c.requestedFor,
                         priority: c.priority === 'High' ? 'Alta' : 'Media',
-                        status: 'Abierto',
+                        status: 'Pendiente',
                         client: getClientName(c.country),
                         internalNotes: [],
                         logistics: {
@@ -475,7 +475,7 @@ export default function TicketsPage() {
             const createdTicket = await addTicket(ticketData);
             console.log("Manual ticket created:", createdTicket);
             setIsModalOpen(false);
-            setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
+            setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
             if (createdTicket?.id) {
                 showToast("Servicio creado correctamente", "success");
                 router.push(`/dashboard/tickets/${createdTicket.id}`);
@@ -603,7 +603,7 @@ export default function TicketsPage() {
 
         return {
             total: filteredByCountry.filter(t => isTicketActive(t)).length,
-            abiertos: filteredByCountry.filter(t => t.status === 'Abierto').length,
+            abiertos: filteredByCountry.filter(t => t.status === 'Pendiente').length,
             enProgreso: filteredByCountry.filter(t => t.status === 'En Progreso').length,
             pendientes: filteredByCountry.filter(t => t.status === 'Pendiente').length
         };
@@ -638,7 +638,7 @@ export default function TicketsPage() {
 
         // 1. Tickets filtrados por la UI (Los que ya pasaron por sortedAndFilteredTickets)
         const activeFilteredTickets = sortedAndFilteredTickets.filter(t => 
-            ["En Progreso", "Abierto", "Pendiente", "Bloqueado / A la Espera"].includes(t.status)
+            ["En Progreso", "Pendiente", "Pendiente", "Bloqueado / A la Espera"].includes(t.status)
         ).map(t => {
             const agg = getAggregatedInfo(t);
             return {
@@ -756,11 +756,11 @@ export default function TicketsPage() {
                     style={{
                         borderLeft: '4px solid #ef4444',
                         cursor: 'pointer',
-                        backgroundColor: columnFilters.status === 'Abierto' ? 'rgba(239, 68, 68, 0.1)' : 'var(--surface)',
+                        backgroundColor: columnFilters.status === 'Pendiente' ? 'rgba(239, 68, 68, 0.1)' : 'var(--surface)',
                         transition: 'all 0.2s ease',
-                        boxShadow: columnFilters.status === 'Abierto' ? 'inset 0 0 0 1px #ef4444, var(--shadow-sm)' : 'var(--shadow-sm)'
+                        boxShadow: columnFilters.status === 'Pendiente' ? 'inset 0 0 0 1px #ef4444, var(--shadow-sm)' : 'var(--shadow-sm)'
                     }}
-                    onClick={() => setColumnFilters({ ...columnFilters, status: 'Abierto' })}
+                    onClick={() => setColumnFilters({ ...columnFilters, status: 'Pendiente' })}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{ padding: '0.75rem', backgroundColor: '#fef2f2', borderRadius: '50%', color: '#ef4444' }}>
@@ -1071,7 +1071,7 @@ export default function TicketsPage() {
                                             }}
                                         >
                                             <option value="All">Todos</option>
-                                            <option value="Abierto">Abierto</option>
+                                            <option value="Pendiente">Abierto</option>
                                             <option value="En Progreso">En Progreso</option>
                                             <option value="Pendiente">Pendiente</option>
                                             <option value="Bloqueado / A la Espera">Bloqueado / A la Espera</option>

@@ -222,7 +222,7 @@ export default function DeliveriesPage() {
 
     const getStatusVariant = (status) => {
         switch (status) {
-            case 'Abierto': return 'danger';
+            case 'Pendiente': return 'danger';
             case 'En Progreso': return 'info';
             case 'Resuelto': return 'success';
             case 'Pendiente': return 'warning';

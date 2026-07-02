@@ -392,7 +392,7 @@ export function useTicketDetail() {
         const errSpan = document.getElementById('save-error-msg');
         try {
             let statusUpdate = editedData.status;
-            if (editedData.status === 'Abierto' || editedData.status === 'Pendiente') {
+            if (editedData.status === 'Pendiente' || editedData.status === 'Pendiente') {
                 statusUpdate = 'En Progreso';
             }
             const dataToUpdate = { ...editedData, status: statusUpdate };
@@ -632,13 +632,13 @@ export function useTicketDetail() {
         try {
             if (currentTask.id) {
                 // Nueva arquitectura: actualización directa en DB
-                if (ticket.status === 'Abierto' || ticket.status === 'Pendiente') {
+                if (ticket.status === 'Pendiente' || ticket.status === 'Pendiente') {
                     await updateTicket(ticket.id, { status: 'En Progreso' });
                 }
                 return await updateLogisticsTask(currentTask.id, partialData);
             } else {
                 // Promocionar el caso a la base de datos relacional (logistics_tasks)
-                if (ticket.status === 'Abierto' || ticket.status === 'Pendiente') {
+                if (ticket.status === 'Pendiente' || ticket.status === 'Pendiente') {
                     await updateTicket(ticket.id, { status: 'En Progreso' });
                 }
 
@@ -738,14 +738,14 @@ export function useTicketDetail() {
                 subject: `[SFDC-${caseNum}] ${subject}`,
                 requester: ticket.requester,
                 priority: caseToUnlink.priority === 'High' ? 'Alta' : 'Media',
-                status: 'Abierto',
+                status: 'Pendiente',
                 client: ticket.client,
                 internalNotes: [`=== DESVINCULADO ===\nEste caso fue desvinculado del servicio original ${ticket.id} el ${new Date().toLocaleString()}`],
                 logistics: { ...ticket.logistics, address: caseToUnlink.logistics?.address || ticket.logistics?.address || '' },
                 associatedCases: [{
                     caseNumber: caseNum,
                     subject: subject,
-                    status: caseToUnlink.status || 'Abierto',
+                    status: caseToUnlink.status || 'Pendiente',
                     priority: caseToUnlink.priority || 'Medium',
                     dateOpened: caseToUnlink.dateOpened || new Date().toISOString().split('T')[0],
                     logistics: { ...(caseToUnlink.logistics || {}) }

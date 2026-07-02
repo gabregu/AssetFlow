@@ -31,7 +31,7 @@ export default function MyTicketsPage() {
     const [isMapOpen, setIsMapOpen] = useState(false);
 
     // Data State
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '' });
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '' });
     const [filter, setFilter] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'asc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', requester: '' });
@@ -116,7 +116,7 @@ export default function MyTicketsPage() {
                                (tDriverUid && (tDriverUid === uId));
             
             if (isMeLegacy) {
-                const tStatus = ticket.status || 'Abierto';
+                const tStatus = ticket.status || 'Pendiente';
                 const lStatus = ticket.logistics?.status || 'Pendiente';
                 
                 const isCompleted = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(tStatus) || ['Entregado', 'Finalizado'].includes(lStatus);
@@ -192,7 +192,7 @@ export default function MyTicketsPage() {
         };
         const createdTicket = await addTicket(ticketData);
         setIsModalOpen(false);
-        setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Abierto', caseNumber: '' });
+        setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '' });
         if (createdTicket?.id) {
             router.push(`/dashboard/tickets/${createdTicket.id}`);
         }
@@ -490,7 +490,7 @@ export default function MyTicketsPage() {
                                        (tDriverUid && (tDriverUid === uId));
                     
                     if (isMeLegacy) {
-                        const tStatus = ticket.status || 'Abierto';
+                        const tStatus = ticket.status || 'Pendiente';
                         const lStatus = ticket.logistics?.status || 'Pendiente';
                         const isCompleted = ['Cerrado', 'Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(tStatus) || ['Entregado', 'Finalizado'].includes(lStatus);
                         
@@ -539,7 +539,7 @@ export default function MyTicketsPage() {
 
     const getStatusVariant = (status) => {
         switch (status) {
-            case 'Abierto': return 'danger';
+            case 'Pendiente': return 'danger';
             case 'En Progreso': return 'info';
             case 'Resuelto': return 'success';
             case 'Pendiente': return 'warning';

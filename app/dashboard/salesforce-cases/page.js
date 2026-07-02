@@ -26,7 +26,7 @@ export default function SFDCCasesPage() {
     const [filter, setFilter] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCase, setSelectedCase] = useState(null);
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Abierto' });
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente' });
     const [sortConfig, setSortConfig] = useState({ key: 'age', direction: 'ascending' });
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' }); // Nuevo estado
 
@@ -35,7 +35,7 @@ export default function SFDCCasesPage() {
 
     // Manual Creation State
     const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-    const [manualTicket, setManualTicket] = useState({ caseNumber: '', subject: '', requester: '', priority: 'Media', status: 'Abierto', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
+    const [manualTicket, setManualTicket] = useState({ caseNumber: '', subject: '', requester: '', priority: 'Media', status: 'Pendiente', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
 
     const fileInputRef = useRef(null);
 
@@ -303,7 +303,7 @@ export default function SFDCCasesPage() {
             const newAssociated = {
                 caseNumber: sfdcCase.caseNumber,
                 subject: sfdcCase.subject,
-                status: sfdcCase.status || 'Abierto',
+                status: sfdcCase.status || 'Pendiente',
                 priority: sfdcCase.priority,
                 dateOpened: sfdcCase.dateOpened,
                 logistics: {
@@ -333,7 +333,7 @@ export default function SFDCCasesPage() {
             subject: `[SFDC-${sfdcCase.caseNumber}] ${sfdcCase.subject}`,
             requester: sfdcCase.requestedFor,
             priority: sfdcCase.priority === 'High' ? 'Alta' : 'Media',
-            status: 'Abierto',
+            status: 'Pendiente',
             logistics: {
                 address: sfdcCase.mailingStreet && sfdcCase.country ? `${sfdcCase.mailingStreet}, ${sfdcCase.country} ${sfdcCase.zipCode}` : '',
                 phone: sfdcCase.mobile || '',
@@ -352,7 +352,7 @@ export default function SFDCCasesPage() {
         const newAssociated = {
             caseNumber: sfdcCase.caseNumber,
             subject: sfdcCase.subject,
-            status: sfdcCase.status || 'Abierto',
+            status: sfdcCase.status || 'Pendiente',
             priority: sfdcCase.priority,
             dateOpened: sfdcCase.dateOpened,
             logistics: {
@@ -418,7 +418,7 @@ export default function SFDCCasesPage() {
             finalTicket.associatedCases = [{
                 caseNumber: selectedCase.caseNumber,
                 subject: selectedCase.subject,
-                status: selectedCase.status || 'Abierto',
+                status: selectedCase.status || 'Pendiente',
                 priority: selectedCase.priority,
                 dateOpened: selectedCase.dateOpened,
                 logistics: {
@@ -558,7 +558,7 @@ export default function SFDCCasesPage() {
             console.log("Created ticket:", createdTicket);
             
             setIsManualModalOpen(false);
-            setManualTicket({ caseNumber: '', subject: '', requester: '', priority: 'Media', status: 'Abierto', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
+            setManualTicket({ caseNumber: '', subject: '', requester: '', priority: 'Media', status: 'Pendiente', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
             
             if (createdTicket?.id) {
                 showToast("Servicio creado correctamente", "success");
@@ -637,6 +637,11 @@ export default function SFDCCasesPage() {
     const classifyAction = (subject) => {
         const sub = (subject || '').toLowerCase();
         
+        // Excepción: "Swap Request Bundle" va junto a la recolección
+        if (sub.includes('swap request bundle')) {
+            return { action: 'RETIRO', isSwapBundle: true, needsWarning: false };
+        }
+        
         if (sub.includes('offboarding') || sub.includes('collection')) {
             return { action: 'RETIRO', needsWarning: false };
         }
@@ -700,6 +705,7 @@ export default function SFDCCasesPage() {
                         employeeName,
                         action: classification.action,
                         needsWarning: classification.needsWarning,
+                        hasSwapBundle: classification.isSwapBundle || false,
                         cases: []
                     };
                 }
@@ -707,13 +713,16 @@ export default function SFDCCasesPage() {
                 if (classification.needsWarning) {
                     groups[groupKey].needsWarning = true;
                 }
+                if (classification.isSwapBundle) {
+                    groups[groupKey].hasSwapBundle = true;
+                }
             });
 
             const groupEntries = Object.values(groups);
             console.log(`Motor Logístico: Procesando ${groupEntries.length} grupos de ${casesToProcess.length} casos importados.`);
 
             for (const groupData of groupEntries) {
-                const { employeeName, action, needsWarning, cases: group } = groupData;
+                const { employeeName, action, needsWarning, hasSwapBundle, cases: group } = groupData;
                 const mainCase = group[0];
                 const siblings = group.slice(1);
 
@@ -747,7 +756,7 @@ export default function SFDCCasesPage() {
                     salesforceCase: mainCase.caseNumber, // Caso Principal SFDC explícito
                     requester: employeeName,
                     priority: mainCase.priority === 'High' ? 'Alta' : 'Media',
-                    status: 'Abierto',
+                    status: hasSwapBundle ? 'Bloqueado / A la Espera' : 'Pendiente',
                     logistics: {
                         address: contactInfo.address,
                         floorDept: contactInfo.floorDept,
@@ -1536,7 +1545,7 @@ export default function SFDCCasesPage() {
                                         subject: `[SFDC-${c.caseNumber}] ${c.subject}`,
                                         requester: c.requestedFor,
                                         priority: c.priority === 'High' ? 'Alta' : 'Media',
-                                        status: 'Abierto',
+                                        status: 'Pendiente',
                                         logistics: {
                                             address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : '',
                                             phone: c.mobile || '',

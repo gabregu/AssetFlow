@@ -41,7 +41,7 @@ export default function TicketHeader({
                             value={editedData.status || ticket.status}
                             onChange={e => setEditedData({ ...editedData, status: e.target.value })}
                         >
-                            <option value="Abierto">Abierto</option>
+                            <option value="Pendiente">Abierto</option>
                             <option value="Pendiente">Pendiente</option>
                             <option value="Bloqueado / A la Espera">Bloqueado / A la Espera</option>
                             <option value="En Progreso">En Progreso</option>

@@ -188,7 +188,7 @@ export default function Dashboard() {
     }, [assets, countryFilter]);
 
     // ── KPIs ───────────────────────────────────────────────────────────────
-    const openTickets = filteredTickets.filter(t => t.status === 'Abierto').length;
+    const openTickets = filteredTickets.filter(t => t.status === 'Pendiente').length;
     const inProgress = filteredTickets.filter(t => t.status === 'En Progreso').length;
     const resolved = filteredTickets.filter(t => ['Resuelto', 'Cerrado'].includes(t.status)).length;
     const assignedAssets = filteredAssets.filter(a => a.assignee && !['Almacén', 'En Almacén'].includes(a.assignee)).length;

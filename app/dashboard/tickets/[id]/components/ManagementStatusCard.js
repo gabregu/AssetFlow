@@ -36,7 +36,7 @@ export default function ManagementStatusCard({
                                 }
                             }}
                         >
-                            {s === 'Abierto' && <AlertCircle size={16} style={{ marginRight: '8px' }} />}
+                            {s === 'Pendiente' && <AlertCircle size={16} style={{ marginRight: '8px' }} />}
                             {s === 'En Progreso' && <Clock size={16} style={{ marginRight: '8px' }} />}
                             {s === 'Resuelto' && <CheckCircle2 size={16} style={{ marginRight: '8px' }} />}
                             {s === 'Caso SFDC Cerrado' && <Check size={16} style={{ marginRight: '8px' }} />}

@@ -218,7 +218,7 @@ export default function BillingPage() {
             }
 
             // Pending deliveries count
-            if (ticket.status === 'Abierto' || ticket.status === 'En Progreso') {
+            if (ticket.status === 'Pendiente' || ticket.status === 'En Progreso') {
                 pendingDeliveriesCount += 1;
             }
         });

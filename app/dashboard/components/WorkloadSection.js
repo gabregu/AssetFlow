@@ -149,7 +149,7 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
         { value: otros, color: '#6b7280' },
     ];
     
-    const openTickets = tickets.filter(t => t.status === 'Abierto').length;
+    const openTickets = tickets.filter(t => t.status === 'Pendiente').length;
     const inProgress = tickets.filter(t => t.status === 'En Progreso').length;
     const resolved = tickets.filter(t => ['Resuelto', 'Cerrado'].includes(t.status)).length;
     
