@@ -797,7 +797,9 @@ export default function TicketsPage() {
                         {sortedAndFilteredTickets.map((ticket, index) => {
                             const isGrouped = ticket.associatedCases && ticket.associatedCases.length > 0;
                             const subjectPrefix = isGrouped ? '(+) ' : '';
-                            const subjectText = `${subjectPrefix}${ticket.subject || 'Sin Asunto'}`;
+                            const rawSubject = ticket.subject || 'Sin Asunto';
+                                const cleanedSubject = rawSubject.replace(/\[SFDC-[\w\d]+\]\s*/gi, '').trim();
+                                const subjectText = `${subjectPrefix}${cleanedSubject}`;
                             return (
                                 <Card key={`mobile-${ticket.id}-${index}`} style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -854,7 +856,9 @@ export default function TicketsPage() {
                                 // Determine if grouped
                                 const isGrouped = ticket.associatedCases && ticket.associatedCases.length > 0;
                                 const subjectPrefix = isGrouped ? '(+) ' : '';
-                                const subjectText = `${subjectPrefix}${ticket.subject || 'Sin Asunto'}`;
+                                const rawSubject = ticket.subject || 'Sin Asunto';
+                                const cleanedSubject = rawSubject.replace(/\[SFDC-[\w\d]+\]\s*/gi, '').trim();
+                                const subjectText = `${subjectPrefix}${cleanedSubject}`;
                                 
                                 // Logistics Address
                                 const address = ticket.logistics?.address || ticket.address || '';
