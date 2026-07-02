@@ -800,7 +800,7 @@ export default function TicketsPage() {
                             const isGrouped = ticket.associatedCases && ticket.associatedCases.length > 0;
                             const subjectPrefix = '';
                             const rawSubject = ticket.subject || 'Sin Asunto';
-                                const cleanedSubject = rawSubject.replace(/\[SFDC-[\w\d]+\]\s*/gi, '').trim();
+                                const cleanedSubject = rawSubject.replace(/\[SFDC-[\w\d]+\]\s*/gi, '').replace(/\s*\(\+.*\scasos agrupados\)/i, '').trim();
                                 const subjectText = `${subjectPrefix}${cleanedSubject}`;
                             return (
                                 <Card key={`mobile-${ticket.id}-${index}`} style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -859,7 +859,7 @@ export default function TicketsPage() {
                                 const isGrouped = ticket.associatedCases && ticket.associatedCases.length > 0;
                                 const subjectPrefix = '';
                                 const rawSubject = ticket.subject || 'Sin Asunto';
-                                const cleanedSubject = rawSubject.replace(/\[SFDC-[\w\d]+\]\s*/gi, '').trim();
+                                const cleanedSubject = rawSubject.replace(/\[SFDC-[\w\d]+\]\s*/gi, '').replace(/\s*\(\+.*\scasos agrupados\)/i, '').trim();
                                 const subjectText = `${subjectPrefix}${cleanedSubject}`;
                                 
                                 // Logistics Address
