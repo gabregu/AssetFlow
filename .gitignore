@@ -17,4 +17,4 @@ yarn-error.log*
 data/*.json
 !data/example.json
 
-certificates
+certificatesscratch/

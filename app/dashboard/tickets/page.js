@@ -5,8 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
-import { ServiceMap } from '../../components/ui/ServiceMap';
-import { Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge } from 'lucide-react';
+import { RefreshCw,  Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge  } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getStatusVariant } from './constants';
@@ -69,8 +68,7 @@ export default function TicketsPage() {
         setSimilarTickets(active);
     }, [newTicket.requester, tickets]);
 
-    const [showMap, setShowMap] = useState(false);
-    const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
+        const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
 
     const canDelete = currentUser?.role === 'admin' || currentUser?.role === 'Gerencial' || currentUser?.role === 'Administrativo';
 
@@ -609,71 +607,6 @@ export default function TicketsPage() {
         };
     }, [tickets, countryFilter]);
 
-        // Items para el mapa (respetando filtros activos de la tabla)
-    const mapItems = React.useMemo(() => {
-        if (!showMap) return [];
-        
-        // Función auxiliar para obtener el estado logístico más reciente (idéntica a la de la tabla)
-        const getAggregatedInfo = (ticket) => {
-            const tasks = (logisticsTasks || []).filter(tk => String(tk.ticket_id) === String(ticket.id));
-            const legacyCases = ticket.associatedCases || [];
-            
-            const allSubItems = [
-                ...tasks.map(t => ({
-                    status: t.status,
-                    deliveryPerson: t.delivery_person,
-                    updatedAt: t.updated_at || t.created_at || "0"
-                })),
-                ...legacyCases.map(c => ({
-                    status: c.logistics?.status || "Pendiente",
-                    deliveryPerson: c.logistics?.deliveryPerson,
-                    updatedAt: c.logistics?.lastUpdated || "0"
-                }))
-            ];
-
-            if (allSubItems.length === 0) return { status: ticket.status, deliveryPerson: ticket.logistics?.deliveryPerson };
-            const latest = allSubItems.sort((a,b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-            return { status: latest.status, deliveryPerson: latest.deliveryPerson };
-        };
-
-        // 1. Tickets filtrados por la UI (Los que ya pasaron por sortedAndFilteredTickets)
-        const activeFilteredTickets = sortedAndFilteredTickets.filter(t => 
-            ["En Progreso", "Pendiente", "Pendiente", "Bloqueado / A la Espera"].includes(t.status)
-        ).map(t => {
-            const agg = getAggregatedInfo(t);
-            return {
-                ...t,
-                logistics: {
-                    ...t.logistics,
-                    status: agg.status,
-                    deliveryPerson: agg.deliveryPerson
-                }
-            };
-        });
-
-        // 2. Tareas logísticas de los tickets filtrados (Para asegurar que se vean todos los puntos de esos tickets)
-        const activeTasks = (logisticsTasks || [])
-            .filter(task => !["Resuelto", "Cancelado", "Entregado"].includes(task.status))
-            .filter(task => sortedAndFilteredTickets.some(t => String(t.id) === String(task.ticket_id)))
-            .map(task => {
-                const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
-                return {
-                    id: `task-${task.id}`,
-                    subject: task.case_number ? `Caso ${task.case_number}` : `Tarea Logística ${task.id}`,
-                    requester: parentTicket?.requester || 'Sin Solicitante',
-                    logistics: {
-                        address: task.address || parentTicket?.logistics?.address,
-                        status: task.status,
-                        deliveryPerson: task.delivery_person
-                    },
-                    status: task.status
-                };
-            });
-
-        return [...activeFilteredTickets, ...activeTasks];
-    }, [sortedAndFilteredTickets, showMap, tickets, logisticsTasks]);
-
-
     const SortIcon = ({ column }) => {
         if (sortConfig.key !== column) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
         return <span style={{ marginLeft: '4px', color: 'var(--primary-color)' }}>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>;
@@ -795,42 +728,6 @@ export default function TicketsPage() {
                 </Card>
 
             </div>
-
-            {/* Live Map Integration */}
-            <div style={{ marginBottom: '2.5rem' }}>
-                <Card style={{ padding: 0, overflow: 'hidden' }}>
-                    <div
-                        style={{
-                            padding: '1rem 1.25rem',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            cursor: 'pointer',
-                            userSelect: 'none',
-                            background: showMap ? 'var(--background)' : 'transparent',
-                            borderBottom: showMap ? '1px solid var(--border)' : 'none'
-                        }}
-                        onClick={() => setShowMap(!showMap)}
-                    >
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>
-                            <Map size={18} style={{ color: 'var(--primary-color)' }} /> Mapa de Operaciones
-                        </h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            {showMap ? <ChevronUp size={20} style={{ color: 'var(--text-secondary)' }} /> : <ChevronDown size={20} style={{ color: 'var(--text-secondary)' }} />}
-                        </div>
-                    </div>
-
-                    {showMap && (
-                        <div style={{ borderRadius: 0, overflow: 'hidden' }}>
-                            <ServiceMap
-                                tickets={mapItems}
-                                drivers={[]}
-                            />
-                        </div>
-                    )}
-                </Card>
-            </div>
-
 
 
             <Card>
@@ -1339,6 +1236,7 @@ export default function TicketsPage() {
                                 >
                                     <option value="Entrega">Entrega</option>
                                     <option value="Recolección">Recolección</option>
+                                    <option value="Reemplazo">Reemplazo</option>
                                 </select>
                             </div>
                              <div className="form-group">

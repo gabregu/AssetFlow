@@ -647,7 +647,7 @@ export default function SFDCCasesPage() {
         }
         
         if (sub.includes('swap') || sub.includes('refresh') || sub.includes('upgrade') || sub.includes('breakfix')) {
-            return { action: 'ENTREGA', needsWarning: true };
+            return { action: 'REEMPLAZO', needsWarning: true };
         }
         
         return { action: 'ENTREGA', needsWarning: false };
@@ -762,7 +762,7 @@ export default function SFDCCasesPage() {
                         floorDept: contactInfo.floorDept,
                         phone: contactInfo.phone,
                         email: contactInfo.email,
-                        type: action === 'ENTREGA' ? 'Entrega' : 'Recolección'
+                        type: action === 'ENTREGA' ? 'Entrega' : (action === 'REEMPLAZO' ? 'Reemplazo' : 'Recolección')
                     },
                     associatedCases: group.map(c => ({
                         caseNumber: c.caseNumber,
@@ -1737,6 +1737,7 @@ export default function SFDCCasesPage() {
                                 >
                                     <option value="Entrega">Entrega</option>
                                     <option value="Recolección">Recolección</option>
+                                    <option value="Reemplazo">Reemplazo</option>
                                 </select>
                             </div>
                             <div className="form-group">

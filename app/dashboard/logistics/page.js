@@ -1,14 +1,14 @@
 "use client";
 import React, { useState, useMemo } from 'react';
-import { 
-    Activity, 
-    Truck, 
-    Calendar, 
-    Clock, 
-    User, 
-    MapPin, 
-    Search, 
-    Filter, 
+import {
+    Activity,
+    Truck,
+    Calendar,
+    Clock,
+    User,
+    MapPin,
+    Search,
+    Filter,
     ChevronRight,
     CheckCircle2,
     AlertCircle,
@@ -19,13 +19,17 @@ import {
     RefreshCw,
     Printer,
     ExternalLink,
-    Check
+    Check,
+    Map,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
 import { useStore } from '../../../lib/store';
 
+import { ServiceMap } from '../../components/ui/ServiceMap';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 
@@ -99,6 +103,7 @@ export default function LogisticsHubPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [driverFilter, setDriverFilter] = useState('All');
+    const [showMap, setShowMap] = useState(false);
 
     // Helper para iniciales
     const getInitials = (name) => {
@@ -247,6 +252,22 @@ export default function LogisticsHubPage() {
             total: filtered.length
         };
     }, [logisticsTasks, tickets, searchTerm, countryFilter, driverFilter]);
+
+    
+    const mapItems = React.useMemo(() => {
+        if (!showMap) return [];
+        return tasks.map(task => ({
+            id: task.id,
+            subject: task.subject || (task.case_number ? `Caso ${task.case_number}` : `Tarea ${task.id}`),
+            requester: task.displayRequester,
+            logistics: {
+                address: task.displayAddress,
+                status: task.status,
+                deliveryPerson: task.deliveryPerson || task.delivery_person
+            },
+            status: task.status
+        }));
+    }, [tasks, showMap]);
 
     const uniqueDrivers = useMemo(() => {
         const drivers = new Set();
@@ -607,6 +628,42 @@ export default function LogisticsHubPage() {
                     <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem' }}>
                         {metrics.total}
                     </div>
+                </Card>
+            </div>
+
+            
+            {/* Live Map Integration */}
+            <div style={{ marginBottom: '2.5rem' }}>
+                <Card style={{ padding: 0, overflow: 'hidden' }}>
+                    <div
+                        style={{
+                            padding: '1rem 1.25rem',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            background: showMap ? 'var(--background)' : 'transparent',
+                            borderBottom: showMap ? '1px solid var(--border)' : 'none'
+                        }}
+                        onClick={() => setShowMap(!showMap)}
+                    >
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>
+                            <Map size={18} style={{ color: 'var(--primary-color)' }} /> Mapa de Operaciones
+                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            {showMap ? <ChevronUp size={20} style={{ color: 'var(--text-secondary)' }} /> : <ChevronDown size={20} style={{ color: 'var(--text-secondary)' }} />}
+                        </div>
+                    </div>
+
+                    {showMap && (
+                        <div style={{ borderRadius: 0, overflow: 'hidden' }}>
+                            <ServiceMap
+                                tickets={mapItems}
+                                drivers={[]}
+                            />
+                        </div>
+                    )}
                 </Card>
             </div>
 
