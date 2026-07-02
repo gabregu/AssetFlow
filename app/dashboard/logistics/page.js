@@ -20,7 +20,7 @@ import {
     Printer,
     ExternalLink,
     Check,
-    Map,
+    Map as MapIcon,
     ChevronDown,
     ChevronUp
 } from 'lucide-react';
