@@ -796,7 +796,7 @@ export default function TicketsPage() {
                     <div className="mobile-only">
                         {sortedAndFilteredTickets.map((ticket, index) => {
                             const isGrouped = ticket.associatedCases && ticket.associatedCases.length > 0;
-                            const subjectPrefix = isGrouped ? '(+) ' : '';
+                            const subjectPrefix = '';
                             const rawSubject = ticket.subject || 'Sin Asunto';
                                 const cleanedSubject = rawSubject.replace(/\[SFDC-[\w\d]+\]\s*/gi, '').trim();
                                 const subjectText = `${subjectPrefix}${cleanedSubject}`;
@@ -855,7 +855,7 @@ export default function TicketsPage() {
                             {sortedAndFilteredTickets.map((ticket, index) => {
                                 // Determine if grouped
                                 const isGrouped = ticket.associatedCases && ticket.associatedCases.length > 0;
-                                const subjectPrefix = isGrouped ? '(+) ' : '';
+                                const subjectPrefix = '';
                                 const rawSubject = ticket.subject || 'Sin Asunto';
                                 const cleanedSubject = rawSubject.replace(/\[SFDC-[\w\d]+\]\s*/gi, '').trim();
                                 const subjectText = `${subjectPrefix}${cleanedSubject}`;
