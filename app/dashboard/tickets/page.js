@@ -1029,9 +1029,9 @@ export default function TicketsPage() {
                                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newTicket.address)}`} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        style={{ fontSize: '0.75rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'underline' }}
+                                        style={{ fontSize: '0.7rem', color: 'var(--primary-color)', background: 'rgba(37, 99, 235, 0.05)', border: '1px solid var(--primary-color)', padding: '2px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none', fontWeight: 600 }}
                                     >
-                                        <Map size={12} /> Validar Dirección
+                                        <Check size={12} strokeWidth={2.5} /> Validar Dirección
                                     </a>
                                 )}
                             </div>
