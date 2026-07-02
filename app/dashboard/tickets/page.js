@@ -32,7 +32,7 @@ export default function TicketsPage() {
     
     // Manual Creation State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: ''});
 
     // Similar active tickets for warnings on manual creation
     const [similarTickets, setSimilarTickets] = useState([]);
@@ -447,6 +447,8 @@ export default function TicketsPage() {
             const caseNumClean = newTicket.caseNumber ? String(newTicket.caseNumber).trim() : '';
             
             const ticketData = {
+                country: countryFilter,
+                floor: newTicket.floor,
                 ...newTicket,
                 subject: clean(newTicket.subject),
                 requester: clean(newTicket.requester),
@@ -936,20 +938,21 @@ export default function TicketsPage() {
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Servicio" disableOutsideClick={true}>
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* 1) Tipo de Servicio */}
                     <div className="form-group">
-                        <label className="form-label">Número de Caso SFDC (Opcional)</label>
-                        <input
-                            className="form-input"
-                            placeholder="Ej: 03102345"
-                            value={newTicket.caseNumber}
-                            onChange={e => setNewTicket({ ...newTicket, caseNumber: e.target.value })}
-                            onPaste={e => {
-                                e.preventDefault();
-                                const text = e.clipboardData.getData('text').replace(/[\r\n\t]+/g, ' ').trim();
-                                setNewTicket({ ...newTicket, caseNumber: text });
-                            }}
-                        />
+                        <label className="form-label">Tipo de Servicio</label>
+                        <select
+                            className="form-select"
+                            value={newTicket.type || 'Entrega'}
+                            onChange={e => setNewTicket({ ...newTicket, type: e.target.value })}
+                        >
+                            <option value="Entrega">Entrega</option>
+                            <option value="Recolección">Retiro (Recolección)</option>
+                            <option value="Reemplazo">Reemplazo</option>
+                        </select>
                     </div>
+
+                    {/* 2) Asunto */}
                     <div className="form-group">
                         <label className="form-label">Asunto</label>
                         <input
@@ -957,13 +960,10 @@ export default function TicketsPage() {
                             placeholder="Ej: Problema con monitor"
                             value={newTicket.subject}
                             onChange={e => setNewTicket({ ...newTicket, subject: e.target.value })}
-                            onPaste={e => {
-                                e.preventDefault();
-                                const text = e.clipboardData.getData('text').replace(/[\r\n\t]+/g, ' ').trim();
-                                setNewTicket({ ...newTicket, subject: text });
-                            }}
                         />
                     </div>
+
+                    {/* 3) Solicitante */}
                     <div className="form-group">
                         <label className="form-label">Solicitante</label>
                         <input
@@ -971,126 +971,58 @@ export default function TicketsPage() {
                             placeholder="Nombre del empleado"
                             value={newTicket.requester}
                             onChange={e => setNewTicket({ ...newTicket, requester: e.target.value })}
-                            onPaste={e => {
-                                e.preventDefault();
-                                const text = e.clipboardData.getData('text').replace(/[\r\n\t]+/g, ' ').trim();
-                                setNewTicket({ ...newTicket, requester: text });
-                            }}
                         />
                         {similarTickets.length > 0 && (
-                            <div style={{
-                                marginTop: '0.5rem',
-                                padding: '0.75rem',
-                                background: 'rgba(245, 158, 11, 0.1)',
-                                border: '1px dashed #f59e0b',
-                                borderRadius: '8px',
-                                fontSize: '0.8rem',
-                                color: '#d97706',
-                                animation: 'fadeIn 0.2s ease-out'
-                            }}>
+                            <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.1)', border: '1px dashed #f59e0b', borderRadius: '8px', fontSize: '0.8rem', color: '#d97706' }}>
                                 <div style={{ fontWeight: 700, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <AlertCircle size={14} /> Ya existe un servicio abierto para este empleado:
                                 </div>
                                 <ul style={{ margin: 0, paddingLeft: '1.2rem', listStyleType: 'disc' }}>
                                     {similarTickets.map(t => (
-                                        <li key={t.id} style={{ marginBottom: '4px' }}>
-                                            <strong>{t.id}</strong>: {t.subject} (Estado: {t.status}){' '}
-                                            <a 
-                                                href={`/dashboard/tickets/${t.id}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                style={{ textDecoration: 'underline', fontWeight: 600, color: 'var(--primary-color)', marginLeft: '4px' }}
-                                            >
-                                                Ver y agregar caso asociado →
-                                            </a>
+                                        <li key={t.id}>
+                                            <strong>{t.id}</strong>: {t.subject}
                                         </li>
                                     ))}
                                 </ul>
-                                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', opacity: 0.9 }}>
-                                    Se recomienda abrir el servicio existente y añadir el nuevo caso desde allí para mantener todo agrupado.
-                                </div>
                             </div>
                         )}
                     </div>
-                    <div className="form-group">
-                        <label className="form-label">Prioridad</label>
-                        <select
-                            className="form-select"
-                            value={newTicket.priority}
-                            onChange={e => setNewTicket({ ...newTicket, priority: e.target.value })}
-                        >
-                            <option value="Baja">Baja</option>
-                            <option value="Media">Media</option>
-                            <option value="Alta">Alta</option>
-                            <option value="Crítica">Crítica</option>
-                        </select>
-                    </div>
 
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: '0.5rem' }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '1rem' }}>Datos Logísticos (Opcional)</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <div className="form-group">
-                                <label className="form-label">Tipo de Servicio</label>
-                                <select
-                                    className="form-select"
-                                    value={newTicket.type}
-                                    onChange={e => setNewTicket({ ...newTicket, type: e.target.value })}
-                                >
-                                    <option value="Entrega">Entrega</option>
-                                    <option value="Recolección">Recolección</option>
-                                    <option value="Reemplazo">Reemplazo</option>
-                                </select>
-                            </div>
-                             <div className="form-group">
-                                <label className="form-label">Cliente</label>
-                                <select
-                                    className="form-select"
-                                    value={newTicket.country}
-                                    onChange={e => setNewTicket({ ...newTicket, country: e.target.value })}
-                                >
-                                    <option value="">Seleccionar Cliente...</option>
-                                    {entities.map(e => (
-                                        <option key={e.id} value={e.name}>{e.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="form-group" style={{ marginTop: '1rem' }}>
-                            <label className="form-label">Dirección (Mailing Street)</label>
+                    {/* 4) Direccion & 5) Piso / Dpto */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                            <label className="form-label">Dirección</label>
                             <input
                                 className="form-input"
                                 placeholder="Ej: Av. Siempreviva 742"
                                 value={newTicket.address}
                                 onChange={e => setNewTicket({ ...newTicket, address: e.target.value })}
-                                onPaste={e => {
-                                    e.preventDefault();
-                                    const text = e.clipboardData.getData('text').replace(/[\r\n\t]+/g, ' ').trim();
-                                    setNewTicket({ ...newTicket, address: text });
-                                }}
                             />
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                            <div className="form-group">
-                                <label className="form-label">Código Postal</label>
-                                <input
-                                    className="form-input"
-                                    placeholder="Ej: 1414"
-                                    value={newTicket.zipCode}
-                                    onChange={e => setNewTicket({ ...newTicket, zipCode: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Teléfono (Mobile)</label>
-                                <input
-                                    className="form-input"
-                                    placeholder="Ej: +54 9 11..."
-                                    value={newTicket.phone}
-                                    onChange={e => setNewTicket({ ...newTicket, phone: e.target.value })}
-                                />
-                            </div>
+                        <div className="form-group">
+                            <label className="form-label">Piso / Dpto.</label>
+                            <input
+                                className="form-input"
+                                placeholder="Ej: 3B"
+                                value={newTicket.floor}
+                                onChange={e => setNewTicket({ ...newTicket, floor: e.target.value })}
+                            />
                         </div>
-                        <div className="form-group" style={{ marginTop: '1rem' }}>
-                            <label className="form-label">Email</label>
+                    </div>
+
+                    {/* 6) Telefono & 7) Correo electrónico */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                            <label className="form-label">Teléfono</label>
+                            <input
+                                className="form-input"
+                                placeholder="Ej: +54 9 11..."
+                                value={newTicket.phone}
+                                onChange={e => setNewTicket({ ...newTicket, phone: e.target.value })}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Correo electrónico</label>
                             <input
                                 type="email"
                                 className="form-input"
@@ -1100,6 +1032,33 @@ export default function TicketsPage() {
                             />
                         </div>
                     </div>
+
+                    {/* 8) Prioridad */}
+                    <div className="form-group">
+                        <label className="form-label">Prioridad</label>
+                        <select
+                            className="form-select"
+                            value={newTicket.priority || 'Media'}
+                            onChange={e => setNewTicket({ ...newTicket, priority: e.target.value })}
+                        >
+                            <option value="Baja">Baja</option>
+                            <option value="Media">Media</option>
+                            <option value="Alta">Alta</option>
+                        </select>
+                    </div>
+
+                    {/* 9) Caso SFDC (solo si el cliente tiene SFDC) */}
+                    {getClientName(countryFilter).toUpperCase().includes('SFDC') && (
+                        <div className="form-group" style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                            <label className="form-label" style={{ color: 'var(--primary-color)' }}>Caso SFDC</label>
+                            <input
+                                className="form-input"
+                                placeholder="Ej: 03102345"
+                                value={newTicket.caseNumber}
+                                onChange={e => setNewTicket({ ...newTicket, caseNumber: e.target.value })}
+                            />
+                        </div>
+                    )}
 
                     <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                         <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} style={{ flex: 1 }} disabled={isSubmittingManual}>Cancelar</Button>
