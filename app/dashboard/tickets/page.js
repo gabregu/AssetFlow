@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
-import { RefreshCw,  Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge  } from 'lucide-react';
+import { MoreVertical,  RefreshCw,  Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge   } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getStatusVariant } from './constants';
@@ -731,107 +731,7 @@ export default function TicketsPage() {
 
 
             <Card>
-                {/* FILTROS TIPO DE PEDIDO (ENTREGA, RECOLECCIÓN, NEW HIRE) */}
-                <div className="grid-responsive-3" style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                    {/* BOTÓN VERDE (ENTREGA) */}
-                    <button
-                        onClick={() => setFilterType(filterType === 'DELIVERY' ? 'ALL' : 'DELIVERY')}
-                        style={{
-                            flex: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '1rem',
-                            backgroundColor: filterType === 'DELIVERY' ? '#dcfce7' : 'var(--background-secondary)',
-                            border: `2px solid ${filterType === 'DELIVERY' ? '#22c55e' : 'transparent'}`,
-                            borderRadius: 'var(--radius-md)',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            boxShadow: filterType === 'DELIVERY' ? '0 4px 6px -1px rgba(34, 197, 94, 0.1)' : 'none'
-                        }}
-                    >
-                        <div style={{ textAlign: 'left' }}>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#166534' }}>ENTREGAS</div>
-                            <div style={{ fontSize: '0.75rem', color: '#14532d', opacity: 0.8 }}>General</div>
-                        </div>
-                        <div style={{
-                            backgroundColor: '#22c55e',
-                            color: 'white',
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '9999px',
-                            fontWeight: 700,
-                            fontSize: '1.25rem'
-                        }}>
-                            {statsByType.delivery}
-                        </div>
-                    </button>
-
-                    {/* BOTÓN NARANJA (RECOLECCIÓN) */}
-                    <button
-                        onClick={() => setFilterType(filterType === 'COLLECTION' ? 'ALL' : 'COLLECTION')}
-                        style={{
-                            flex: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '1rem',
-                            backgroundColor: filterType === 'COLLECTION' ? '#ffedd5' : 'var(--background-secondary)',
-                            border: `2px solid ${filterType === 'COLLECTION' ? '#f97316' : 'transparent'}`,
-                            borderRadius: 'var(--radius-md)',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            boxShadow: filterType === 'COLLECTION' ? '0 4px 6px -1px rgba(249, 115, 22, 0.1)' : 'none'
-                        }}
-                    >
-                        <div style={{ textAlign: 'left' }}>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#c2410c' }}>RECOLECCIONES</div>
-                            <div style={{ fontSize: '0.75rem', color: '#9a3412', opacity: 0.8 }}>Devoluciones</div>
-                        </div>
-                        <div style={{
-                            backgroundColor: '#f97316',
-                            color: 'white',
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '9999px',
-                            fontWeight: 700,
-                            fontSize: '1.25rem'
-                        }}>
-                            {statsByType.collection}
-                        </div>
-                    </button>
-
-                    {/* BOTÓN ROJO (NEW HIRE) */}
-                    <button
-                        onClick={() => setFilterType(filterType === 'NEW_HIRE' ? 'ALL' : 'NEW_HIRE')}
-                        style={{
-                            flex: 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '1rem',
-                            backgroundColor: filterType === 'NEW_HIRE' ? '#fee2e2' : 'var(--background-secondary)',
-                            border: `2px solid ${filterType === 'NEW_HIRE' ? '#ef4444' : 'transparent'}`,
-                            borderRadius: 'var(--radius-md)',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            boxShadow: filterType === 'NEW_HIRE' ? '0 4px 6px -1px rgba(239, 68, 68, 0.1)' : 'none'
-                        }}
-                    >
-                        <div style={{ textAlign: 'left' }}>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: '#b91c1c' }}>NEW HIRE</div>
-                            <div style={{ fontSize: '0.75rem', color: '#991b1b', opacity: 0.8 }}>Ingresos / Futuros</div>
-                        </div>
-                        <div style={{
-                            backgroundColor: '#ef4444',
-                            color: 'white',
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '9999px',
-                            fontWeight: 700,
-                            fontSize: '1.25rem'
-                        }}>
-                            {statsByType.newHire}
-                        </div>
-                    </button>
-                </div>
+                
 
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }} className="flex-mobile-column">
                     {selectedTickets.length > 0 && canDelete ? (
@@ -892,7 +792,41 @@ export default function TicketsPage() {
                 </div>
 
                 <div className="table-responsive">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    
+                    <div className="mobile-only">
+                        {sortedAndFilteredTickets.map((ticket, index) => {
+                            const isGrouped = ticket.associatedCases && ticket.associatedCases.length > 0;
+                            const subjectPrefix = isGrouped ? '(+) ' : '';
+                            const subjectText = `${subjectPrefix}${ticket.subject || 'Sin Asunto'}`;
+                            return (
+                                <Card key={`mobile-${ticket.id}-${index}`} style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>{ticket.id}</div>
+                                        <Badge variant={getStatusVariant(ticket.status)} style={{ fontSize: '0.75rem', padding: '2px 8px' }}>
+                                            {ticket.status}
+                                        </Badge>
+                                    </div>
+                                    <div style={{ fontWeight: 600, fontSize: '1rem', color: isGrouped ? 'var(--primary-color)' : 'var(--text-main)' }}>
+                                        {subjectText}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                            {String(ticket.requester || '?').charAt(0)}
+                                        </div>
+                                        <span>{ticket.requester || 'Sin Solicitante'}</span>
+                                    </div>
+                                    <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                                        <Link href={`/dashboard/tickets/${ticket.id}`}>
+                                            <Button variant="ghost" size="sm" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                <MoreVertical size={16} /> Ver Detalles
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                    <table className="desktop-only" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                 {canDelete && (
@@ -905,228 +839,92 @@ export default function TicketsPage() {
                                         />
                                     </th>
                                 )}
-                                <th
-                                    onClick={() => handleSort('id')}
-                                    style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
-                                >
-                                    ID <SortIcon column="id" />
-                                </th>
-                                <th
-                                    onClick={() => handleSort('subject')}
-                                    style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
-                                >
-                                    Asunto <SortIcon column="subject" />
-                                </th>
-                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <div onClick={() => handleSort('requester')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                                            Solicitante <SortIcon column="requester" />
-                                        </div>
-                                        <div style={{ position: 'relative' }}>
-                                            <Filter size={14} style={{ cursor: 'pointer', color: columnFilters.requester ? 'var(--primary-color)' : 'inherit' }} />
-                                            <input
-                                                type="text"
-                                                placeholder="Filtrar..."
-                                                value={columnFilters.requester}
-                                                onChange={(e) => setColumnFilters({ ...columnFilters, requester: e.target.value })}
-                                                style={{
-                                                    fontSize: '0.7rem',
-                                                    padding: '2px 4px',
-                                                    width: '80px',
-                                                    marginLeft: '4px',
-                                                    border: '1px solid var(--border)',
-                                                    borderRadius: '4px',
-                                                    backgroundColor: 'var(--background)',
-                                                    color: 'var(--text-main)'
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                </th>
-                                <th
-                                    onClick={() => handleSort('date')}
-                                    style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
-                                >
-                                    Fecha <SortIcon column="date" />
-                                </th>
-                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <div onClick={() => handleSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
-                                            Estado <SortIcon column="status" />
-                                        </div>
-                                        <select
-                                            value={columnFilters.status}
-                                            onChange={(e) => setColumnFilters({ ...columnFilters, status: e.target.value })}
-                                            style={{
-                                                fontSize: '0.75rem',
-                                                padding: '2px',
-                                                border: '1px solid var(--border)',
-                                                borderRadius: '4px',
-                                                backgroundColor: 'var(--background)',
-                                                color: 'var(--text-main)',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            <option value="All">Todos</option>
-                                            <option value="Pendiente">Abierto</option>
-                                            <option value="En Progreso">En Progreso</option>
-                                            <option value="Pendiente">Pendiente</option>
-                                            <option value="Bloqueado / A la Espera">Bloqueado / A la Espera</option>
-                                        </select>
-                                    </div>
-                                </th>
-                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Acciones</th>
+                                <th onClick={() => handleSort('id')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}>ID <SortIcon column="id" /></th>
+                                <th onClick={() => handleSort('requester')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}>SOLICITANTE <SortIcon column="requester" /></th>
+                                <th onClick={() => handleSort('subject')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}>ASUNTO <SortIcon column="subject" /></th>
+                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>DIRECCIÓN</th>
+                                <th onClick={() => handleSort('date')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}>FECHA <SortIcon column="date" /></th>
+                                <th onClick={() => handleSort('status')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}>ESTADO <SortIcon column="status" /></th>
+                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>TIPO SRV</th>
+                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>DETALLE</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {sortedAndFilteredTickets.map((ticket, index) => (
-                                <tr key={`${ticket.id}-${index}`} style={{ borderBottom: '1px solid var(--border)' }} className="table-row-hover">
-                                    {canDelete && (
-                                        <td style={{ padding: '1rem' }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedTickets.includes(ticket.id)}
-                                                onChange={() => handleSelectOne(ticket.id)}
-                                                style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                                            />
-                                        </td>
-                                    )}
-                                    <td style={{ padding: '1rem', fontWeight: 500 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            {ticket.id}
-                                            <CopyButton text={ticket.id} />
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                            <div style={{ fontWeight: 600, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                {String(ticket.subject || 'Sin Asunto')}
-                                                <CopyButton text={ticket.subject} />
-                                            </div>
-                                            {ticket.client && (
-                                                <Badge variant="secondary" style={{ fontSize: '0.65rem', padding: '2px 6px', opacity: 0.8 }}>
-                                                    {ticket.client}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Prioridad: {String(ticket.priority || 'Normal')}</div>
-                                        {ticket.logistics?.address && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                                                <a 
-                                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ticket.logistics.address)}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    style={{ 
-                                                        fontSize: '0.7rem', 
-                                                        color: 'var(--primary-color)', 
-                                                        display: 'flex', 
-                                                        alignItems: 'center', 
-                                                        gap: '3px',
-                                                        textDecoration: 'underline',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    <Map size={12} /> {ticket.logistics.address}
-                                                </a>
-                                                <CopyButton text={ticket.logistics.address} style={{ color: 'var(--primary-color)' }} />
-                                            </div>
+                            {sortedAndFilteredTickets.map((ticket, index) => {
+                                // Determine if grouped
+                                const isGrouped = ticket.associatedCases && ticket.associatedCases.length > 0;
+                                const subjectPrefix = isGrouped ? '(+) ' : '';
+                                const subjectText = `${subjectPrefix}${ticket.subject || 'Sin Asunto'}`;
+                                
+                                // Logistics Address
+                                const address = ticket.logistics?.address || ticket.address || '';
+                                
+                                // Type
+                                const srvType = ticket.type || ticket.logistics?.type || 'No definido';
+
+                                // Date formatting
+                                const dateStr = ticket.date ? new Date(ticket.date).toLocaleDateString('es-AR') : '';
+
+                                return (
+                                    <tr key={`${ticket.id}-${index}`} style={{ borderBottom: '1px solid var(--border)' }} className="table-row-hover">
+                                        {canDelete && (
+                                            <td style={{ padding: '1rem' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedTickets.includes(ticket.id)}
+                                                    onChange={() => handleSelectOne(ticket.id)}
+                                                    style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                />
+                                            </td>
                                         )}
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
-                                                {String(ticket.requester || '?').charAt(0)}
+                                        <td className="hover-container" style={{ padding: '1rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                            {ticket.id}
+                                        </td>
+                                        <td className="hover-container" style={{ padding: '1rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+                                                    {String(ticket.requester || '?').charAt(0)}
+                                                </div>
+                                                <span style={{ fontWeight: 500 }}>{ticket.requester || 'Sin Solicitante'}</span>
                                             </div>
-                                            <span>{ticket.requester || 'Sin Solicitante'}</span>
-                                            {ticket.requester && <CopyButton text={ticket.requester} />}
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            {String(ticket.date || '')}
-                                            {ticket.date && <CopyButton text={ticket.date} />}
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                            {(() => {
-                                                // 1. Get current sub-cases
-                                                const tasks = logisticsTasks.filter(tk => String(tk.ticket_id) === String(ticket.id));
-                                                const legacyCases = ticket.associatedCases || [];
-                                                
-                                                // 2. Map all to a common format
-                                                const allSubItems = [
-                                                    ...tasks.map(t => ({
-                                                        status: t.status,
-                                                        method: t.method,
-                                                        deliveryPerson: t.delivery_person,
-                                                        trackingNumber: t.tracking_number,
-                                                        date: t.date,
-                                                        updatedAt: t.updated_at || t.created_at || '0'
-                                                    })),
-                                                    ...legacyCases.map(c => ({
-                                                        status: c.logistics?.status || 'Pendiente',
-                                                        method: c.logistics?.method,
-                                                        deliveryPerson: c.logistics?.deliveryPerson,
-                                                        trackingNumber: c.logistics?.trackingNumber,
-                                                        date: c.logistics?.date,
-                                                        updatedAt: c.logistics?.lastUpdated || '0'
-                                                    }))
-                                                ];
-
-                                                // 3. Sort by updatedAt descending to find the latest log
-                                                const latestLog = allSubItems.sort((a,b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-
-                                                // Determine badges
-                                                const dateStr = (latestLog?.date) ? new Date(latestLog.date + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) : '';
-                                                const methodName = latestLog?.method || '';
-                                                const senderName = latestLog?.deliveryPerson || '';
-                                                const tracking = (latestLog?.method && latestLog?.method !== 'Repartidor Propio' && latestLog?.trackingNumber) ? ` (${latestLog.trackingNumber})` : '';
-                                                let displaySender = methodName === 'Repartidor Propio' ? (senderName || 'Propio') : (methodName ? (methodName + tracking) : (senderName || ''));
-
-                                                return (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                        {/* Main Management Status (THE REQUESTED FIX) */}
-                                                        <Badge 
-                                                            variant={getStatusVariant(ticket.status)} 
-                                                            style={{ fontSize: '0.8rem', padding: '4px 10px', boxShadow: 'var(--shadow-sm)', border: '1px solid currentColor', fontWeight: 600 }}
-                                                        >
-                                                            {ticket.status}
-                                                        </Badge>
-
-                                                        {/* Secondary Logistics Info (if exists) */}
-                                                        {latestLog && (
-                                                            <div style={{ 
-                                                                fontSize: '0.65rem', 
-                                                                color: 'var(--text-secondary)', 
-                                                                background: `${latestLog.status === 'Entregado' ? '#10b98110' : 'var(--background-secondary)'}`, 
-                                                                padding: '4px 8px', 
-                                                                borderRadius: '4px',
-                                                                border: `1px solid ${latestLog.status === 'Entregado' ? '#10b98144' : 'var(--border)'}`,
-                                                                display: 'flex',
-                                                                flexDirection: 'column',
-                                                                gap: '1px'
-                                                            }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: latestLog.status === 'Entregado' ? '#10b981' : (latestLog.status === 'En Transito' ? '#3b82f6' : '#eab308') }}></div>
-                                                                    <span style={{ fontWeight: 600 }}>{latestLog.status}</span>
-                                                                </div>
-                                                                {displaySender && <div style={{ opacity: 0.8 }}>{displaySender}</div>}
-                                                                {dateStr && <div style={{ opacity: 0.8 }}>{dateStr}</div>}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })()}
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '1rem' }}>
-                                        <Link href={`/dashboard/tickets/${ticket.id}`}>
-                                            <Button variant="ghost" size="sm" icon={Eye}>Detalles</Button>
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td style={{ padding: '1rem', maxWidth: '250px' }}>
+                                            <div style={{ fontWeight: 600, fontSize: '0.9rem', color: isGrouped ? 'var(--primary-color)' : 'inherit' }}>
+                                                {subjectText}
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '1rem', maxWidth: '200px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                            {address ? (
+                                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
+                                                    <Map size={14} style={{ marginTop: '2px', flexShrink: 0 }} />
+                                                    <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis' }} title={address}>
+                                                        {address}
+                                                    </span>
+                                                </div>
+                                            ) : '-'}
+                                        </td>
+                                        <td className="hover-container" style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+                                            {dateStr || ticket.date}
+                                        </td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <Badge 
+                                                variant={getStatusVariant(ticket.status)} 
+                                                style={{ fontSize: '0.75rem', padding: '4px 10px', boxShadow: 'var(--shadow-sm)', border: '1px solid currentColor', fontWeight: 600, whiteSpace: 'nowrap' }}
+                                            >
+                                                {ticket.status}
+                                            </Badge>
+                                        </td>
+                                        <td style={{ padding: '1rem', fontSize: '0.85rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                            {srvType}
+                                        </td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <Link href={`/dashboard/tickets/${ticket.id}`}>
+                                                <Button variant="ghost" size="sm" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MoreVertical size={16} /> Ver Detalles</Button>
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

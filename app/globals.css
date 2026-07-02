@@ -538,4 +538,157 @@ a {
   .show-mobile {
     display: none !important;
   }
+}/* UI Refactor: Tickets Mobile Cards & Clean UI */
+.ticket-card-mobile {
+  display: none;
+}
+.desktop-table {
+  display: table;
+}
+@media (max-width: 768px) {
+  .desktop-table {
+    display: none !important;
+  }
+  .ticket-card-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+}
+
+.copy-icon-hover {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.table-row-hover:hover .copy-icon-hover,
+.ticket-card-mobile:hover .copy-icon-hover {
+  opacity: 1;
+}
+
+.truncate-address {
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: bottom;
+}
+
+.kpi-container {
+  display: flex;
+  gap: 1.5rem;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 1rem 2rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+.kpi-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  border-right: 1px solid var(--border);
+}
+.kpi-item:last-child {
+  border-right: none;
+}
+@media (max-width: 768px) {
+  .kpi-container {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  .kpi-item {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+  }
+  .kpi-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+}
+
+/* Tabs */
+.tabs-container {
+  display: flex;
+  background: var(--background-secondary);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  padding: 0.5rem 0.5rem 0 0.5rem;
+  gap: 0.25rem;
+  overflow-x: auto;
+}
+.tab-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab-btn:hover {
+  background: rgba(0,0,0,0.02);
+}
+.tab-btn.active {
+  background: var(--surface);
+  color: var(--text-main);
+  border-color: var(--border);
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.02);
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+
+/* --- UI Refactor Styles --- */
+
+/* Hover Copy Icons */
+.hover-container .copy-btn {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.hover-container:hover .copy-btn {
+    opacity: 1;
+}
+
+/* Mobile Cards vs Desktop Table */
+.desktop-only {
+    display: table;
+}
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .desktop-only {
+        display: none !important;
+    }
+    .mobile-only {
+        display: flex !important;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .grid-responsive-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    /* El KPI principal ocupa las 2 columnas */
+    .grid-responsive-stats > div:first-child {
+        grid-column: 1 / -1;
+    }
 }
