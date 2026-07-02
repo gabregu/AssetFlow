@@ -32,7 +32,7 @@ export default function TicketsPage() {
     
     // Manual Creation State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: ''});
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: '', sycompCase: ''});
 
     // Similar active tickets for warnings on manual creation
     const [similarTickets, setSimilarTickets] = useState([]);
@@ -447,6 +447,7 @@ export default function TicketsPage() {
             const caseNumClean = newTicket.caseNumber ? String(newTicket.caseNumber).trim() : '';
             
             const ticketData = {
+                sycompCase: newTicket.sycompCase,
                 country: countryFilter,
                 floor: newTicket.floor,
                 ...newTicket,
@@ -1034,8 +1035,18 @@ export default function TicketsPage() {
                     </div>
 
                     {/* 8) Prioridad */}
-                    <div className="form-group">
-                        <label className="form-label">Prioridad</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group">
+                            <label className="form-label">Caso SYCOMP (Opcional)</label>
+                            <input
+                                className="form-input"
+                                placeholder="Ej: SYC-12345"
+                                value={newTicket.sycompCase}
+                                onChange={e => setNewTicket({ ...newTicket, sycompCase: e.target.value })}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Prioridad</label>
                         <select
                             className="form-select"
                             value={newTicket.priority || 'Media'}
@@ -1045,6 +1056,7 @@ export default function TicketsPage() {
                             <option value="Media">Media</option>
                             <option value="Alta">Alta</option>
                         </select>
+                    </div>
                     </div>
 
                     {/* 9) Caso SFDC (solo si el cliente tiene SFDC) */}
