@@ -607,6 +607,73 @@ export default function SFDCCasesPage() {
         }
     };
 
+    // Helpers del Motor Logístico ITAM
+    const extractEmployeeName = (subject, requestedFor) => {
+        if (!subject) return requestedFor || 'Desconocido';
+        const cleanSubject = subject.replace(/\[[^\]]+\]/g, '').trim();
+        
+        // 1. Buscar después de "for " o "Case for "
+        const forMatch = cleanSubject.match(/(?:case for|for)\s+([A-Z][a-z\u00c0-\u00ff]+(?:\s+[A-Z][a-z\u00c0-\u00ff]+)+)/i);
+        if (forMatch && forMatch[1]) {
+            return forMatch[1].trim();
+        }
+        
+        // 2. Buscar después del último guión
+        const parts = cleanSubject.split('-');
+        if (parts.length > 1) {
+            const lastPart = parts[parts.length - 1].trim();
+            const techTerms = ['laptop', 'device', 'windows', 'macbook', 'apple', 'mobile', 'yubikey', 'headset', 'monitor', 'swap', 'request', 'bundle', 'provisioning', 'onboarding', 'offboarding', 'collection', 'recolect', 'itam', 'bag', 'kit', 'accs', 'accesorio', 'arg', 'cl', 'uy', 'br', 'la', 'us', 'es'];
+            const wordCount = lastPart.split(/\s+/).filter(Boolean).length;
+            const hasTech = techTerms.some(term => lastPart.toLowerCase().includes(term));
+            if (wordCount >= 2 && wordCount <= 4 && !hasTech) {
+                return lastPart;
+            }
+        }
+        
+        // 3. Respaldo (Fallback)
+        return requestedFor || 'Desconocido';
+    };
+
+    const classifyAction = (subject) => {
+        const sub = (subject || '').toLowerCase();
+        
+        if (sub.includes('offboarding') || sub.includes('collection')) {
+            return { action: 'RETIRO', needsWarning: false };
+        }
+        
+        if (sub.includes('swap') || sub.includes('refresh') || sub.includes('upgrade') || sub.includes('breakfix')) {
+            return { action: 'ENTREGA', needsWarning: true };
+        }
+        
+        return { action: 'ENTREGA', needsWarning: false };
+    };
+
+    const findContactDetailsFromHistory = (employeeName, localTickets) => {
+        if (!localTickets || localTickets.length === 0) return null;
+        const normalize = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const searchName = normalize(employeeName);
+        
+        const userTickets = localTickets.filter(t => 
+            t.requester && normalize(t.requester) === searchName && t.logistics
+        );
+        
+        if (userTickets.length === 0) return null;
+        
+        // Tomamos el ticket más reciente por ID (CAS-XXXX) ordenando descendente
+        const latestTicket = userTickets.sort((a, b) => {
+            const idA = parseInt(String(a.id).replace('CAS-', '')) || 0;
+            const idB = parseInt(String(b.id).replace('CAS-', '')) || 0;
+            return idB - idA;
+        })[0];
+        
+        return {
+            address: latestTicket.logistics.address || '',
+            floorDept: latestTicket.logistics.floorDept || '',
+            phone: latestTicket.logistics.phone || '',
+            email: latestTicket.logistics.email || ''
+        };
+    };
+
     // Función centralizada para procesar casos y convertirlos a tickets (automatizada)
     const processCasesToTickets = async (casesToProcess) => {
         if (!casesToProcess || casesToProcess.length === 0) return;
@@ -616,35 +683,77 @@ export default function SFDCCasesPage() {
         let casesCreated = 0;
 
         try {
-            // Helper para normalizar nombres
             const normalize = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-            const isDelivery = (c) => !c.subject.toLowerCase().includes('collection') && !c.subject.toLowerCase().includes('offboarding');
 
-            // 1. Agrupamiento por nombre de solicitante
+            // 1. Motor Logístico: Agrupamiento inteligente
             const groups = {};
             casesToProcess.forEach(c => {
-                const groupKey = normalize(c.requestedFor);
-                if (!groups[groupKey]) groups[groupKey] = [];
-                groups[groupKey].push(c);
+                const employeeName = extractEmployeeName(c.subject, c.requestedFor);
+                const classification = classifyAction(c.subject);
+                
+                // Formatear dateOpened de Salesforce extrayendo solo la fecha de "DD/MM/YYYY" o "YYYY-MM-DD HH:mm:ss"
+                const dateRaw = c.dateOpened ? c.dateOpened.split(/[ T]/)[0] : 'nodate';
+                const groupKey = `${normalize(employeeName)}_${classification.action}_${dateRaw}`;
+                
+                if (!groups[groupKey]) {
+                    groups[groupKey] = {
+                        employeeName,
+                        action: classification.action,
+                        needsWarning: classification.needsWarning,
+                        cases: []
+                    };
+                }
+                groups[groupKey].cases.push(c);
+                if (classification.needsWarning) {
+                    groups[groupKey].needsWarning = true;
+                }
             });
 
             const groupEntries = Object.values(groups);
-            console.log(`Automated: Processing ${groupEntries.length} groups from ${casesToProcess.length} cases`);
+            console.log(`Motor Logístico: Procesando ${groupEntries.length} grupos de ${casesToProcess.length} casos importados.`);
 
-            for (const group of groupEntries) {
+            for (const groupData of groupEntries) {
+                const { employeeName, action, needsWarning, cases: group } = groupData;
                 const mainCase = group[0];
                 const siblings = group.slice(1);
 
+                // 2. Historial de Contacto
+                const historicalContact = findContactDetailsFromHistory(employeeName, tickets);
+                let contactInfo = {
+                    address: mainCase.mailingStreet && mainCase.country ? `${mainCase.mailingStreet}, ${mainCase.country} ${mainCase.zipCode}` : '',
+                    floorDept: '',
+                    phone: mainCase.mobile || '',
+                    email: mainCase.email || ''
+                };
+                
+                if (historicalContact && (historicalContact.address || historicalContact.phone || historicalContact.email)) {
+                    // Solo sobrescribimos los campos del CSV si el histórico tiene un valor válido
+                    if (historicalContact.address) {
+                        contactInfo.address = historicalContact.address;
+                        contactInfo.floorDept = historicalContact.floorDept || '';
+                    }
+                    if (historicalContact.phone) contactInfo.phone = historicalContact.phone;
+                    if (historicalContact.email) contactInfo.email = historicalContact.email;
+                    
+                    console.log(`Historial recuperado para ${employeeName}:`, contactInfo);
+                }
+
+                // 3. Limpieza de Asunto y Formateo Final
+                let cleanSubject = mainCase.subject.replace(/\[SFDC-[^\]]+\]\s*/g, '').trim();
+                const ticketSubject = `${cleanSubject}${siblings.length > 0 ? ` (+ ${siblings.length} casos agrupados)` : ''}`;
+
                 const ticketData = {
-                    subject: `[SFDC-${mainCase.caseNumber}] ${mainCase.subject}${siblings.length > 0 ? ` (+ ${siblings.length} casos agrupados)` : ''}`,
-                    requester: mainCase.requestedFor,
+                    subject: ticketSubject,
+                    salesforceCase: mainCase.caseNumber, // Caso Principal SFDC explícito
+                    requester: employeeName,
                     priority: mainCase.priority === 'High' ? 'Alta' : 'Media',
                     status: 'Abierto',
                     logistics: {
-                        address: mainCase.mailingStreet && mainCase.country ? `${mainCase.mailingStreet}, ${mainCase.country} ${mainCase.zipCode}` : '',
-                        phone: mainCase.mobile || '',
-                        email: mainCase.email || '',
-                        type: isDelivery(mainCase) ? 'Entrega' : 'Recolección'
+                        address: contactInfo.address,
+                        floorDept: contactInfo.floorDept,
+                        phone: contactInfo.phone,
+                        email: contactInfo.email,
+                        type: action === 'ENTREGA' ? 'Entrega' : 'Recolección'
                     },
                     associatedCases: group.map(c => ({
                         caseNumber: c.caseNumber,
@@ -653,34 +762,38 @@ export default function SFDCCasesPage() {
                         priority: c.priority,
                         dateOpened: c.dateOpened,
                         logistics: {
-                            address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : '',
-                            phone: c.mobile || '',
-                            email: c.email || '',
-                            method: '', // Dejar vacío para que se asigne explícitamente
-                            status: 'Pendiente' // Estado inicial estándar
+                            address: contactInfo.address,
+                            phone: contactInfo.phone,
+                            email: contactInfo.email,
+                            method: '', 
+                            status: 'Pendiente'
                         }
                     }))
                 };
 
+                ticketData.internalNotes = [];
+
                 if (siblings.length > 0) {
                     const siblingNotes = siblings.map(s => `• Caso Adicional: [SFDC-${s.caseNumber}] ${s.subject}`).join('\n');
-                    ticketData.internalNotes = [`=== AUTOMATIZACIÓN: CASOS AGRUPADOS ===\nSe han detectado y agrupado automáticamente otros casos para ${mainCase.requestedFor}:\n${siblingNotes}`];
-                    ticketData.description = (mainCase.description || '') + '\n\n' + ticketData.internalNotes[0];
+                    ticketData.internalNotes.push(`=== AUTOMATIZACIÓN: CASOS AGRUPADOS ===\nSe han agrupado ${siblings.length} casos adicionales para este flujo físico en el mismo día para ${employeeName}:\n${siblingNotes}`);
+                }
+
+                if (needsWarning) {
+                    ticketData.internalNotes.push(`⚠️ ATENCIÓN: Estar atentos al próximo nuevo caso de RETIRO, ya que en los próximos días ingresará un caso para ir a buscar el asset reemplazado o dañado. O tal vez no se requiera acción porque el asset fue robado o extraviado.`);
+                }
+                
+                if (ticketData.internalNotes.length > 0) {
+                    ticketData.description = (mainCase.description || '') + '\n\n' + ticketData.internalNotes.join('\n\n');
                 }
 
                 const created = await addTicket(ticketData);
                 if (created && created.id) {
-                    // Los casos ya están en 'uniqueCases', no necesitamos removerlos de la base de datos aún 
-                    // porque importSfdcCases los agregará y luego los removemos.
-                    // Pero espera, si los vamos a crear de inmediato, ¿por qué importarlos a "sfdc_cases"?
-                    // El usuario quiere que sea "desde la importación", así que mejor no importarlos a la bandeja de entrada
-                    // si ya se convirtieron en servicios.
                     successCount += group.length;
                     casesCreated++;
                 }
             }
 
-            showToast(`Automatización: Se crearon ${casesCreated} servicios unificando ${successCount} casos importados.`, 'success');
+            showToast(`Automatización Logística: Se crearon ${casesCreated} servicios unificando ${successCount} casos importados.`, 'success');
         } catch (error) {
             console.error('Error in automated processing:', error);
             showToast(`Error en automatización: ${error.message}`, 'error');
