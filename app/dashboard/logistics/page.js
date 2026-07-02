@@ -108,7 +108,7 @@ export default function LogisticsHubPage() {
     // Helper para iniciales
     const getInitials = (name) => {
         if (!name) return 'IT';
-        return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+        return String(name).split(' ').map(n => n && n[0] ? n[0] : '').join('').toUpperCase().substring(0, 2);
     };
 
     // Helper para asignar color distintivo a cada conductor
@@ -127,8 +127,9 @@ export default function LogisticsHubPage() {
         ];
         // Algoritmo DJB2 para evitar colisiones en nombres con sumas de caracteres idénticas (como LM y FS)
         let hash = 5381;
-        for (let i = 0; i < name.length; i++) {
-            hash = ((hash << 5) + hash) + name.charCodeAt(i);
+        const strName = String(name);
+        for (let i = 0; i < strName.length; i++) {
+            hash = ((hash << 5) + hash) + strName.charCodeAt(i);
         }
         const index = Math.abs(hash) % driverColors.length;
         return driverColors[index];
