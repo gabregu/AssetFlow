@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
 
-import { MoreVertical,  RefreshCw,  Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge, Check, MapPin, Hash, Phone, Mail } from 'lucide-react';
+import { MoreVertical, RefreshCw, Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge, Check, MapPin, Hash, Phone, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getStatusVariant } from './constants';
@@ -46,16 +46,89 @@ export default function TicketsPage() {
     
     // Manual Creation State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: '', sycompCase: '', addressStatus: 'idle'});
-
-    
-    
-
-    
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega', floor: '', sycompCase: '', addressStatus: 'idle' });
+    const [requesterSuggestions, setRequesterSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [modalAddressStatus, setModalAddressStatus] = useState('idle'); // idle | validating | valid | invalid | api_error
 
     const closeModal = () => {
         setIsModalOpen(false);
-        setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: '', sycompCase: '', addressStatus: 'idle' });
+        setRequesterSuggestions([]);
+        setShowSuggestions(false);
+        setModalAddressStatus('idle');
+        setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega', floor: '', sycompCase: '', addressStatus: 'idle' });
+    };
+
+    // Search existing tickets by requester name
+    const handleRequesterChange = (value) => {
+        setNewTicket(prev => ({ ...prev, requester: value }));
+        setModalAddressStatus('idle');
+        if (value.trim().length < 2) {
+            setRequesterSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+        const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const query = normalize(value);
+        const seen = new Set();
+        const matches = tickets
+            .filter(t => {
+                const name = normalize(t.requester);
+                return name.includes(query) && !seen.has(name) && seen.add(name);
+            })
+            .slice(0, 5)
+            .map(t => ({
+                requester: t.requester,
+                address: t.logistics?.address || '',
+                phone: t.logistics?.phone || '',
+                email: t.logistics?.email || '',
+                floor: t.logistics?.floorDept || '',
+            }));
+        setRequesterSuggestions(matches);
+        setShowSuggestions(matches.length > 0);
+    };
+
+    const applyRequesterSuggestion = (suggestion) => {
+        setNewTicket(prev => ({
+            ...prev,
+            requester: suggestion.requester,
+            address: suggestion.address,
+            phone: suggestion.phone,
+            email: suggestion.email,
+            floor: suggestion.floor,
+        }));
+        setModalAddressStatus(suggestion.address ? 'valid' : 'idle');
+        setShowSuggestions(false);
+        setRequesterSuggestions([]);
+    };
+
+    // Validate address in the modal using Google Maps
+    const validateModalAddress = () => {
+        if (typeof window === 'undefined' || !window.google || !window.google.maps) {
+            setModalAddressStatus('api_error');
+            return;
+        }
+        const address = newTicket.address;
+        if (!address) return;
+        setModalAddressStatus('validating');
+        const timeoutId = setTimeout(() => setModalAddressStatus('api_error'), 8000);
+        try {
+            const geocoder = new window.google.maps.Geocoder();
+            geocoder.geocode({ address }, (results, status) => {
+                clearTimeout(timeoutId);
+                if (status === 'OK' && results && results[0]) {
+                    setModalAddressStatus('valid');
+                    setNewTicket(prev => ({ ...prev, address: results[0].formatted_address }));
+                } else if (status === 'ZERO_RESULTS') {
+                    setModalAddressStatus('invalid');
+                } else {
+                    setModalAddressStatus('api_error');
+                }
+            });
+        } catch (e) {
+            clearTimeout(timeoutId);
+            setModalAddressStatus('api_error');
+        }
     };
 
     const isTicketActive = (t) => {
@@ -1010,40 +1083,98 @@ export default function TicketsPage() {
                     </div>
 
                     {/* 3) Solicitante */}
-                    <div className="form-group">
+                    <div className="form-group" style={{ position: 'relative' }}>
                         <label className="form-label">Solicitante</label>
                         <input
                             className="form-input"
                             placeholder="Nombre del empleado"
                             value={newTicket.requester}
-                            onChange={e => setNewTicket({ ...newTicket, requester: e.target.value })}
+                            onChange={e => handleRequesterChange(e.target.value)}
+                            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                            autoComplete="off"
                         />
+                        {showSuggestions && requesterSuggestions.length > 0 && (
+                            <div style={{
+                                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+                                background: 'var(--card-bg)', border: '1px solid var(--border)',
+                                borderRadius: '8px', boxShadow: 'var(--shadow-md)', overflow: 'hidden', marginTop: '2px'
+                            }}>
+                                {requesterSuggestions.map((s, i) => (
+                                    <div
+                                        key={i}
+                                        onMouseDown={() => applyRequesterSuggestion(s)}
+                                        style={{
+                                            padding: '0.6rem 1rem', cursor: 'pointer',
+                                            borderBottom: i < requesterSuggestions.length - 1 ? '1px solid var(--border)' : 'none',
+                                            display: 'flex', flexDirection: 'column', gap: '2px',
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--surface)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>{s.requester}</span>
+                                        {s.address && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>📍 {s.address}</span>}
+                                        {s.phone && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>📞 {s.phone}</span>}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* 4) Direccion & 5) Piso / Dpto */}
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
                         <div className="form-group" style={{ marginBottom: 0 }}>
-                            <label className="form-label">Dirección Completa</label>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                Dirección Completa
+                                {modalAddressStatus === 'valid' && <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>✓ Validada</span>}
+                                {modalAddressStatus === 'invalid' && <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700 }}>⚠ No encontrada</span>}
+                                {modalAddressStatus === 'api_error' && <span style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: 700 }}>⚠ Sin validar</span>}
+                            </label>
                             <div style={{ position: 'relative' }}>
-                                <MapPin size={12} style={{ position: 'absolute', left: '10px', top: '15px', color: 'var(--text-secondary)' }} />
+                                {modalAddressStatus === 'valid'
+                                    ? <CheckCircle2 size={12} style={{ position: 'absolute', left: '10px', top: '15px', color: '#22c55e' }} />
+                                    : <MapPin size={12} style={{ position: 'absolute', left: '10px', top: '15px', color: 'var(--text-secondary)' }} />
+                                }
                                 <input
                                     className="form-input"
                                     style={{
                                         paddingLeft: '2.2rem',
-                                        paddingRight: newTicket.address ? '70px' : '10px',
+                                        paddingRight: newTicket.address ? '80px' : '10px',
                                         height: 'auto',
                                         minHeight: '42px',
                                         fontSize: '1.1rem',
                                         fontWeight: 600,
                                         lineHeight: '1.4',
                                         background: 'var(--background)',
-                                        color: 'var(--text-main)'
+                                        color: 'var(--text-main)',
+                                        borderColor: modalAddressStatus === 'valid' ? '#22c55e' : modalAddressStatus === 'invalid' ? '#ef4444' : 'var(--border)'
                                     }}
                                     placeholder="Ej: Av. Siempreviva 742"
                                     value={newTicket.address}
-                                    onChange={e => setNewTicket({ ...newTicket, address: e.target.value })}
+                                    onChange={e => { setModalAddressStatus('idle'); setNewTicket({ ...newTicket, address: e.target.value }); }}
                                 />
-                                
+                                {newTicket.address && (
+                                    <button
+                                        type="button"
+                                        onClick={validateModalAddress}
+                                        style={{
+                                            position: 'absolute', right: '4px', top: '4px', bottom: '4px',
+                                            border: 'none',
+                                            background: modalAddressStatus === 'valid' ? '#dcfce7' : '#eff6ff',
+                                            color: modalAddressStatus === 'valid' ? '#166534' : '#1d4ed8',
+                                            borderRadius: '4px', padding: '0 8px',
+                                            fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', gap: '4px'
+                                        }}
+                                    >
+                                        {modalAddressStatus === 'validating' ? (
+                                            <Loader2 size={12} className="animate-spin" />
+                                        ) : modalAddressStatus === 'valid' ? (
+                                            <><CheckCircle size={12} /> OK</>
+                                        ) : (
+                                            'Validar'
+                                        )}
+                                    </button>
+                                )}
                             </div>
                         </div>
                         <div className="form-group" style={{ marginBottom: 0 }}>
