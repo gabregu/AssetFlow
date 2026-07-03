@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
+import { useJsApiLoader } from '@react-google-maps/api';
 import { MoreVertical,  RefreshCw,  Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge, Check, MapPin, Hash, Phone, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -32,7 +33,37 @@ export default function TicketsPage() {
     
     // Manual Creation State
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: '', sycompCase: ''});
+    const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: '', sycompCase: '', addressStatus: 'idle'});
+
+    
+    const { isLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    });
+
+    const validateAddress = () => {
+        if (!isLoaded || !newTicket.address) return;
+        setNewTicket(prev => ({ ...prev, addressStatus: 'validating' }));
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address: newTicket.address + ', ' + countryFilter }, (results, status) => {
+            if (status === 'OK' && results && results[0]) {
+                setNewTicket(prev => ({
+                    ...prev,
+                    addressStatus: 'valid',
+                    address: results[0].formatted_address
+                }));
+            } else if (status === 'ZERO_RESULTS') {
+                setNewTicket(prev => ({ ...prev, addressStatus: 'invalid' }));
+            } else {
+                setNewTicket(prev => ({ ...prev, addressStatus: 'api_error' }));
+            }
+        });
+    };
+
+    const closeModal = () => {
+        closeModal();
+        setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: '', sycompCase: '', addressStatus: 'idle' });
+    };
 
     const isTicketActive = (t) => {
         if (!t || !t.status) return false;
@@ -59,13 +90,14 @@ export default function TicketsPage() {
         );
         if (match) {
             setNewTicket(prev => {
+                const newAddressStatus = match.logistics?.addressStatus || 'idle';
                 const newAddress = prev.address ? prev.address : (match.logistics?.address || match.address || '');
                 const newPhone = prev.phone ? prev.phone : (match.logistics?.phone || match.phone || '');
                 const newEmail = prev.email ? prev.email : (match.logistics?.email || match.email || '');
                 const newFloor = prev.floor ? prev.floor : (match.logistics?.floor || match.floor || '');
                 
                 // Only update if there's an actual change to prevent infinite re-renders
-                if (prev.address === newAddress && prev.phone === newPhone && prev.email === newEmail && prev.floor === newFloor) {
+                if (prev.address === newAddress && prev.phone === newPhone && prev.email === newEmail && prev.floor === newFloor && prev.addressStatus === newAddressStatus) {
                     return prev;
                 }
                 
@@ -471,6 +503,7 @@ export default function TicketsPage() {
                     subject: clean(newTicket.subject),
                     logistics: {
                         address: newTicket.address || newTicket.country ? `${clean(newTicket.address)}, ${clean(newTicket.country)} ${clean(newTicket.zipCode)}`.trim() : '',
+                            addressStatus: newTicket.addressStatus || 'idle',
                         phone: clean(newTicket.phone),
                         email: clean(newTicket.email),
                         method: '',
@@ -488,8 +521,8 @@ export default function TicketsPage() {
             };
             const createdTicket = await addTicket(ticketData);
             console.log("Manual ticket created:", createdTicket);
-            setIsModalOpen(false);
-            setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' });
+            closeModal();
+            
             if (createdTicket?.id) {
                 showToast("Servicio creado correctamente", "success");
                 router.push(`/dashboard/tickets/${createdTicket.id}`);
@@ -950,7 +983,7 @@ export default function TicketsPage() {
                 </div>
             </Card>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Crear Nuevo Servicio" disableOutsideClick={true}>
+            <Modal isOpen={isModalOpen} onClose={() => closeModal()} title="Crear Nuevo Servicio" disableOutsideClick={true}>
                 <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {/* 1) Tipo de Servicio */}
                     <div className="form-group">
@@ -1135,7 +1168,7 @@ export default function TicketsPage() {
                     )}
 
                     <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-                        <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} style={{ flex: 1 }} disabled={isSubmittingManual}>Cancelar</Button>
+                        <Button type="button" variant="secondary" onClick={() => closeModal()} style={{ flex: 1 }} disabled={isSubmittingManual}>Cancelar</Button>
                         <Button type="button" onClick={handleCreate} style={{ flex: 1 }} disabled={isSubmittingManual}>
                             {isSubmittingManual ? 'Procesando...' : 'Crear Servicio'}
                         </Button>
