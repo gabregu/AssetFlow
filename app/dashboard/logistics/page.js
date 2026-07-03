@@ -694,11 +694,8 @@ export default function LogisticsHubPage() {
                             </tr>
                         ) : tasks.map(task => (
                             <tr key={task.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} className="hover-row">
-                                <td style={{ padding: '1rem' }}>
-                                    <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.9rem' }}>{task.case_number}</div>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                                        Serv: {task.ticket_id}
-                                    </div>
+                                <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-main)', fontSize: '0.9rem' }}>
+                                    {task.ticket_id}
                                 </td>
                                 <td style={{ padding: '1rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
