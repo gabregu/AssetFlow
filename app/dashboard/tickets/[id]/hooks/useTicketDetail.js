@@ -375,9 +375,16 @@ export function useTicketDetail() {
         if (!address) return;
 
         setAddressStatus('validating');
+
+        // Timeout de seguridad: si el geocoder no responde en 8 segundos, mostrar error
+        const timeoutId = setTimeout(() => {
+            setAddressStatus('api_error');
+        }, 8000);
+
         try {
             const geocoder = new window.google.maps.Geocoder();
             geocoder.geocode({ address: address }, (results, status) => {
+                clearTimeout(timeoutId);
                 if (status === 'OK' && results && results[0]) {
                     setAddressStatus('valid');
                     setEditedData(prev => ({
@@ -392,6 +399,7 @@ export function useTicketDetail() {
                 }
             });
         } catch (error) {
+            clearTimeout(timeoutId);
             console.error("Error creating geocoder or during geocoding:", error);
             setAddressStatus('api_error');
         }
