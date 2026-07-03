@@ -515,8 +515,9 @@ export default function TicketsPage() {
                     phone: clean(newTicket.phone),
                     email: clean(newTicket.email),
                     type: newTicket.type,
-                    method: '',
-                    deliveryPerson: ''
+                      method: '',
+                      deliveryPerson: '',
+                      addressStatus: newTicket.addressStatus || 'idle'
                 }
             };
             const createdTicket = await addTicket(ticketData);
