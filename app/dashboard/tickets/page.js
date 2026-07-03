@@ -14,6 +14,19 @@ import { Modal } from '../../components/ui/Modal';
 import { supabase } from '../../../lib/supabase';
 import { CopyButton } from '../../components/ui/CopyButton';
 
+const getTypeStyles = (type) => {
+    switch (String(type || '').toLowerCase()) {
+        case 'entrega': return { label: 'ENT', color: '#16a34a', bg: '#dcfce7' };
+        case 'recolección':
+        case 'retiro':
+        case 'recupero': return { label: 'REC', color: '#dc2626', bg: '#fee2e2' };
+        case 'reemplazo': return { label: 'REE', color: '#ea580c', bg: '#ffedd5' };
+        case 'garantia':
+        case 'garantía': return { label: 'GAR', color: '#4b5563', bg: '#f3f4f6' };
+        default: return { label: type?.substring(0,3).toUpperCase() || 'N/A', color: '#4b5563', bg: '#f3f4f6' };
+    }
+};
+
 export default function TicketsPage() {
     const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks, entities, getClientName, refreshData } = useStore();
     const fileInputRef = useRef(null);
@@ -896,6 +909,7 @@ export default function TicketsPage() {
                                 
                                 // Type
                                 const srvType = ticket.type || ticket.logistics?.type || 'No definido';
+                                const typeStyles = getTypeStyles(srvType);
 
                                 // Date formatting
                                 const dateStr = ticket.date ? new Date(ticket.date).toLocaleDateString('es-AR') : '';
@@ -949,8 +963,10 @@ export default function TicketsPage() {
                                                 {ticket.status}
                                             </Badge>
                                         </td>
-                                        <td style={{ padding: '1rem', fontSize: '0.85rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                            {srvType}
+                                        <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem 0.5rem', borderRadius: '0.375rem', fontSize: '0.75rem', fontWeight: 700, backgroundColor: typeStyles.bg, color: typeStyles.color, border: `1px solid ${typeStyles.color}` }} title={srvType}>
+                                                {typeStyles.label}
+                                            </div>
                                         </td>
                                         <td style={{ padding: '1rem' }}>
                                             <Link href={`/dashboard/tickets/${ticket.id}`}>
@@ -976,8 +992,9 @@ export default function TicketsPage() {
                             onChange={e => setNewTicket({ ...newTicket, type: e.target.value })}
                         >
                             <option value="Entrega">Entrega</option>
-                            <option value="Recolección">Retiro</option>
+                            <option value="Recupero">Recupero</option>
                             <option value="Reemplazo">Reemplazo</option>
+                            <option value="Garantia">Garantia</option>
                         </select>
                     </div>
 
