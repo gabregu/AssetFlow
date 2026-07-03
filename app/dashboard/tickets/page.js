@@ -453,8 +453,8 @@ export default function TicketsPage() {
                     caseNumber: clean(caseNumClean).replace(/\s/g, ''),
                     subject: clean(newTicket.subject),
                     logistics: {
-                        address: newTicket.address || newTicket.country ? `${clean(newTicket.address)}, ${clean(newTicket.country)} ${clean(newTicket.zipCode)}`.trim() : '',
-                            addressStatus: newTicket.addressStatus || 'idle',
+                        address: clean(newTicket.address),
+                        addressStatus: newTicket.addressStatus || 'idle',
                         phone: clean(newTicket.phone),
                         email: clean(newTicket.email),
                         method: '',
@@ -462,7 +462,7 @@ export default function TicketsPage() {
                     }
                 }] : [],
                 logistics: {
-                    address: newTicket.address || newTicket.country ? `${clean(newTicket.address)}, ${clean(newTicket.country)} ${clean(newTicket.zipCode)}`.trim() : '',
+                    address: clean(newTicket.address),
                     phone: clean(newTicket.phone),
                     email: clean(newTicket.email),
                     type: newTicket.type,
