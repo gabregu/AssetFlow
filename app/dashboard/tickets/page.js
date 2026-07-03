@@ -34,38 +34,34 @@ export default function TicketsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: '', sycompCase: ''});
 
-    // Similar active tickets for warnings on manual creation
-    const [similarTickets, setSimilarTickets] = useState([]);
-
-    const isTicketActive = (t) => {
-        if (!t || !t.status) return false;
-        const status = t.status.toLowerCase().trim();
-        const closedStatuses = [
-            'resuelto',
-            'cerrado',
-            'servicio facturado',
-            'caso sfdc cerrado',
-            'cancelado',
-            'entregado',
-            'finalizado',
-            'no requiere accion'
-        ];
-        return !closedStatuses.includes(status);
-    };
-
+    // Safe Auto-complete logic when requester loses focus or changes
     useEffect(() => {
-        const req = (newTicket.requester || '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        if (req.length < 3) {
-            setSimilarTickets([]);
-            return;
+        if (!newTicket.requester || String(newTicket.requester).trim().length < 3) return;
+        const searchName = String(newTicket.requester).toLowerCase().trim();
+        const match = tickets.find(t => 
+            t.requester && String(t.requester).toLowerCase().trim() === searchName
+        );
+        if (match) {
+            setNewTicket(prev => {
+                const newAddress = prev.address ? prev.address : (match.logistics?.address || match.address || '');
+                const newPhone = prev.phone ? prev.phone : (match.logistics?.phone || match.phone || '');
+                const newEmail = prev.email ? prev.email : (match.logistics?.email || match.email || '');
+                const newFloor = prev.floor ? prev.floor : (match.logistics?.floor || match.floor || '');
+                
+                // Only update if there's an actual change to prevent infinite re-renders
+                if (prev.address === newAddress && prev.phone === newPhone && prev.email === newEmail && prev.floor === newFloor) {
+                    return prev;
+                }
+                
+                return {
+                    ...prev,
+                    address: newAddress,
+                    phone: newPhone,
+                    email: newEmail,
+                    floor: newFloor
+                };
+            });
         }
-        const active = tickets.filter(t => {
-            if (!isTicketActive(t)) return false;
-            
-            const tReq = (t.requester || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            return tReq.includes(req) || req.includes(tReq);
-        });
-        setSimilarTickets(active);
     }, [newTicket.requester, tickets]);
 
         const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
@@ -434,35 +430,6 @@ export default function TicketsPage() {
     const { isSubmitting: isSubmittingManual, safeSubmit: safeSubmitTicket } = useSafeSubmit();
 
     
-    // Safe Auto-complete logic when requester loses focus or changes
-    useEffect(() => {
-        if (!newTicket.requester || newTicket.requester.length < 3) return;
-        const exactMatch = tickets.find(t => 
-            String(t.requester).toLowerCase() === String(newTicket.requester).toLowerCase()
-        );
-        if (exactMatch) {
-            setNewTicket(prev => {
-                const newAddress = prev.address ? prev.address : (exactMatch.logistics?.address || exactMatch.address || '');
-                const newPhone = prev.phone ? prev.phone : (exactMatch.logistics?.phone || exactMatch.phone || '');
-                const newEmail = prev.email ? prev.email : (exactMatch.logistics?.email || exactMatch.email || '');
-                const newFloor = prev.floor ? prev.floor : (exactMatch.logistics?.floor || exactMatch.floor || '');
-                
-                // Only update if there's an actual change to prevent infinite re-renders
-                if (prev.address === newAddress && prev.phone === newPhone && prev.email === newEmail && prev.floor === newFloor) {
-                    return prev;
-                }
-                
-                return {
-                    ...prev,
-                    address: newAddress,
-                    phone: newPhone,
-                    email: newEmail,
-                    floor: newFloor
-                };
-            });
-        }
-    }, [newTicket.requester, tickets]);
-
     const handleCreate = async (e) => {
         if (e) e.preventDefault();
         
@@ -1003,20 +970,6 @@ export default function TicketsPage() {
                             value={newTicket.requester}
                             onChange={e => setNewTicket({ ...newTicket, requester: e.target.value })}
                         />
-                        {similarTickets.length > 0 && (
-                            <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.1)', border: '1px dashed #f59e0b', borderRadius: '8px', fontSize: '0.8rem', color: '#d97706' }}>
-                                <div style={{ fontWeight: 700, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <AlertCircle size={14} /> Ya existe un servicio abierto para este empleado:
-                                </div>
-                                <ul style={{ margin: 0, paddingLeft: '1.2rem', listStyleType: 'disc' }}>
-                                    {similarTickets.map(t => (
-                                        <li key={t.id}>
-                                            <strong>{t.id}</strong>: {t.subject}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
                     </div>
 
                     {/* 4) Direccion & 5) Piso / Dpto */}
