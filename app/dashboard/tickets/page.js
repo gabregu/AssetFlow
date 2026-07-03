@@ -34,6 +34,22 @@ export default function TicketsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: '', sycompCase: ''});
 
+    const isTicketActive = (t) => {
+        if (!t || !t.status) return false;
+        const status = t.status.toLowerCase().trim();
+        const closedStatuses = [
+            'resuelto',
+            'cerrado',
+            'servicio facturado',
+            'caso sfdc cerrado',
+            'cancelado',
+            'entregado',
+            'finalizado',
+            'no requiere accion'
+        ];
+        return !closedStatuses.includes(status);
+    };
+
     // Safe Auto-complete logic when requester loses focus or changes
     useEffect(() => {
         if (!newTicket.requester || String(newTicket.requester).trim().length < 3) return;
