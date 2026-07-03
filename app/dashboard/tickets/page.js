@@ -88,13 +88,18 @@ export default function TicketsPage() {
         const match = tickets.find(t => 
             t.requester && String(t.requester).toLowerCase().trim() === searchName
         );
-        if (match) {
+                if (match) {
             setNewTicket(prev => {
-                const newAddressStatus = match.logistics?.addressStatus || 'idle';
-                const newAddress = prev.address ? prev.address : (match.logistics?.address || match.address || '');
-                const newPhone = prev.phone ? prev.phone : (match.logistics?.phone || match.phone || '');
-                const newEmail = prev.email ? prev.email : (match.logistics?.email || match.email || '');
-                const newFloor = prev.floor ? prev.floor : (match.logistics?.floor || match.floor || '');
+                const newAddressStatus = String(match.logistics?.addressStatus || 'idle');
+                const rawAddress = prev.address ? prev.address : (match.logistics?.address || match.address || '');
+                const rawPhone = prev.phone ? prev.phone : (match.logistics?.phone || match.phone || '');
+                const rawEmail = prev.email ? prev.email : (match.logistics?.email || match.email || '');
+                const rawFloor = prev.floor ? prev.floor : (match.logistics?.floor || match.floor || '');
+
+                const newAddress = typeof rawAddress === 'string' ? rawAddress : String(rawAddress || '');
+                const newPhone = typeof rawPhone === 'string' ? rawPhone : String(rawPhone || '');
+                const newEmail = typeof rawEmail === 'string' ? rawEmail : String(rawEmail || '');
+                const newFloor = typeof rawFloor === 'string' ? rawFloor : String(rawFloor || '');
                 
                 // Only update if there's an actual change to prevent infinite re-renders
                 if (prev.address === newAddress && prev.phone === newPhone && prev.email === newEmail && prev.floor === newFloor && prev.addressStatus === newAddressStatus) {
@@ -106,7 +111,8 @@ export default function TicketsPage() {
                     address: newAddress,
                     phone: newPhone,
                     email: newEmail,
-                    floor: newFloor
+                    floor: newFloor,
+                    addressStatus: newAddressStatus
                 };
             });
         }
@@ -1047,21 +1053,22 @@ export default function TicketsPage() {
                                 />
                                 {newTicket.address && isLoaded && (
                                     <button
-                                        type="button"
-                                        onClick={validateAddress}
-                                        style={{ 
-                                            position: 'absolute',
-                                            right: '4px',
-                                            top: '4px',
-                                            bottom: '4px',
-                                            border: 'none',
-                                            background: newTicket.addressStatus === 'valid' ? '#dcfce7' : '#eff6ff',
-                                            color: newTicket.addressStatus === 'valid' ? '#166534' : '#1d4ed8',
-                                            borderRadius: '4px',
-                                            padding: '0 8px',
-                                            fontSize: '0.7rem',
-                                            fontWeight: 600,
-                                            cursor: 'pointer',
+                                          type="button"
+                                          onClick={validateAddress}
+                                          disabled={newTicket.addressStatus === 'valid' || newTicket.addressStatus === 'validating'}
+                                          style={{ 
+                                              position: 'absolute',
+                                              right: '4px',
+                                              top: '4px',
+                                              bottom: '4px',
+                                              border: 'none',
+                                              background: newTicket.addressStatus === 'valid' ? '#dcfce7' : '#eff6ff',
+                                              color: newTicket.addressStatus === 'valid' ? '#166534' : '#1d4ed8',
+                                              borderRadius: '4px',
+                                              padding: '0 8px',
+                                              fontSize: '0.7rem',
+                                              fontWeight: 600,
+                                              cursor: (newTicket.addressStatus === 'valid' || newTicket.addressStatus === 'validating') ? 'default' : 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
