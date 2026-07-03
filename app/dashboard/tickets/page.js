@@ -511,8 +511,8 @@ export default function TicketsPage() {
             const matchesStatus = columnFilters.status === 'All' || t.status === columnFilters.status;
             const matchesRequester = !columnFilters.requester || String(t.requester || '').toLowerCase().includes(columnFilters.requester.toLowerCase());
 
-            // Excluir Resueltos de esta vista
-            const isNotResolved = isTicketActive(t);
+            // Excluir Resueltos de esta vista, a menos que estemos buscando explicitamente ese estado
+            const isNotResolved = columnFilters.status === 'Resuelto' ? true : isTicketActive(t);
 
             // Filtrado por Cliente (campo explícito)
             // Aislamiento por Cliente
@@ -602,9 +602,10 @@ export default function TicketsPage() {
 
         return {
             total: filteredByCountry.filter(t => isTicketActive(t)).length,
-            abiertos: filteredByCountry.filter(t => t.status === 'Pendiente').length,
+            pendientes: filteredByCountry.filter(t => t.status === 'Pendiente').length,
             enProgreso: filteredByCountry.filter(t => t.status === 'En Progreso').length,
-            pendientes: filteredByCountry.filter(t => t.status === 'Pendiente').length
+            bloqueados: filteredByCountry.filter(t => t.status === 'Bloqueado / A la Espera').length,
+            resueltos: filteredByCountry.filter(t => t.status === 'Resuelto').length
         };
     }, [tickets, countryFilter]);
 
@@ -663,71 +664,100 @@ export default function TicketsPage() {
                 </div>
             </div>
 
-            <div className="grid-responsive-3" style={{ marginBottom: '2.5rem' }}>
+            <div style={{ display: 'flex', gap: '2rem', marginBottom: '2.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <Card
                     className="p-4 clickable-card"
                     style={{
-                        borderLeft: '4px solid var(--primary-color)',
+                        borderLeft: '4px solid #8b5cf6',
                         cursor: 'pointer',
-                        backgroundColor: columnFilters.status === 'All' ? 'rgba(37, 99, 235, 0.1)' : 'var(--surface)',
+                        backgroundColor: columnFilters.status === 'All' ? 'rgba(139, 92, 246, 0.1)' : '#eef2ff',
                         transition: 'all 0.2s ease',
-                        boxShadow: columnFilters.status === 'All' ? 'inset 0 0 0 1px var(--primary-color), var(--shadow-sm)' : 'var(--shadow-sm)'
+                        minWidth: '220px',
+                        boxShadow: columnFilters.status === 'All' ? 'inset 0 0 0 1px #8b5cf6, var(--shadow-sm)' : 'var(--shadow-sm)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        padding: '1.5rem'
                     }}
                     onClick={() => setColumnFilters({ ...columnFilters, status: 'All' })}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', backgroundColor: 'var(--background)', borderRadius: '50%', color: 'var(--primary-color)' }}>
-                            <Archive size={24} />
-                        </div>
-                        <div>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Todos</p>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>{stats.total}</h3>
-                        </div>
-                    </div>
-                </Card>
-                <Card
-                    className="p-4 clickable-card"
-                    style={{
-                        borderLeft: '4px solid #ef4444',
-                        cursor: 'pointer',
-                        backgroundColor: columnFilters.status === 'Pendiente' ? 'rgba(239, 68, 68, 0.1)' : 'var(--surface)',
-                        transition: 'all 0.2s ease',
-                        boxShadow: columnFilters.status === 'Pendiente' ? 'inset 0 0 0 1px #ef4444, var(--shadow-sm)' : 'var(--shadow-sm)'
-                    }}
-                    onClick={() => setColumnFilters({ ...columnFilters, status: 'Pendiente' })}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', backgroundColor: '#fef2f2', borderRadius: '50%', color: '#ef4444' }}>
-                            <AlertCircle size={24} />
-                        </div>
-                        <div>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Abiertos</p>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>{stats.abiertos}</h3>
-                        </div>
-                    </div>
-                </Card>
-                <Card
-                    className="p-4 clickable-card"
-                    style={{
-                        borderLeft: '4px solid #eab308',
-                        cursor: 'pointer',
-                        backgroundColor: columnFilters.status === 'En Progreso' ? 'rgba(234, 179, 8, 0.1)' : 'var(--surface)',
-                        transition: 'all 0.2s ease',
-                        boxShadow: columnFilters.status === 'En Progreso' ? 'inset 0 0 0 1px #eab308, var(--shadow-sm)' : 'var(--shadow-sm)'
-                    }}
-                    onClick={() => setColumnFilters({ ...columnFilters, status: 'En Progreso' })}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ padding: '0.75rem', backgroundColor: '#fffbeb', borderRadius: '50%', color: '#eab308' }}>
-                            <Loader2 size={24} className={columnFilters.status === 'En Progreso' ? 'animate-spin' : ''} />
-                        </div>
-                        <div>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>En Progreso</p>
-                            <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>{stats.enProgreso}</h3>
-                        </div>
-                    </div>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#111827' }}>Total de Servicios</h3>
+                    <h2 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, color: '#111827', lineHeight: '1' }}>{stats.total}</h2>
                 </Card>
 
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', maxWidth: '600px' }}>
+                    {/* Pendiente Pill */}
+                    <div 
+                        style={{
+                            padding: '0.6rem 1.2rem',
+                            borderRadius: '9999px',
+                            border: columnFilters.status === 'Pendiente' ? '2px solid #eab308' : '1px solid #d1d5db',
+                            backgroundColor: columnFilters.status === 'Pendiente' ? '#fef08a' : 'transparent',
+                            color: columnFilters.status === 'Pendiente' ? '#854d0e' : '#4b5563',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.9rem'
+                        }}
+                        onClick={() => setColumnFilters({ ...columnFilters, status: 'Pendiente' })}
+                    >
+                        Pendiente {stats.pendientes > 0 && <span>({stats.pendientes})</span>}
+                    </div>
+
+                    {/* En Progreso Pill */}
+                    <div 
+                        style={{
+                            padding: '0.6rem 1.2rem',
+                            borderRadius: '9999px',
+                            border: columnFilters.status === 'En Progreso' ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                            backgroundColor: columnFilters.status === 'En Progreso' ? '#bfdbfe' : 'transparent',
+                            color: columnFilters.status === 'En Progreso' ? '#1e40af' : '#4b5563',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.9rem'
+                        }}
+                        onClick={() => setColumnFilters({ ...columnFilters, status: 'En Progreso' })}
+                    >
+                        En Progreso {stats.enProgreso > 0 && <span>({stats.enProgreso})</span>}
+                    </div>
+
+                    {/* Bloqueado Pill */}
+                    <div 
+                        style={{
+                            padding: '0.6rem 1.2rem',
+                            borderRadius: '9999px',
+                            border: columnFilters.status === 'Bloqueado / A la Espera' ? '2px solid #ef4444' : '1px solid #d1d5db',
+                            backgroundColor: columnFilters.status === 'Bloqueado / A la Espera' ? '#fecaca' : 'transparent',
+                            color: columnFilters.status === 'Bloqueado / A la Espera' ? '#991b1b' : '#4b5563',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.9rem'
+                        }}
+                        onClick={() => setColumnFilters({ ...columnFilters, status: 'Bloqueado / A la Espera' })}
+                    >
+                        Bloqueado / A la Espera {stats.bloqueados > 0 && <span>({stats.bloqueados})</span>}
+                    </div>
+
+                    {/* Resuelto Pill */}
+                    <div 
+                        style={{
+                            padding: '0.6rem 1.2rem',
+                            borderRadius: '9999px',
+                            border: columnFilters.status === 'Resuelto' ? '2px solid #22c55e' : '1px solid #d1d5db',
+                            backgroundColor: columnFilters.status === 'Resuelto' ? '#bbf7d0' : 'transparent',
+                            color: columnFilters.status === 'Resuelto' ? '#166534' : '#4b5563',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            fontSize: '0.9rem'
+                        }}
+                        onClick={() => setColumnFilters({ ...columnFilters, status: 'Resuelto' })}
+                    >
+                        Resuelto {stats.resueltos > 0 && <span>({stats.resueltos})</span>}
+                    </div>
+                </div>
             </div>
 
 
