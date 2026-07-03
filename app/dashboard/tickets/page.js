@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
-import { useJsApiLoader } from '@react-google-maps/api';
+
 import { MoreVertical,  RefreshCw,  Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge, Check, MapPin, Hash, Phone, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -36,29 +36,9 @@ export default function TicketsPage() {
     const [newTicket, setNewTicket] = useState({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: '', sycompCase: '', addressStatus: 'idle'});
 
     
-    const { isLoaded } = useJsApiLoader({
-        id: 'google-map-script',
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-    });
+    
 
-    const validateAddress = () => {
-        if (!isLoaded || !newTicket.address) return;
-        setNewTicket(prev => ({ ...prev, addressStatus: 'validating' }));
-        const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ address: newTicket.address + ', ' + countryFilter }, (results, status) => {
-            if (status === 'OK' && results && results[0]) {
-                setNewTicket(prev => ({
-                    ...prev,
-                    addressStatus: 'valid',
-                    address: results[0].formatted_address
-                }));
-            } else if (status === 'ZERO_RESULTS') {
-                setNewTicket(prev => ({ ...prev, addressStatus: 'invalid' }));
-            } else {
-                setNewTicket(prev => ({ ...prev, addressStatus: 'api_error' }));
-            }
-        });
-    };
+    
 
     const closeModal = () => {
         setIsModalOpen(false);
@@ -81,42 +61,7 @@ export default function TicketsPage() {
         return !closedStatuses.includes(status);
     };
 
-    // Safe Auto-complete logic when requester loses focus or changes
-    useEffect(() => {
-        if (!newTicket.requester || String(newTicket.requester).trim().length < 3) return;
-        const searchName = String(newTicket.requester).toLowerCase().trim();
-        const match = tickets.find(t => 
-            t.requester && String(t.requester).toLowerCase().trim() === searchName
-        );
-                if (match) {
-            setNewTicket(prev => {
-                const newAddressStatus = String(match.logistics?.addressStatus || 'idle');
-                const rawAddress = prev.address ? prev.address : (match.logistics?.address || match.address || '');
-                const rawPhone = prev.phone ? prev.phone : (match.logistics?.phone || match.phone || '');
-                const rawEmail = prev.email ? prev.email : (match.logistics?.email || match.email || '');
-                const rawFloor = prev.floor ? prev.floor : (match.logistics?.floor || match.floor || '');
-
-                const newAddress = typeof rawAddress === 'string' ? rawAddress : String(rawAddress || '');
-                const newPhone = typeof rawPhone === 'string' ? rawPhone : String(rawPhone || '');
-                const newEmail = typeof rawEmail === 'string' ? rawEmail : String(rawEmail || '');
-                const newFloor = typeof rawFloor === 'string' ? rawFloor : String(rawFloor || '');
-                
-                // Only update if there's an actual change to prevent infinite re-renders
-                if (prev.address === newAddress && prev.phone === newPhone && prev.email === newEmail && prev.floor === newFloor && prev.addressStatus === newAddressStatus) {
-                    return prev;
-                }
-                
-                return {
-                    ...prev,
-                    address: newAddress,
-                    phone: newPhone,
-                    email: newEmail,
-                    floor: newFloor,
-                    addressStatus: newAddressStatus
-                };
-            });
-        }
-    }, [newTicket.requester, tickets]);
+    
 
         const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'DELIVERY', 'COLLECTION', 'NEW_HIRE'
 
@@ -1051,45 +996,7 @@ export default function TicketsPage() {
                                     value={newTicket.address}
                                     onChange={e => setNewTicket({ ...newTicket, address: e.target.value })}
                                 />
-                                {newTicket.address && isLoaded && (
-                                    <button
-                                          type="button"
-                                          onClick={validateAddress}
-                                          disabled={newTicket.addressStatus === 'valid' || newTicket.addressStatus === 'validating'}
-                                          style={{ 
-                                              position: 'absolute',
-                                              right: '4px',
-                                              top: '4px',
-                                              bottom: '4px',
-                                              border: 'none',
-                                              background: newTicket.addressStatus === 'valid' ? '#dcfce7' : '#eff6ff',
-                                              color: newTicket.addressStatus === 'valid' ? '#166534' : '#1d4ed8',
-                                              borderRadius: '4px',
-                                              padding: '0 8px',
-                                              fontSize: '0.7rem',
-                                              fontWeight: 600,
-                                              cursor: (newTicket.addressStatus === 'valid' || newTicket.addressStatus === 'validating') ? 'default' : 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '4px',
-                                            textDecoration: 'none'
-                                        }}
-                                        title={newTicket.addressStatus === 'valid' ? "Dirección validada" : "Validar Dirección en Google Maps"}
-                                    >
-                                        {newTicket.addressStatus === 'validating' ? (
-                                            <Loader2 size={12} className="animate-spin" />
-                                        ) : newTicket.addressStatus === 'valid' ? (
-                                            <><Check size={12} /> OK</>
-                                        ) : newTicket.addressStatus === 'invalid' ? (
-                                            <span style={{ color: '#ef4444' }}>No válida</span>
-                                        ) : newTicket.addressStatus === 'api_error' ? (
-                                            <span style={{ color: '#f59e0b' }}>Omitida</span>
-                                        ) : (
-                                            'Validar'
-                                        )}
-                                    </button>
-                                )}
+                                
                             </div>
                         </div>
                         <div className="form-group" style={{ marginBottom: 0 }}>
