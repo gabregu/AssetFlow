@@ -162,7 +162,7 @@ export function useTicketDetail() {
     const [addressStatus, setAddressStatus] = useState('idle');
     const autoLinkedRef = useRef({});
 
-    const { isLoaded } = useJsApiLoader({
+    const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
         libraries
@@ -366,26 +366,35 @@ export function useTicketDetail() {
     }, [ticket, assets]);
 
     const validateAddress = () => {
-        if (!isLoaded) return;
+        if (!isLoaded || loadError || typeof window === 'undefined' || !window.google || !window.google.maps) {
+            console.error("Google Maps API not loaded properly.", { isLoaded, loadError });
+            setAddressStatus('api_error');
+            return;
+        }
         const address = editedData.logistics?.address;
         if (!address) return;
 
         setAddressStatus('validating');
-        const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ address: address }, (results, status) => {
-            if (status === 'OK' && results && results[0]) {
-                setAddressStatus('valid');
-                setEditedData(prev => ({
-                    ...prev,
-                    logistics: { ...(prev.logistics || {}), address: results[0].formatted_address }
-                }));
-            } else if (status === 'ZERO_RESULTS') {
-                setAddressStatus('invalid');
-            } else {
-                console.error("Google Maps Geocoding failed with status:", status);
-                setAddressStatus('api_error');
-            }
-        });
+        try {
+            const geocoder = new window.google.maps.Geocoder();
+            geocoder.geocode({ address: address }, (results, status) => {
+                if (status === 'OK' && results && results[0]) {
+                    setAddressStatus('valid');
+                    setEditedData(prev => ({
+                        ...prev,
+                        logistics: { ...(prev.logistics || {}), address: results[0].formatted_address }
+                    }));
+                } else if (status === 'ZERO_RESULTS') {
+                    setAddressStatus('invalid');
+                } else {
+                    console.error("Google Maps Geocoding failed with status:", status);
+                    setAddressStatus('api_error');
+                }
+            });
+        } catch (error) {
+            console.error("Error creating geocoder or during geocoding:", error);
+            setAddressStatus('api_error');
+        }
     };
 
     const handleUpdate = async () => {
