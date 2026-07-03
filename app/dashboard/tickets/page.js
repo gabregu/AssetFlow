@@ -1045,19 +1045,18 @@ export default function TicketsPage() {
                                     value={newTicket.address}
                                     onChange={e => setNewTicket({ ...newTicket, address: e.target.value })}
                                 />
-                                {newTicket.address && (
-                                    <a 
-                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newTicket.address + ', ' + countryFilter)}`} 
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                {newTicket.address && isLoaded && (
+                                    <button
+                                        type="button"
+                                        onClick={validateAddress}
                                         style={{ 
                                             position: 'absolute',
                                             right: '4px',
                                             top: '4px',
                                             bottom: '4px',
                                             border: 'none',
-                                            background: '#eff6ff',
-                                            color: '#1d4ed8',
+                                            background: newTicket.addressStatus === 'valid' ? '#dcfce7' : '#eff6ff',
+                                            color: newTicket.addressStatus === 'valid' ? '#166534' : '#1d4ed8',
                                             borderRadius: '4px',
                                             padding: '0 8px',
                                             fontSize: '0.7rem',
@@ -1066,12 +1065,23 @@ export default function TicketsPage() {
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
+                                            gap: '4px',
                                             textDecoration: 'none'
                                         }}
-                                        title="Abrir en Google Maps para validar"
+                                        title={newTicket.addressStatus === 'valid' ? "Dirección validada" : "Validar Dirección en Google Maps"}
                                     >
-                                        Validar
-                                    </a>
+                                        {newTicket.addressStatus === 'validating' ? (
+                                            <Loader2 size={12} className="animate-spin" />
+                                        ) : newTicket.addressStatus === 'valid' ? (
+                                            <><Check size={12} /> OK</>
+                                        ) : newTicket.addressStatus === 'invalid' ? (
+                                            <span style={{ color: '#ef4444' }}>No válida</span>
+                                        ) : newTicket.addressStatus === 'api_error' ? (
+                                            <span style={{ color: '#f59e0b' }}>Omitida</span>
+                                        ) : (
+                                            'Validar'
+                                        )}
+                                    </button>
                                 )}
                             </div>
                         </div>
