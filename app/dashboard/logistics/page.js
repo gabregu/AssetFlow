@@ -675,7 +675,7 @@ export default function LogisticsHubPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ background: 'var(--background)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}>
                         <tr>
-                            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, width: '140px' }}>Caso SFDC</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, width: '140px' }}>ID</th>
                             <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Usuario / Asunto</th>
                             <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Dirección</th>
                             <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Responsable</th>
