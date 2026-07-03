@@ -61,7 +61,7 @@ export default function TicketsPage() {
     };
 
     const closeModal = () => {
-        closeModal();
+        setIsModalOpen(false);
         setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega' , floor: '', sycompCase: '', addressStatus: 'idle' });
     };
 
