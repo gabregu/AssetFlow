@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
-import { MoreVertical,  RefreshCw,  Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge, Check } from 'lucide-react';
+import { MoreVertical,  RefreshCw,  Filter, Search, Eye, Trash2, Archive, AlertCircle, Clock, CheckCircle2, Loader2, Map, ChevronDown, ChevronUp, Upload, Plus, GitMerge, Check, MapPin, Hash, Phone, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getStatusVariant } from './constants';
@@ -990,58 +990,109 @@ export default function TicketsPage() {
 
                     {/* 4) Direccion & 5) Piso / Dpto */}
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-                        <div className="form-group">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                                <label className="form-label" style={{ marginBottom: 0 }}>Dirección</label>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Dirección Completa</label>
+                            <div style={{ position: 'relative' }}>
+                                <MapPin size={12} style={{ position: 'absolute', left: '10px', top: '15px', color: 'var(--text-secondary)' }} />
+                                <input
+                                    className="form-input"
+                                    style={{
+                                        paddingLeft: '2.2rem',
+                                        paddingRight: newTicket.address ? '70px' : '10px',
+                                        height: 'auto',
+                                        minHeight: '42px',
+                                        fontSize: '1.1rem',
+                                        fontWeight: 600,
+                                        lineHeight: '1.4',
+                                        background: 'var(--background)',
+                                        color: 'var(--text-main)'
+                                    }}
+                                    placeholder="Ej: Av. Siempreviva 742"
+                                    value={newTicket.address}
+                                    onChange={e => setNewTicket({ ...newTicket, address: e.target.value })}
+                                />
                                 {newTicket.address && (
                                     <a 
-                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newTicket.address)}`} 
-                                        target="_blank" 
+                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(newTicket.address + ', ' + countryFilter)}`} 
+                                        target="_blank"
                                         rel="noopener noreferrer"
-                                        style={{ fontSize: '0.7rem', color: 'var(--primary-color)', background: 'rgba(37, 99, 235, 0.05)', border: '1px solid var(--primary-color)', padding: '2px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none', fontWeight: 600 }}
+                                        style={{ 
+                                            position: 'absolute',
+                                            right: '4px',
+                                            top: '4px',
+                                            bottom: '4px',
+                                            border: 'none',
+                                            background: '#eff6ff',
+                                            color: '#1d4ed8',
+                                            borderRadius: '4px',
+                                            padding: '0 8px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            textDecoration: 'none'
+                                        }}
+                                        title="Abrir en Google Maps para validar"
                                     >
-                                        <Check size={12} strokeWidth={2.5} /> Validar Dirección
+                                        Validar
                                     </a>
                                 )}
                             </div>
-                            <input
-                                className="form-input"
-                                placeholder="Ej: Av. Siempreviva 742"
-                                value={newTicket.address}
-                                onChange={e => setNewTicket({ ...newTicket, address: e.target.value })}
-                            />
                         </div>
-                        <div className="form-group">
-                            <label className="form-label">Piso / Dpto.</label>
-                            <input
-                                className="form-input"
-                                placeholder="Ej: 3B"
-                                value={newTicket.floor}
-                                onChange={e => setNewTicket({ ...newTicket, floor: e.target.value })}
-                            />
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Piso y Departamento</label>
+                            <div style={{ position: 'relative' }}>
+                                <Hash size={12} style={{ position: 'absolute', left: '10px', top: '15px', color: 'var(--text-secondary)' }} />
+                                <input
+                                    className="form-input"
+                                    style={{
+                                        paddingLeft: '2.2rem',
+                                        height: 'auto',
+                                        minHeight: '42px',
+                                        fontSize: '1.1rem',
+                                        fontWeight: 600,
+                                        lineHeight: '1.4',
+                                        background: 'var(--background)',
+                                        color: 'var(--text-main)'
+                                    }}
+                                    placeholder="Ej: Piso 5, Depto B"
+                                    value={newTicket.floor}
+                                    onChange={e => setNewTicket({ ...newTicket, floor: e.target.value })}
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    {/* 6) Telefono & 7) Correo electrónico */}
+                    {/* 6) Telefono & 7) Correo */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <div className="form-group">
-                            <label className="form-label">Teléfono</label>
-                            <input
-                                className="form-input"
-                                placeholder="Ej: +54 9 11..."
-                                value={newTicket.phone}
-                                onChange={e => setNewTicket({ ...newTicket, phone: e.target.value })}
-                            />
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Teléfono de contacto</label>
+                            <div style={{ position: 'relative' }}>
+                                <Phone size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                                <input
+                                    className="form-input"
+                                    style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
+                                    placeholder="Ej: +54 9 11..."
+                                    value={newTicket.phone}
+                                    onChange={e => setNewTicket({ ...newTicket, phone: e.target.value })}
+                                />
+                            </div>
                         </div>
-                        <div className="form-group">
+                        <div className="form-group" style={{ marginBottom: 0 }}>
                             <label className="form-label">Correo electrónico</label>
-                            <input
-                                type="email"
-                                className="form-input"
-                                placeholder="Ej: usuario@empresa.com"
-                                value={newTicket.email}
-                                onChange={e => setNewTicket({ ...newTicket, email: e.target.value })}
-                            />
+                            <div style={{ position: 'relative' }}>
+                                <Mail size={12} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                                <input
+                                    type="email"
+                                    className="form-input"
+                                    style={{ paddingLeft: '2.2rem', height: '32px', fontSize: '0.85rem' }}
+                                    placeholder="Ej: usuario@empresa.com"
+                                    value={newTicket.email}
+                                    onChange={e => setNewTicket({ ...newTicket, email: e.target.value })}
+                                />
+                            </div>
                         </div>
                     </div>
 
