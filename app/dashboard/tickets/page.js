@@ -683,7 +683,7 @@ export default function TicketsPage() {
                     style={{
                         borderLeft: '4px solid #8b5cf6',
                         cursor: 'pointer',
-                        backgroundColor: columnFilters.status === 'All' ? 'rgba(139, 92, 246, 0.1)' : '#eef2ff',
+                        backgroundColor: columnFilters.status === 'All' ? 'rgba(139, 92, 246, 0.15)' : 'var(--surface)',
                         transition: 'all 0.2s ease',
                         minWidth: '220px',
                         boxShadow: columnFilters.status === 'All' ? 'inset 0 0 0 1px #8b5cf6, var(--shadow-sm)' : 'var(--shadow-sm)',
@@ -694,8 +694,8 @@ export default function TicketsPage() {
                     }}
                     onClick={() => setColumnFilters({ ...columnFilters, status: 'All' })}
                 >
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#111827' }}>Total de Servicios</h3>
-                    <h2 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, color: '#111827', lineHeight: '1' }}>{stats.total}</h2>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: 'var(--text-secondary)' }}>Total de Servicios</h3>
+                    <h2 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, color: 'var(--text-main)', lineHeight: '1' }}>{stats.total}</h2>
                 </Card>
 
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', maxWidth: '600px' }}>
