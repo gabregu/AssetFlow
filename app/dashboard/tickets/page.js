@@ -393,7 +393,11 @@ export default function TicketsPage() {
                             const alreadyExists = tickets.some(t => 
                                 (t.subject && t.subject.includes(c.caseNumber)) || 
                                 (t.associatedCases && t.associatedCases.some(ac => ac.caseNumber === c.caseNumber)) ||
-                                (t.internalNotes && t.internalNotes.some(n => n.includes(c.caseNumber)))
+                                (t.internalNotes && t.internalNotes.some(n => {
+                                    if (typeof n === 'string') return n.includes(c.caseNumber);
+                                    if (n && typeof n === 'object' && n.content) return n.content.includes(c.caseNumber);
+                                    return false;
+                                }))
                             );
                             if (alreadyExists) {
                                 ticketsSkipped++;
@@ -486,7 +490,11 @@ export default function TicketsPage() {
                         const alreadyExists = tickets.some(t => 
                             (t.subject && t.subject.includes(c.caseNumber)) || 
                             (t.associatedCases && t.associatedCases.some(ac => ac.caseNumber === c.caseNumber)) ||
-                            (t.internalNotes && t.internalNotes.some(n => n.includes(c.caseNumber)))
+                            (t.internalNotes && t.internalNotes.some(n => {
+                                if (typeof n === 'string') return n.includes(c.caseNumber);
+                                if (n && typeof n === 'object' && n.content) return n.content.includes(c.caseNumber);
+                                return false;
+                            }))
                         );
 
                         if (alreadyExists) {
