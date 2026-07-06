@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { User, Calendar, Tag, Hash } from 'lucide-react';
+import { User, Calendar, Tag, Hash, Layers } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { CopyButton } from '@/app/components/ui/CopyButton';
 
@@ -76,6 +75,39 @@ export default function TicketInfoGrid({
                         </select>
                     ) : (
                         <p style={{ fontWeight: 500, margin: 0 }}>{ticket.priority}</p>
+                    )}
+                </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ color: 'var(--text-secondary)' }}><Layers size={18} /></div>
+                <div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>Tipo de Servicio</p>
+                    {editMode ? (
+                        <select
+                            className="form-select"
+                            style={{ padding: '0.2rem', marginTop: '2px' }}
+                            value={editedData.logistics?.type || editedData.type || 'Entrega'}
+                            onChange={e => {
+                                const val = e.target.value;
+                                setEditedData({ 
+                                    ...editedData, 
+                                    type: val,
+                                    logistics: {
+                                        ...(editedData.logistics || {}),
+                                        type: val
+                                    }
+                                });
+                            }}
+                        >
+                            <option value="Entrega">Entrega (ENT)</option>
+                            <option value="Retiro">Retiro / Recolección (REC)</option>
+                            <option value="Reemplazo">Reemplazo (REE)</option>
+                            <option value="Garantía">Garantía (GAR)</option>
+                        </select>
+                    ) : (
+                        <p style={{ fontWeight: 500, margin: 0 }}>
+                            {editedData.logistics?.type || editedData.type || ticket.logistics?.type || ticket.type || 'Entrega'}
+                        </p>
                     )}
                 </div>
             </div>
