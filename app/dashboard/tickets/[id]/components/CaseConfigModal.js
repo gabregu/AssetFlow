@@ -263,11 +263,6 @@ export default function CaseConfigModal({
                                             );
                                         })}
                                     </div>
-                                    {caseTypeInput === 'recoleccion' && (
-                                        <p style={{ margin: '0.4rem 0 0', fontSize: '0.7rem', color: '#7c3aed', fontStyle: 'italic' }}>
-                                            🔒 Este caso quedará Bloqueado hasta que el caso de Entrega sea marcado como Entregado.
-                                        </p>
-                                    )}
                                 </div>
                             </div>
                         )}
