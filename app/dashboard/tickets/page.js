@@ -27,11 +27,83 @@ const getTypeStyles = (type) => {
     }
 };
 
+// Helpers del Motor Logístico para Importación SFDC con Reglas
+const extractEmployeeName = (subject, requestedFor) => {
+    if (!subject) return requestedFor || 'Desconocido';
+    const cleanSubject = subject.replace(/\[[^\]]+\]/g, '').trim();
+    
+    const forMatch = cleanSubject.match(/(?:case for|for)\s+([A-Z][a-z\u00c0-\u00ff]+(?:\s+[A-Z][a-z\u00c0-\u00ff]+)+)/i);
+    if (forMatch && forMatch[1]) {
+        return forMatch[1].trim();
+    }
+    
+    const parts = cleanSubject.split('-');
+    if (parts.length > 1) {
+        const lastPart = parts[parts.length - 1].trim();
+        const techTerms = ['laptop', 'device', 'windows', 'macbook', 'apple', 'mobile', 'yubikey', 'headset', 'monitor', 'swap', 'request', 'bundle', 'provisioning', 'onboarding', 'offboarding', 'collection', 'recolect', 'itam', 'bag', 'kit', 'accs', 'accesorio', 'arg', 'cl', 'uy', 'br', 'la', 'us', 'es'];
+        const wordCount = lastPart.split(/\s+/).filter(Boolean).length;
+        const hasTech = techTerms.some(term => lastPart.toLowerCase().includes(term));
+        if (wordCount >= 2 && wordCount <= 4 && !hasTech) {
+            return lastPart;
+        }
+    }
+    
+    return requestedFor || 'Desconocido';
+};
+
+const classifyAction = (subject) => {
+    const sub = (subject || '').toLowerCase();
+    
+    if (sub.includes('swap request bundle')) {
+        return { action: 'RETIRO', isSwapBundle: true, needsWarning: false };
+    }
+    if (sub.includes('offboarding') || sub.includes('collection')) {
+        return { action: 'RETIRO', needsWarning: false };
+    }
+    if (sub.includes('swap') || sub.includes('refresh') || sub.includes('upgrade') || sub.includes('breakfix')) {
+        return { action: 'REEMPLAZO', needsWarning: true };
+    }
+    return { action: 'ENTREGA', needsWarning: false };
+};
+
+const findContactDetailsFromHistory = (employeeName, localTickets) => {
+    if (!localTickets || localTickets.length === 0) return null;
+    const normalize = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    const searchName = normalize(employeeName);
+    
+    const userTickets = localTickets.filter(t => 
+        t.requester && normalize(t.requester) === searchName && t.logistics
+    );
+    
+    if (userTickets.length === 0) return null;
+    
+    const latestTicket = userTickets.sort((a, b) => {
+        const idA = parseInt(String(a.id).replace('CAS-', '')) || 0;
+        const idB = parseInt(String(b.id).replace('CAS-', '')) || 0;
+        return idB - idA;
+    })[0];
+    
+    return {
+        address: latestTicket.logistics.address || '',
+        floorDept: latestTicket.logistics.floorDept || '',
+        phone: latestTicket.logistics.phone || '',
+        email: latestTicket.logistics.email || ''
+    };
+};
+
 export default function TicketsPage() {
     const { tickets, assets, sfdcCases, addTicket, deleteTickets, updateTicket, importSfdcCases, currentUser, users, countryFilter, logisticsTasks, entities, getClientName, refreshData } = useStore();
     const fileInputRef = useRef(null);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const router = useRouter();
+    const [importMode, setImportMode] = useState('STANDARD'); // 'SFDC' | 'STANDARD'
+    
+    const triggerImport = (mode) => {
+        setImportMode(mode);
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
 
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
@@ -282,56 +354,184 @@ export default function TicketsPage() {
                 let casesProcessed = 0;
                 let ticketsSkipped = 0;
 
-                for (const c of newCases) {
-                    // Check if this specific caseNumber is already in any ticket
-                    const alreadyExists = tickets.some(t => 
-                        (t.subject && t.subject.includes(c.caseNumber)) || 
-                        (t.associatedCases && t.associatedCases.some(ac => ac.caseNumber === c.caseNumber)) ||
-                        (t.internalNotes && t.internalNotes.some(n => n.includes(c.caseNumber)))
-                    );
+                if (importMode === 'SFDC') {
+                    // --- MODO SFDC: Con reglas de Agrupación y Clasificación ---
+                    const groups = {};
+                    newCases.forEach(c => {
+                        const employeeName = extractEmployeeName(c.subject, c.requestedFor);
+                        const classification = classifyAction(c.subject);
+                        
+                        const dateRaw = c.dateOpened ? c.dateOpened.split(/[ T]/)[0] : 'nodate';
+                        const normalizeName = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+                        const groupKey = `${normalizeName(employeeName)}_${classification.action}_${dateRaw}`;
+                        
+                        if (!groups[groupKey]) {
+                            groups[groupKey] = {
+                                employeeName,
+                                action: classification.action,
+                                needsWarning: classification.needsWarning,
+                                hasSwapBundle: classification.isSwapBundle || false,
+                                cases: []
+                            };
+                        }
+                        groups[groupKey].cases.push(c);
+                        if (classification.needsWarning) {
+                            groups[groupKey].needsWarning = true;
+                        }
+                        if (classification.isSwapBundle) {
+                            groups[groupKey].hasSwapBundle = true;
+                        }
+                    });
 
-                    if (alreadyExists) {
-                        ticketsSkipped++;
-                        continue;
+                    const groupEntries = Object.values(groups);
+
+                    for (const groupData of groupEntries) {
+                        const { employeeName, action, needsWarning, hasSwapBundle, cases: group } = groupData;
+                        
+                        // Filtrar casos que ya existen en tickets
+                        const uniqueGroupCases = group.filter(c => {
+                            const alreadyExists = tickets.some(t => 
+                                (t.subject && t.subject.includes(c.caseNumber)) || 
+                                (t.associatedCases && t.associatedCases.some(ac => ac.caseNumber === c.caseNumber)) ||
+                                (t.internalNotes && t.internalNotes.some(n => n.includes(c.caseNumber)))
+                            );
+                            if (alreadyExists) {
+                                ticketsSkipped++;
+                                return false;
+                            }
+                            return true;
+                        });
+
+                        if (uniqueGroupCases.length === 0) continue;
+
+                        const mainCase = uniqueGroupCases[0];
+                        const siblings = uniqueGroupCases.slice(1);
+
+                        // Historial de Contacto
+                        const historicalContact = findContactDetailsFromHistory(employeeName, tickets);
+                        let contactInfo = {
+                            address: mainCase.mailingStreet && mainCase.country ? `${mainCase.mailingStreet}, ${mainCase.country} ${mainCase.zipCode}` : '',
+                            floorDept: '',
+                            phone: mainCase.mobile || '',
+                            email: mainCase.email || ''
+                        };
+                        
+                        if (historicalContact && (historicalContact.address || historicalContact.phone || historicalContact.email)) {
+                            if (historicalContact.address) {
+                                contactInfo.address = historicalContact.address;
+                                contactInfo.floorDept = historicalContact.floorDept || '';
+                            }
+                            if (historicalContact.phone) contactInfo.phone = historicalContact.phone;
+                            if (historicalContact.email) contactInfo.email = historicalContact.email;
+                        }
+
+                        // Limpieza de Asunto y Formateo Final
+                        let cleanSubject = mainCase.subject.replace(/\[SFDC-[^\]]+\]\s*/g, '').trim();
+                        const ticketSubject = `${cleanSubject}${siblings.length > 0 ? ` (+ ${siblings.length} casos agrupados)` : ''}`;
+
+                        const ticketData = {
+                            subject: ticketSubject,
+                            salesforceCase: mainCase.caseNumber,
+                            requester: employeeName,
+                            priority: mainCase.priority === 'High' ? 'Alta' : 'Media',
+                            status: hasSwapBundle ? 'Bloqueado / A la Espera' : 'Pendiente',
+                            client: getClientName(mainCase.country),
+                            logistics: {
+                                address: contactInfo.address || mainCase.country,
+                                floorDept: contactInfo.floorDept,
+                                phone: contactInfo.phone,
+                                email: contactInfo.email,
+                                type: action === 'ENTREGA' ? 'Entrega' : (action === 'REEMPLAZO' ? 'Reemplazo' : 'Recolección')
+                            },
+                            associatedCases: uniqueGroupCases.map(c => ({
+                                caseNumber: c.caseNumber,
+                                subject: c.subject,
+                                status: c.status,
+                                priority: c.priority,
+                                dateOpened: c.dateOpened,
+                                logistics: {
+                                    address: contactInfo.address || c.country,
+                                    phone: contactInfo.phone,
+                                    email: contactInfo.email,
+                                    method: '',
+                                    status: 'Pendiente'
+                                }
+                            }))
+                        };
+
+                        ticketData.internalNotes = [];
+
+                        if (siblings.length > 0) {
+                            const siblingNotes = siblings.map(s => `• Caso Adicional: [SFDC-${s.caseNumber}] ${s.subject}`).join('\n');
+                            ticketData.internalNotes.push(`=== AUTOMATIZACIÓN: CASOS AGRUPADOS ===\nSe han agrupado ${siblings.length} casos adicionales para este flujo físico en el mismo día para ${employeeName}:\n${siblingNotes}`);
+                        }
+
+                        if (needsWarning) {
+                            ticketData.internalNotes.push(`⚠️ ATENCIÓN: Estar atentos al próximo nuevo caso de RETIRO, ya que en los próximos días ingresará un caso para ir a buscar el asset reemplazado o dañado. O tal vez no se requiera acción porque el asset fue robado o extraviado.`);
+                        }
+                        
+                        if (ticketData.internalNotes.length > 0) {
+                            ticketData.description = (mainCase.description || '') + '\n\n' + ticketData.internalNotes.join('\n\n');
+                        }
+
+                        await addTicket(ticketData);
+                        ticketsCreated++;
+                        casesProcessed += uniqueGroupCases.length;
                     }
 
-                    const subject = `[SFDC-${c.caseNumber}] ${c.subject}`;
-                    
-                    const newTicketData = {
-                        subject: subject,
-                        requester: c.requestedFor,
-                        priority: c.priority === 'High' ? 'Alta' : 'Media',
-                        status: 'Pendiente',
-                        client: getClientName(c.country),
-                        internalNotes: [],
-                        logistics: {
-                            address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : c.country,
-                            phone: c.mobile || '',
-                            email: c.email || '',
-                            type: 'Entrega'
-                        },
-                        associatedCases: [{
-                            caseNumber: c.caseNumber,
-                            subject: c.subject,
-                            status: c.status,
-                            priority: c.priority,
-                            dateOpened: c.dateOpened,
+                    showToast(`Importación completa: Se crearon ${ticketsCreated} servicios unificando ${casesProcessed} casos (${ticketsSkipped} omitidos por ya existir).`, 'success');
+                } else {
+                    // --- MODO STANDARD: Sin ninguna regla (Comportamiento actual) ---
+                    for (const c of newCases) {
+                        const alreadyExists = tickets.some(t => 
+                            (t.subject && t.subject.includes(c.caseNumber)) || 
+                            (t.associatedCases && t.associatedCases.some(ac => ac.caseNumber === c.caseNumber)) ||
+                            (t.internalNotes && t.internalNotes.some(n => n.includes(c.caseNumber)))
+                        );
+
+                        if (alreadyExists) {
+                            ticketsSkipped++;
+                            continue;
+                        }
+
+                        const subject = `[SFDC-${c.caseNumber}] ${c.subject}`;
+                        
+                        const newTicketData = {
+                            subject: subject,
+                            requester: c.requestedFor,
+                            priority: c.priority === 'High' ? 'Alta' : 'Media',
+                            status: 'Pendiente',
+                            client: getClientName(c.country),
+                            internalNotes: [],
                             logistics: {
                                 address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : c.country,
                                 phone: c.mobile || '',
                                 email: c.email || '',
-                                method: '',
-                                status: 'Pendiente'
-                            }
-                        }]
-                    };
+                                type: 'Entrega'
+                            },
+                            associatedCases: [{
+                                caseNumber: c.caseNumber,
+                                subject: c.subject,
+                                status: c.status,
+                                priority: c.priority,
+                                dateOpened: c.dateOpened,
+                                logistics: {
+                                    address: c.mailingStreet && c.country ? `${c.mailingStreet}, ${c.country} ${c.zipCode}` : c.country,
+                                    phone: c.mobile || '',
+                                    email: c.email || '',
+                                    method: '',
+                                    status: 'Pendiente'
+                                }
+                            }]
+                        };
 
-                    await addTicket(newTicketData);
-                    ticketsCreated++;
-                    casesProcessed++;
+                        await addTicket(newTicketData);
+                        ticketsCreated++;
+                        casesProcessed++;
+                    }
+
+                    showToast(`Importación completa: ${casesProcessed} casos procesados. ${ticketsCreated} servicios creados (${ticketsSkipped} omitidos por ya existir).`, 'success');
                 }
-
-                showToast(`Importación completa: ${casesProcessed} casos procesados. ${ticketsCreated} servicios creados (${ticketsSkipped} omitidos por ya existir).`, 'success');
 
             } catch (err) {
                 console.error("Error procesando CSV:", err);
@@ -728,7 +928,40 @@ export default function TicketsPage() {
                     <p style={{ color: 'var(--text-secondary)' }}>Gestiona y resuelve las incidencias reportadas de cliente {countryFilter}.</p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept=".csv"
+                            onChange={handleFileUpload}
+                            style={{ display: 'none' }}
+                        />
+                        {getClientName(countryFilter).toUpperCase().includes('SFDC') && (
+                            <Button 
+                                onClick={() => triggerImport('SFDC')} 
+                                style={{ 
+                                    backgroundColor: 'white', 
+                                    borderColor: '#00a1e0', 
+                                    color: '#00a1e0',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    fontWeight: 600,
+                                    boxShadow: 'var(--shadow-sm)'
+                                }}
+                            >
+                                <svg viewBox="0 0 24 24" width="16" height="16" style={{ marginRight: '6px', fill: '#00a1e0', flexShrink: 0 }}>
+                                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
+                                </svg>
+                                Importar SFDC
+                            </Button>
+                        )}
+                        <Button 
+                            icon={Upload} 
+                            onClick={() => triggerImport('STANDARD')} 
+                            variant="secondary"
+                        >
+                            Importar CSV
+                        </Button>
                         <Button icon={Plus} onClick={() => {
                             setNewTicket({ ...newTicket, country: countryFilter });
                             setIsModalOpen(true);
