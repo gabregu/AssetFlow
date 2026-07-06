@@ -186,6 +186,18 @@ export default function CaseLogisticsSection({
             absoluteState.assigned_to = assignedTo; // Sincronizar en el estado absoluto
         }
 
+        // Si el estado es Entregado o Finalizado, autocompletar la fecha de entrega con el día de hoy
+        if (incomingUpdates.status === 'Entregado' || incomingUpdates.status === 'Finalizado') {
+            if (!absoluteState.deliveryInfo?.deliveredDate) {
+                const today = new Date().toISOString().split('T')[0];
+                finalUpdates.deliveryInfo = {
+                    ...(absoluteState.deliveryInfo || {}),
+                    deliveredDate: today
+                };
+                absoluteState.deliveryInfo = finalUpdates.deliveryInfo; // Sincronizar en el estado absoluto
+            }
+        }
+
         // 1. Actualización visual inmediata, sincronizando el status calculado
         absoluteState.status = currentStatus;
         localStateRef.current = absoluteState;
@@ -604,7 +616,7 @@ export default function CaseLogisticsSection({
                             <div style={{ width: '6px', height: '6px', background: '#22c55e', borderRadius: '50%' }}></div>
                             Información de Entrega
                         </h5>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
                             <div className="form-group">
                                 <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-color)' }}>Recibido por</label>
                                 <input
@@ -623,6 +635,16 @@ export default function CaseLogisticsSection({
                                     value={localValues.deliveryInfo?.dni || ''}
                                     onChange={e => updateLogistics('deliveryInfo', { ...(localValues.deliveryInfo || {}), dni: e.target.value })}
                                     placeholder="DNI"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary-color)' }}>Fecha de Entrega</label>
+                                <input
+                                    type="date"
+                                    className="form-input"
+                                    style={{ padding: '0.6rem 0.875rem', fontSize: '1.1rem', fontWeight: 800, border: '2px solid var(--primary-color)', background: 'rgba(37, 99, 235, 0.02)' }}
+                                    value={localValues.deliveryInfo?.deliveredDate || ''}
+                                    onChange={e => updateLogistics('deliveryInfo', { ...(localValues.deliveryInfo || {}), deliveredDate: e.target.value })}
                                 />
                             </div>
                         </div>
