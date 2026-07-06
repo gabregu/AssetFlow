@@ -4,7 +4,6 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Modal } from '@/app/components/ui/Modal';
 import AssetListSection from './AssetListSection';
 import AccessoriesSection from './AccessoriesSection';
-import YubiKeySection from './YubiKeySection';
 import CaseLogisticsSection from './CaseLogisticsSection';
 import ManualAssetModal from './ManualAssetModal';
 import DeliveryVerificationModal from './DeliveryVerificationModal';
@@ -289,14 +288,7 @@ export default function CaseConfigModal({
                             consumables={consumables}
                             ticketCountry={activeTask?.country || ticket?.logistics?.country || 'Argentina'}
                             updateConsumableStock={updateConsumableStock}
-                        />
-
-                        <YubiKeySection
-                            task={activeTask}
-                            onUpdateTask={handleBufferedUpdate}
                             yubikeys={yubikeys}
-                            associatedCases={editedData?.associatedCases || ticket?.associatedCases || []}
-                            allTasks={currentTasks}
                         />
 
                         <CaseLogisticsSection

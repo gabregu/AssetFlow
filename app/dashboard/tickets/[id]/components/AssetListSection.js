@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Search, Package, Trash2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Search, Package, Trash2, QrCode } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { CopyButton } from '@/app/components/ui/CopyButton';
 
@@ -21,13 +21,17 @@ export default function AssetListSection({
     allTasks = [],
     associatedCases = []
 }) {
+    const [selectedModel, setSelectedModel] = useState('');
+    const [selectedSerial, setSelectedSerial] = useState('');
+
     if (!task) return null;
 
     const caseAssets = task.assets || [];
+    const ticketCountry = task.country || 'Argentina';
 
     // Auto-sincronizar activos vinculados en inventario a la tarea
-    const lastSyncedCaseRef = React.useRef(null);
-    React.useEffect(() => {
+    const lastSyncedCaseRef = useRef(null);
+    useEffect(() => {
         if (!task || !task.caseNumber) return;
         
         // Skip auto-sync for tasks that live in the DB (have a real UUID id).
@@ -61,6 +65,35 @@ export default function AssetListSection({
             onUpdateTask({ assets: updatedAssets });
         }
     }, [task, assets, caseAssets, onUpdateTask]);
+
+    // Filtrar activos disponibles de la región actual
+    const availableAssets = useMemo(() => {
+        const targetRegion = ticketCountry.toLowerCase().trim();
+        return assets.filter(a => 
+            a.status && a.status.toLowerCase() === 'disponible' &&
+            (!targetRegion || (a.country && a.country.toLowerCase().trim() === targetRegion))
+        );
+    }, [assets, ticketCountry]);
+
+    // Extraer modelos únicos con stock disponible
+    const availableModels = useMemo(() => {
+        const modelsMap = {};
+        availableAssets.forEach(a => {
+            if (!a.name) return;
+            if (!modelsMap[a.name]) {
+                modelsMap[a.name] = {
+                    name: a.name,
+                    count: 0,
+                    serials: []
+                };
+            }
+            modelsMap[a.name].count++;
+            if (a.serial) {
+                modelsMap[a.name].serials.push(a.serial);
+            }
+        });
+        return Object.values(modelsMap).sort((a, b) => a.name.localeCompare(b.name));
+    }, [availableAssets]);
 
     const handleUnlink = async (idx) => {
         const item = caseAssets[idx];
@@ -106,7 +139,7 @@ export default function AssetListSection({
         });
 
         if (!alreadyLinked) {
-            const newAssets = [...caseAssets, { serial: serial, type: '' }];
+            const newAssets = [...caseAssets, { serial: serial, type: 'Entrega' }];
             const updates = { assets: newAssets };
             
             // Automación: Si agregamos hardware, el estado pasa a "Para Coordinar" si estaba Pendiente
@@ -161,7 +194,6 @@ export default function AssetListSection({
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>No hay equipos asignados a este caso.</p>
                 ) : (
                     caseAssets.map((item, idxx) => {
-                        // Soporte para formato legacy (string) y nuevo (objeto)
                         const itemSerial = typeof item === 'string' ? item : item.serial;
                         const assetInfo = assets.find(a => a.serial && itemSerial && a.serial.toLowerCase() === itemSerial.toLowerCase());
                         
@@ -211,7 +243,6 @@ export default function AssetListSection({
                                             }}
                                         />
                                         <datalist id={`related-cases-list-${idxx}`}>
-                                            {/* 1. Mostrar casos asociados automáticos (de la cabecera / legacy JSON) */}
                                             {(associatedCases || []).map((ac, acIdx) => {
                                                 const caseNum = ac.caseNumber;
                                                 if (caseNum && caseNum !== 'Caso Principal') {
@@ -223,11 +254,9 @@ export default function AssetListSection({
                                                 }
                                                 return null;
                                             })}
-                                            {/* 2. Mostrar otras tareas consolidadas (si las hubiera) */}
                                             {allTasks.map((t, tIdx) => {
                                                 const caseNum = t.caseNumber || t.case_number;
                                                 if (caseNum && caseNum !== (task.caseNumber || task.case_number)) {
-                                                    // Evitar duplicar si ya está en la lista automática
                                                     const alreadyListed = (associatedCases || []).some(ac => ac.caseNumber === caseNum);
                                                     if (!alreadyListed) {
                                                         return <option key={`task-${tIdx}`} value={caseNum}>{t.subject || ''}</option>;
@@ -250,18 +279,85 @@ export default function AssetListSection({
                                     <Trash2 size={16} />
                                 </Button>
                             </div>
-                        )
+                        );
                     })
                 )}
             </div>
 
-            {/* Add New Asset */}
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {/* MODEL-FIRST SELECTOR */}
+            <div style={{ 
+                background: '#f8fafc', 
+                border: '1px solid var(--border)', 
+                borderRadius: '10px', 
+                padding: '1rem', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.75rem',
+                marginBottom: '1.25rem'
+            }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                        Modelo de Hardware (Disponible en Depósito)
+                    </label>
+                    <select
+                        className="form-select"
+                        style={{ height: '36px', fontSize: '0.85rem' }}
+                        value={selectedModel}
+                        onChange={e => {
+                            setSelectedModel(e.target.value);
+                            setSelectedSerial('');
+                        }}
+                    >
+                        <option value="">— Seleccionar Modelo —</option>
+                        {availableModels.map(m => (
+                            <option key={m.name} value={m.name}>
+                                {m.name} ({m.count} disp.)
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                {selectedModel && (
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'end' }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                Seleccionar N° de Serie
+                            </label>
+                            <select
+                                className="form-select"
+                                style={{ height: '36px', fontSize: '0.85rem' }}
+                                value={selectedSerial}
+                                onChange={e => setSelectedSerial(e.target.value)}
+                            >
+                                <option value="">— Elegir Serie —</option>
+                                {availableModels.find(m => m.name === selectedModel)?.serials.map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <Button 
+                            size="sm" 
+                            disabled={!selectedSerial} 
+                            style={{ height: '36px', whiteSpace: 'nowrap' }}
+                            onClick={async () => {
+                                await handleLinkToCase(selectedSerial);
+                                setSelectedModel('');
+                                setSelectedSerial('');
+                            }}
+                        >
+                            Asignar
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            {/* MANUAL OR BARCODE SEARCH BAR */}
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
                 <div style={{ position: 'relative', flex: 1 }}>
                     <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
                     <input
                         className="form-input"
-                        placeholder="Vincular serial..."
+                        placeholder="O buscar/escanear serial manualmente..."
                         style={{ paddingLeft: '2rem', height: '34px', fontSize: '0.85rem' }}
                         value={serialQuery}
                         onChange={e => setSerialQuery(e.target.value)}
@@ -271,7 +367,8 @@ export default function AssetListSection({
                 <Button size="sm" onClick={handleAssetSearch}>Buscar</Button>
             </div>
 
-            <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+            {/* EXPLORE ALL INVENTORY BUTTON */}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <Button
                     size="sm"
                     variant="outline"
@@ -279,10 +376,11 @@ export default function AssetListSection({
                     style={{ width: '100%', color: 'var(--primary-color)', borderColor: 'var(--primary-color)' }}
                 >
                     <Package size={16} style={{ marginRight: '0.5rem' }} />
-                    Explorar Inventario para Asignar
+                    Explorar Todo el Inventario
                 </Button>
             </div>
 
+            {/* ERROR AND RESULTS FEEDBACK */}
             {assetSearchResult === 'not_found' && (
                 <div style={{ marginTop: '0.5rem', padding: '0.5rem', border: '1px dashed #ef4444', borderRadius: '6px' }}>
                     <p style={{ color: '#ef4444', fontSize: '0.8rem', margin: '0 0 0.5rem 0' }}>Serial no encontrado en Inventario.</p>
@@ -302,7 +400,7 @@ export default function AssetListSection({
                 </div>
             )}
 
-            {assetSearchResult && assetSearchResult !== 'not_found' && (
+            {assetSearchResult && assetSearchResult !== 'not_found' && assetSearchResult.status !== 'wrong_region' && (
                 <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                         <p style={{ fontWeight: 600, fontSize: '0.8rem', margin: 0 }}>{assetSearchResult.name}</p>
