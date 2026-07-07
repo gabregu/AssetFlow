@@ -448,18 +448,7 @@ export default function AssetListSection({
                 <Button size="sm" onClick={handleAssetSearch}>Buscar</Button>
             </div>
 
-            {/* EXPLORE ALL INVENTORY BUTTON */}
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setIsInventorySelectorOpen(true)}
-                    style={{ width: '100%', color: 'var(--primary-color)', borderColor: 'var(--primary-color)' }}
-                >
-                    <Package size={16} style={{ marginRight: '0.5rem' }} />
-                    Explorar Todo el Inventario
-                </Button>
-            </div>
+
 
             {/* ERROR AND RESULTS FEEDBACK */}
             {assetSearchResult === 'not_found' && (
