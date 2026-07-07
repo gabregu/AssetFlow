@@ -144,6 +144,7 @@ export default function AssociatedCasesCard({
                     const isCancelled = status === 'Cancelado';
                     if (isBlocked) statusVariant = 'secondary';
                     else if (isCancelled) statusVariant = 'danger';
+                    else if (status === 'En Preparación') statusVariant = 'warning';
                     else if (status === 'Para Coordinar') statusVariant = 'warning';
                     else if (status === 'En Transito') statusVariant = 'info';
                     else if (status === 'Entregado' || status === 'Finalizado' || status === 'Recuperado') statusVariant = 'success';

@@ -584,6 +584,7 @@ export default function LogisticsHubPage() {
                         }}
                     >
                         <option value="All">Todos los Estados</option>
+                        <option value="En Preparación">En Preparación</option>
                         <option value="Para Coordinar">Para Coordinar</option>
                         <option value="En Transito">En Tránsito</option>
                         <option value="Entregado">Entregado</option>
