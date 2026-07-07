@@ -22,6 +22,8 @@ export default function AccessoriesSection({
     const [feedback, setFeedback] = useState({ type: '', message: '' });
     const [showYubiKeyLocal, setShowYubiKeyLocal] = useState(false);
     const [ykSearchQuery, setYkSearchQuery] = useState('');
+    const [filterSearchQuery, setFilterSearchQuery] = useState('');
+    const [backpackSearchQuery, setBackpackSearchQuery] = useState('');
 
     if (!task) return null;
 
@@ -189,6 +191,36 @@ export default function AccessoriesSection({
         }
         
         onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
+    };
+
+    const handleFilterBarcode = (barcode) => {
+        if (!barcode) return;
+        const scannedLower = barcode.trim().toLowerCase();
+        const match = filterConsumables.find(c => 
+            (c.barcode && c.barcode.trim().toLowerCase() === scannedLower) ||
+            (c.cod && c.cod.toLowerCase() === scannedLower)
+        );
+        if (match) {
+            changeFilterModel(match.id);
+            setFilterSearchQuery('');
+        } else {
+            showFeedback('error', `Filtro con código "${barcode}" no encontrado.`);
+        }
+    };
+
+    const handleBackpackBarcode = (barcode) => {
+        if (!barcode) return;
+        const scannedLower = barcode.trim().toLowerCase();
+        const match = backpackConsumables.find(c => 
+            (c.barcode && c.barcode.trim().toLowerCase() === scannedLower) ||
+            (c.cod && c.cod.toLowerCase() === scannedLower)
+        );
+        if (match) {
+            changeBackpackModel(match.id);
+            setBackpackSearchQuery('');
+        } else {
+            showFeedback('error', `Mochila con código "${barcode}" no encontrada.`);
+        }
     };
 
     // Agregar YubiKey por serial
@@ -507,6 +539,20 @@ export default function AccessoriesSection({
                                 </option>
                             ))}
                         </select>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.75rem' }}>
+                            <div style={{ position: 'relative', flex: 1 }}>
+                                <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                                <input
+                                    className="form-input"
+                                    placeholder="Buscar o escanear código..."
+                                    style={{ paddingLeft: '2rem', height: '34px', fontSize: '0.8rem', width: '100%' }}
+                                    value={filterSearchQuery}
+                                    onChange={e => setFilterSearchQuery(e.target.value)}
+                                    onKeyPress={e => e.key === 'Enter' && handleFilterBarcode(filterSearchQuery.trim())}
+                                />
+                            </div>
+                            <Button size="sm" onClick={() => handleFilterBarcode(filterSearchQuery.trim())}>Vincular</Button>
+                        </div>
                     </div>
                 )}
 
@@ -529,6 +575,20 @@ export default function AccessoriesSection({
                                 </option>
                             ))}
                         </select>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.75rem' }}>
+                            <div style={{ position: 'relative', flex: 1 }}>
+                                <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-secondary)' }} />
+                                <input
+                                    className="form-input"
+                                    placeholder="Buscar o escanear código..."
+                                    style={{ paddingLeft: '2rem', height: '34px', fontSize: '0.8rem', width: '100%' }}
+                                    value={backpackSearchQuery}
+                                    onChange={e => setBackpackSearchQuery(e.target.value)}
+                                    onKeyPress={e => e.key === 'Enter' && handleBackpackBarcode(backpackSearchQuery.trim())}
+                                />
+                            </div>
+                            <Button size="sm" onClick={() => handleBackpackBarcode(backpackSearchQuery.trim())}>Vincular</Button>
+                        </div>
                     </div>
                 )}
             </div>
@@ -539,23 +599,7 @@ export default function AccessoriesSection({
                     Otros Accesorios y Consumibles
                 </span>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'end' }} className="grid-mobile-single">
-                    <form onSubmit={handleBarcodeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Escanear Código de Barras</label>
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                            <QrCode size={16} style={{ position: 'absolute', left: '10px', color: 'var(--text-secondary)' }} />
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Escanear..."
-                                value={barcodeInput}
-                                onChange={e => setBarcodeInput(e.target.value)}
-                                style={{ paddingLeft: '2.2rem', fontSize: '0.8rem', height: '36px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)', width: '100%' }}
-                            />
-                            <button type="submit" className="btn btn-primary" style={{ marginLeft: '0.5rem', height: '36px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '8px', padding: '0 0.8rem' }}>Vincular</button>
-                        </div>
-                    </form>
-
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', alignItems: 'end' }} className="grid-mobile-single">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                         <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Buscar en Inventario</label>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
