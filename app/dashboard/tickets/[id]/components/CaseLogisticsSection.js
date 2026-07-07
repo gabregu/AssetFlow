@@ -309,19 +309,6 @@ export default function CaseLogisticsSection({
                 <div style={{ height: '1px', background: 'var(--border)', margin: '0.5rem 0' }}></div>
 
                 <div className="form-group">
-                    <label className="form-label">Estado Manual (Opcional)</label>
-                    <select
-                        className="form-select"
-                        value={localValues.status || ''}
-                        onChange={e => updateLogistics('status', e.target.value)}
-                    >
-                        <option value="">Auto-calculado</option>
-                        <option value="En Preparación">En Preparación</option>
-                        <option value="Pendiente">Pendiente</option>
-                    </select>
-                </div>
-
-                <div className="form-group">
                     <label className="form-label">Medio Proveedor</label>
                     <select
                         className="form-select"
@@ -574,6 +561,7 @@ export default function CaseLogisticsSection({
                         }}>
                             {[
                                 'Pendiente',
+                                'En Preparación',
                                 'Para Coordinar',
                                 'En Transito',
                                 'Entregado',
