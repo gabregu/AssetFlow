@@ -309,7 +309,7 @@ export default function AssociatedCasesCard({
                         const newTask = {
                             ticketId: ticket.id,
                             caseNumber: randomId,
-                            subject: "Caso Consolidado",
+                            subject: ticket.subject || "Caso Consolidado",
                             status: "Para Coordinar",
                             method: "Pendiente",
                             country: ticket.client || ticket?.logistics?.country || 'Argentina',
