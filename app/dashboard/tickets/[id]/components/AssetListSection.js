@@ -168,9 +168,9 @@ export default function AssetListSection({
             const newAssets = [...caseAssets, { serial: serial, type: 'Entrega' }];
             const updates = { assets: newAssets };
             
-            // Automación: Si agregamos hardware, el estado pasa a "Para Coordinar" si estaba Pendiente
-            if (task.status === 'Pendiente') {
-                updates.status = 'Para Coordinar';
+            // Automación: Si agregamos hardware, el estado pasa a "En Preparación"
+            if (task.status === 'Pendiente' || !task.status) {
+                updates.status = 'En Preparación';
             }
             
             try {

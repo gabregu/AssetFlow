@@ -105,8 +105,16 @@ export default function CaseConfigModal({
     const activeTask = localTask || currentTask;
 
     const handleBufferedUpdate = (updates) => {
-        setLocalTask(prev => prev ? { ...prev, ...updates } : null);
-        setPendingTaskUpdates(prev => ({ ...prev, ...updates }));
+        const newUpdates = { ...updates };
+        
+        // Auto-change status to "En Preparación" when adding devices/accessories
+        const modifiesAssets = newUpdates.assets || newUpdates.accessories || newUpdates.yubikeys;
+        if (modifiesAssets && (!activeTask.status || activeTask.status === 'Pendiente')) {
+            newUpdates.status = 'En Preparación';
+        }
+
+        setLocalTask(prev => prev ? { ...prev, ...newUpdates } : null);
+        setPendingTaskUpdates(prev => ({ ...prev, ...newUpdates }));
     };
 
     // Auto-detect case type from subject when task changes
