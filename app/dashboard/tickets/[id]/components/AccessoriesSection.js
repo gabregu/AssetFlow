@@ -4,19 +4,9 @@ import React, { useState, useMemo } from 'react';
 import { Package, Monitor, Smartphone, Keyboard, Headphones, BatteryCharging, Check, QrCode, Search, Trash2, AlertCircle, Key } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 
-const getCountryGroup = (name) => {
-    if (!name) return 'argentina';
-    const normalized = name.toLowerCase().trim().replace(/^sfdc-/, '');
-    if (normalized.includes('argentina') || normalized.includes('harness') || normalized.includes('sycomp') || normalized.includes('commvault')) {
-        return 'argentina';
-    }
-    if (normalized.includes('chile')) {
-        return 'chile';
-    }
-    if (normalized.includes('uruguay')) {
-        return 'uruguay';
-    }
-    return normalized;
+const getClientBase = (name) => {
+    if (!name) return '';
+    return name.toLowerCase().trim().replace(/^sfdc-/, '').trim();
 };
 
 export default function AccessoriesSection({
@@ -45,12 +35,12 @@ export default function AccessoriesSection({
         }, 5000);
     };
 
-    // Filter consumables by ticket country group to isolate client data
+    // Filter consumables strictly by ticket client to isolate client data
     const localConsumables = useMemo(() => {
-        const ticketGroup = getCountryGroup(ticketCountry);
+        const ticketClient = getClientBase(ticketCountry);
         return consumables.filter(c => {
-            const cGroup = getCountryGroup(c.country);
-            return cGroup === ticketGroup;
+            const cClient = getClientBase(c.country);
+            return cClient === ticketClient;
         });
     }, [consumables, ticketCountry]);
 
@@ -318,16 +308,16 @@ export default function AccessoriesSection({
         accessories[key] === true
     );
 
-    // YubiKeys disponibles en stock filtradas por grupo de país
+    // YubiKeys disponibles en stock filtradas estrictamente por cliente
     const availableYubiKeys = useMemo(() => {
-        const ticketGroup = getCountryGroup(ticketCountry);
+        const ticketClient = getClientBase(ticketCountry);
         return yubikeys.filter(y => {
             const statusLower = (y.status || '').toLowerCase().trim();
             const isAvailable = ['disponible', 'stock'].includes(statusLower);
             if (!isAvailable) return false;
             
-            const yGroup = getCountryGroup(y.country);
-            return yGroup === ticketGroup;
+            const yClient = getClientBase(y.country);
+            return yClient === ticketClient;
         });
     }, [yubikeys, ticketCountry]);
 

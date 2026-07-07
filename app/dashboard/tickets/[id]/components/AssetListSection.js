@@ -5,19 +5,9 @@ import { Search, Package, Trash2, QrCode } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { CopyButton } from '@/app/components/ui/CopyButton';
 
-const getCountryGroup = (name) => {
-    if (!name) return 'argentina';
-    const normalized = name.toLowerCase().trim().replace(/^sfdc-/, '');
-    if (normalized.includes('argentina') || normalized.includes('harness') || normalized.includes('sycomp') || normalized.includes('commvault')) {
-        return 'argentina';
-    }
-    if (normalized.includes('chile')) {
-        return 'chile';
-    }
-    if (normalized.includes('uruguay')) {
-        return 'uruguay';
-    }
-    return normalized;
+const getClientBase = (name) => {
+    if (!name) return '';
+    return name.toLowerCase().trim().replace(/^sfdc-/, '').trim();
 };
 
 export default function AssetListSection({
@@ -36,6 +26,7 @@ export default function AssetListSection({
     allTasks = [],
     associatedCases = []
 }) {
+    const [activeAssetType, setActiveAssetType] = useState(''); // 'Laptop' or 'Celular'
     const [selectedModel, setSelectedModel] = useState('');
     const [selectedSerial, setSelectedSerial] = useState('');
 
@@ -81,23 +72,36 @@ export default function AssetListSection({
         }
     }, [task, assets, caseAssets, onUpdateTask]);
 
-    // Filtrar activos disponibles del grupo de país compatible
-    const availableAssets = useMemo(() => {
-        const ticketGroup = getCountryGroup(ticketCountry);
+    // 1. Filtrar activos disponibles del cliente estricto
+    const availableAssetsStrict = useMemo(() => {
+        const ticketClient = getClientBase(ticketCountry);
         return assets.filter(a => {
             const statusLower = (a.status || '').toLowerCase().trim();
             const isAvailable = ['disponible', 'nuevo', 'recuperado', 'stock'].includes(statusLower);
             if (!isAvailable) return false;
             
-            const assetGroup = getCountryGroup(a.country);
-            return assetGroup === ticketGroup;
+            const assetClient = getClientBase(a.country);
+            return assetClient === ticketClient;
         });
     }, [assets, ticketCountry]);
+
+    // 2. Filtrar por Tipo de Dispositivo (Laptop o Celular)
+    const filteredAssets = useMemo(() => {
+        if (!activeAssetType) return [];
+        return availableAssetsStrict.filter(a => {
+            const typeLower = (a.type || '').toLowerCase().trim();
+            if (activeAssetType === 'Laptop') {
+                return typeLower === 'laptop';
+            } else {
+                return typeLower === 'smartphone' || typeLower === 'celular' || typeLower === 'phone';
+            }
+        });
+    }, [availableAssetsStrict, activeAssetType]);
 
     // Extraer modelos únicos con stock disponible
     const availableModels = useMemo(() => {
         const modelsMap = {};
-        availableAssets.forEach(a => {
+        filteredAssets.forEach(a => {
             if (!a.name) return;
             if (!modelsMap[a.name]) {
                 modelsMap[a.name] = {
@@ -112,7 +116,7 @@ export default function AssetListSection({
             }
         });
         return Object.values(modelsMap).sort((a, b) => a.name.localeCompare(b.name));
-    }, [availableAssets]);
+    }, [filteredAssets]);
 
     const handleUnlink = async (idx) => {
         const item = caseAssets[idx];
@@ -314,33 +318,90 @@ export default function AssetListSection({
                 gap: '0.75rem',
                 marginBottom: '1.25rem'
             }}>
+                {/* Paso 1: Selección de Tipo de Dispositivo */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                        Modelo de Hardware (Disponible en Depósito)
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        Paso 1: Seleccione Tipo de Hardware
                     </label>
-                    <select
-                        className="form-select"
-                        style={{ height: '36px', fontSize: '0.85rem' }}
-                        value={selectedModel}
-                        onChange={e => {
-                            setSelectedModel(e.target.value);
-                            setSelectedSerial('');
-                        }}
-                    >
-                        <option value="">— Seleccionar Modelo —</option>
-                        {availableModels.map(m => (
-                            <option key={m.name} value={m.name}>
-                                {m.name} ({m.count} disp.)
-                            </option>
-                        ))}
-                    </select>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setActiveAssetType('Laptop');
+                                setSelectedModel('');
+                                setSelectedSerial('');
+                            }}
+                            style={{
+                                flex: 1,
+                                padding: '0.5rem',
+                                borderRadius: '8px',
+                                border: `2px solid ${activeAssetType === 'Laptop' ? 'var(--primary-color)' : 'var(--border)'}`,
+                                background: activeAssetType === 'Laptop' ? 'rgba(37, 99, 235, 0.08)' : 'white',
+                                color: activeAssetType === 'Laptop' ? 'var(--primary-color)' : 'var(--text-main)',
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            💻 Laptop
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setActiveAssetType('Celular');
+                                setSelectedModel('');
+                                setSelectedSerial('');
+                            }}
+                            style={{
+                                flex: 1,
+                                padding: '0.5rem',
+                                borderRadius: '8px',
+                                border: `2px solid ${activeAssetType === 'Celular' ? 'var(--primary-color)' : 'var(--border)'}`,
+                                background: activeAssetType === 'Celular' ? 'rgba(37, 99, 235, 0.08)' : 'white',
+                                color: activeAssetType === 'Celular' ? 'var(--primary-color)' : 'var(--text-main)',
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            📱 Celular
+                        </button>
+                    </div>
                 </div>
 
+                {/* Paso 2: Selección de Modelo (sólo visible si se seleccionó tipo) */}
+                {activeAssetType && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.25rem' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                            Paso 2: Modelo de {activeAssetType}
+                        </label>
+                        <select
+                            className="form-select"
+                            style={{ height: '36px', fontSize: '0.85rem' }}
+                            value={selectedModel}
+                            onChange={e => {
+                                setSelectedModel(e.target.value);
+                                setSelectedSerial('');
+                            }}
+                        >
+                            <option value="">— Seleccionar Modelo —</option>
+                            {availableModels.map(m => (
+                                <option key={m.name} value={m.name}>
+                                    {m.name} ({m.count} disp.)
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {/* Paso 3: Selección de Serie */}
                 {selectedModel && (
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'end' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'end', marginTop: '0.25rem' }}>
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                             <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                                Seleccionar N° de Serie
+                                Paso 3: Número de Serie
                             </label>
                             <select
                                 className="form-select"
@@ -362,6 +423,7 @@ export default function AssetListSection({
                                 await handleLinkToCase(selectedSerial);
                                 setSelectedModel('');
                                 setSelectedSerial('');
+                                setActiveAssetType('');
                             }}
                         >
                             Asignar
