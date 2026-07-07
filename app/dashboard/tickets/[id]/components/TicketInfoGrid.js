@@ -12,7 +12,7 @@ export default function TicketInfoGrid({
     setEditMode 
 }) {
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.5rem' }}>
+        <div className="grid-mobile-single" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ color: 'var(--text-secondary)' }}><User size={18} /></div>
                 <div>

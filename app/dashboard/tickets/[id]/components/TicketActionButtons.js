@@ -25,14 +25,14 @@ export default function TicketActionButtons({
             <Button variant="secondary" icon={ArrowLeft} onClick={() => router.back()}>
                 Volver a la lista
             </Button>
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className="flex-mobile-column" style={{ display: 'flex', gap: '1rem' }}>
                 {editMode ? (
                     <>
                         <Button variant="ghost" onClick={() => {
                             setEditMode(false);
                             setEditedData(ticket); // Reset
                         }}>Cancelar</Button>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div className="flex-mobile-column" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <Button icon={Save} disabled={isSaving} onClick={async () => {
                                 setIsSaving(true);
                                 const result = await handleUpdate();
