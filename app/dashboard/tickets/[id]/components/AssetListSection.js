@@ -5,6 +5,21 @@ import { Search, Package, Trash2, QrCode } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { CopyButton } from '@/app/components/ui/CopyButton';
 
+const getCountryGroup = (name) => {
+    if (!name) return 'argentina';
+    const normalized = name.toLowerCase().trim().replace(/^sfdc-/, '');
+    if (normalized.includes('argentina') || normalized.includes('harness') || normalized.includes('sycomp') || normalized.includes('commvault')) {
+        return 'argentina';
+    }
+    if (normalized.includes('chile')) {
+        return 'chile';
+    }
+    if (normalized.includes('uruguay')) {
+        return 'uruguay';
+    }
+    return normalized;
+};
+
 export default function AssetListSection({
     task,
     onUpdateTask,
@@ -66,13 +81,17 @@ export default function AssetListSection({
         }
     }, [task, assets, caseAssets, onUpdateTask]);
 
-    // Filtrar activos disponibles de la región actual
+    // Filtrar activos disponibles del grupo de país compatible
     const availableAssets = useMemo(() => {
-        const targetRegion = ticketCountry.toLowerCase().trim();
-        return assets.filter(a => 
-            a.status && a.status.toLowerCase() === 'disponible' &&
-            (!targetRegion || (a.country && a.country.toLowerCase().trim() === targetRegion))
-        );
+        const ticketGroup = getCountryGroup(ticketCountry);
+        return assets.filter(a => {
+            const statusLower = (a.status || '').toLowerCase().trim();
+            const isAvailable = ['disponible', 'nuevo', 'recuperado', 'stock'].includes(statusLower);
+            if (!isAvailable) return false;
+            
+            const assetGroup = getCountryGroup(a.country);
+            return assetGroup === ticketGroup;
+        });
     }, [assets, ticketCountry]);
 
     // Extraer modelos únicos con stock disponible

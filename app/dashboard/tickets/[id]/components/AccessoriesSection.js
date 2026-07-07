@@ -1,8 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Package, Monitor, Smartphone, Keyboard, Headphones, BatteryCharging, Check, QrCode, Search, Trash2, AlertCircle, Key } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
+
+const getCountryGroup = (name) => {
+    if (!name) return 'argentina';
+    const normalized = name.toLowerCase().trim().replace(/^sfdc-/, '');
+    if (normalized.includes('argentina') || normalized.includes('harness') || normalized.includes('sycomp') || normalized.includes('commvault')) {
+        return 'argentina';
+    }
+    if (normalized.includes('chile')) {
+        return 'chile';
+    }
+    if (normalized.includes('uruguay')) {
+        return 'uruguay';
+    }
+    return normalized;
+};
 
 export default function AccessoriesSection({
     task,
@@ -30,12 +45,14 @@ export default function AccessoriesSection({
         }, 5000);
     };
 
-    // Filter consumables by ticket country to isolate client data
-    const safeTicketCountry = (ticketCountry || 'Argentina').trim().toLowerCase();
-    const localConsumables = consumables.filter(c => {
-        const cCountry = (c.country || 'Argentina').trim().toLowerCase();
-        return cCountry === safeTicketCountry;
-    });
+    // Filter consumables by ticket country group to isolate client data
+    const localConsumables = useMemo(() => {
+        const ticketGroup = getCountryGroup(ticketCountry);
+        return consumables.filter(c => {
+            const cGroup = getCountryGroup(c.country);
+            return cGroup === ticketGroup;
+        });
+    }, [consumables, ticketCountry]);
 
     // Filtros de consumibles específicos
     const backpackConsumables = localConsumables.filter(c => 
@@ -301,8 +318,18 @@ export default function AccessoriesSection({
         accessories[key] === true
     );
 
-    // YubiKeys disponibles en stock
-    const availableYubiKeys = yubikeys.filter(y => y.status === 'disponible' || y.status === 'Disponible' || y.status === 'stock');
+    // YubiKeys disponibles en stock filtradas por grupo de país
+    const availableYubiKeys = useMemo(() => {
+        const ticketGroup = getCountryGroup(ticketCountry);
+        return yubikeys.filter(y => {
+            const statusLower = (y.status || '').toLowerCase().trim();
+            const isAvailable = ['disponible', 'stock'].includes(statusLower);
+            if (!isAvailable) return false;
+            
+            const yGroup = getCountryGroup(y.country);
+            return yGroup === ticketGroup;
+        });
+    }, [yubikeys, ticketCountry]);
 
     const cardStyle = (isActive) => ({
         flex: 1,
@@ -361,7 +388,7 @@ export default function AccessoriesSection({
                         {caseYubikeys.length > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.75rem' }}>
                                 {caseYubikeys.map((yk, ykIdx) => (
-                                    <div key={ykIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.6rem', background: 'white', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem' }}>
+                                    <div key={ykIdx} style={{ display: 'flex', alignItems: 'center', justifyStyle: 'space-between', padding: '0.4rem 0.6rem', background: 'white', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.8rem', justifyContent: 'space-between' }}>
                                         <span>🔑 S/N: <strong>{yk.serial}</strong></span>
                                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                             <select
