@@ -586,7 +586,7 @@ export default function LogisticsHubPage() {
                     <p style={{ color: 'var(--text-secondary)' }}>Gestión centralizada de todas las entregas y retiros de cliente {countryFilter}.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }} className="flex-mobile-column">
-                    <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'relative', width: '100%' }}>
                         <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} size={18} />
                         <input 
                             type="text" 
@@ -703,7 +703,7 @@ export default function LogisticsHubPage() {
 
             {/* Global Tasks Table */}
             <Card style={{ padding: 0 }} className="table-responsive">
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table className="desktop-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ background: 'var(--background)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}>
                         <tr>
                             <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, width: '140px' }}>ID</th>
@@ -930,6 +930,116 @@ export default function LogisticsHubPage() {
                         ))}
                     </tbody>
                 </table>
+
+                {/* Mobile Cards View */}
+                {tasks.length === 0 ? (
+                    <div className="mobile-only" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        <Package size={48} style={{ opacity: 0.1, margin: '0 auto 1rem' }} />
+                        <p>No se encontraron tareas con estos filtros.</p>
+                    </div>
+                ) : tasks.map(task => {
+                    const isOutbound = task.title === 'Hardware Provisioning' || task.type === 'Hardware Provisioning' || String(task.subject).toLowerCase().includes('provisioning');
+                    
+                    const btnGestionar = (
+                        <Button 
+                            size="sm" 
+                            variant="secondary" 
+                            icon={ArrowRight} 
+                            onClick={() => window.open(`/dashboard/tickets/${task.ticket_id || task.id}?tab=logistics`, '_blank')}
+                            style={{ width: '100%' }}
+                        >
+                            Gestionar
+                        </Button>
+                    );
+
+                    let actionBtn = btnGestionar;
+                    if (task.status === 'En Preparación' || (isOutbound && (!task.status || task.status === 'Pendiente'))) {
+                        actionBtn = (
+                            <Button size="sm" style={{ background: '#10b981', color: 'white', border: 'none', width: '100%' }} icon={Package} onClick={() => setActionModal({ isOpen: true, type: 'prepare_shipping', task })}>
+                                Verificación HW
+                            </Button>
+                        );
+                    } else if (task.status === 'Para Coordinar') {
+                        actionBtn = (
+                            <Button size="sm" style={{ background: '#3b82f6', color: 'white', border: 'none', width: '100%' }} icon={Calendar} onClick={() => {
+                                setScheduleData({
+                                    method: task.method || '',
+                                    delivery_person: task.deliveryPerson || task.delivery_person || '',
+                                    date: task.date || '',
+                                    time_slot: task.time_slot || 'AM',
+                                    tracking_number: task.tracking_number || '',
+                                    address: task.address || task.parentAddress || '',
+                                    coordinated_by: task.coordinated_by || task.coordinatedBy || '',
+                                    deliveryInfo: task.deliveryInfo || {}
+                                });
+                                setActionModal({ isOpen: true, type: 'schedule_appointment', task });
+                            }}>
+                                Agendar Cita
+                            </Button>
+                        );
+                    }
+
+                    return (
+                        <div key={task.id} className="ticket-card-mobile mobile-only">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                    <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1rem', marginBottom: '4px' }}>
+                                        {task.ticket_id}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div style={{ fontWeight: 600 }}>{task.displayRequester}</div>
+                                        {task.hasNewNotes && (
+                                            <div title={task.hasUnreadChat ? "Nuevo mensaje sin leer" : "Tiene notas adicionales"} className={task.hasUnreadChat ? "unread-badge-v2" : ""} style={{ color: task.hasUnreadChat ? 'white' : 'var(--primary-color)', display: 'flex' }}>
+                                                <MessageSquare size={14} fill={task.hasUnreadChat ? 'white' : 'none'} stroke={task.hasUnreadChat ? 'none' : 'currentColor'} />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                        {task.subject}
+                                    </div>
+                                </div>
+                                <Badge variant={getStatusVariant(task.status || 'Pendiente')} style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>
+                                    {task.status || 'Pendiente'}
+                                </Badge>
+                            </div>
+
+                            <div style={{ background: 'var(--background)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.85rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    <MapPin size={14} className={task.isOutOfSync ? "text-warning" : "text-secondary-400"} />
+                                    <span style={{ color: task.isOutOfSync ? 'var(--warning-color)' : 'inherit' }}>
+                                        {task.displayAddress}{task.floorDept ? `, ${task.floorDept}` : ''}
+                                    </span>
+                                </div>
+                                
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    <Truck size={14} className="text-secondary-400" />
+                                    <span style={{ fontWeight: 600 }}>
+                                        {task.method || 'Medio no definido'}
+                                    </span>
+                                    {task.tracking_number && (
+                                        <TrackingBadge method={task.method} trackingNumber={task.tracking_number} />
+                                    )}
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <User size={14} className="text-secondary-400" />
+                                    <span>
+                                        {task.deliveryPerson || task.delivery_person || 'Sin Asignar'}
+                                    </span>
+                                    {task.date && (
+                                        <span style={{ color: 'var(--primary-color)', fontWeight: 600, fontSize: '0.8rem', marginLeft: 'auto' }}>
+                                            {task.date.split('T')[0]} | {task.time_slot || 'AM'}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div style={{ marginTop: '0.5rem' }}>
+                                {actionBtn}
+                            </div>
+                        </div>
+                    );
+                })}
             </Card>
 
             {/* MODALS */}
