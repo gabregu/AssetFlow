@@ -919,7 +919,7 @@ export default function LogisticsHubPage() {
                                                                 date: task.date || '',
                                                                 time_slot: task.time_slot || 'AM',
                                                                 tracking_number: task.tracking_number || '',
-                                                                address: task.address || '',
+                                                                address: task.address || task.parentAddress || '',
                                                                 coordinated_by: task.coordinated_by || task.coordinatedBy || '',
                                                                 deliveryInfo: task.deliveryInfo || {}
                                                             });
