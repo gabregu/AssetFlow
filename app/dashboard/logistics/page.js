@@ -1069,7 +1069,7 @@ export default function LogisticsHubPage() {
                                 onChange={e => setScheduleData({...scheduleData, delivery_person: e.target.value})}
                             >
                                 <option value="">Seleccionar responsable...</option>
-                                {users.filter(u => u.isDriver || u.role === 'Conductor' || u.role === 'Admin').map(u => (
+                                {users.filter(u => u.isDriver || u.role === 'Conductor' || u.role === 'admin' || u.role === 'Administrador' || u.role === 'Administrativo' || u.role === 'Gerencial').map(u => (
                                     <option key={u.id} value={u.name}>{u.name}</option>
                                 ))}
                             </select>
