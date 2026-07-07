@@ -899,12 +899,11 @@ export default function LogisticsHubPage() {
                                                 </Button>
                                             );
 
-                                            if (task.status === 'En Preparaci\u00f3n' || (isOutbound && (!task.status || task.status === 'Pendiente'))) {
+                                            if (task.status === 'En Preparación' || (isOutbound && (!task.status || task.status === 'Pendiente'))) {
                                                 return (
                                                     <>
-                                                        {btnGestionar}
                                                         <Button size="sm" style={{ background: '#10b981', color: 'white', border: 'none' }} icon={Package} onClick={() => setActionModal({ isOpen: true, type: 'prepare_shipping', task })}>
-                                                            Verificaci\u00f3n HW
+                                                            Verificación HW
                                                         </Button>
                                                     </>
                                                 );
@@ -939,18 +938,18 @@ export default function LogisticsHubPage() {
 
             {/* MODALS */}
             
-            {/* 1. Modal Prepare Shipping (Verificaci\u00f3n HW) */}
+            {/* 1. Modal Prepare Shipping (Verificación HW) */}
             <Modal
                 isOpen={actionModal.isOpen && actionModal.type === 'prepare_shipping'}
                 onClose={() => setActionModal({ isOpen: false, type: null, task: null })}
-                title="Verificaci\u00f3n HW (Preparar Env\u00edo)"
+                title="Verificación HW (Preparar Envío)"
             >
                 {actionModal.task && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem' }}>
                         <div style={{ background: 'rgba(37, 99, 235, 0.05)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
                             <h4 style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <Package size={18} />
-                                Activos a preparar para el env\u00edo
+                                Activos a preparar para el envío
                             </h4>
                             {actionModal.task.assets && actionModal.task.assets.length > 0 ? (
                                 <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', color: 'var(--text-secondary)' }}>
@@ -962,13 +961,13 @@ export default function LogisticsHubPage() {
                                     ))}
                                 </ul>
                             ) : (
-                                <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.9rem' }}>No hay activos espec\u00edficos listados. Verifique el detalle del caso principal.</p>
+                                <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.9rem' }}>No hay activos específicos listados. Verifique el detalle del caso principal.</p>
                             )}
                         </div>
                         
                         <div style={{ padding: '1rem', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)' }}>
                             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                                Por favor, aseg\u00farese de que todos los equipos est\u00e1n dentro de la caja listos para ser despachados e imprima la etiqueta.
+                                Por favor, asegúrese de que todos los equipos están dentro de la caja listos para ser despachados e imprima la etiqueta.
                             </p>
                             <Button 
                                 variant="outline" 
