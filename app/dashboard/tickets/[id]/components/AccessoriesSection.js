@@ -53,11 +53,15 @@ export default function AccessoriesSection({
 
     // Filtros de consumibles específicos
     const backpackConsumables = localConsumables.filter(c => 
-        c.name.toLowerCase().includes('mochila') || c.name.toLowerCase().includes('backpack')
+        (c.category && c.category.toLowerCase() === 'mochila') ||
+        c.name.toLowerCase().includes('mochila') || 
+        c.name.toLowerCase().includes('backpack')
     );
 
     const filterConsumables = localConsumables.filter(c => 
-        c.name.toLowerCase().includes('filtro') || c.name.toLowerCase().includes('filter')
+        (c.category && c.category.toLowerCase() === 'filtro') ||
+        c.name.toLowerCase().includes('filtro') || 
+        c.name.toLowerCase().includes('filter')
     );
 
     // Identificar qué modelo de mochila o filtro está actualmente asignado en el objeto accessories

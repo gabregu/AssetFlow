@@ -2747,22 +2747,8 @@ export default function InventoryPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <select
-                                                className="form-select"
-                                                style={{ fontSize: '0.8rem', padding: '2px 6px', height: '28px', width: 'auto', border: '1px solid var(--border)', borderRadius: '4px', background: 'white', fontWeight: 500 }}
-                                                value={['Filtro', 'Mochila', 'Otro'].includes(item.category) ? item.category : 'Otro'}
-                                                onChange={async (e) => {
-                                                    await updateConsumable(item.id, { category: e.target.value });
-                                                }}
-                                            >
-                                                <option value="Filtro">Filtro</option>
-                                                <option value="Mochila">Mochila</option>
-                                                <option value="Otro">Otro</option>
-                                                {!['Filtro', 'Mochila', 'Otro'].includes(item.category) && item.category && (
-                                                    <option value={item.category}>{item.category} (Original)</option>
-                                                )}
-                                            </select>
+                                        <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                            {item.category || 'Otro'}
                                         </td>
                                         <td style={{ padding: '1rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
