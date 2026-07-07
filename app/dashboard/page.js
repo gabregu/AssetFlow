@@ -14,11 +14,7 @@ import { WorkloadSection } from './components/WorkloadSection';
 // ── KPI Card ────────────────────────────────────────────────────────────────
 function KpiCard({ label, value, icon: Icon, color, bg, sub, subColor }) {
     return (
-        <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: '12px', padding: '1.25rem', display: 'flex',
-            flexDirection: 'column', gap: '0.75rem'
-        }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500, margin: 0 }}>{label}</p>
@@ -291,10 +287,7 @@ export default function Dashboard() {
             )}
 
             {/* ── System Status ─────────────────────────────────────────── */}
-            <div style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: '14px', padding: '1.5rem'
-            }}>
+            <div className="card">
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 1.25rem' }}>Estado del Sistema</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                     {Object.values(systemStatus).map(s => (

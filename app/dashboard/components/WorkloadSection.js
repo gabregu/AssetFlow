@@ -160,11 +160,10 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
     ];
 
     return (
-        <div style={{
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: '14px', padding: '1.5rem', marginBottom: '1.5rem'
+        <div className="card" style={{
+            marginBottom: '1.5rem'
         }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', gap: '1rem' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>{title}</h3>
                 {monthSelector && availableMonths?.length > 0 && (
                     <select
@@ -192,7 +191,7 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
                 )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2rem', alignItems: 'start' }}>
+            <div className="grid-mobile-single" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2rem', alignItems: 'start' }}>
                 {/* Left: user list + timeline */}
                 <div>
                     {/* User rows */}
