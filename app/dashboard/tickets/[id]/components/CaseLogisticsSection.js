@@ -160,8 +160,8 @@ export default function CaseLogisticsSection({
         let currentStatus = incomingUpdates.status !== undefined ? incomingUpdates.status : absoluteState.status;
 
         // --- AUTOMATIZACIÓN DE ESTADO ---
-        // Aplicar solo si no es un estado terminal
-        const TERMINAL_STATUSES = ['Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado', 'No requiere accion'];
+        // Aplicar solo si no es un estado terminal o protegido
+        const TERMINAL_STATUSES = ['En Preparación', 'Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado', 'No requiere accion'];
         const isExplicitStatus = incomingUpdates.status !== undefined;
 
         if (!isExplicitStatus && !TERMINAL_STATUSES.includes(currentStatus)) {
@@ -221,7 +221,7 @@ export default function CaseLogisticsSection({
             let currentStatus = state.status || task.status || 'Pendiente';
 
             // Aplicar lógica de negocio también en el guardado final
-            const TERMINAL_STATUSES = ['Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado', 'No requiere accion'];
+            const TERMINAL_STATUSES = ['En Preparación', 'Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado', 'No requiere accion'];
             if (!TERMINAL_STATUSES.includes(currentStatus)) {
                 const hasDriver = !!state.delivery_person;
                 const hasDate = !!state.date;
@@ -307,6 +307,19 @@ export default function CaseLogisticsSection({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
 
                 <div style={{ height: '1px', background: 'var(--border)', margin: '0.5rem 0' }}></div>
+
+                <div className="form-group">
+                    <label className="form-label">Estado Manual (Opcional)</label>
+                    <select
+                        className="form-select"
+                        value={localValues.status || ''}
+                        onChange={e => updateLogistics('status', e.target.value)}
+                    >
+                        <option value="">Auto-calculado</option>
+                        <option value="En Preparación">En Preparación</option>
+                        <option value="Pendiente">Pendiente</option>
+                    </select>
+                </div>
 
                 <div className="form-group">
                     <label className="form-label">Medio Proveedor</label>

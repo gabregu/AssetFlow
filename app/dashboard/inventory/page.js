@@ -137,6 +137,13 @@ export default function InventoryPage() {
         locationId: '', photoUrl: null
     });
 
+    const [hwChecklist, setHwChecklist] = useState({
+        serial: false,
+        cleaning: false,
+        wipe: false,
+        reinstall: false
+    });
+
     const uniqueAssetNames = React.useMemo(() => {
         if (!assets || assets.length === 0) return [];
         const filtered = assets.filter(a => a.type === newAsset.type);
@@ -409,6 +416,13 @@ export default function InventoryPage() {
             return;
         }
 
+        if (editingAsset && editingAsset.status === 'Verificacion HW' && newAsset.status !== 'Verificacion HW') {
+            if (!hwChecklist.serial || !hwChecklist.cleaning || !hwChecklist.wipe || !hwChecklist.reinstall) {
+                alert('Debe completar todos los pasos del Checklist de Verificación HW antes de cambiar el estado del equipo.');
+                return;
+            }
+        }
+
         // Verificar duplicados solo si estamos CREANDO un activo nuevo
         if (!editingAsset) {
             const duplicateAsset = assets.find(a => a.serial.toLowerCase() === newAsset.serial.toLowerCase());
@@ -471,6 +485,7 @@ export default function InventoryPage() {
     const handleEdit = (asset) => {
         setEditingAsset(asset);
         setNewAsset(asset);
+        setHwChecklist({ serial: false, cleaning: false, wipe: false, reinstall: false });
         setIsModalOpen(true);
     };
 
@@ -1426,7 +1441,8 @@ export default function InventoryPage() {
             case 'Nuevo': return 'success';
             case 'Asignado': return 'info';
             case 'Recuperado': return 'info';
-            case 'En Reparación': return 'warning';
+            case 'En Reparación': 
+            case 'Verificacion HW': return 'warning';
             case 'Dañado':
             case 'EOL': return 'danger';
             default: return 'default';
@@ -1464,7 +1480,7 @@ export default function InventoryPage() {
     const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 4 : 0);
     const deviceTypes = ['Laptop', 'Smartphone', 'Tablet', 'Otros'];
 
-    const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
+    const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'Verificacion HW', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
 
     // Performance Optimization: Memoize all summary counts
     const { countsByType, totalCountsByType, countsByStatus } = React.useMemo(() => {
@@ -3023,6 +3039,7 @@ export default function InventoryPage() {
                                 <option value="Nuevo">Nuevo</option>
                                 <option value="Asignado">Asignado</option>
                                 <option value="Recuperado">Recuperado</option>
+                                <option value="Verificacion HW">Verificacion HW</option>
                                 <option value="En Reparación">En Reparación</option>
                                 <option value="Dañado">Dañado</option>
                                 <option value="EOL">EOL</option>
@@ -3309,7 +3326,56 @@ export default function InventoryPage() {
                         )}
                     </div>
 
-
+                    {editingAsset && editingAsset.status === 'Verificacion HW' && (
+                        <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(234, 179, 8, 0.1)', border: '1px solid rgba(234, 179, 8, 0.3)', borderRadius: 'var(--radius-md)' }}>
+                            <h4 style={{ margin: '0 0 0.75rem 0', color: '#854d0e', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <CheckCircle size={18} />
+                                Checklist de Verificación HW (Requerido)
+                            </h4>
+                            <p style={{ fontSize: '0.8rem', color: '#a16207', marginBottom: '1rem', marginTop: 0 }}>
+                                Complete todos los pasos para poder ingresar el equipo al stock o cambiar su estado.
+                            </p>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={hwChecklist.serial} 
+                                        onChange={e => setHwChecklist(prev => ({ ...prev, serial: e.target.checked }))} 
+                                        style={{ width: '16px', height: '16px' }}
+                                    />
+                                    Verificar que el Serial / Modelo coincida con el sistema
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={hwChecklist.cleaning} 
+                                        onChange={e => setHwChecklist(prev => ({ ...prev, cleaning: e.target.checked }))} 
+                                        style={{ width: '16px', height: '16px' }}
+                                    />
+                                    Limpieza física del dispositivo
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={hwChecklist.wipe} 
+                                        onChange={e => setHwChecklist(prev => ({ ...prev, wipe: e.target.checked }))} 
+                                        style={{ width: '16px', height: '16px' }}
+                                    />
+                                    Borrado seguro de datos (Wipe)
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={hwChecklist.reinstall} 
+                                        onChange={e => setHwChecklist(prev => ({ ...prev, reinstall: e.target.checked }))} 
+                                        style={{ width: '16px', height: '16px' }}
+                                    />
+                                    Reinstalación de Sistema Operativo
+                                </label>
+                            </div>
+                        </div>
+                    )}
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2.5rem' }}>
                         <Button type="button" variant="ghost" onClick={closeModal}>Cancelar</Button>

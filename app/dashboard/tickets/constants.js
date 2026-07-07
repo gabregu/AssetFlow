@@ -21,6 +21,7 @@ export const getStatusVariant = (status) => {
         case 'Recuperado':
             return 'success';
         case 'Pendiente':
+        case 'En Preparación':
             return 'warning';
         case 'Para Coordinar':
             return 'info';
