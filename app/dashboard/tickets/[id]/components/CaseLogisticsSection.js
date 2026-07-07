@@ -271,6 +271,8 @@ export default function CaseLogisticsSection({
 
     if (!task) return null;
 
+    const showExecutionFields = !['Pendiente', 'En Preparación'].includes(localValues.status || 'Pendiente');
+
     return (
         <div style={{ marginTop: '0.5rem' }}>
             {/* Blocked Case Banner */}
@@ -324,7 +326,7 @@ export default function CaseLogisticsSection({
                     </select>
                 </div>
 
-                {(localValues.method === 'Andreani' || localValues.method === 'Correo Argentino') && (
+                {showExecutionFields && (localValues.method === 'Andreani' || localValues.method === 'Correo Argentino') && (
                     <div className="form-group">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                             <label className="form-label" style={{ margin: 0 }}>Número de Seguimiento</label>
@@ -341,7 +343,7 @@ export default function CaseLogisticsSection({
                     </div>
                 )}
 
-                {localValues.method === 'Repartidor Propio' && (
+                {showExecutionFields && localValues.method === 'Repartidor Propio' && (
                     <div className="form-group">
                         <label className="form-label">Nombre del Repartidor</label>
                         <select
@@ -359,57 +361,59 @@ export default function CaseLogisticsSection({
                     </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                    <div className="form-group">
-                        <label className="form-label">Fecha de Entrega/Retiro</label>
-                        <input
-                            id={`delivery-date-${task.id || 'legacy'}`}
-                            name="delivery_date"
-                            type="date"
-                            className="form-input"
-                            value={localValues.date || ''}
-                            onChange={e => {
-                                const newDate = e.target.value;
-                                const updates = { date: newDate };
-                                if (newDate && currentUser?.name) {
-                                    updates.coordinated_by = currentUser.name;
-                                }
-                                updateLogistics(updates);
-                            }}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Turno (AM / PM)</label>
-                        <div style={{ display: 'flex', gap: '0.4rem', height: '42px' }}>
-                            {['AM', 'PM'].map(slot => {
-                                return (
-                                    <button
-                                        key={slot}
-                                        type="button"
-                                        onClick={() => {
-                                            const updates = { time_slot: slot };
-                                            if (currentUser?.name) {
-                                                updates.coordinated_by = currentUser.name;
-                                            }
-                                            updateLogistics(updates);
-                                        }}
-                                        style={{
-                                            flex: 1,
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--border)',
-                                            background: (localValues.time_slot || 'AM') === slot ? 'var(--primary-color)' : 'var(--surface)',
-                                            color: (localValues.time_slot || 'AM') === slot ? 'white' : 'var(--text-main)',
-                                            fontWeight: 600,
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        {slot}
-                                    </button>
-                                );
-                            })}
+                {showExecutionFields && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                        <div className="form-group">
+                            <label className="form-label">Fecha de Entrega/Retiro</label>
+                            <input
+                                id={`delivery-date-${task.id || 'legacy'}`}
+                                name="delivery_date"
+                                type="date"
+                                className="form-input"
+                                value={localValues.date || ''}
+                                onChange={e => {
+                                    const newDate = e.target.value;
+                                    const updates = { date: newDate };
+                                    if (newDate && currentUser?.name) {
+                                        updates.coordinated_by = currentUser.name;
+                                    }
+                                    updateLogistics(updates);
+                                }}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Turno (AM / PM)</label>
+                            <div style={{ display: 'flex', gap: '0.4rem', height: '42px' }}>
+                                {['AM', 'PM'].map(slot => {
+                                    return (
+                                        <button
+                                            key={slot}
+                                            type="button"
+                                            onClick={() => {
+                                                const updates = { time_slot: slot };
+                                                if (currentUser?.name) {
+                                                    updates.coordinated_by = currentUser.name;
+                                                }
+                                                updateLogistics(updates);
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                borderRadius: '6px',
+                                                border: '1px solid var(--border)',
+                                                background: (localValues.time_slot || 'AM') === slot ? 'var(--primary-color)' : 'var(--surface)',
+                                                color: (localValues.time_slot || 'AM') === slot ? 'white' : 'var(--text-main)',
+                                                fontWeight: 600,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {slot}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 <div className="form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -459,29 +463,31 @@ export default function CaseLogisticsSection({
                     )}
                 </div>
 
-                <div className="form-group">
-                    <label className="form-label">Coordinado por</label>
-                    <select
-                        className="form-select"
-                        value={localValues.coordinated_by || ''}
-                        onChange={e => updateLogistics('coordinated_by', e.target.value)}
-                    >
-                        <option value="">Seleccionar responsable...</option>
-                        {currentUser?.name && (
-                            <option value={currentUser.name}>
-                                {currentUser.name} (Tú)
-                            </option>
-                        )}
-                        {users
-                            .filter(u => u.name !== currentUser?.name)
-                            .map(u => (
-                                <option key={u.id} value={u.name}>
-                                    {u.name} {u.role ? `(${u.role})` : ''}
+                {showExecutionFields && (
+                    <div className="form-group">
+                        <label className="form-label">Coordinado por</label>
+                        <select
+                            className="form-select"
+                            value={localValues.coordinated_by || ''}
+                            onChange={e => updateLogistics('coordinated_by', e.target.value)}
+                        >
+                            <option value="">Seleccionar responsable...</option>
+                            {currentUser?.name && (
+                                <option value={currentUser.name}>
+                                    {currentUser.name} (Tú)
                                 </option>
-                            ))
-                        }
-                    </select>
-                </div>
+                            )}
+                            {users
+                                .filter(u => u.name !== currentUser?.name)
+                                .map(u => (
+                                    <option key={u.id} value={u.name}>
+                                        {u.name} {u.role ? `(${u.role})` : ''}
+                                    </option>
+                                ))
+                            }
+                        </select>
+                    </div>
+                )}
 
                 <div className="form-group">
                     <label className="form-label">Notas Adicionales (se muestran en el Remito impreso)</label>
@@ -505,113 +511,115 @@ export default function CaseLogisticsSection({
                     />
                 </div>
 
-                <div className="form-group" style={{ marginBottom: '0.5rem', position: 'relative' }} ref={statusDropdownRef}>
-                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-                        Estado de la Logística / Envío
-                    </label>
-                    <div 
-                        onClick={() => setIsStatusOpen(!isStatusOpen)}
-                        style={{ 
-                            cursor: 'pointer', 
-                            padding: '0.625rem 0.875rem', 
-                            border: '1px solid var(--border)', 
-                            borderRadius: 'var(--radius-md)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            background: 'var(--background)',
-                            transition: 'all 0.2s',
-                            boxShadow: isStatusOpen ? '0 0 0 2px rgba(37, 99, 235, 0.1)' : 'none',
-                            borderColor: isStatusOpen ? 'var(--primary-color)' : 'var(--border)'
-                        }}
-                    >
-                        <Badge
-                            variant={getStatusVariant(localValues.status || 'Pendiente')}
-                            style={{
-                                padding: '0.4rem 0.7rem',
-                                fontSize: '0.8rem',
-                                borderRadius: '6px',
-                                fontWeight: 700
+                {showExecutionFields && (
+                    <div className="form-group" style={{ marginBottom: '0.5rem', position: 'relative' }} ref={statusDropdownRef}>
+                        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                            Estado de la Logística / Envío
+                        </label>
+                        <div 
+                            onClick={() => setIsStatusOpen(!isStatusOpen)}
+                            style={{ 
+                                cursor: 'pointer', 
+                                padding: '0.625rem 0.875rem', 
+                                border: '1px solid var(--border)', 
+                                borderRadius: 'var(--radius-md)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: 'var(--background)',
+                                transition: 'all 0.2s',
+                                boxShadow: isStatusOpen ? '0 0 0 2px rgba(37, 99, 235, 0.1)' : 'none',
+                                borderColor: isStatusOpen ? 'var(--primary-color)' : 'var(--border)'
                             }}
                         >
-                            {(localValues.status || 'Pendiente') === 'No requiere accion' ? 'Sin intervención' : (localValues.status || 'Pendiente')}
-                        </Badge>
-                        <ChevronDown 
-                            size={16} 
-                            style={{ 
-                                opacity: 0.5, 
-                                transform: isStatusOpen ? 'rotate(180deg)' : 'rotate(0)',
-                                transition: 'transform 0.3s ease'
-                            }} 
-                        />
-                    </div>
-
-                    {isStatusOpen && (
-                        <div style={{
-                            position: 'absolute',
-                            bottom: '100%',
-                            left: 0,
-                            right: 0,
-                            zIndex: 100,
-                            marginBottom: '0.5rem',
-                            background: 'var(--surface)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '12px',
-                            boxShadow: '0 -10px 25px -5px rgba(0, 0, 0, 0.1), 0 -8px 10px -6px rgba(0, 0, 0, 0.1)',
-                            overflow: 'hidden',
-                            animation: 'modalSlideUp 0.2s ease-out'
-                        }}>
-                            {[
-                                'Pendiente',
-                                'En Preparación',
-                                'Para Coordinar',
-                                'En Transito',
-                                'Entregado',
-                                'No requiere accion',
-                                'Cancelado'
-                            ].map(s => {
-                                const isSelected = (localValues.status || 'Pendiente') === s;
-                                const variant = getStatusVariant(s);
-                                
-                                return (
-                                    <div
-                                        key={s}
-                                        onClick={() => {
-                                            updateLogistics('status', s);
-                                            setIsStatusOpen(false);
-                                        }}
-                                        style={{
-                                            padding: '0.75rem 1rem',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            background: isSelected ? 'rgba(37, 99, 235, 0.05)' : 'transparent',
-                                            transition: 'background 0.2s'
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(37, 99, 235, 0.05)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(37, 99, 235, 0.05)' : 'transparent'}
-                                    >
-                                        <Badge
-                                            variant={variant}
-                                            style={{
-                                                padding: '0.35rem 0.6rem',
-                                                fontSize: '0.75rem',
-                                                borderRadius: '6px',
-                                                fontWeight: isSelected ? 700 : 500,
-                                                opacity: isSelected ? 1 : 0.8
-                                            }}
-                                        >
-                                            {s === 'No requiere accion' ? 'Sin intervención' : s}
-                                        </Badge>
-                                        {isSelected && (
-                                            <div style={{ marginLeft: 'auto', width: '6px', height: '6px', background: 'var(--primary-color)', borderRadius: '50%' }}></div>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                            <Badge
+                                variant={getStatusVariant(localValues.status || 'Pendiente')}
+                                style={{
+                                    padding: '0.4rem 0.7rem',
+                                    fontSize: '0.8rem',
+                                    borderRadius: '6px',
+                                    fontWeight: 700
+                                }}
+                            >
+                                {(localValues.status || 'Pendiente') === 'No requiere accion' ? 'Sin intervención' : (localValues.status || 'Pendiente')}
+                            </Badge>
+                            <ChevronDown 
+                                size={16} 
+                                style={{ 
+                                    opacity: 0.5, 
+                                    transform: isStatusOpen ? 'rotate(180deg)' : 'rotate(0)',
+                                    transition: 'transform 0.3s ease'
+                                }} 
+                            />
                         </div>
-                    )}
-                </div>
+
+                        {isStatusOpen && (
+                            <div style={{
+                                position: 'absolute',
+                                bottom: '100%',
+                                left: 0,
+                                right: 0,
+                                zIndex: 100,
+                                marginBottom: '0.5rem',
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '12px',
+                                boxShadow: '0 -10px 25px -5px rgba(0, 0, 0, 0.1), 0 -8px 10px -6px rgba(0, 0, 0, 0.1)',
+                                overflow: 'hidden',
+                                animation: 'modalSlideUp 0.2s ease-out'
+                            }}>
+                                {[
+                                    'Pendiente',
+                                    'En Preparación',
+                                    'Para Coordinar',
+                                    'En Transito',
+                                    'Entregado',
+                                    'No requiere accion',
+                                    'Cancelado'
+                                ].map(s => {
+                                    const isSelected = (localValues.status || 'Pendiente') === s;
+                                    const variant = getStatusVariant(s);
+                                    
+                                    return (
+                                        <div
+                                            key={s}
+                                            onClick={() => {
+                                                updateLogistics('status', s);
+                                                setIsStatusOpen(false);
+                                            }}
+                                            style={{
+                                                padding: '0.75rem 1rem',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                background: isSelected ? 'rgba(37, 99, 235, 0.05)' : 'transparent',
+                                                transition: 'background 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(37, 99, 235, 0.05)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(37, 99, 235, 0.05)' : 'transparent'}
+                                        >
+                                            <Badge
+                                                variant={variant}
+                                                style={{
+                                                    padding: '0.35rem 0.6rem',
+                                                    fontSize: '0.75rem',
+                                                    borderRadius: '6px',
+                                                    fontWeight: isSelected ? 700 : 500,
+                                                    opacity: isSelected ? 1 : 0.8
+                                                }}
+                                            >
+                                                {s === 'No requiere accion' ? 'Sin intervención' : s}
+                                            </Badge>
+                                            {isSelected && (
+                                                <div style={{ marginLeft: 'auto', width: '6px', height: '6px', background: 'var(--primary-color)', borderRadius: '50%' }}></div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {(task.status === 'Entregado' || task.status === 'Finalizado') && localValues.delivery_person && (
                     <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(34, 197, 94, 0.05)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
