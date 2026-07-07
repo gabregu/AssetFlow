@@ -27,6 +27,7 @@ import {
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
 import { Button } from '@/app/components/ui/Button';
+import { Modal } from '@/app/components/ui/Modal';
 import { useStore } from '../../../lib/store';
 
 import { ServiceMap } from '../../components/ui/ServiceMap';
@@ -106,6 +107,35 @@ export default function LogisticsHubPage() {
     const [statusFilter, setStatusFilter] = useState('All');
     const [driverFilter, setDriverFilter] = useState('All');
     const [showMap, setShowMap] = useState(false);
+
+    // Modal States
+    const [actionModal, setActionModal] = useState({ isOpen: false, type: null, task: null });
+    // type: 'prepare_shipping' | 'schedule_appointment'
+
+    const [scheduleData, setScheduleData] = useState({
+        method: '',
+        delivery_person: '',
+        date: '',
+        time_slot: 'AM',
+        tracking_number: ''
+    });
+
+    const [hwChecklist, setHwChecklist] = useState({
+        serial: false,
+        cleaning: false,
+        wipe: false,
+        reinstall: false
+    });
+
+    const isDeliveryCase = (subject = '') => {
+        const s = String(subject).toLowerCase();
+        return /provisioning|breakfix|new hire|entrega|swap|deploy|nueva asignaci/.test(s);
+    };
+    
+    const isCollectionCase = (subject = '') => {
+        const s = String(subject).toLowerCase();
+        return /collection|recupero|recovery|recolecci|return|retiro/.test(s);
+    };
 
     // Helper para iniciales
     const getInitials = (name) => {
@@ -855,14 +885,51 @@ export default function LogisticsHubPage() {
                                             onClick={() => handlePrintDeliveryLabel(task)}
                                             title="Imprimir Etiqueta Logística"
                                         />
-                                        <Button 
-                                            size="sm" 
-                                            variant="outline" 
-                                            icon={ArrowRight} 
-                                            onClick={() => window.location.href = `/dashboard/tickets/${task.ticket_id}`}
-                                        >
-                                            Gestionar
-                                        </Button>
+                                        {(() => {
+                                            const isOutbound = isDeliveryCase(task.subject) || task.case_type === 'entrega' || task.caseType === 'entrega';
+                                            
+                                            const btnGestionar = (
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    icon={ArrowRight} 
+                                                    onClick={() => window.location.href = `/dashboard/tickets/${task.ticket_id}`}
+                                                >
+                                                    Gestionar
+                                                </Button>
+                                            );
+
+                                            if (isOutbound && (task.status === 'En Preparación' || task.status === 'Pendiente')) {
+                                                return (
+                                                    <>
+                                                        {btnGestionar}
+                                                        <Button size="sm" style={{ background: '#10b981', color: 'white', border: 'none' }} icon={Package} onClick={() => setActionModal({ isOpen: true, type: 'prepare_shipping', task })}>
+                                                            Verificación HW
+                                                        </Button>
+                                                    </>
+                                                );
+                                            } else if (task.status === 'Para Coordinar') {
+                                                return (
+                                                    <>
+                                                        {btnGestionar}
+                                                        <Button size="sm" style={{ background: '#3b82f6', color: 'white', border: 'none' }} icon={Calendar} onClick={() => {
+                                                            setScheduleData({
+                                                                method: task.method || '',
+                                                                delivery_person: task.deliveryPerson || task.delivery_person || '',
+                                                                date: task.date || '',
+                                                                time_slot: task.time_slot || 'AM',
+                                                                tracking_number: task.tracking_number || ''
+                                                            });
+                                                            setActionModal({ isOpen: true, type: 'schedule_appointment', task });
+                                                        }}>
+                                                            Agendar Cita
+                                                        </Button>
+                                                    </>
+                                                );
+                                            }
+                                            
+                                            return btnGestionar;
+                                        })()}
                                     </div>
                                 </td>
                             </tr>
@@ -870,6 +937,176 @@ export default function LogisticsHubPage() {
                     </tbody>
                 </table>
             </Card>
+
+            {/* MODALS */}
+            
+            {/* 1. Modal Prepare Shipping (Verificación HW) */}
+            <Modal
+                isOpen={actionModal.isOpen && actionModal.type === 'prepare_shipping'}
+                onClose={() => setActionModal({ isOpen: false, type: null, task: null })}
+                title="Verificación HW (Preparar Envío)"
+            >
+                {actionModal.task && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem' }}>
+                        <div style={{ background: 'rgba(37, 99, 235, 0.05)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+                            <h4 style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Package size={18} />
+                                Activos a preparar para el envío
+                            </h4>
+                            {actionModal.task.assets && actionModal.task.assets.length > 0 ? (
+                                <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', color: 'var(--text-secondary)' }}>
+                                    {actionModal.task.assets.map((asset, i) => (
+                                        <li key={i}>
+                                            {asset.type} {asset.model} 
+                                            {asset.serial && <strong> (SN: {asset.serial})</strong>}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.9rem' }}>No hay activos específicos listados. Verifique el detalle del caso principal.</p>
+                            )}
+                        </div>
+                        
+                        <div style={{ padding: '1rem', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)' }}>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                                Por favor, asegúrese de que todos los equipos están dentro de la caja listos para ser despachados e imprima la etiqueta.
+                            </p>
+                            <Button 
+                                variant="outline" 
+                                icon={Printer} 
+                                onClick={() => handlePrintDeliveryLabel(actionModal.task)}
+                                style={{ width: '100%', marginBottom: '1rem' }}
+                            >
+                                Imprimir Remito / Etiqueta
+                            </Button>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                            <Button variant="outline" onClick={() => setActionModal({ isOpen: false, type: null, task: null })}>
+                                Cancelar
+                            </Button>
+                            <Button variant="primary" onClick={async () => {
+                                await updateLogisticsTask(actionModal.task.id, { status: 'Para Coordinar' });
+                                setActionModal({ isOpen: false, type: null, task: null });
+                            }}>
+                                Confirmar Caja Preparada
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            {/* 2. Modal Schedule Appointment */}
+            <Modal
+                isOpen={actionModal.isOpen && actionModal.type === 'schedule_appointment'}
+                onClose={() => setActionModal({ isOpen: false, type: null, task: null })}
+                title="Agendar Cita (Coordinar Logística)"
+            >
+                {actionModal.task && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="form-group">
+                                <label className="form-label">Fecha de Envío/Retiro</label>
+                                <input 
+                                    type="date" 
+                                    className="form-input" 
+                                    value={scheduleData.date}
+                                    onChange={e => setScheduleData({...scheduleData, date: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Turno (AM / PM)</label>
+                                <div style={{ display: 'flex', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                                    {['AM', 'PM'].map(turno => (
+                                        <button
+                                            key={turno}
+                                            type="button"
+                                            onClick={() => setScheduleData({...scheduleData, time_slot: turno})}
+                                            style={{
+                                                flex: 1,
+                                                padding: '0.625rem',
+                                                border: 'none',
+                                                background: scheduleData.time_slot === turno ? 'var(--primary-color)' : 'transparent',
+                                                color: scheduleData.time_slot === turno ? 'white' : 'var(--text-secondary)',
+                                                fontWeight: scheduleData.time_slot === turno ? 600 : 400,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {turno}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Medio Proveedor</label>
+                            <select
+                                className="form-select"
+                                value={scheduleData.method}
+                                onChange={e => setScheduleData({...scheduleData, method: e.target.value})}
+                            >
+                                <option value="">Seleccionar...</option>
+                                <option value="Propio">Repartidor Propio (IT)</option>
+                                <option value="Correo Argentino">Correo Argentino</option>
+                                <option value="Andreani">Andreani</option>
+                                <option value="FedEx">FedEx</option>
+                                <option value="DHL">DHL</option>
+                                <option value="OCA">OCA</option>
+                                <option value="Otro">Otro Privado</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Conductor / Responsable</label>
+                            <select 
+                                className="form-select"
+                                value={scheduleData.delivery_person}
+                                onChange={e => setScheduleData({...scheduleData, delivery_person: e.target.value})}
+                            >
+                                <option value="">Seleccionar responsable...</option>
+                                {users.filter(u => u.isDriver || u.role === 'Conductor' || u.role === 'Admin').map(u => (
+                                    <option key={u.id} value={u.name}>{u.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Tracking Number (Opcional)</label>
+                            <input 
+                                type="text" 
+                                className="form-input" 
+                                placeholder="TN: ..."
+                                value={scheduleData.tracking_number}
+                                onChange={e => setScheduleData({...scheduleData, tracking_number: e.target.value})}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                            <Button variant="outline" onClick={() => setActionModal({ isOpen: false, type: null, task: null })}>
+                                Cancelar
+                            </Button>
+                            <Button variant="primary" onClick={async () => {
+                                await updateLogisticsTask(actionModal.task.id, {
+                                    date: scheduleData.date,
+                                    time_slot: scheduleData.time_slot,
+                                    method: scheduleData.method,
+                                    delivery_person: scheduleData.delivery_person,
+                                    deliveryPerson: scheduleData.delivery_person,
+                                    tracking_number: scheduleData.tracking_number,
+                                    status: 'En Transito',
+                                    coordinated_by: currentUser?.name || 'Sistema',
+                                    coordinatedBy: currentUser?.name || 'Sistema'
+                                });
+                                setActionModal({ isOpen: false, type: null, task: null });
+                            }}>
+                                Agendar y Pasar a Tránsito
+                            </Button>
+                        </div>
+                    </div>
+                )}
+            </Modal>
 
             <style jsx>{`
                 .hover-row:hover {
