@@ -126,7 +126,7 @@ export default function InventoryPage() {
     });
 
     const [newAccessory, setNewAccessory] = useState({
-        name: '', category: 'Accesorio', stock: 0, barcode: ''
+        name: '', category: 'Otro', stock: 0, barcode: ''
     });
 
     const [newAsset, setNewAsset] = useState({
@@ -778,7 +778,8 @@ export default function InventoryPage() {
         if (selectedConsumable) {
             await updateConsumable(selectedConsumable.id, {
                 stock: stockChange,
-                barcode: selectedConsumable.barcode || ''
+                barcode: selectedConsumable.barcode || '',
+                category: selectedConsumable.category || 'Otro'
             });
             setIsConsumableModalOpen(false);
             setStockChange(0);
@@ -847,7 +848,7 @@ export default function InventoryPage() {
             await addConsumable(accessoryWithCountry);
             
             alert("Paso 3: Artículo insertado. Cerrando modal...");
-            setNewAccessory({ name: '', category: 'Accesorio', stock: 0, barcode: '' });
+            setNewAccessory({ name: '', category: 'Otro', stock: 0, barcode: '' });
             setIsAddAccessoryModalOpen(false);
             
         } catch (error) {
@@ -2746,7 +2747,23 @@ export default function InventoryPage() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td style={{ padding: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>{item.category}</td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <select
+                                                className="form-select"
+                                                style={{ fontSize: '0.8rem', padding: '2px 6px', height: '28px', width: 'auto', border: '1px solid var(--border)', borderRadius: '4px', background: 'white', fontWeight: 500 }}
+                                                value={['Filtro', 'Mochila', 'Otro'].includes(item.category) ? item.category : 'Otro'}
+                                                onChange={async (e) => {
+                                                    await updateConsumable(item.id, { category: e.target.value });
+                                                }}
+                                            >
+                                                <option value="Filtro">Filtro</option>
+                                                <option value="Mochila">Mochila</option>
+                                                <option value="Otro">Otro</option>
+                                                {!['Filtro', 'Mochila', 'Otro'].includes(item.category) && item.category && (
+                                                    <option value={item.category}>{item.category} (Original)</option>
+                                                )}
+                                            </select>
+                                        </td>
                                         <td style={{ padding: '1rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 <span style={{
@@ -3350,6 +3367,19 @@ export default function InventoryPage() {
                         />
                     </div>
 
+                    <div className="form-group">
+                        <label className="form-label">Categoría</label>
+                        <select
+                            className="form-select"
+                            value={selectedConsumable?.category || 'Otro'}
+                            onChange={(e) => setSelectedConsumable({ ...selectedConsumable, category: e.target.value })}
+                        >
+                            <option value="Filtro">Filtro</option>
+                            <option value="Mochila">Mochila</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
                         <Button type="button" variant="ghost" onClick={() => setIsConsumableModalOpen(false)}>Cancelar</Button>
                         <Button type="submit">Actualizar Stock</Button>
@@ -3429,9 +3459,8 @@ export default function InventoryPage() {
                             value={newAccessory.category}
                             onChange={e => setNewAccessory({ ...newAccessory, category: e.target.value })}
                         >
-                            <option value="Accesorio">Accesorio</option>
-                            <option value="Periférico">Periférico</option>
-                            <option value="Herramienta">Herramienta</option>
+                            <option value="Filtro">Filtro</option>
+                            <option value="Mochila">Mochila</option>
                             <option value="Otro">Otro</option>
                         </select>
                     </div>
