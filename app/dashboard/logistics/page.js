@@ -918,7 +918,10 @@ export default function LogisticsHubPage() {
                                                                 delivery_person: task.deliveryPerson || task.delivery_person || '',
                                                                 date: task.date || '',
                                                                 time_slot: task.time_slot || 'AM',
-                                                                tracking_number: task.tracking_number || ''
+                                                                tracking_number: task.tracking_number || '',
+                                                                address: task.address || '',
+                                                                coordinated_by: task.coordinated_by || task.coordinatedBy || '',
+                                                                deliveryInfo: task.deliveryInfo || {}
                                                             });
                                                             setActionModal({ isOpen: true, type: 'schedule_appointment', task });
                                                         }}>
@@ -1073,6 +1076,56 @@ export default function LogisticsHubPage() {
                         </div>
 
                         <div className="form-group">
+                            <label className="form-label">Dirección de Entrega / Retiro</label>
+                            <input
+                                className="form-input"
+                                placeholder="Ej: Av. Siempreviva 123"
+                                value={scheduleData.address}
+                                onChange={e => setScheduleData({...scheduleData, address: e.target.value})}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Coordinado por</label>
+                            <select
+                                className="form-select"
+                                value={scheduleData.coordinated_by}
+                                onChange={e => setScheduleData({...scheduleData, coordinated_by: e.target.value})}
+                            >
+                                <option value="">Seleccionar responsable...</option>
+                                {currentUser?.name && (
+                                    <option value={currentUser.name}>
+                                        {currentUser.name} (Tú)
+                                    </option>
+                                )}
+                                {users
+                                    .filter(u => u.name !== currentUser?.name)
+                                    .map(u => (
+                                        <option key={u.id} value={u.name}>
+                                            {u.name} {u.role ? `(${u.role})` : ''}
+                                        </option>
+                                    ))
+                                }
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Notas Adicionales (se muestran en el Remito impreso)</label>
+                            <textarea
+                                className="form-input"
+                                value={scheduleData.deliveryInfo?.notes || ''}
+                                onChange={e => setScheduleData({...scheduleData, deliveryInfo: { ...(scheduleData.deliveryInfo || {}), notes: e.target.value }})}
+                                placeholder="Escriba aquí notas o aclaraciones que se imprimirán en el remito..."
+                                style={{
+                                    minHeight: '80px',
+                                    resize: 'vertical',
+                                    width: '100%',
+                                    padding: '0.625rem 0.875rem'
+                                }}
+                            />
+                        </div>
+
+                        <div className="form-group">
                             <label className="form-label">Tracking Number (Opcional)</label>
                             <input 
                                 type="text" 
@@ -1095,9 +1148,11 @@ export default function LogisticsHubPage() {
                                     delivery_person: scheduleData.delivery_person,
                                     deliveryPerson: scheduleData.delivery_person,
                                     tracking_number: scheduleData.tracking_number,
+                                    address: scheduleData.address,
+                                    deliveryInfo: scheduleData.deliveryInfo,
                                     status: 'En Transito',
-                                    coordinated_by: currentUser?.name || 'Sistema',
-                                    coordinatedBy: currentUser?.name || 'Sistema'
+                                    coordinated_by: scheduleData.coordinated_by || currentUser?.name || 'Sistema',
+                                    coordinatedBy: scheduleData.coordinated_by || currentUser?.name || 'Sistema'
                                 });
                                 setActionModal({ isOpen: false, type: null, task: null });
                             }}>
