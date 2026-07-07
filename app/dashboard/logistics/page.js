@@ -911,7 +911,6 @@ export default function LogisticsHubPage() {
                                             } else if (task.status === 'Para Coordinar') {
                                                 return (
                                                     <>
-                                                        {btnGestionar}
                                                         <Button size="sm" style={{ background: '#3b82f6', color: 'white', border: 'none' }} icon={Calendar} onClick={() => {
                                                             setScheduleData({
                                                                 method: task.method || '',
