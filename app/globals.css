@@ -518,7 +518,11 @@ a {
 
   .grid-mobile-single {
     grid-template-columns: 1fr !important;
-    gap: 1.5rem !important;
+    gap: 1rem !important;
+  }
+
+  .card {
+    padding: 1rem !important;
   }
 
   .grid-responsive-6 { grid-template-columns: repeat(2, 1fr); gap: 1rem; }

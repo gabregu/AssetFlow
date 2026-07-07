@@ -122,7 +122,7 @@ export default function ContactInfoSection({
                                 paddingRight: '10px',
                                 height: 'auto',
                                 minHeight: '42px',
-                                fontSize: '1.1rem',
+                                fontSize: '1rem',
                                 fontWeight: 600,
                                 lineHeight: '1.4',
                                 borderColor: addressStatus === 'valid' ? '#22c55e' : (addressStatus === 'invalid' ? '#ef4444' : 'var(--border)'),
@@ -141,7 +141,7 @@ export default function ContactInfoSection({
                     ) : (
                         <div style={{
                             padding: '8px 8px 8px 2.2rem',
-                            fontSize: '1.25rem',
+                            fontSize: '1.05rem',
                             fontWeight: 700,
                             lineHeight: '1.4',
                             color: 'var(--text-main)',
@@ -215,7 +215,7 @@ export default function ContactInfoSection({
                                 paddingLeft: '2.2rem',
                                 height: 'auto',
                                 minHeight: '42px',
-                                fontSize: '1.1rem',
+                                fontSize: '1rem',
                                 fontWeight: 600,
                                 lineHeight: '1.4',
                                 background: 'var(--background)',
@@ -231,7 +231,7 @@ export default function ContactInfoSection({
                     ) : (
                         <div style={{
                             padding: '8px 8px 8px 2.2rem',
-                            fontSize: '1.25rem',
+                            fontSize: '1.05rem',
                             fontWeight: 700,
                             lineHeight: '1.4',
                             color: 'var(--text-main)',
