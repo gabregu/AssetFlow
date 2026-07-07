@@ -46,13 +46,23 @@ export default function AccessoriesSection({
 
     // Filtros de consumibles específicos
     const backpackConsumables = localConsumables.filter(c => 
-        c.name.toLowerCase().includes('mochila') || c.name.toLowerCase().includes('backpack')
+        (c.category && c.category.toLowerCase() === 'mochila') ||
+        c.name.toLowerCase().includes('mochila') || 
+        c.name.toLowerCase().includes('backpack')
     );
 
-    // Identificar qué modelo de mochila está actualmente asignado en el objeto accessories
+    const filterConsumables = localConsumables.filter(c => 
+        (c.category && c.category.toLowerCase() === 'filtro') ||
+        c.name.toLowerCase().includes('filtro') || 
+        c.name.toLowerCase().includes('filter')
+    );
+
+    // Identificar qué modelo de mochila o filtro está actualmente asignado en el objeto accessories
     const activeBackpackModel = backpackConsumables.find(c => accessories[c.name] === true);
+    const activeFilterModel = filterConsumables.find(c => accessories[c.name] === true);
 
     const isBackpackActive = !!accessories.backpack;
+    const isFilterActive = !!accessories.screenFilter;
     const isYubiKeyActive = caseYubikeys.length > 0 || showYubiKeyLocal;
 
     // Toggle legacy standard checkboxes
@@ -77,6 +87,31 @@ export default function AccessoriesSection({
         } else {
             newAccessories.backpack = true;
             showFeedback('success', 'Mochila agregada. Selecciona un modelo debajo.');
+        }
+        onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
+    };
+
+    const handleToggleFilter = () => {
+        const newAccessories = { ...accessories };
+        const currentlyActive = !!accessories.screenFilter;
+        const newTypes = { ...(task.accessories_types || {}) };
+        
+        if (currentlyActive) {
+            newAccessories.screenFilter = false;
+            // Desvincular modelo asignado si existía y devolver stock
+            filterConsumables.forEach(c => {
+                if (newAccessories[c.name]) {
+                    delete newAccessories[c.name];
+                    delete newTypes[c.name];
+                    if (updateConsumableStock) {
+                        updateConsumableStock(c.id, Math.max(0, (c.stock || 0) + 1));
+                    }
+                }
+            });
+            showFeedback('success', 'Filtro quitado.');
+        } else {
+            newAccessories.screenFilter = true;
+            showFeedback('success', 'Filtro de privacidad habilitado. Selecciona un modelo debajo.');
         }
         onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
     };
@@ -119,6 +154,37 @@ export default function AccessoriesSection({
                     updateConsumableStock(match.id, Math.max(0, (match.stock || 0) - 1));
                 }
                 showFeedback('success', `Modelo "${match.name}" seleccionado.`);
+            }
+        }
+        
+        onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
+    };
+
+    // Cambiar modelo de filtro y rebalancear stock
+    const changeFilterModel = (newModelId) => {
+        const newAccessories = { ...accessories };
+        const newTypes = { ...(task.accessories_types || {}) };
+        
+        // Devolver stock de filtro viejo
+        filterConsumables.forEach(c => {
+            if (newAccessories[c.name]) {
+                delete newAccessories[c.name];
+                delete newTypes[c.name];
+                if (updateConsumableStock) {
+                    updateConsumableStock(c.id, Math.max(0, (c.stock || 0) + 1));
+                }
+            }
+        });
+
+        if (newModelId) {
+            const match = localConsumables.find(c => String(c.id) === String(newModelId));
+            if (match) {
+                newAccessories[match.name] = true;
+                newTypes[match.name] = 'Filtro';
+                if (updateConsumableStock) {
+                    updateConsumableStock(match.id, Math.max(0, (match.stock || 0) - 1));
+                }
+                showFeedback('success', `Filtro "${match.name}" seleccionado.`);
             }
         }
         
@@ -322,6 +388,22 @@ export default function AccessoriesSection({
                     </div>
                     <span>🔑 Yubikey</span>
                 </div>
+                <div style={cardStyle(isFilterActive)} onClick={handleToggleFilter}>
+                    <div style={{ 
+                        width: '12px', 
+                        height: '12px', 
+                        border: `1px solid ${isFilterActive ? '#7c3aed' : 'var(--border)'}`, 
+                        borderRadius: '3px', 
+                        background: isFilterActive ? '#7c3aed' : 'white',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        marginRight: '2px'
+                    }}>
+                        {isFilterActive && <Check size={8} style={{ color: 'white' }} />}
+                    </div>
+                    <span>🖥️ Filtro</span>
+                </div>
                 <div style={cardStyle(isBackpackActive)} onClick={handleToggleBackpack}>
                     <div style={{ 
                         width: '12px', 
@@ -403,6 +485,28 @@ export default function AccessoriesSection({
                                 </div>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* 2. Sub-menu de Filtros */}
+                {isFilterActive && (
+                    <div style={{ padding: '1rem', background: '#f8fafc', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', display: 'block', marginBottom: '0.4rem' }}>
+                            Modelo de Filtro de Privacidad
+                        </label>
+                        <select
+                            className="form-select"
+                            style={{ height: '36px', fontSize: '0.8rem' }}
+                            value={activeFilterModel?.id || ''}
+                            onChange={e => changeFilterModel(e.target.value)}
+                        >
+                            <option value="">— Seleccione Modelo de Filtro —</option>
+                            {filterConsumables.map(c => (
+                                <option key={c.id} value={c.id} disabled={(c.stock || 0) <= 0 && activeFilterModel?.id !== c.id}>
+                                    {c.name} (Disponibles: {c.stock || 0})
+                                </option>
+                            ))}
+                        </select>
                     </div>
                 )}
 
