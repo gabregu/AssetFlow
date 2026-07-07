@@ -112,7 +112,10 @@ export default function AssetListSection({
             }
             modelsMap[a.name].count++;
             if (a.serial) {
-                modelsMap[a.name].serials.push(a.serial);
+                modelsMap[a.name].serials.push({
+                    serial: a.serial,
+                    status: a.status || 'Disponible'
+                });
             }
         });
         return Object.values(modelsMap).sort((a, b) => a.name.localeCompare(b.name));
@@ -446,8 +449,10 @@ export default function AssetListSection({
                                 onChange={e => setSelectedSerial(e.target.value)}
                             >
                                 <option value="">— Elegir Serie —</option>
-                                {availableModels.find(m => m.name === selectedModel)?.serials.map(s => (
-                                    <option key={s} value={s}>{s}</option>
+                                {availableModels.find(m => m.name === selectedModel)?.serials.map(sObj => (
+                                    <option key={sObj.serial} value={sObj.serial}>
+                                        {sObj.serial} ({sObj.status})
+                                    </option>
                                 ))}
                             </select>
                         </div>
