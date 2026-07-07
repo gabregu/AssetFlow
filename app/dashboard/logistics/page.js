@@ -1061,19 +1061,21 @@ export default function LogisticsHubPage() {
                             </select>
                         </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Conductor / Responsable</label>
-                            <select 
-                                className="form-select"
-                                value={scheduleData.delivery_person}
-                                onChange={e => setScheduleData({...scheduleData, delivery_person: e.target.value})}
-                            >
-                                <option value="">Seleccionar responsable...</option>
-                                {users.filter(u => u.isDriver || u.role === 'Conductor' || u.role === 'admin' || u.role === 'Administrador' || u.role === 'Administrativo' || u.role === 'Gerencial').map(u => (
-                                    <option key={u.id} value={u.name}>{u.name}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {scheduleData.method === 'Propio' && (
+                            <div className="form-group">
+                                <label className="form-label">Conductor / Responsable</label>
+                                <select 
+                                    className="form-select"
+                                    value={scheduleData.delivery_person}
+                                    onChange={e => setScheduleData({...scheduleData, delivery_person: e.target.value})}
+                                >
+                                    <option value="">Seleccionar responsable...</option>
+                                    {users.filter(u => u.isDriver || u.role === 'Conductor' || u.role === 'admin' || u.role === 'Administrador' || u.role === 'Administrativo' || u.role === 'Gerencial').map(u => (
+                                        <option key={u.id} value={u.name}>{u.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
                         <div className="form-group">
                             <label className="form-label">Dirección de Entrega / Retiro</label>
@@ -1125,16 +1127,18 @@ export default function LogisticsHubPage() {
                             />
                         </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Tracking Number (Opcional)</label>
-                            <input 
-                                type="text" 
-                                className="form-input" 
-                                placeholder="TN: ..."
-                                value={scheduleData.tracking_number}
-                                onChange={e => setScheduleData({...scheduleData, tracking_number: e.target.value})}
-                            />
-                        </div>
+                        {scheduleData.method && scheduleData.method !== 'Propio' && (
+                            <div className="form-group">
+                                <label className="form-label">Tracking Number (Opcional)</label>
+                                <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    placeholder="TN: ..."
+                                    value={scheduleData.tracking_number}
+                                    onChange={e => setScheduleData({...scheduleData, tracking_number: e.target.value})}
+                                />
+                            </div>
+                        )}
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                             <Button variant="outline" onClick={() => setActionModal({ isOpen: false, type: null, task: null })}>
