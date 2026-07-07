@@ -78,10 +78,8 @@ export default function CaseLogisticsSection({
     currentUser,
     saveRef  // <-- ref externo para poder llamar saveAll() desde el padre
 }) {
-    if (!task) return null;
-
     // Whether this task is blocked (waiting for a dependency to complete)
-    const isBlocked = task.status === 'Bloqueado';
+    const isBlocked = task?.status === 'Bloqueado';
 
     const [localValues, setLocalValues] = React.useState({});
     const localStateRef = React.useRef({});
@@ -119,6 +117,8 @@ export default function CaseLogisticsSection({
     }, []);
 
     React.useEffect(() => {
+        if (!task) return;
+
         const initialState = {
             status: task.status || 'Pendiente',
             method: task.method || '',
@@ -268,6 +268,8 @@ export default function CaseLogisticsSection({
 
     // Exponer saveAll al padre vía ref de forma robusta
     React.useImperativeHandle(saveRef, () => saveAll);
+
+    if (!task) return null;
 
     return (
         <div style={{ marginTop: '0.5rem' }}>
