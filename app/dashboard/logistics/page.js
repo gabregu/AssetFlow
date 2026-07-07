@@ -963,7 +963,7 @@ export default function LogisticsHubPage() {
                         
                         <div style={{ padding: '1rem', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)' }}>
                             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                                Por favor, asegúrese de que todos los equipos están dentro de la caja listos para ser despachados e imprima la etiqueta.
+                                Por favor, asegúrese de que todos los dispositivos y accesorios están dentro de la caja listos para ser despachados e imprima la etiqueta.
                             </p>
                             <Button 
                                 variant="outline" 
