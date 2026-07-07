@@ -878,13 +878,15 @@ export default function LogisticsHubPage() {
                                 </td>
                                 <td style={{ padding: '1rem', textAlign: 'right' }}>
                                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                        <Button 
-                                            size="sm" 
-                                            variant="secondary" 
-                                            icon={Printer} 
-                                            onClick={() => handlePrintDeliveryLabel(task)}
-                                            title="Imprimir Etiqueta Logística"
-                                        />
+                                        {task.status !== 'En Preparación' && (
+                                            <Button 
+                                                size="sm" 
+                                                variant="secondary" 
+                                                icon={Printer} 
+                                                onClick={() => handlePrintDeliveryLabel(task)}
+                                                title="Imprimir Etiqueta Logística"
+                                            />
+                                        )}
                                         {(() => {
                                             const isOutbound = isDeliveryCase(task.subject) || task.case_type === 'entrega' || task.caseType === 'entrega';
                                             
