@@ -9,6 +9,13 @@ const getClientBase = (name) => {
     return name.toLowerCase().trim().replace(/^sfdc-/, '').trim();
 };
 
+const getAccessoryDefaultType = (name) => {
+    const lower = (name || '').toLowerCase();
+    if (lower.includes('filtro') || lower.includes('filter')) return 'Filtro';
+    if (lower.includes('mochila') || lower.includes('backpack')) return 'Mochila';
+    return 'Otro';
+};
+
 export default function AccessoriesSection({
     task,
     onUpdateTask,
@@ -65,6 +72,7 @@ export default function AccessoriesSection({
     const handleToggleBackpack = () => {
         const newAccessories = { ...accessories };
         const currentlyActive = !!accessories.backpack;
+        const newTypes = { ...(task.accessories_types || {}) };
         
         if (currentlyActive) {
             newAccessories.backpack = false;
@@ -72,6 +80,7 @@ export default function AccessoriesSection({
             backpackConsumables.forEach(c => {
                 if (newAccessories[c.name]) {
                     delete newAccessories[c.name];
+                    delete newTypes[c.name];
                     if (updateConsumableStock) {
                         updateConsumableStock(c.id, Math.max(0, (c.stock || 0) + 1));
                     }
@@ -82,12 +91,13 @@ export default function AccessoriesSection({
             newAccessories.backpack = true;
             showFeedback('success', 'Mochila agregada. Selecciona un modelo debajo.');
         }
-        onUpdateTask({ accessories: newAccessories });
+        onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
     };
 
     const handleToggleFilter = () => {
         const newAccessories = { ...accessories };
         const currentlyActive = !!accessories.screenFilter;
+        const newTypes = { ...(task.accessories_types || {}) };
         
         if (currentlyActive) {
             newAccessories.screenFilter = false;
@@ -95,6 +105,7 @@ export default function AccessoriesSection({
             filterConsumables.forEach(c => {
                 if (newAccessories[c.name]) {
                     delete newAccessories[c.name];
+                    delete newTypes[c.name];
                     if (updateConsumableStock) {
                         updateConsumableStock(c.id, Math.max(0, (c.stock || 0) + 1));
                     }
@@ -105,7 +116,7 @@ export default function AccessoriesSection({
             newAccessories.screenFilter = true;
             showFeedback('success', 'Filtro de privacidad agregado. Selecciona un modelo debajo.');
         }
-        onUpdateTask({ accessories: newAccessories });
+        onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
     };
 
     const handleToggleYubiKey = () => {
@@ -124,11 +135,13 @@ export default function AccessoriesSection({
     // Cambiar modelo de mochila y rebalancear stock
     const changeBackpackModel = (newModelId) => {
         const newAccessories = { ...accessories };
+        const newTypes = { ...(task.accessories_types || {}) };
         
         // Devolver stock de mochila vieja
         backpackConsumables.forEach(c => {
             if (newAccessories[c.name]) {
                 delete newAccessories[c.name];
+                delete newTypes[c.name];
                 if (updateConsumableStock) {
                     updateConsumableStock(c.id, Math.max(0, (c.stock || 0) + 1));
                 }
@@ -139,6 +152,7 @@ export default function AccessoriesSection({
             const match = localConsumables.find(c => String(c.id) === String(newModelId));
             if (match) {
                 newAccessories[match.name] = true;
+                newTypes[match.name] = 'Mochila';
                 if (updateConsumableStock) {
                     updateConsumableStock(match.id, Math.max(0, (match.stock || 0) - 1));
                 }
@@ -146,17 +160,19 @@ export default function AccessoriesSection({
             }
         }
         
-        onUpdateTask({ accessories: newAccessories });
+        onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
     };
 
     // Cambiar modelo de filtro y rebalancear stock
     const changeFilterModel = (newModelId) => {
         const newAccessories = { ...accessories };
+        const newTypes = { ...(task.accessories_types || {}) };
         
         // Devolver stock de filtro viejo
         filterConsumables.forEach(c => {
             if (newAccessories[c.name]) {
                 delete newAccessories[c.name];
+                delete newTypes[c.name];
                 if (updateConsumableStock) {
                     updateConsumableStock(c.id, Math.max(0, (c.stock || 0) + 1));
                 }
@@ -167,6 +183,7 @@ export default function AccessoriesSection({
             const match = localConsumables.find(c => String(c.id) === String(newModelId));
             if (match) {
                 newAccessories[match.name] = true;
+                newTypes[match.name] = 'Filtro';
                 if (updateConsumableStock) {
                     updateConsumableStock(match.id, Math.max(0, (match.stock || 0) - 1));
                 }
@@ -174,7 +191,7 @@ export default function AccessoriesSection({
             }
         }
         
-        onUpdateTask({ accessories: newAccessories });
+        onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
     };
 
     // Agregar YubiKey por serial
@@ -243,7 +260,11 @@ export default function AccessoriesSection({
             ...accessories,
             [match.name]: true
         };
-        onUpdateTask({ accessories: newAccessories });
+        const newTypes = {
+            ...(task.accessories_types || {}),
+            [match.name]: getAccessoryDefaultType(match.name)
+        };
+        onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
 
         if (updateConsumableStock) {
             updateConsumableStock(match.id, Math.max(0, (match.stock || 0) - 1));
@@ -274,7 +295,11 @@ export default function AccessoriesSection({
             ...accessories,
             [match.name]: true
         };
-        onUpdateTask({ accessories: newAccessories });
+        const newTypes = {
+            ...(task.accessories_types || {}),
+            [match.name]: getAccessoryDefaultType(match.name)
+        };
+        onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
 
         if (updateConsumableStock) {
             updateConsumableStock(match.id, Math.max(0, (match.stock || 0) - 1));
@@ -289,7 +314,14 @@ export default function AccessoriesSection({
 
         const newAccessories = { ...accessories };
         delete newAccessories[name];
-        onUpdateTask({ accessories: newAccessories });
+        
+        const newTypes = { ...(task.accessories_types || {}) };
+        delete newTypes[name];
+
+        onUpdateTask({ 
+            accessories: newAccessories, 
+            accessories_types: newTypes 
+        });
 
         if (matchingConsumable && updateConsumableStock) {
             updateConsumableStock(matchingConsumable.id, (matchingConsumable.stock || 0) + 1);
@@ -298,13 +330,11 @@ export default function AccessoriesSection({
         showFeedback('success', `"${name}" removido.`);
     };
 
-    // Identificar consumibles genéricos (no mochila ni filtros rápidos) asignados
+    // Identificar TODOS los consumibles/accesorios vinculados
     const activeCustomAccessories = Object.keys(accessories).filter(key => 
         key !== 'backpack' && 
         key !== 'screenFilter' && 
         key !== 'filterSize' && 
-        !backpackConsumables.some(c => c.name === key) && 
-        !filterConsumables.some(c => c.name === key) && 
         accessories[key] === true
     );
 
@@ -569,19 +599,40 @@ export default function AccessoriesSection({
             {/* LISTADO GENERAL DE ACCESORIOS ASOCIADOS */}
             {activeCustomAccessories.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Otros Accesorios Vinculados</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Accesorios Vinculados</span>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        {activeCustomAccessories.map(name => (
-                            <div key={name} style={{ display: 'flex', alignItems: 'center', justifyStyle: 'space-between', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Package size={14} style={{ color: 'var(--primary-color)' }} />
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{name}</span>
+                        {activeCustomAccessories.map(name => {
+                            const currentType = (task.accessories_types && task.accessories_types[name]) || getAccessoryDefaultType(name);
+                            return (
+                                <div key={name} style={{ display: 'flex', alignItems: 'center', justifyStyle: 'space-between', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px', justifyContent: 'space-between' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
+                                        <Package size={14} style={{ color: 'var(--primary-color)', flexShrink: 0 }} />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1 }}>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{name}</span>
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Categoría:</span>
+                                                <select
+                                                    className="form-select"
+                                                    style={{ fontSize: '0.7rem', padding: '1px 4px', height: '22px', width: 'auto', display: 'inline-block', border: '1px solid var(--border)', borderRadius: '4px', background: 'white' }}
+                                                    value={currentType}
+                                                    onChange={async (e) => {
+                                                        const newTypes = { ...(task.accessories_types || {}), [name]: e.target.value };
+                                                        await onUpdateTask({ accessories_types: newTypes });
+                                                    }}
+                                                >
+                                                    <option value="Filtro">Filtro</option>
+                                                    <option value="Mochila">Mochila</option>
+                                                    <option value="Otro">Otro</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={() => handleRemoveCustomAccessory(name)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px' }}>
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
-                                <button type="button" onClick={() => handleRemoveCustomAccessory(name)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px' }}>
-                                    <Trash2 size={14} />
-                                </button>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
