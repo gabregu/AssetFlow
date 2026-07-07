@@ -899,7 +899,7 @@ export default function LogisticsHubPage() {
                                                 </Button>
                                             );
 
-                                            if (isOutbound && (task.status === 'En Preparaci\u00f3n' || task.status === 'Pendiente')) {
+                                            if (task.status === 'En Preparaci\u00f3n' || (isOutbound && (!task.status || task.status === 'Pendiente'))) {
                                                 return (
                                                     <>
                                                         {btnGestionar}
