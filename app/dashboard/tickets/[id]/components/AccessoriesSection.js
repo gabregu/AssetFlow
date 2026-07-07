@@ -324,19 +324,19 @@ export default function AccessoriesSection({
     const cardStyle = (isActive) => ({
         flex: 1,
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '0.75rem',
-        borderRadius: '10px',
-        border: `2px solid ${isActive ? '#7c3aed' : 'var(--border)'}`,
-        background: isActive ? '#f5f3ff' : 'var(--bg-card)',
+        padding: '0.4rem 0.6rem',
+        borderRadius: '6px',
+        border: `1px solid ${isActive ? '#7c3aed' : 'var(--border)'}`,
+        background: isActive ? 'rgba(124, 58, 237, 0.08)' : 'var(--bg-card)',
         color: isActive ? '#7c3aed' : 'var(--text-main)',
         cursor: 'pointer',
-        fontWeight: 600,
-        fontSize: '0.85rem',
-        transition: 'all 0.2s ease',
-        gap: '0.25rem'
+        fontWeight: 500,
+        fontSize: '0.75rem',
+        transition: 'all 0.15s ease',
+        gap: '0.4rem'
     });
 
     return (
@@ -354,15 +354,51 @@ export default function AccessoriesSection({
             {/* BOTONES INTERACTIVOS DE ACCESORIOS RÁPIDOS */}
             <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
                 <div style={cardStyle(isYubiKeyActive)} onClick={handleToggleYubiKey}>
-                    <Key size={18} />
+                    <div style={{ 
+                        width: '12px', 
+                        height: '12px', 
+                        border: `1px solid ${isYubiKeyActive ? '#7c3aed' : 'var(--border)'}`, 
+                        borderRadius: '3px', 
+                        background: isYubiKeyActive ? '#7c3aed' : 'white',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        marginRight: '2px'
+                    }}>
+                        {isYubiKeyActive && <Check size={8} style={{ color: 'white' }} />}
+                    </div>
                     <span>🔑 Yubikey</span>
                 </div>
                 <div style={cardStyle(isFilterActive)} onClick={handleToggleFilter}>
-                    <Monitor size={18} />
+                    <div style={{ 
+                        width: '12px', 
+                        height: '12px', 
+                        border: `1px solid ${isFilterActive ? '#7c3aed' : 'var(--border)'}`, 
+                        borderRadius: '3px', 
+                        background: isFilterActive ? '#7c3aed' : 'white',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        marginRight: '2px'
+                    }}>
+                        {isFilterActive && <Check size={8} style={{ color: 'white' }} />}
+                    </div>
                     <span>🖥️ Filtro</span>
                 </div>
                 <div style={cardStyle(isBackpackActive)} onClick={handleToggleBackpack}>
-                    <Package size={18} />
+                    <div style={{ 
+                        width: '12px', 
+                        height: '12px', 
+                        border: `1px solid ${isBackpackActive ? '#7c3aed' : 'var(--border)'}`, 
+                        borderRadius: '3px', 
+                        background: isBackpackActive ? '#7c3aed' : 'white',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        marginRight: '2px'
+                    }}>
+                        {isBackpackActive && <Check size={8} style={{ color: 'white' }} />}
+                    </div>
                     <span>🎒 Mochila</span>
                 </div>
             </div>

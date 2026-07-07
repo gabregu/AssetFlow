@@ -333,18 +333,36 @@ export default function AssetListSection({
                             }}
                             style={{
                                 flex: 1,
-                                padding: '0.5rem',
-                                borderRadius: '8px',
-                                border: `2px solid ${activeAssetType === 'Laptop' ? 'var(--primary-color)' : 'var(--border)'}`,
+                                display: 'flex',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '6px',
+                                border: `1px solid ${activeAssetType === 'Laptop' ? 'var(--primary-color)' : 'var(--border)'}`,
                                 background: activeAssetType === 'Laptop' ? 'rgba(37, 99, 235, 0.08)' : 'white',
                                 color: activeAssetType === 'Laptop' ? 'var(--primary-color)' : 'var(--text-main)',
-                                fontWeight: 600,
-                                fontSize: '0.8rem',
+                                fontWeight: 500,
+                                fontSize: '0.75rem',
                                 cursor: 'pointer',
-                                transition: 'all 0.15s ease'
+                                transition: 'all 0.15s ease',
+                                gap: '0.4rem'
                             }}
                         >
-                            💻 Laptop
+                            <div style={{ 
+                                width: '12px', 
+                                height: '12px', 
+                                border: `1px solid ${activeAssetType === 'Laptop' ? 'var(--primary-color)' : 'var(--border)'}`, 
+                                borderRadius: '3px', 
+                                background: activeAssetType === 'Laptop' ? 'var(--primary-color)' : 'white',
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                marginRight: '2px'
+                            }}>
+                                {activeAssetType === 'Laptop' && <Check size={8} style={{ color: 'white' }} />}
+                            </div>
+                            <span>💻 Laptop</span>
                         </button>
                         <button
                             type="button"
@@ -355,18 +373,36 @@ export default function AssetListSection({
                             }}
                             style={{
                                 flex: 1,
-                                padding: '0.5rem',
-                                borderRadius: '8px',
-                                border: `2px solid ${activeAssetType === 'Celular' ? 'var(--primary-color)' : 'var(--border)'}`,
+                                display: 'flex',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '6px',
+                                border: `1px solid ${activeAssetType === 'Celular' ? 'var(--primary-color)' : 'var(--border)'}`,
                                 background: activeAssetType === 'Celular' ? 'rgba(37, 99, 235, 0.08)' : 'white',
                                 color: activeAssetType === 'Celular' ? 'var(--primary-color)' : 'var(--text-main)',
-                                fontWeight: 600,
-                                fontSize: '0.8rem',
+                                fontWeight: 500,
+                                fontSize: '0.75rem',
                                 cursor: 'pointer',
-                                transition: 'all 0.15s ease'
+                                transition: 'all 0.15s ease',
+                                gap: '0.4rem'
                             }}
                         >
-                            📱 Celular
+                            <div style={{ 
+                                width: '12px', 
+                                height: '12px', 
+                                border: `1px solid ${activeAssetType === 'Celular' ? 'var(--primary-color)' : 'var(--border)'}`, 
+                                borderRadius: '3px', 
+                                background: activeAssetType === 'Celular' ? 'var(--primary-color)' : 'white',
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                marginRight: '2px'
+                            }}>
+                                {activeAssetType === 'Celular' && <Check size={8} style={{ color: 'white' }} />}
+                            </div>
+                            <span>📱 Celular</span>
                         </button>
                     </div>
                 </div>
