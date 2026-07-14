@@ -244,7 +244,7 @@ export default function HistoryPage() {
                     </div>
                 </div>
 
-                <div className="table-responsive">
+                <div className="table-responsive desktop-table">
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--background-secondary)' }}>
@@ -401,6 +401,85 @@ export default function HistoryPage() {
                             })()}
                         </tbody>
                     </table>
+                </div>
+                
+                {/* Mobile Cards View */}
+                <div className="mobile-only">
+                    {(() => {
+                        const entries = Object.entries(groupedTickets).sort(([monthA], [monthB]) => {
+                            if (sortConfig.key !== 'completedDate') return 0;
+                            return sortConfig.direction === 'asc' ? monthA.localeCompare(monthB) : monthB.localeCompare(monthA);
+                        });
+
+                        if (entries.length === 0) {
+                            return (
+                                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                    <p>No se encontraron registros en el histórico.</p>
+                                </div>
+                            );
+                        }
+
+                        return entries.map(([monthStr, monthTickets]) => (
+                            <React.Fragment key={`mobile-${monthStr}`}>
+                                <div style={{
+                                    backgroundColor: 'var(--background-secondary)',
+                                    padding: '0.75rem 1rem',
+                                    borderBottom: '1px solid var(--border)',
+                                    position: 'sticky',
+                                    top: '60px',
+                                    zIndex: 5
+                                }}>
+                                    <span style={{ fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.8rem' }}>
+                                        {monthStr}
+                                    </span>
+                                    <span style={{ marginLeft: '0.5rem', background: 'var(--border)', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600 }}>
+                                        {monthTickets.length}
+                                    </span>
+                                </div>
+
+                                <div style={{ padding: '0.5rem' }}>
+                                    {monthTickets.map(ticket => (
+                                        <div key={`mobile-${ticket.id}`} className="ticket-card-mobile" style={{ borderLeft: `4px solid var(--primary-color)` }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1rem', marginBottom: '2px' }}>
+                                                        {ticket.id}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                        {ticket.salesforceCase ? `SFDC-${ticket.salesforceCase}` : 'N/A'}
+                                                    </div>
+                                                </div>
+                                                <Badge variant={getStatusVariant(ticket.status)} style={{ fontSize: '0.75rem' }}>
+                                                    {ticket.status}
+                                                </Badge>
+                                            </div>
+                                            
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.75rem' }}>
+                                                {ticket.subject}
+                                            </div>
+                                            
+                                            <div style={{ background: 'var(--background)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                                    <span style={{ color: 'var(--text-secondary)' }}>Solicitante:</span>
+                                                    <span style={{ fontWeight: 600 }}>{ticket.requester || 'Sin Solicitante'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <span style={{ color: 'var(--text-secondary)' }}>Finalizado:</span>
+                                                    <span style={{ fontWeight: 600 }}>{getLocalCompletedDateStr(ticket)}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                <Link href={`/dashboard/tickets/${ticket.id}`} style={{ width: '100%' }}>
+                                                    <Button variant="outline" size="sm" icon={Eye} style={{ width: '100%' }}>Ver Detalle</Button>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </React.Fragment>
+                        ));
+                    })()}
                 </div>
             </Card>
         </div>

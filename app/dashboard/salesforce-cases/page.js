@@ -1384,7 +1384,7 @@ export default function SFDCCasesPage() {
                     )}
                 </div>
 
-                <div className="table-responsive">
+                <div className="table-responsive desktop-table">
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -1502,6 +1502,79 @@ export default function SFDCCasesPage() {
                             ))}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Cards View */}
+                <div className="mobile-only">
+                    {filteredCases.map(c => (
+                        <div key={c.caseNumber} className="ticket-card-mobile" style={{ borderLeft: `4px solid ${getPriorityColor(c.priority)}` }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                <div>
+                                    <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1rem' }}>
+                                        {c.caseNumber}
+                                    </div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                        {getClientName(c.country)}
+                                    </div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <Badge variant="outline" style={{ fontSize: '0.75rem', marginBottom: '4px' }}>
+                                        {c.age} d
+                                    </Badge>
+                                </div>
+                            </div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+                                {c.subject}
+                            </div>
+                            <div style={{ background: 'var(--background)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Status:</span>
+                                    <span style={{ fontWeight: 600 }}>{c.status}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Solicitante:</span>
+                                    <span style={{ fontWeight: 600 }}>{c.requestedFor}</span>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                {(() => {
+                                    const linkedTicket = 
+                                        (tickets?.find(t => 
+                                            String(t.id) === String(c.caseNumber) || 
+                                            (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber) === String(c.caseNumber))) ||
+                                            (t.subject && t.subject.includes(c.caseNumber))
+                                        )) || 
+                                        (logisticsTasks?.find(tk => String(tk.case_number) === String(c.caseNumber)));
+
+                                    if (linkedTicket) {
+                                        const ticketId = linkedTicket.ticket_id || linkedTicket.id;
+                                        return (
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                icon={ArrowRight}
+                                                onClick={() => router.push(`/dashboard/tickets/${ticketId}`)}
+                                                style={{ width: '100%' }}
+                                            >
+                                                Ver Ticket
+                                            </Button>
+                                        );
+                                    } else {
+                                        return (
+                                            <Button 
+                                                size="sm" 
+                                                icon={ArrowRight}
+                                                onClick={() => handleOpenCreateService(c)}
+                                                style={{ width: '100%' }}
+                                            >
+                                                Atender
+                                            </Button>
+                                        );
+                                    }
+                                })()}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </Card>
 

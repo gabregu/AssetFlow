@@ -301,15 +301,27 @@ export default function CaseConfigModal({
                                 disabled={isSavingModal}
                                 onClick={() => safeSaveModal(async () => {
                                     // Mergear las actualizaciones pendientes de la tarea (como assets) con la logística
+                                    // Forzar el estado a "En Preparación" siempre que se guarde el caso
+                                    const updatesToSave = { ...pendingTaskUpdates, status: 'En Preparación' };
                                     if (logisticsSaveRef.current) {
-                                        const result = await logisticsSaveRef.current(pendingTaskUpdates);
+                                        const result = await logisticsSaveRef.current(updatesToSave);
                                         if (result?.error) return; // No cerrar si hubo error
                                         setPendingTaskUpdates({}); // clear
-                                    } else if (Object.keys(pendingTaskUpdates).length > 0) {
-                                        const result = await handleUpdateTask(pendingTaskUpdates);
+                                    } else if (Object.keys(updatesToSave).length > 0) {
+                                        const result = await handleUpdateTask(updatesToSave);
                                         if (result?.error) return;
                                         setPendingTaskUpdates({});
                                     }
+
+                                    // Add Notification Logic if transitioned to 'En Preparación'
+                                    if (activeTask.status !== 'En Preparación') {
+                                        fetch('/api/notify-admin', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ task: activeTask, ticket: ticket })
+                                        }).catch(err => console.error("Error sending admin notification", err));
+                                    }
+
                                     setSelectedCaseIndex(null);
                                 })}
                             >

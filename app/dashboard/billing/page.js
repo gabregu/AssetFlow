@@ -725,7 +725,7 @@ export default function BillingPage() {
                             {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', width: '100%', flexWrap: 'wrap' }}>
+                    <div className="flex-mobile-column" style={{ display: 'flex', gap: '0.5rem', width: '100%', flexWrap: 'wrap' }}>
                         {selectedTickets.size > 0 && (
                             <>
                                 <Button 
@@ -848,7 +848,7 @@ export default function BillingPage() {
                     {/* Profit Analysis Table */}
                     <Card 
                         title="Detalle de Utilidad por Servicio" 
-                        className="table-responsive"
+                        className="table-responsive desktop-table"
                         action={
                             <div style={{ position: 'relative', width: '250px' }}>
                                 <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
@@ -1251,7 +1251,7 @@ export default function BillingPage() {
                             </div>
 
                             {/* Selector de mes + input de valor */}
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                            <div className="flex-mobile-column" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                                 <div style={{ display: 'flex', gap: '0.4rem', flex: '1 1 auto', minWidth: '200px' }}>
                                     <div className="form-group" style={{ margin: 0, flex: 1 }}>
                                         <label className="form-label" style={{ fontSize: '0.7rem' }}>Mes</label>
@@ -1672,7 +1672,7 @@ export default function BillingPage() {
                         return (
                             <>
                                 {/* Header */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', borderBottom: '2px solid var(--border)', paddingBottom: '1rem' }}>
+                                <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', gap: '1rem', borderBottom: '2px solid var(--border)', paddingBottom: '1rem' }}>
                                     <div>
                                         <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>Detalle Financiero del Servicio</h2>
                                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>

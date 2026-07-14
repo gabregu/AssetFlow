@@ -21,6 +21,7 @@ export default function AccessoriesSection({
     const [selectedConsumableId, setSelectedConsumableId] = useState('');
     const [feedback, setFeedback] = useState({ type: '', message: '' });
     const [showYubiKeyLocal, setShowYubiKeyLocal] = useState(false);
+    const [showFilterLocal, setShowFilterLocal] = useState(false);
     const [ykSearchQuery, setYkSearchQuery] = useState('');
     const [filterSearchQuery, setFilterSearchQuery] = useState('');
     const [backpackSearchQuery, setBackpackSearchQuery] = useState('');
@@ -64,7 +65,7 @@ export default function AccessoriesSection({
     const activeFilterModel = filterConsumables.find(c => accessories[c.name] === true);
 
     const isBackpackActive = !!accessories.backpack;
-    const isFilterActive = !!accessories.screenFilter;
+    const isFilterActive = !!accessories.screenFilter || !!activeFilterModel || showFilterLocal;
     const isYubiKeyActive = caseYubikeys.length > 0 || showYubiKeyLocal;
 
     // Toggle legacy standard checkboxes
@@ -95,11 +96,13 @@ export default function AccessoriesSection({
 
     const handleToggleFilter = () => {
         const newAccessories = { ...accessories };
-        const currentlyActive = !!accessories.screenFilter;
+        const currentlyActive = !!accessories.screenFilter || !!activeFilterModel || showFilterLocal;
         const newTypes = { ...(task.accessories_types || {}) };
         
         if (currentlyActive) {
-            newAccessories.screenFilter = false;
+            if (newAccessories.screenFilter) {
+                delete newAccessories.screenFilter;
+            }
             // Desvincular modelo asignado si existía y devolver stock
             filterConsumables.forEach(c => {
                 if (newAccessories[c.name]) {
@@ -110,10 +113,11 @@ export default function AccessoriesSection({
                     }
                 }
             });
-            showFeedback('success', 'Filtro quitado.');
+            setShowFilterLocal(false);
+            showFeedback('success', 'Filtros/otros quitado.');
         } else {
-            newAccessories.screenFilter = true;
-            showFeedback('success', 'Filtro de privacidad habilitado. Selecciona un modelo debajo.');
+            setShowFilterLocal(true);
+            showFeedback('success', 'Filtros/otros habilitado. Selecciona un modelo debajo.');
         }
         onUpdateTask({ accessories: newAccessories, accessories_types: newTypes });
     };
@@ -434,7 +438,7 @@ export default function AccessoriesSection({
                     }}>
                         {isFilterActive && <Check size={8} style={{ color: 'white' }} />}
                     </div>
-                    <span>🖥️ Filtro</span>
+                    <span>🖥️ Filtros/otros</span>
                 </div>
                 <div style={cardStyle(isBackpackActive)} onClick={handleToggleBackpack}>
                     <div style={{ 

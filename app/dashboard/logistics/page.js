@@ -102,7 +102,7 @@ const TrackingBadge = ({ method, trackingNumber }) => {
 
 export default function LogisticsHubPage() {
 
-    const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter, getClientName, currentUser } = useStore();
+    const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter, getClientName, currentUser, assets } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [driverFilter, setDriverFilter] = useState('All');
@@ -111,6 +111,33 @@ export default function LogisticsHubPage() {
     // Modal States
     const [actionModal, setActionModal] = useState({ isOpen: false, type: null, task: null });
     // type: 'prepare_shipping' | 'schedule_appointment'
+
+    // Scanner States
+    const [scannedAssets, setScannedAssets] = useState({});
+    const [manualChecks, setManualChecks] = useState({});
+    const [scanInput, setScanInput] = useState('');
+
+    const handleScanSubmit = (e) => {
+        e.preventDefault();
+        const serialToMatch = scanInput.trim().toLowerCase();
+        if (!serialToMatch || !actionModal.task?.assets) return;
+
+        const assetMatch = actionModal.task.assets.find(a => 
+            a.serial && String(a.serial).trim().toLowerCase() === serialToMatch
+        );
+
+        if (assetMatch) {
+            setScannedAssets(prev => ({ ...prev, [assetMatch.serial]: true }));
+            setScanInput(''); // clear input on success
+        }
+    };
+
+    const handleModalClose = () => {
+        setActionModal({ isOpen: false, type: null, task: null });
+        setScannedAssets({});
+        setManualChecks({});
+        setScanInput('');
+    };
 
     const [scheduleData, setScheduleData] = useState({
         method: '',
@@ -1047,7 +1074,7 @@ export default function LogisticsHubPage() {
             {/* 1. Modal Prepare Shipping (Verificación HW) */}
             <Modal
                 isOpen={actionModal.isOpen && actionModal.type === 'prepare_shipping'}
-                onClose={() => setActionModal({ isOpen: false, type: null, task: null })}
+                onClose={handleModalClose}
                 title="Verificación HW (Preparar Envío)"
             >
                 {actionModal.task && (
@@ -1057,14 +1084,59 @@ export default function LogisticsHubPage() {
                                 <Package size={18} />
                                 Activos a preparar para el envío
                             </h4>
+                            <form onSubmit={handleScanSubmit} style={{ marginBottom: '1rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="Escanea o ingresa número de serie..." 
+                                        value={scanInput}
+                                        onChange={(e) => setScanInput(e.target.value)}
+                                        autoFocus
+                                    />
+                                    <Button type="submit" variant="secondary">Confirmar</Button>
+                                </div>
+                            </form>
                             {actionModal.task.assets && actionModal.task.assets.length > 0 ? (
-                                <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', color: 'var(--text-secondary)' }}>
-                                    {actionModal.task.assets.map((asset, i) => (
-                                        <li key={i}>
-                                            {asset.type} {asset.model} 
-                                            {asset.serial && <strong> (SN: {asset.serial})</strong>}
-                                        </li>
-                                    ))}
+                                <ul style={{ listStyleType: 'none', paddingLeft: '0', margin: 0, color: 'var(--text-secondary)' }}>
+                                    {actionModal.task.assets.map((asset, i) => {
+                                        const isScanned = asset.serial && scannedAssets[asset.serial];
+                                        const isManualCheck = !asset.serial && manualChecks[`${asset.type}-${i}`];
+                                        const fullAsset = asset.serial ? assets.find(a => String(a.serial).trim().toLowerCase() === String(asset.serial).trim().toLowerCase()) : null;
+                                        const locationInfo = fullAsset ? (fullAsset.boxNumber || fullAsset.assignee || 'Sin ubicación') : '';
+                                        
+                                        return (
+                                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', background: 'var(--surface)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                                                {asset.serial ? (
+                                                    <div style={{ color: isScanned ? 'var(--success-color)' : 'var(--text-secondary)' }}>
+                                                        <CheckCircle2 size={18} />
+                                                    </div>
+                                                ) : (
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={isManualCheck || false}
+                                                        onChange={(e) => setManualChecks(prev => ({...prev, [`${asset.type}-${i}`]: e.target.checked}))}
+                                                    />
+                                                )}
+                                                <div>
+                                                    <div style={{ fontWeight: 500, color: 'var(--text-main)' }}>
+                                                        {asset.type} {asset.model}
+                                                    </div>
+                                                    {asset.serial && (
+                                                        <div style={{ fontSize: '0.8rem', display: 'flex', gap: '0.75rem' }}>
+                                                            <strong>SN: {asset.serial}</strong>
+                                                            {locationInfo && (
+                                                                <span style={{ color: 'var(--primary-color)' }}>
+                                                                    <MapPin size={12} style={{ display: 'inline', marginRight: '2px' }}/>
+                                                                    {locationInfo}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             ) : (
                                 <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.9rem' }}>No hay activos específicos listados. Verifique el detalle del caso principal.</p>
@@ -1086,12 +1158,17 @@ export default function LogisticsHubPage() {
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-                            <Button variant="outline" onClick={() => setActionModal({ isOpen: false, type: null, task: null })}>
+                            <Button variant="outline" onClick={handleModalClose}>
                                 Cancelar
                             </Button>
-                            <Button variant="primary" onClick={async () => {
+                            <Button variant="primary" disabled={
+                                actionModal.task.assets?.some((asset, i) => 
+                                    (asset.serial && !scannedAssets[asset.serial]) || 
+                                    (!asset.serial && !manualChecks[`${asset.type}-${i}`])
+                                )
+                            } onClick={async () => {
                                 await updateLogisticsTask(actionModal.task.id, { status: 'Para Coordinar' });
-                                setActionModal({ isOpen: false, type: null, task: null });
+                                handleModalClose();
                             }}>
                                 Confirmar Caja Preparada
                             </Button>

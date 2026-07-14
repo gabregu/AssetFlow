@@ -1166,7 +1166,7 @@ export default function DeliveriesPage() {
                     )}
                 </div>
 
-                <div className="table-responsive">
+                <div className="table-responsive desktop-table">
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -1439,6 +1439,50 @@ export default function DeliveriesPage() {
                             })()}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Mobile Cards View */}
+                <div className="mobile-only">
+                    {sortedAndFilteredDeliveries.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            <p>No se encontraron envíos con estos filtros.</p>
+                        </div>
+                    ) : sortedAndFilteredDeliveries.map(delivery => (
+                        <div key={delivery.id} className="ticket-card-mobile" style={{ borderLeft: `4px solid ${getDriverColor(delivery.deliveryPerson)}` }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                    <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1rem', marginBottom: '4px' }}>
+                                        {delivery.id}
+                                    </div>
+                                    <div style={{ fontWeight: 600 }}>{delivery.recipient}</div>
+                                </div>
+                                <Badge variant={getStatusVariant(delivery.ticketStatus)} style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>
+                                    {delivery.ticketStatus || delivery.status}
+                                </Badge>
+                            </div>
+
+                            <div style={{ background: 'var(--background)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.85rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    <MapPin size={14} className="text-secondary-400" />
+                                    <span>
+                                        {delivery.address}{delivery.floorDept ? `, ${delivery.floorDept}` : ''}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    <Truck size={14} className="text-secondary-400" />
+                                    <span style={{ fontWeight: 600 }}>
+                                        {delivery.courier || delivery.deliveryPerson || 'Sin Asignar'}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Calendar size={14} className="text-secondary-400" />
+                                    <span style={{ color: 'var(--primary-color)', fontWeight: 600 }}>
+                                        {delivery.date || 'Sin fecha'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </Card>
 

@@ -2187,7 +2187,7 @@ export default function InventoryPage() {
             )}
             {activeTab === 'hardware' && (
                 <Card id="inventory-list">
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div className="flex-mobile-column" style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
                         <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
@@ -2276,7 +2276,7 @@ export default function InventoryPage() {
                             border: '1px solid rgba(37, 99, 235, 0.1)',
                             animation: 'slideDown 0.3s ease-out'
                         }}>
-                            <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+                            <div className="flex-mobile-column" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                                 <div style={{ flex: 1 }}>
                                     <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
                                         Serial del Equipo a Reemplazar
@@ -2397,9 +2397,9 @@ export default function InventoryPage() {
 
                         {isInventoryExpanded && (
                             <div style={{ animation: 'slideDown 0.3s ease-out' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <div className="flex-mobile-column" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem' }}>
                                     {selectedAssets.length > 0 ? (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(37, 99, 235, 0.1)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+                                        <div className="flex-mobile-column" style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(37, 99, 235, 0.1)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
                                             <span style={{ fontWeight: 600, color: 'var(--primary-color)' }}>{selectedAssets.length} seleccionados</span>
                                             {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
                                                 <Button variant="danger" size="sm" icon={Trash2} onClick={handleBulkDelete}>
