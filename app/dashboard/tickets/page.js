@@ -143,7 +143,7 @@ export default function TicketsPage() {
         const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
         const query = normalize(value);
         const seen = new Set();
-        const matches = tickets
+        const matches = (tickets || [])
             .filter(t => {
                 const name = normalize(t.requester);
                 return name.includes(query) && !seen.has(name) && seen.add(name);
@@ -574,7 +574,7 @@ export default function TicketsPage() {
     const handleMergeTickets = async () => {
         if (selectedTickets.length < 2) return;
         
-        const selectedObjects = tickets.filter(t => selectedTickets.includes(t.id));
+        const selectedObjects = (tickets || []).filter(t => selectedTickets.includes(t.id));
         const firstRequester = selectedObjects[0].requester;
         const differentRequester = selectedObjects.some(t => t.requester !== firstRequester);
         
@@ -792,7 +792,7 @@ export default function TicketsPage() {
 
     const sortedAndFilteredTickets = React.useMemo(() => {
         // ... (existing filter/sort logic remains same)
-        let result = tickets.filter(t => {
+        let result = (tickets || []).filter(t => {
             const associatedTasks = (logisticsTasks || []).filter(tk => String(tk.ticket_id) === String(t.id));
             const taskRecipients = associatedTasks.map(tk => String(tk.recipient || '').toLowerCase());
             const taskAddresses = associatedTasks.map(tk => String(tk.address || '').toLowerCase());
@@ -861,7 +861,7 @@ export default function TicketsPage() {
         // Filter by country first to match the view logic roughly (ignoring status for now or keeping it consistent?)
         // The original logic in Cases filtered by country. Here we probably should too.
         // But `tickets` here includes all statuses. We usually care about active tickets for these counts.
-        const activeTickets = tickets.filter(t => isTicketActive(t));
+        const activeTickets = (tickets || []).filter(t => isTicketActive(t));
 
         const expectedClient = getClientName(countryFilter);
         const filteredByCountry = activeTickets.filter(t => expectedClient === 'Todos' || t.client === expectedClient);
@@ -892,7 +892,7 @@ export default function TicketsPage() {
     const stats = React.useMemo(() => {
         // Filter by client field
         const expectedClient = getClientName(countryFilter);
-        const filteredByCountry = tickets.filter(t => expectedClient === 'Todos' || t.client === expectedClient);
+        const filteredByCountry = (tickets || []).filter(t => expectedClient === 'Todos' || t.client === expectedClient);
 
         return {
             total: filteredByCountry.filter(t => isTicketActive(t)).length,
