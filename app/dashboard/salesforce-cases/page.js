@@ -1011,7 +1011,7 @@ export default function SFDCCasesPage() {
             // Buscamos si el caseNumber está asociado a algún ticket existente en cualquiera de sus campos
             const existingConvertedCaseNumbers = new Set();
 
-            tickets.forEach(t => {
+            (tickets || []).forEach(t => {
                 deduplicatedNewCases.forEach(nc => {
                     const caseNumStr = String(nc.caseNumber).trim();
                     if (!caseNumStr) return;
@@ -1196,7 +1196,7 @@ export default function SFDCCasesPage() {
                                 Nuevos
                             </div>
                             <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#8b5cf6', marginTop: '0.25rem' }}>
-                                +{lastImportedCases.filter(c => countryFilter === 'Todos' || (c.country && getClientName(c.country).toLowerCase() === getClientName(countryFilter).toLowerCase())).length}
+                                +{(lastImportedCases || []).filter(c => countryFilter === 'Todos' || (c.country && getClientName(c.country).toLowerCase() === getClientName(countryFilter).toLowerCase())).length}
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Última carga</div>
                         </div>
