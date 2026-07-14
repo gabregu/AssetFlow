@@ -1103,16 +1103,16 @@ export default function LogisticsHubPage() {
                                         const isScanned = asset.serial && scannedAssets[asset.serial];
                                         const isManualCheck = !asset.serial && manualChecks[`${asset.type}-${i}`];
                                         const fullAsset = asset.serial ? assets.find(a => String(a.serial).trim().toLowerCase() === String(asset.serial).trim().toLowerCase()) : null;
+                                        const assetSource = fullAsset || asset;
                                         
                                         let locationInfo = '';
-                                        if (fullAsset) {
-                                            if (fullAsset.locationId) {
-                                                const wh = warehouseLocations?.find(w => w.id === fullAsset.locationId);
-                                                locationInfo = wh ? wh.name : 'Depósito Desconocido';
-                                            } else {
-                                                locationInfo = fullAsset.boxNumber || fullAsset.assignee || 'Sin ubicación';
-                                            }
+                                        if (assetSource.locationId) {
+                                            const wh = warehouseLocations?.find(w => String(w.id) === String(assetSource.locationId));
+                                            locationInfo = wh ? wh.name : 'Depósito Desconocido';
+                                        } else {
+                                            locationInfo = assetSource.boxNumber || assetSource.assignee || 'Sin ubicación';
                                         }
+
                                         
                                         return (
                                             <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', background: 'var(--surface)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
