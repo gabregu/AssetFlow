@@ -26,10 +26,8 @@ export default function AccessoriesSection({
     const [filterSearchQuery, setFilterSearchQuery] = useState('');
     const [backpackSearchQuery, setBackpackSearchQuery] = useState('');
 
-    if (!task) return null;
-
-    const accessories = task.accessories || {};
-    const caseYubikeys = task.yubikeys || [];
+    const accessories = task?.accessories || {};
+    const caseYubikeys = task?.yubikeys || [];
 
     const showFeedback = (type, message) => {
         setFeedback({ type, message });
@@ -340,7 +338,7 @@ export default function AccessoriesSection({
         const newAccessories = { ...accessories };
         delete newAccessories[name];
         
-        const newTypes = { ...(task.accessories_types || {}) };
+        const newTypes = { ...(task?.accessories_types || {}) };
         delete newTypes[name];
 
         onUpdateTask({ 
@@ -393,6 +391,8 @@ export default function AccessoriesSection({
         transition: 'all 0.15s ease',
         gap: '0.4rem'
     });
+
+    if (!task) return null;
 
     return (
         <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>

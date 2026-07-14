@@ -30,10 +30,8 @@ export default function AssetListSection({
     const [selectedModel, setSelectedModel] = useState('');
     const [selectedSerial, setSelectedSerial] = useState('');
 
-    if (!task) return null;
-
-    const caseAssets = task.assets || [];
-    const ticketCountry = task.country || 'Argentina';
+    const caseAssets = task?.assets || [];
+    const ticketCountry = task?.country || 'Argentina';
 
     // Auto-sincronizar activos vinculados en inventario a la tarea
     const lastSyncedCaseRef = useRef(null);
@@ -207,6 +205,8 @@ export default function AssetListSection({
         setAssetSearchResult(null);
         setSerialQuery('');
     };
+
+    if (!task) return null;
 
     return (
         <div>
