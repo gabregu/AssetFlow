@@ -130,7 +130,7 @@ export default function SFDCCasesPage() {
 
     // 3. Estadísticas (Moved up to be available for statsByType and filteredCases)
     const countryFilteredCases = useMemo(() => {
-        return sfdcCases.filter(c => {
+        return (sfdcCases || []).filter(c => {
             if (!isActiveCaseStatus(c)) return false;
             if (!isCaseInCountryFilter(c)) return false;
 
@@ -436,7 +436,7 @@ export default function SFDCCasesPage() {
 
                 // Buscar todos los casos del mismo usuario (entregas Y collections/offboardings)
                 // LÓGICA FLEXIBLE: Coincidencia parcial o exacta normalizada
-                const siblings = sfdcCases.filter(c => {
+                const siblings = (sfdcCases || []).filter(c => {
                     if (c.caseNumber === selectedCase.caseNumber) return false; // Skip self
 
                     const siblingName = normalizeName(c.requestedFor);
@@ -1174,7 +1174,7 @@ export default function SFDCCasesPage() {
 
             {/* Dashboard / Metrics Section - Compacted Row */}
             {/* Dashboard / Metrics Section - Compacted Row */}
-            {sfdcCases.length > 0 && (
+            {(sfdcCases || []).length > 0 && (
                 <div className="grid-responsive-6" style={{ marginBottom: '1.5rem' }}>
                     {/* Total Backlog Card */}
                     <Card style={{ minWidth: '140px', flex: 1, padding: '1rem' }}>
