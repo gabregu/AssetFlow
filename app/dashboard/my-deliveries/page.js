@@ -1506,6 +1506,7 @@ export default function MyDeliveriesPage() {
                     clearSignature();
                     setIsReturnModalOpen(true);
                 }}
+                title="Recibí un Dispositivo"
                 style={{
                     position: 'fixed',
                     bottom: '2rem',
@@ -1515,23 +1516,20 @@ export default function MyDeliveriesPage() {
                     background: 'linear-gradient(135deg, #f59e0b, #d97706)',
                     color: 'white',
                     border: 'none',
-                    borderRadius: '50px',
-                    padding: '0.85rem 1.75rem',
-                    fontWeight: 800,
-                    fontSize: '0.95rem',
+                    borderRadius: '50%',
+                    width: '3.5rem',
+                    height: '3.5rem',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.6rem',
+                    justifyContent: 'center',
                     boxShadow: '0 8px 24px rgba(217,119,6,0.45)',
                     cursor: 'pointer',
-                    letterSpacing: '0.02em',
                     transition: 'transform 0.15s, box-shadow 0.15s'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1.05)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(217,119,6,0.55)'; }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1.1)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(217,119,6,0.55)'; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(217,119,6,0.45)'; }}
             >
-                <PackagePlus size={20} />
-                Recibí un Dispositivo
+                <PackagePlus size={26} strokeWidth={2.5} />
             </button>
 
             {/* ── Modal: Registrar Recepción de Activo ───────────────────── */}
