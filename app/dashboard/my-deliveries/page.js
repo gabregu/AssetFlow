@@ -147,22 +147,23 @@ export default function MyDeliveriesPage() {
     };
 
     const handleReturnSubmit = async (e) => {
-        e.preventDefault();
-        if (!returnForm.serial.trim()) {
-            showToast('El número de serie es obligatorio', 'error');
-            return;
-        }
-        if (!returnForm.deliveredByName.trim()) {
-            showToast('El nombre de quien entrega es obligatorio', 'error');
-            return;
-        }
-        if (!hasSignature) {
-            showToast('La firma digital es obligatoria', 'error');
-            return;
-        }
-
-        setIsSubmittingReturn(true);
         try {
+            e.preventDefault();
+            if (!returnForm.serial.trim()) {
+                showToast('El número de serie es obligatorio', 'error');
+                return;
+            }
+            if (!returnForm.deliveredByName.trim()) {
+                showToast('El nombre de quien entrega es obligatorio', 'error');
+                return;
+            }
+            if (!hasSignature) {
+                showToast('La firma digital es obligatoria', 'error');
+                return;
+            }
+
+            setIsSubmittingReturn(true);
+            
             const now = new Date();
             const dateStr = now.toISOString().split('T')[0];
             const timeStr = now.toTimeString().slice(0, 5);
@@ -248,6 +249,7 @@ export default function MyDeliveriesPage() {
             await refreshData();
         } catch (err) {
             console.error('Error registrando recepción:', err);
+            alert('Error crítico: ' + (err.stack || err.message || err));
             showToast('Error al registrar: ' + (err.message || 'intente nuevamente'), 'error');
         } finally {
             setIsSubmittingReturn(false);
