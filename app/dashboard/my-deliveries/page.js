@@ -72,6 +72,11 @@ export default function MyDeliveriesPage() {
 
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
+    };
+
     // ── RETURN RECEIPT STATE ──────────────────────────────────────────────────
     const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
     const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
@@ -249,10 +254,6 @@ export default function MyDeliveriesPage() {
         }
     };
 
-    const showToast = (message, type = 'success') => {
-        setToast({ show: true, message, type });
-        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
-    };
 
     const handlePhotoCapture = async (e) => {
         const file = e.target.files?.[0];
