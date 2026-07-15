@@ -7,16 +7,13 @@ import { useStore } from '@/lib/store';
 export function FinancialsSummary({ ticket }) {
     const { rates, assets, users, currentUser, logisticsTasks, updateTicket } = useStore();
 
-    // Only visible for management or admin
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'Gerencial') {
-        return null;
-    }
-
     const financials = useMemo(() => {
+        if (currentUser?.role !== 'admin' && currentUser?.role !== 'Gerencial') return null;
         return calculateTicketFinancials(ticket, rates, assets, users, logisticsTasks);
-    }, [ticket, rates, assets, users, logisticsTasks]);
+    }, [ticket, rates, assets, users, logisticsTasks, currentUser]);
 
     const defaultFinancials = useMemo(() => {
+        if (currentUser?.role !== 'admin' && currentUser?.role !== 'Gerencial') return null;
         const hasCustom = ticket?.deliveryDetails?.customLogisticCost || 
                           ticket?.deliveryDetails?.customServiceRevenue || 
                           ticket?.deliveryDetails?.customLogisticRevenue;
@@ -31,7 +28,12 @@ export function FinancialsSummary({ ticket }) {
             }
         };
         return calculateTicketFinancials(ticketCopy, rates, assets, users, logisticsTasks);
-    }, [ticket, rates, assets, users, logisticsTasks]);
+    }, [ticket, rates, assets, users, logisticsTasks, currentUser]);
+
+    // Only visible for management or admin
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'Gerencial') {
+        return null;
+    }
 
     if (!financials) return null;
 

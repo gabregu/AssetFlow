@@ -1108,7 +1108,7 @@ export default function LogisticsHubPage() {
                                         let locationInfo = '';
                                         if (assetSource.locationId) {
                                             const wh = warehouseLocations?.find(w => String(w.id) === String(assetSource.locationId));
-                                            locationInfo = wh ? wh.name : 'Depósito Desconocido';
+                                            locationInfo = wh ? wh.id : 'Depósito Desconocido';
                                         } else {
                                             locationInfo = assetSource.boxNumber || assetSource.assignee || 'Sin ubicación';
                                         }

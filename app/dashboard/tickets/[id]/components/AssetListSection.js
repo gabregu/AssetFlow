@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, Package, Trash2, QrCode, Check } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { CopyButton } from '@/app/components/ui/CopyButton';
+import { useStore } from '@/lib/store';
 
 const getClientBase = (name) => {
     if (!name) return '';
@@ -26,6 +27,7 @@ export default function AssetListSection({
     allTasks = [],
     associatedCases = []
 }) {
+    const { warehouseLocations } = useStore();
     const [activeAssetType, setActiveAssetType] = useState(''); // 'Laptop' or 'Celular'
     const [selectedModel, setSelectedModel] = useState('');
     const [selectedSerial, setSelectedSerial] = useState('');
@@ -223,11 +225,36 @@ export default function AssetListSection({
                         const itemSerial = typeof item === 'string' ? item : item.serial;
                         const assetInfo = assets.find(a => a.serial && itemSerial && a.serial.toLowerCase() === itemSerial.toLowerCase());
                         
+                        let locationInfo = '';
+                        if (assetInfo) {
+                            if (assetInfo.locationId) {
+                                const wh = warehouseLocations?.find(w => String(w.id) === String(assetInfo.locationId));
+                                locationInfo = wh ? wh.id : 'Depósito Desconocido';
+                            } else {
+                                locationInfo = assetInfo.boxNumber || assetInfo.assignee || 'Sin ubicación';
+                            }
+                        }
+                        
                         return (
                             <div key={`${idxx}-${itemSerial}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: '6px', border: '1px solid var(--border)' }}>
                                 <div>
-                                    <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <span>{assetInfo?.name || 'Hardware'} (S/N: {itemSerial})</span>
+                                    <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                        <span>
+                                            {assetInfo?.name || 'Hardware'} (S/N: {itemSerial})
+                                            {locationInfo && (
+                                                <span style={{ 
+                                                    marginLeft: '8px', 
+                                                    padding: '2px 6px', 
+                                                    borderRadius: '4px', 
+                                                    backgroundColor: 'rgba(37, 99, 235, 0.08)', 
+                                                    color: 'var(--primary-color)', 
+                                                    fontSize: '0.7rem', 
+                                                    fontWeight: 600 
+                                                }}>
+                                                    Ubicación: {locationInfo}
+                                                </span>
+                                            )}
+                                        </span>
                                         {itemSerial && <CopyButton text={itemSerial} iconSize={11} />}
                                     </p>
                                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '4px' }}>

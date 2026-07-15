@@ -4,7 +4,7 @@ import { useStore } from '../../lib/store';
 import { supabase } from '../../lib/supabase';
 import {
     AlertCircle, TrendingUp, CheckCircle, Users, Plus,
-    Search, Truck, FileText, Clock, Tag, Mail, Info, Package
+    Search, Truck, FileText, Clock, Tag, Mail, Info, Package, History
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { CountryFilter } from '../components/layout/CountryFilter';
@@ -239,7 +239,7 @@ export default function Dashboard() {
             {/* ── Quick Actions ─────────────────────────────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '1.75rem' }}>
                 <QuickBtn icon={Plus} label="Nuevo Ticket" color="#3b82f6" bg="rgba(59,130,246,.1)" onClick={() => router.push('/dashboard/tickets')} />
-                <QuickBtn icon={FileText} label="Importar Casos" color="#0ea5e9" bg="rgba(14,165,233,.1)" onClick={() => router.push('/dashboard/salesforce-cases')} />
+                <QuickBtn icon={History} label="Historial" color="#0ea5e9" bg="rgba(14,165,233,.1)" onClick={() => router.push('/dashboard/history')} />
                 <QuickBtn icon={Search} label="Buscar Activo" color="#ca8a04" bg="rgba(234,179,8,.1)" onClick={() => router.push('/dashboard/inventory')} />
                 <QuickBtn icon={Truck} label="Ver Envíos" color="#16a34a" bg="rgba(34,197,94,.1)" onClick={() => router.push('/dashboard/deliveries')} />
             </div>

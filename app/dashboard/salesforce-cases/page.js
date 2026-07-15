@@ -51,6 +51,24 @@ export default function SFDCCasesPage() {
     };
 
     // Helper functions for filtering cases
+    const getPriorityColor = (priority) => {
+        switch (String(priority || '').toLowerCase()) {
+            case 'high':
+            case 'alta':
+            case 'critical':
+            case 'crítica':
+                return '#ef4444';
+            case 'medium':
+            case 'media':
+                return '#f59e0b';
+            case 'low':
+            case 'baja':
+                return '#10b981';
+            default:
+                return '#6b7280';
+        }
+    };
+
     const hasService = (c) => {
         return (tickets && tickets.some(t => 
             String(t.id) === String(c.caseNumber) || 
