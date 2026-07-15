@@ -5,6 +5,7 @@ import { Search, Package, Trash2, QrCode, Check } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { CopyButton } from '@/app/components/ui/CopyButton';
 import { useStore } from '@/lib/store';
+import { isCollectionCase } from './AssociatedCasesCard';
 
 const getClientBase = (name) => {
     if (!name) return '';
@@ -168,9 +169,9 @@ export default function AssetListSection({
             const newAssets = [...caseAssets, { serial: serial, type: 'Entrega' }];
             const updates = { assets: newAssets };
             
-            // Automación: Si agregamos hardware, el estado pasa a "En Preparación"
+            // Automación: Si agregamos hardware, el estado pasa a "En Preparación" (o "Para Coordinar" si es recolección)
             if (task.status === 'Pendiente' || !task.status) {
-                updates.status = 'En Preparación';
+                updates.status = isCollectionCase(task.subject) ? 'Para Coordinar' : 'En Preparación';
             }
             
             try {

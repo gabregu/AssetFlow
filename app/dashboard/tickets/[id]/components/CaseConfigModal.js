@@ -107,10 +107,11 @@ export default function CaseConfigModal({
     const handleBufferedUpdate = (updates) => {
         const newUpdates = { ...updates };
         
-        // Auto-change status to "En Preparación" when adding devices/accessories
+        // Auto-change status to "En Preparación" (or "Para Coordinar" if collection) when adding devices/accessories
         const modifiesAssets = newUpdates.assets || newUpdates.accessories || newUpdates.yubikeys;
         if (modifiesAssets && (!activeTask.status || activeTask.status === 'Pendiente')) {
-            newUpdates.status = 'En Preparación';
+            const isCollection = caseTypeInput === 'recoleccion' || (activeTask && isCollectionCase(activeTask.subject || ''));
+            newUpdates.status = isCollection ? 'Para Coordinar' : 'En Preparación';
         }
 
         setLocalTask(prev => prev ? { ...prev, ...newUpdates } : null);
@@ -301,8 +302,10 @@ export default function CaseConfigModal({
                                 disabled={isSavingModal}
                                 onClick={() => safeSaveModal(async () => {
                                     // Mergear las actualizaciones pendientes de la tarea (como assets) con la logística
-                                    // Forzar el estado a "En Preparación" siempre que se guarde el caso
-                                    const updatesToSave = { ...pendingTaskUpdates, status: 'En Preparación' };
+                                    // Forzar el estado a "En Preparación" o "Para Coordinar" (si es recolección) siempre que se guarde el caso
+                                    const isCollection = caseTypeInput === 'recoleccion' || (activeTask && isCollectionCase(activeTask.subject || ''));
+                                    const targetStatus = isCollection ? 'Para Coordinar' : 'En Preparación';
+                                    const updatesToSave = { ...pendingTaskUpdates, status: targetStatus };
                                     if (logisticsSaveRef.current) {
                                         const result = await logisticsSaveRef.current(updatesToSave);
                                         if (result?.error) return; // No cerrar si hubo error
@@ -314,7 +317,7 @@ export default function CaseConfigModal({
                                     }
 
                                     // Add Notification Logic if transitioned to 'En Preparación'
-                                    if (activeTask.status !== 'En Preparación') {
+                                    if (!isCollection && activeTask.status !== 'En Preparación') {
                                         fetch('/api/notify-admin', {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },

@@ -919,7 +919,11 @@ export default function LogisticsHubPage() {
                                                 </Button>
                                             );
 
-                                            if (task.status === 'En Preparación' || (isOutbound && (!task.status || task.status === 'Pendiente'))) {
+                                            const needsHwVerification = isOutbound
+                                                ? (task.status === 'En Preparación' || !task.status || task.status === 'Pendiente')
+                                                : (task.status === 'Entregado');
+
+                                            if (needsHwVerification) {
                                                 return (
                                                     <>
                                                         <Button size="sm" style={{ background: '#10b981', color: 'white', border: 'none' }} icon={Package} onClick={() => setActionModal({ isOpen: true, type: 'prepare_shipping', task })}>
@@ -979,8 +983,13 @@ export default function LogisticsHubPage() {
                         </Button>
                     );
 
+                    const isOutboundTask = isDeliveryCase(task.subject) || task.case_type === 'entrega' || task.caseType === 'entrega';
+                    const needsHwVerification = isOutboundTask
+                        ? (task.status === 'En Preparación' || !task.status || task.status === 'Pendiente')
+                        : (task.status === 'Entregado');
+
                     let actionBtn = btnGestionar;
-                    if (task.status === 'En Preparación' || (isOutbound && (!task.status || task.status === 'Pendiente'))) {
+                    if (needsHwVerification) {
                         actionBtn = (
                             <Button size="sm" style={{ background: '#10b981', color: 'white', border: 'none', width: '100%' }} icon={Package} onClick={() => setActionModal({ isOpen: true, type: 'prepare_shipping', task })}>
                                 Verificación HW
@@ -1072,18 +1081,22 @@ export default function LogisticsHubPage() {
             {/* MODALS */}
             
             {/* 1. Modal Prepare Shipping (Verificación HW) */}
-            <Modal
-                isOpen={actionModal.isOpen && actionModal.type === 'prepare_shipping'}
-                onClose={handleModalClose}
-                title="Verificación HW (Preparar Envío)"
-            >
-                {actionModal.task && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem' }}>
-                        <div style={{ background: 'rgba(37, 99, 235, 0.05)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
-                            <h4 style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Package size={18} />
-                                Activos a preparar para el envío
-                            </h4>
+            {(() => {
+                const modalTask = actionModal.task;
+                const isOutboundTask = modalTask ? (isDeliveryCase(modalTask.subject) || modalTask.case_type === 'entrega' || modalTask.caseType === 'entrega') : true;
+                return (
+                    <Modal
+                        isOpen={actionModal.isOpen && actionModal.type === 'prepare_shipping'}
+                        onClose={handleModalClose}
+                        title={isOutboundTask ? "Verificación HW (Preparar Envío)" : "Verificación HW (Recepción de Retiro)"}
+                    >
+                        {modalTask && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem' }}>
+                                <div style={{ background: 'rgba(37, 99, 235, 0.05)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+                                    <h4 style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Package size={18} />
+                                        {isOutboundTask ? "Activos a preparar para el envío" : "Activos retirados a verificar e ingresar"}
+                                    </h4>
                             <form onSubmit={handleScanSubmit} style={{ marginBottom: '1rem' }}>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                     <input 
@@ -1154,12 +1167,14 @@ export default function LogisticsHubPage() {
                         
                         <div style={{ padding: '1rem', border: '1px dashed var(--border)', borderRadius: 'var(--radius-md)' }}>
                             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                                Por favor, asegúrese de que todos los dispositivos y accesorios están dentro de la caja listos para ser despachados e imprima la etiqueta.
+                                {isOutboundTask 
+                                    ? "Por favor, asegúrese de que todos los dispositivos y accesorios están dentro de la caja listos para ser despachados e imprima la etiqueta."
+                                    : "Por favor, verifique el estado físico y número de serie de cada dispositivo devuelto antes de confirmar el ingreso al inventario."}
                             </p>
                             <Button 
                                 variant="outline" 
                                 icon={Printer} 
-                                onClick={() => handlePrintDeliveryLabel(actionModal.task)}
+                                onClick={() => handlePrintDeliveryLabel(modalTask)}
                                 style={{ width: '100%', marginBottom: '1rem' }}
                             >
                                 Imprimir Remito / Etiqueta
@@ -1171,20 +1186,23 @@ export default function LogisticsHubPage() {
                                 Cancelar
                             </Button>
                             <Button variant="primary" disabled={
-                                actionModal.task.assets?.some((asset, i) => 
+                                modalTask.assets?.some((asset, i) => 
                                     (asset.serial && !scannedAssets[asset.serial]) || 
                                     (!asset.serial && !manualChecks[`${asset.type}-${i}`])
                                 )
                             } onClick={async () => {
-                                await updateLogisticsTask(actionModal.task.id, { status: 'Para Coordinar' });
+                                const nextStatus = isOutboundTask ? 'Para Coordinar' : 'Recuperado';
+                                await updateLogisticsTask(modalTask.id, { status: nextStatus });
                                 handleModalClose();
                             }}>
-                                Confirmar Caja Preparada
+                                {isOutboundTask ? 'Confirmar Caja Preparada' : 'Confirmar Recepción en Almacén'}
                             </Button>
                         </div>
                     </div>
                 )}
             </Modal>
+            );
+            })()}
 
             {/* 2. Modal Schedule Appointment */}
             <Modal
