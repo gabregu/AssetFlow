@@ -14,7 +14,9 @@ import {
     QrCode,
     Download,
     Loader2,
-    Camera
+    Camera,
+    PackagePlus,
+    X as XIcon
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -35,6 +37,10 @@ export default function MyDeliveriesPage() {
         updateTicket, 
         logisticsTasks, 
         updateLogisticsTask,
+        addTicket,
+        addLogisticsTask,
+        getClientName,
+        countryFilter,
         refreshData
     } = useStore();
 
@@ -65,6 +71,183 @@ export default function MyDeliveriesPage() {
     const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+    // ── RETURN RECEIPT STATE ──────────────────────────────────────────────────
+    const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+    const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+    const [returnForm, setReturnForm] = useState({
+        deliveredByName: '',
+        serial: '',
+        deviceType: 'Laptop',
+        notes: ''
+    });
+    const signatureCanvasRef = React.useRef(null);
+    const [isDrawing, setIsDrawing] = useState(false);
+    const [hasSignature, setHasSignature] = useState(false);
+    const lastPos = React.useRef(null);
+
+    const getSignatureDataUrl = () => {
+        const canvas = signatureCanvasRef.current;
+        if (!canvas) return null;
+        return canvas.toDataURL('image/png');
+    };
+
+    const clearSignature = () => {
+        const canvas = signatureCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        setHasSignature(false);
+    };
+
+    const getCanvasPos = (e, canvas) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    };
+
+    const handleSignatureStart = (e) => {
+        e.preventDefault();
+        const canvas = signatureCanvasRef.current;
+        if (!canvas) return;
+        setIsDrawing(true);
+        lastPos.current = getCanvasPos(e, canvas);
+    };
+
+    const handleSignatureMove = (e) => {
+        e.preventDefault();
+        if (!isDrawing) return;
+        const canvas = signatureCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const pos = getCanvasPos(e, canvas);
+        ctx.beginPath();
+        ctx.moveTo(lastPos.current.x, lastPos.current.y);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        lastPos.current = pos;
+        setHasSignature(true);
+    };
+
+    const handleSignatureEnd = (e) => {
+        e.preventDefault();
+        setIsDrawing(false);
+        lastPos.current = null;
+    };
+
+    const handleReturnSubmit = async (e) => {
+        e.preventDefault();
+        if (!returnForm.serial.trim()) {
+            showToast('El número de serie es obligatorio', 'error');
+            return;
+        }
+        if (!returnForm.deliveredByName.trim()) {
+            showToast('El nombre de quien entrega es obligatorio', 'error');
+            return;
+        }
+        if (!hasSignature) {
+            showToast('La firma digital es obligatoria', 'error');
+            return;
+        }
+
+        setIsSubmittingReturn(true);
+        try {
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const timeStr = now.toTimeString().slice(0, 5);
+            const signatureDataUrl = getSignatureDataUrl();
+            const clientName = getClientName ? getClientName(countryFilter) : (countryFilter || 'SFDC');
+
+            // 1. Crear el Ticket como adicional de recupero
+            const newTicketData = {
+                subject: `[RECUPERO ADICIONAL] ${returnForm.deviceType} S/N: ${returnForm.serial.trim()} - Recibido por ${currentUser?.name}`,
+                requester: returnForm.deliveredByName.trim(),
+                priority: 'Normal',
+                status: 'Abierto',
+                deliveryStatus: 'Recibido',
+                client: clientName,
+                internalNotes: [
+                    {
+                        author: currentUser?.name || 'Conductor',
+                        date: now.toISOString(),
+                        text: `Dispositivo recibido por conductor ${currentUser?.name} el ${dateStr} a las ${timeStr}. ${returnForm.notes ? 'Obs: ' + returnForm.notes : ''}`.trim()
+                    }
+                ],
+                logistics: {
+                    type: 'Recupero',
+                    deliveryPerson: currentUser?.name || '',
+                    date: dateStr
+                },
+                associatedCases: [
+                    {
+                        caseNumber: 'Recupero Adicional',
+                        method: 'Recupero',
+                        assets: [{ serial: returnForm.serial.trim(), type: 'Recupero' }]
+                    }
+                ],
+                deliveryDetails: {
+                    receivedBy: returnForm.deliveredByName.trim(),
+                    deliveredAt: now.toISOString(),
+                    actualTime: timeStr,
+                    notes: returnForm.notes,
+                    signatureDataUrl: signatureDataUrl
+                }
+            };
+
+            const createdTicket = await addTicket(newTicketData);
+            if (!createdTicket) throw new Error('Error al crear el ticket. Intente nuevamente.');
+
+            const ticketId = createdTicket?.id || null;
+
+            // 2. Crear logistics_task vinculado al ticket
+            if (addLogisticsTask) {
+                await addLogisticsTask({
+                    ticket_id: ticketId,
+                    method: 'Recupero',
+                    status: 'Recibido',
+                    delivery_person: currentUser?.name || '',
+                    assigned_to: currentUser?.id || null,
+                    assets: [{ serial: returnForm.serial.trim(), type: returnForm.deviceType, action: 'Recupero' }],
+                    notes: returnForm.notes || '',
+                    date: dateStr
+                });
+            }
+
+            // 3. Generar PDF Remito
+            const { generateReturnRemitoPDF } = await import('../../../lib/pdf-generator');
+            if (generateReturnRemitoPDF) {
+                await generateReturnRemitoPDF({
+                    ticketId: ticketId || 'ADICIONAL',
+                    driverName: currentUser?.name || 'Conductor',
+                    deliveredByName: returnForm.deliveredByName,
+                    deviceType: returnForm.deviceType,
+                    serial: returnForm.serial.trim(),
+                    notes: returnForm.notes,
+                    date: dateStr,
+                    time: timeStr,
+                    clientName,
+                    signatureDataUrl
+                });
+            }
+
+            showToast('Recepción registrada. Ticket creado y remito descargado.', 'success');
+            setIsReturnModalOpen(false);
+            setReturnForm({ deliveredByName: '', serial: '', deviceType: 'Laptop', notes: '' });
+            clearSignature();
+            await refreshData();
+        } catch (err) {
+            console.error('Error registrando recepción:', err);
+            showToast('Error al registrar: ' + (err.message || 'intente nuevamente'), 'error');
+        } finally {
+            setIsSubmittingReturn(false);
+        }
+    };
 
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
@@ -1312,6 +1495,180 @@ export default function MyDeliveriesPage() {
                     {toast.message}
                 </div>
             )}
+
+            {/* ── Floating Button: Recibí un Dispositivo ─────────────────── */}
+            <button
+                onClick={() => {
+                    setReturnForm({ deliveredByName: '', serial: '', deviceType: 'Laptop', notes: '' });
+                    clearSignature();
+                    setIsReturnModalOpen(true);
+                }}
+                style={{
+                    position: 'fixed',
+                    bottom: '2rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 1500,
+                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '50px',
+                    padding: '0.85rem 1.75rem',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.6rem',
+                    boxShadow: '0 8px 24px rgba(217,119,6,0.45)',
+                    cursor: 'pointer',
+                    letterSpacing: '0.02em',
+                    transition: 'transform 0.15s, box-shadow 0.15s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1.05)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(217,119,6,0.55)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateX(-50%) scale(1)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(217,119,6,0.45)'; }}
+            >
+                <PackagePlus size={20} />
+                Recibí un Dispositivo
+            </button>
+
+            {/* ── Modal: Registrar Recepción de Activo ───────────────────── */}
+            <Modal
+                isOpen={isReturnModalOpen}
+                onClose={() => setIsReturnModalOpen(false)}
+                title="📦 Registrar Recepción de Dispositivo"
+                disableOutsideClick={true}
+            >
+                <form onSubmit={handleReturnSubmit}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+                        {/* Info banner */}
+                        <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', padding: '0.75rem 1rem', fontSize: '0.85rem', color: '#92400e' }}>
+                            ⚠️ Al confirmar se creará un Ticket de Recupero Adicional y se descargará el remito para firmar.
+                        </div>
+
+                        {/* Quien entrega */}
+                        <div>
+                            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
+                                Nombre de quien entrega el dispositivo *
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Nombre completo"
+                                value={returnForm.deliveredByName}
+                                onChange={e => setReturnForm(p => ({ ...p, deliveredByName: e.target.value }))}
+                                required
+                                style={{ width: '100%', padding: '0.65rem 0.9rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-main)', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        {/* Tipo de dispositivo */}
+                        <div>
+                            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
+                                Tipo de Dispositivo *
+                            </label>
+                            <select
+                                className="form-select"
+                                value={returnForm.deviceType}
+                                onChange={e => setReturnForm(p => ({ ...p, deviceType: e.target.value }))}
+                                style={{ width: '100%', padding: '0.65rem 0.9rem', fontSize: '0.95rem' }}
+                            >
+                                <option value="Laptop">Laptop</option>
+                                <option value="Celular">Celular / Smartphone</option>
+                                <option value="Tablet">Tablet</option>
+                                <option value="Accesorio">Accesorio</option>
+                                <option value="YubiKey">YubiKey</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+
+                        {/* Número de Serie */}
+                        <div>
+                            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
+                                Número de Serie (S/N) *
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Ej: C02XY1234ABC"
+                                value={returnForm.serial}
+                                onChange={e => setReturnForm(p => ({ ...p, serial: e.target.value }))}
+                                required
+                                style={{ width: '100%', padding: '0.65rem 0.9rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-main)', fontSize: '0.95rem', fontFamily: 'monospace', boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        {/* Observaciones */}
+                        <div>
+                            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
+                                Observaciones (opcional)
+                            </label>
+                            <textarea
+                                placeholder="Estado del dispositivo, accesorios incluidos, etc."
+                                value={returnForm.notes}
+                                onChange={e => setReturnForm(p => ({ ...p, notes: e.target.value }))}
+                                rows={2}
+                                style={{ width: '100%', padding: '0.65rem 0.9rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--text-main)', fontSize: '0.95rem', resize: 'vertical', boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        {/* Firma Digital */}
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                                <label style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                    Firma Digital *
+                                </label>
+                                {hasSignature && (
+                                    <button
+                                        type="button"
+                                        onClick={clearSignature}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '2px 8px', cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-secondary)' }}
+                                    >
+                                        <XIcon size={12} /> Borrar
+                                    </button>
+                                )}
+                            </div>
+                            <div style={{ border: `2px solid ${hasSignature ? '#10b981' : 'var(--border)'}`, borderRadius: '8px', overflow: 'hidden', background: 'white', touchAction: 'none' }}>
+                                <canvas
+                                    ref={signatureCanvasRef}
+                                    width={500}
+                                    height={150}
+                                    style={{ width: '100%', height: '120px', display: 'block', cursor: 'crosshair' }}
+                                    onMouseDown={handleSignatureStart}
+                                    onMouseMove={handleSignatureMove}
+                                    onMouseUp={handleSignatureEnd}
+                                    onMouseLeave={handleSignatureEnd}
+                                    onTouchStart={handleSignatureStart}
+                                    onTouchMove={handleSignatureMove}
+                                    onTouchEnd={handleSignatureEnd}
+                                />
+                            </div>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
+                                {hasSignature ? '✅ Firma capturada' : 'Firme en el recuadro con el dedo o el mouse'}
+                            </p>
+                        </div>
+
+                        {/* Botones */}
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => setIsReturnModalOpen(false)}
+                                style={{ flex: 1 }}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                type="submit"
+                                icon={isSubmittingReturn ? Loader2 : PackagePlus}
+                                disabled={isSubmittingReturn}
+                                style={{ flex: 2, background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none' }}
+                                className={isSubmittingReturn ? 'animate-pulse' : ''}
+                            >
+                                {isSubmittingReturn ? 'Registrando...' : 'Confirmar y Generar Remito'}
+                            </Button>
+                        </div>
+                    </div>
+                </form>
+            </Modal>
 
             <style jsx>{`
                 .hover-underline:hover span {
