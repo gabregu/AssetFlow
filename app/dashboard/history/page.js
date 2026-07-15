@@ -406,9 +406,22 @@ export default function HistoryPage() {
                 {/* Mobile Cards View */}
                 <div className="mobile-only">
                     {(() => {
-                        const entries = Object.entries(groupedTickets).sort(([monthA], [monthB]) => {
-                            if (sortConfig.key !== 'completedDate') return 0;
-                            return sortConfig.direction === 'asc' ? monthA.localeCompare(monthB) : monthB.localeCompare(monthA);
+                        // Build grouped object from sortedAndFilteredTickets (same as desktop block)
+                        const grouped = {};
+                        sortedAndFilteredTickets.forEach(t => {
+                            const localCompletedStr = getLocalCompletedDateStr(t);
+                            if (!localCompletedStr) return;
+                            const [yyyy, mm, dd] = localCompletedStr.split('-');
+                            const dateObj = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+                            const key = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                            const finalKey = key.charAt(0).toUpperCase() + key.slice(1);
+                            if (!grouped[localCompletedStr]) grouped[localCompletedStr] = { label: finalKey, items: [] };
+                            grouped[localCompletedStr].items.push(t);
+                        });
+
+                        const entries = Object.entries(grouped).sort(([keyA], [keyB]) => {
+                            if (sortConfig.direction === 'asc') return keyA.localeCompare(keyB);
+                            return keyB.localeCompare(keyA);
                         });
 
                         if (entries.length === 0) {
@@ -419,8 +432,8 @@ export default function HistoryPage() {
                             );
                         }
 
-                        return entries.map(([monthStr, monthTickets]) => (
-                            <React.Fragment key={`mobile-${monthStr}`}>
+                        return entries.map(([sortKey, groupData]) => (
+                            <React.Fragment key={`mobile-${sortKey}`}>
                                 <div style={{
                                     backgroundColor: 'var(--background-secondary)',
                                     padding: '0.75rem 1rem',
@@ -430,15 +443,15 @@ export default function HistoryPage() {
                                     zIndex: 5
                                 }}>
                                     <span style={{ fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.8rem' }}>
-                                        {monthStr}
+                                        {groupData.label}
                                     </span>
                                     <span style={{ marginLeft: '0.5rem', background: 'var(--border)', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 600 }}>
-                                        {monthTickets.length}
+                                        {groupData.items.length}
                                     </span>
                                 </div>
 
                                 <div style={{ padding: '0.5rem' }}>
-                                    {monthTickets.map(ticket => (
+                                    {groupData.items.map(ticket => (
                                         <div key={`mobile-${ticket.id}`} className="ticket-card-mobile" style={{ borderLeft: `4px solid var(--primary-color)` }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                                                 <div>
