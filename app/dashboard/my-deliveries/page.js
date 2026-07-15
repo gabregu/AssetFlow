@@ -174,7 +174,7 @@ export default function MyDeliveriesPage() {
             const newTicketData = {
                 subject: `[RECUPERO ADICIONAL] ${returnForm.deviceType} S/N: ${returnForm.serial.trim()} - Recibido por ${currentUser?.name}`,
                 requester: returnForm.deliveredByName.trim(),
-                priority: 'Normal',
+                priority: 'Media',
                 status: 'Abierto',
                 deliveryStatus: 'Recibido',
                 client: clientName,
