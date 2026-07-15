@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
@@ -16,7 +16,7 @@ export default function HistoryPage() {
     const [columnFilters, setColumnFilters] = useState({ requester: '' });
 
     // Helper to get local resolution/delivery completed date cleanly without timezone shifts
-    const getLocalCompletedDateStr = (t) => {
+    const getLocalCompletedDateStr = useCallback((t) => {
         const rawDate = t.deliveryDetails?.customBillingDate || t.deliveryCompletedDate;
         if (!rawDate) return '';
         
@@ -39,10 +39,10 @@ export default function HistoryPage() {
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
         const dd = String(dateObj.getDate()).padStart(2, '0');
         return `${yyyy}-${mm}-${dd}`;
-    };
+    }, []);
 
     // Helper to identify service type (Entrega, Recupero, Ambos)
-    const getServiceType = (ticket) => {
+    const getServiceType = useCallback((ticket) => {
         const tasks = (logisticsTasks || []).filter(t => t.ticket_id === ticket.id);
         
         let hasDelivery = false;
@@ -98,7 +98,7 @@ export default function HistoryPage() {
         if (isCollection) return 'Recupero';
         if (isDelivery) return 'Entrega';
         return 'Entrega'; 
-    };
+    }, [logisticsTasks]);
 
     const [selectedMonth, setSelectedMonth] = useState('All'); // 'All' or 'YYYY-MM'
 
@@ -161,7 +161,7 @@ export default function HistoryPage() {
             });
         }
         return result;
-    }, [historicalTickets, filter, sortConfig, columnFilters, countryFilter, getLocalCompletedDateStr]);
+    }, [historicalTickets, filter, sortConfig, columnFilters, countryFilter, getLocalCompletedDateStr, getClientName]);
 
     const getStatusVariant = (status) => {
         switch (status) {
