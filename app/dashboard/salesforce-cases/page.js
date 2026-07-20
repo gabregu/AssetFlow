@@ -71,50 +71,82 @@ export default function SFDCCasesPage() {
 
     // Normalize SFDC case numbers: remove leading zeros for comparison
     const normalizeCaseNum = (val) => String(val || '').trim().replace(/^0+/, '');
+    const normalizeStr = (val) => String(val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
     const hasService = (c) => {
-        const cNum = normalizeCaseNum(c.caseNumber || c.case_number);
-        if (!cNum) return false;
+        const cNumNorm = normalizeCaseNum(c.caseNumber || c.case_number);
+        const cNumRaw  = String(c.caseNumber || c.case_number || '').trim();
+        if (!cNumRaw) return false;
 
+        // ── Check 1: Buscar en tickets por número de caso ──────────────────────────
         const inTickets = tickets && tickets.some(t => {
-            // 1. El ID del ticket coincide
-            if (normalizeCaseNum(t.id) === cNum) { console.log(`[hasService] MATCH via t.id: ${t.id}`); return true; }
-            // 2. En associated_assets (mapped as associatedCases) - stores SFDC case numbers
-            if (t.associatedCases && t.associatedCases.some(ac => {
-                const acNum = normalizeCaseNum(ac.caseNumber || ac.case_number);
-                return acNum === cNum;
-            })) { console.log(`[hasService] MATCH via associatedCases in ${t.id}`); return true; }
-            // 3. En casos excluidos
-            if (t.excludedCases && t.excludedCases.some(ec => normalizeCaseNum(ec) === cNum)) {
-                console.log(`[hasService] MATCH via excludedCases in ${t.id}`); return true;
+            // 1a. ID del ticket == número de caso
+            if (normalizeCaseNum(t.id) === cNumNorm) {
+                console.log(`[hasService] MATCH via t.id: ${t.id}`); return true;
             }
-            // 4. En el asunto (subject)
-            if (t.subject && (t.subject.includes(cNum) || t.subject.includes(c.caseNumber))) {
+            // 1b. associated_assets / associatedCases contiene el número SFDC
+            if (t.associatedCases && t.associatedCases.some(ac => {
+                const acNorm = normalizeCaseNum(ac.caseNumber || ac.case_number);
+                const acRaw  = String(ac.caseNumber || ac.case_number || '').trim();
+                return acNorm === cNumNorm || acRaw === cNumRaw;
+            })) { console.log(`[hasService] MATCH via associatedCases in ${t.id}`); return true; }
+            // 1c. En casos excluidos
+            if (t.excludedCases && t.excludedCases.some(ec =>
+                normalizeCaseNum(ec) === cNumNorm || String(ec).trim() === cNumRaw
+            )) { console.log(`[hasService] MATCH via excludedCases in ${t.id}`); return true; }
+            // 1d. En el asunto (subject)
+            if (t.subject && (t.subject.includes(cNumNorm) || t.subject.includes(cNumRaw))) {
                 console.log(`[hasService] MATCH via subject in ${t.id}`); return true;
             }
-            // 5. En notas internas
+            // 1e. En notas internas
             if (t.internalNotes && t.internalNotes.some(n => {
                 const txt = typeof n === 'string' ? n : (n && (n.content || n.text)) || '';
-                return txt.includes(cNum) || txt.includes(c.caseNumber);
+                return txt.includes(cNumNorm) || txt.includes(cNumRaw);
             })) { console.log(`[hasService] MATCH via internalNotes in ${t.id}`); return true; }
             return false;
         });
-
         if (inTickets) return true;
 
+        // ── Check 2: Buscar en logistics_tasks por número de caso ─────────────────
         const inTasks = logisticsTasks && logisticsTasks.some(tk => {
-            const tkNum = normalizeCaseNum(tk.case_number || tk.caseNumber);
-            return tkNum === cNum;
+            const tkNorm = normalizeCaseNum(tk.case_number || tk.caseNumber);
+            const tkRaw  = String(tk.case_number || tk.caseNumber || '').trim();
+            return tkNorm === cNumNorm || tkRaw === cNumRaw;
         });
+        if (inTasks) { console.log(`[hasService] MATCH via logisticsTasks for caseNum=${cNumRaw}`); return true; }
 
-        if (!inTasks) {
-            console.log(`[hasService] NO MATCH for caseNum=${cNum} (raw: ${c.caseNumber}). Tickets checked: ${(tickets||[]).length}, Tasks checked: ${(logisticsTasks||[]).length}`);
-        } else {
-            console.log(`[hasService] MATCH via logisticsTasks for caseNum=${cNum}`);
+        // ── Check 3 (Fallback): mismo requester + mismo tipo de acción con ticket ACTIVO ──
+        // Protección extra para casos donde el número no fue almacenado correctamente
+        const importedName = normalizeStr(c.requestedFor || '');
+        const importedSubjectLower = (c.subject || '').toLowerCase();
+        const importedIsCollection = importedSubjectLower.includes('collection') || importedSubjectLower.includes('offboarding');
+        const importedIsDelivery   = !importedIsCollection;
+
+        if (importedName.length >= 4) {
+            const closedStatuses = ['resuelto', 'cerrado', 'servicio facturado', 'caso sfdc cerrado', 'cancelado', 'entregado', 'finalizado', 'no requiere accion'];
+            const matchByRequester = tickets && tickets.some(t => {
+                if (!t.requester) return false;
+                const tName = normalizeStr(t.requester);
+                if (tName !== importedName && !tName.includes(importedName) && !importedName.includes(tName)) return false;
+                // Mismo tipo de acción (collection vs delivery)
+                const tSubjectLower = (t.subject || '').toLowerCase();
+                const tIsCollection = tSubjectLower.includes('collection') || tSubjectLower.includes('offboarding') ||
+                    (t.logistics && (t.logistics.type || '').toLowerCase().includes('recolec'));
+                if (importedIsCollection !== tIsCollection) return false;
+                // Ticket activo (no cerrado)
+                const tStatus = (t.status || '').toLowerCase().trim();
+                const isActive = !closedStatuses.includes(tStatus);
+                if (!isActive) return false;
+                console.log(`[hasService] MATCH via requester+action fallback: ${t.id} (${t.requester})`);
+                return true;
+            });
+            if (matchByRequester) return true;
         }
 
-        return inTasks;
+        console.log(`[hasService] NO MATCH for caseNum=${cNumRaw} (norm: ${cNumNorm}). Tickets: ${(tickets||[]).length}, Tasks: ${(logisticsTasks||[]).length}`);
+        return false;
     };
+
 
     const isActiveCaseStatus = (c) => {
         const status = String(c.status || '').toLowerCase();
