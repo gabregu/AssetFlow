@@ -70,12 +70,22 @@ export default function SFDCCasesPage() {
     };
 
     const hasService = (c) => {
+        const cNum = String(c.caseNumber || c.case_number || '').trim();
+        if (!cNum) return false;
+
         return (tickets && tickets.some(t => 
-            String(t.id) === String(c.caseNumber) || 
-            (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber) === String(c.caseNumber))) ||
-            (t.subject && t.subject.includes(c.caseNumber))
+            String(t.id).trim() === cNum || 
+            (t.salesforceCase && String(t.salesforceCase).trim() === cNum) ||
+            (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber || ac.case_number).trim() === cNum)) ||
+            (t.excludedCases && t.excludedCases.some(ec => String(ec).trim() === cNum)) ||
+            (t.subject && t.subject.includes(cNum)) ||
+            (t.internalNotes && t.internalNotes.some(n => {
+                if (typeof n === 'string') return n.includes(cNum);
+                if (n && typeof n === 'object' && (n.content || n.text)) return (n.content || n.text).includes(cNum);
+                return false;
+            }))
         )) || 
-        (logisticsTasks && logisticsTasks.some(tk => String(tk.case_number) === String(c.caseNumber)));
+        (logisticsTasks && logisticsTasks.some(tk => String(tk.case_number || tk.caseNumber).trim() === cNum));
     };
 
     const isActiveCaseStatus = (c) => {
@@ -741,8 +751,13 @@ export default function SFDCCasesPage() {
 
             for (const groupData of groupEntries) {
                 const { employeeName, action, needsWarning, hasSwapBundle, cases: group } = groupData;
-                const mainCase = group[0];
-                const siblings = group.slice(1);
+                
+                // Filtrar casos del grupo que ya tengan un servicio existente
+                const uniqueGroupCases = group.filter(c => !hasService(c));
+                if (uniqueGroupCases.length === 0) continue;
+
+                const mainCase = uniqueGroupCases[0];
+                const siblings = uniqueGroupCases.slice(1);
 
                 // 2. Historial de Contacto
                 const historicalContact = findContactDetailsFromHistory(employeeName, tickets);

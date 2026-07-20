@@ -388,17 +388,26 @@ export default function TicketsPage() {
                     for (const groupData of groupEntries) {
                         const { employeeName, action, needsWarning, hasSwapBundle, cases: group } = groupData;
                         
-                        // Filtrar casos que ya existen en tickets
+                        // Filtrar casos que ya existen en tickets o tareas logísticas
                         const uniqueGroupCases = group.filter(c => {
-                            const alreadyExists = tickets.some(t => 
-                                (t.subject && t.subject.includes(c.caseNumber)) || 
-                                (t.associatedCases && t.associatedCases.some(ac => ac.caseNumber === c.caseNumber)) ||
-                                (t.internalNotes && t.internalNotes.some(n => {
-                                    if (typeof n === 'string') return n.includes(c.caseNumber);
-                                    if (n && typeof n === 'object' && n.content) return n.content.includes(c.caseNumber);
-                                    return false;
-                                }))
+                            const cNum = String(c.caseNumber || '').trim();
+                            if (!cNum) return false;
+                            const alreadyExists = (
+                                (tickets && tickets.some(t => 
+                                    String(t.id).trim() === cNum || 
+                                    (t.salesforceCase && String(t.salesforceCase).trim() === cNum) ||
+                                    (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber || ac.case_number).trim() === cNum)) ||
+                                    (t.excludedCases && t.excludedCases.some(ec => String(ec).trim() === cNum)) ||
+                                    (t.subject && t.subject.includes(cNum)) ||
+                                    (t.internalNotes && t.internalNotes.some(n => {
+                                        if (typeof n === 'string') return n.includes(cNum);
+                                        if (n && typeof n === 'object' && (n.content || n.text)) return (n.content || n.text).includes(cNum);
+                                        return false;
+                                    }))
+                                )) || 
+                                (logisticsTasks && logisticsTasks.some(tk => String(tk.case_number || tk.caseNumber).trim() === cNum))
                             );
+
                             if (alreadyExists) {
                                 ticketsSkipped++;
                                 return false;
