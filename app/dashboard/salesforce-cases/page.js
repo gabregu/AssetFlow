@@ -80,7 +80,15 @@ export default function SFDCCasesPage() {
 
         // ── Check 1: Buscar en tickets por número de caso ──────────────────────────
         const inTickets = tickets && tickets.some(t => {
-            // 1a. ID del ticket == número de caso
+            // 1a. Campo dedicado "Caso Principal SFDC" (salesforce_case en DB)
+            if (t.salesforceCase) {
+                const sfNorm = normalizeCaseNum(t.salesforceCase);
+                const sfRaw  = String(t.salesforceCase).trim();
+                if (sfNorm === cNumNorm || sfRaw === cNumRaw) {
+                    console.log(`[hasService] MATCH via t.salesforceCase: ${t.id}`); return true;
+                }
+            }
+            // 1b. ID del ticket == número de caso
             if (normalizeCaseNum(t.id) === cNumNorm) {
                 console.log(`[hasService] MATCH via t.id: ${t.id}`); return true;
             }
