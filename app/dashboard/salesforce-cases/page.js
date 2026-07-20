@@ -69,23 +69,51 @@ export default function SFDCCasesPage() {
         }
     };
 
+    // Normalize SFDC case numbers: remove leading zeros for comparison
+    const normalizeCaseNum = (val) => String(val || '').trim().replace(/^0+/, '');
+
     const hasService = (c) => {
-        const cNum = String(c.caseNumber || c.case_number || '').trim();
+        const cNum = normalizeCaseNum(c.caseNumber || c.case_number);
         if (!cNum) return false;
 
-        return (tickets && tickets.some(t => 
-            String(t.id).trim() === cNum || 
-            (t.salesforceCase && String(t.salesforceCase).trim() === cNum) ||
-            (t.associatedCases && t.associatedCases.some(ac => String(ac.caseNumber || ac.case_number).trim() === cNum)) ||
-            (t.excludedCases && t.excludedCases.some(ec => String(ec).trim() === cNum)) ||
-            (t.subject && t.subject.includes(cNum)) ||
-            (t.internalNotes && t.internalNotes.some(n => {
-                if (typeof n === 'string') return n.includes(cNum);
-                if (n && typeof n === 'object' && (n.content || n.text)) return (n.content || n.text).includes(cNum);
-                return false;
-            }))
-        )) || 
-        (logisticsTasks && logisticsTasks.some(tk => String(tk.case_number || tk.caseNumber).trim() === cNum));
+        const inTickets = tickets && tickets.some(t => {
+            // 1. El ID del ticket coincide
+            if (normalizeCaseNum(t.id) === cNum) { console.log(`[hasService] MATCH via t.id: ${t.id}`); return true; }
+            // 2. En associated_assets (mapped as associatedCases) - stores SFDC case numbers
+            if (t.associatedCases && t.associatedCases.some(ac => {
+                const acNum = normalizeCaseNum(ac.caseNumber || ac.case_number);
+                return acNum === cNum;
+            })) { console.log(`[hasService] MATCH via associatedCases in ${t.id}`); return true; }
+            // 3. En casos excluidos
+            if (t.excludedCases && t.excludedCases.some(ec => normalizeCaseNum(ec) === cNum)) {
+                console.log(`[hasService] MATCH via excludedCases in ${t.id}`); return true;
+            }
+            // 4. En el asunto (subject)
+            if (t.subject && (t.subject.includes(cNum) || t.subject.includes(c.caseNumber))) {
+                console.log(`[hasService] MATCH via subject in ${t.id}`); return true;
+            }
+            // 5. En notas internas
+            if (t.internalNotes && t.internalNotes.some(n => {
+                const txt = typeof n === 'string' ? n : (n && (n.content || n.text)) || '';
+                return txt.includes(cNum) || txt.includes(c.caseNumber);
+            })) { console.log(`[hasService] MATCH via internalNotes in ${t.id}`); return true; }
+            return false;
+        });
+
+        if (inTickets) return true;
+
+        const inTasks = logisticsTasks && logisticsTasks.some(tk => {
+            const tkNum = normalizeCaseNum(tk.case_number || tk.caseNumber);
+            return tkNum === cNum;
+        });
+
+        if (!inTasks) {
+            console.log(`[hasService] NO MATCH for caseNum=${cNum} (raw: ${c.caseNumber}). Tickets checked: ${(tickets||[]).length}, Tasks checked: ${(logisticsTasks||[]).length}`);
+        } else {
+            console.log(`[hasService] MATCH via logisticsTasks for caseNum=${cNum}`);
+        }
+
+        return inTasks;
     };
 
     const isActiveCaseStatus = (c) => {
@@ -1040,50 +1068,15 @@ export default function SFDCCasesPage() {
                 return true;
             });
 
-            // 3. Filtrar duplicados ya convertidos a SERVICIOS/TICKETS
-            // Buscamos si el caseNumber está asociado a algún ticket existente en cualquiera de sus campos
-            const existingConvertedCaseNumbers = new Set();
-
-            (tickets || []).forEach(t => {
-                deduplicatedNewCases.forEach(nc => {
-                    const caseNumStr = String(nc.caseNumber).trim();
-                    if (!caseNumStr) return;
-
-                    // 3.1 En el ID del ticket
-                    const isIdMatch = t.id && String(t.id).trim().includes(caseNumStr);
-
-                    // 3.2 En el asunto (subject)
-                    const isSubjectMatch = t.subject && t.subject.includes(caseNumStr);
-
-                    // 3.3 En el campo explícito de Salesforce Case
-                    const isSfdcMatch = t.salesforceCase && String(t.salesforceCase).trim() === caseNumStr;
-
-                    // 3.4 En la lista de casos agrupados/consolidados
-                    const isAssociatedMatch = t.associatedCases && t.associatedCases.some(ac => 
-                        ac.caseNumber && String(ac.caseNumber).trim() === caseNumStr
-                    );
-
-                    // 3.5 En la lista de casos excluidos
-                    const isExcludedMatch = t.excludedCases && t.excludedCases.some(ec => 
-                        String(ec).trim() === caseNumStr
-                    );
-
-                    if (isIdMatch || isSubjectMatch || isSfdcMatch || isAssociatedMatch || isExcludedMatch) {
-                        existingConvertedCaseNumbers.add(nc.caseNumber);
-                    }
-                });
-            });
-
-            // Como acabamos de borrar el inbox de la base de datos para estos países,
-            // no es necesario filtrar contra existingInboxCaseNumbers (que ya no existen).
-            // Solo filtramos contra los que ya se convirtieron a tickets en el sistema.
+            // 3. Filtrar casos que ya fueron convertidos a SERVICIOS/TICKETS o TAREAS LOGÍSTICAS
+            // Usamos hasService() que ya verifica: id, salesforceCase, associatedCases,
+            // excludedCases, subject, internalNotes y logisticsTasks
             const uniqueCases = deduplicatedNewCases.filter(c => {
-                const isConverted = existingConvertedCaseNumbers.has(c.caseNumber);
-
-                // Debug log para ver qué estamos saltando
-                if (isConverted) console.log(`Skipping Case ${c.caseNumber} (Already valid/associated Ticket)`);
-
-                return !isConverted;
+                const alreadyExists = hasService(c);
+                if (alreadyExists) {
+                    console.log(`[Import] Skipping Case ${c.caseNumber} — Ya existe como ticket o tarea logística`);
+                }
+                return !alreadyExists;
             });
 
             if (uniqueCases.length > 0) {
