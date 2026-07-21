@@ -207,13 +207,21 @@ export default function LogisticsHubPage() {
 
         return deduplicatedTasks
             .filter(task => {
-                // "si están en estado Resuelto que no aparezcan" -> Ocultar absolutos de terminación
-                if (['Resuelto', 'Cancelado', 'Cerrado', 'Caso SFDC Cerrado', 'No requiere accion', 'Pendiente'].includes(task.status)) return false;
+                const tStatus = String(task.status || '').trim().toLowerCase();
+                if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'no requiere accion', 'pendiente'].includes(tStatus)) return false;
                 
                 // Ocultar "Entregado" de la vista por defecto, a menos que se busque explícitamente en el filtro
-                if (task.status === 'Entregado' && statusFilter !== 'Entregado') return false;
+                if (tStatus === 'entregado' && statusFilter !== 'Entregado') return false;
 
-                const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
+                const parentTicket = tickets.find(t => String(t.id).trim() === String(task.ticket_id).trim());
+                
+                // Si el ticket padre ya está resuelto/cerrado, tampoco mostrar la tarea
+                if (parentTicket) {
+                    const pStatus = String(parentTicket.status || '').trim().toLowerCase();
+                    if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'servicio facturado'].includes(pStatus)) {
+                        return false;
+                    }
+                }
                 
                 // Filtro de Cliente (via ticket padre)
                 const expectedClient = getClientName(countryFilter);
@@ -284,10 +292,20 @@ export default function LogisticsHubPage() {
         const deduplicatedTasks = Array.from(uniqueMap.values());
 
         const filtered = deduplicatedTasks.filter(task => {
-            if (['Resuelto', 'Cancelado', 'Cerrado', 'Caso SFDC Cerrado', 'No requiere accion', 'Pendiente'].includes(task.status)) return false;
-            if (task.status === 'Entregado') return false;
+            const tStatus = String(task.status || '').trim().toLowerCase();
+            if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'no requiere accion', 'pendiente'].includes(tStatus)) return false;
+            if (tStatus === 'entregado') return false;
 
-            const parentTicket = tickets.find(t => String(t.id) === String(task.ticket_id));
+            const parentTicket = tickets.find(t => String(t.id).trim() === String(task.ticket_id).trim());
+            
+            // Si el ticket padre ya está resuelto/cerrado, tampoco contar la tarea
+            if (parentTicket) {
+                const pStatus = String(parentTicket.status || '').trim().toLowerCase();
+                if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'servicio facturado'].includes(pStatus)) {
+                    return false;
+                }
+            }
+
             const expectedClient = getClientName(countryFilter);
             const matchesCountry = parentTicket?.client === expectedClient;
 
