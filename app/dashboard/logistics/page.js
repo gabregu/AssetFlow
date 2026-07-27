@@ -208,7 +208,7 @@ export default function LogisticsHubPage() {
         return deduplicatedTasks
             .filter(task => {
                 const tStatus = String(task.status || '').trim().toLowerCase();
-                if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'no requiere accion', 'pendiente'].includes(tStatus)) return false;
+                if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'no requiere accion', 'pendiente', 'bloqueado / a la espera'].includes(tStatus)) return false;
                 
                 // Ocultar "Entregado" de la vista por defecto, a menos que se busque explícitamente en el filtro
                 if (tStatus === 'entregado' && statusFilter !== 'Entregado') return false;
@@ -218,7 +218,7 @@ export default function LogisticsHubPage() {
                 // Si el ticket padre ya está resuelto/cerrado, tampoco mostrar la tarea
                 if (parentTicket) {
                     const pStatus = String(parentTicket.status || '').trim().toLowerCase();
-                    if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'servicio facturado'].includes(pStatus)) {
+                    if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'servicio facturado', 'bloqueado / a la espera'].includes(pStatus)) {
                         return false;
                     }
                 }
@@ -293,7 +293,7 @@ export default function LogisticsHubPage() {
 
         const filtered = deduplicatedTasks.filter(task => {
             const tStatus = String(task.status || '').trim().toLowerCase();
-            if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'no requiere accion', 'pendiente'].includes(tStatus)) return false;
+            if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'no requiere accion', 'pendiente', 'bloqueado / a la espera'].includes(tStatus)) return false;
             if (tStatus === 'entregado') return false;
 
             const parentTicket = tickets.find(t => String(t.id).trim() === String(task.ticket_id).trim());
@@ -301,7 +301,7 @@ export default function LogisticsHubPage() {
             // Si el ticket padre ya está resuelto/cerrado, tampoco contar la tarea
             if (parentTicket) {
                 const pStatus = String(parentTicket.status || '').trim().toLowerCase();
-                if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'servicio facturado'].includes(pStatus)) {
+                if (['resuelto', 'cancelado', 'cerrado', 'caso sfdc cerrado', 'servicio facturado', 'bloqueado / a la espera'].includes(pStatus)) {
                     return false;
                 }
             }
