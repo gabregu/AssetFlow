@@ -271,7 +271,7 @@ export default function CaseLogisticsSection({
 
     if (!task) return null;
 
-    const showExecutionFields = !['Pendiente', 'En Preparación'].includes(localValues.status || 'Pendiente');
+    const showExecutionFields = true;
 
     return (
         <div style={{ marginTop: '0.5rem' }}>
