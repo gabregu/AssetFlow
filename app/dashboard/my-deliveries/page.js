@@ -16,7 +16,8 @@ import {
     Loader2,
     Camera,
     PackagePlus,
-    X as XIcon
+    X as XIcon,
+    Share2
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -1455,6 +1456,50 @@ export default function MyDeliveriesPage() {
                             }}
                         >
                             SÍ, DESCARGAR PDF
+                        </Button>
+                        <Button 
+                            type="button" 
+                            variant="primary" 
+                            onClick={() => {
+                                if (showDownloadPrompt.ticket) {
+                                    const { ticket: virtualTicket, assets, form } = showDownloadPrompt;
+                                    
+                                    const deliveredAtTime = (() => {
+                                        if (form.deliveredDate && form.actualTime) {
+                                            const [yr, mo, dy] = form.deliveredDate.split('-').map(Number);
+                                            const [hr, mn] = form.actualTime.split(':').map(Number);
+                                            const localDateObj = new Date(yr, mo - 1, dy, hr, mn);
+                                            if (!isNaN(localDateObj.getTime())) {
+                                                return localDateObj.toISOString();
+                                            }
+                                        }
+                                        return new Date().toISOString();
+                                    })();
+
+                                    setTimeout(() => {
+                                        generateTicketPDF(virtualTicket, assets, {
+                                            receivedBy: form.receivedBy,
+                                            dni: form.dni,
+                                            notes: form.notes,
+                                            actualTime: form.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                            deliveredAt: deliveredAtTime
+                                        }, 'share');
+                                    }, 0);
+                                }
+                                setShowDownloadPrompt(false);
+                            }}
+                            icon={Share2}
+                            style={{ 
+                                padding: '0.75rem 1.5rem', 
+                                fontSize: '1rem', 
+                                backgroundColor: '#25D366', 
+                                borderColor: '#25D366',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                boxShadow: '0 4px 12px rgba(37, 211, 102, 0.2)'
+                            }}
+                        >
+                            COMPARTIR
                         </Button>
                         <Button 
                             type="button" 
