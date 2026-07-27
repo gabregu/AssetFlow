@@ -108,6 +108,12 @@ export default function LogisticsHubPage() {
     const [driverFilter, setDriverFilter] = useState('All');
     const [showMap, setShowMap] = useState(false);
 
+    const activeDrivers = useMemo(() => {
+        return (users || []).filter(u => 
+            String(u.role).toLowerCase() === 'conductor' || u.tracking_enabled
+        );
+    }, [users]);
+
     // Modal States
     const [actionModal, setActionModal] = useState({ isOpen: false, type: null, task: null });
     // type: 'prepare_shipping' | 'schedule_appointment'
@@ -739,7 +745,7 @@ export default function LogisticsHubPage() {
                         <div style={{ borderRadius: 0, overflow: 'hidden' }}>
                             <ServiceMap
                                 tickets={mapItems}
-                                drivers={[]}
+                                drivers={activeDrivers}
                             />
                         </div>
                     )}
