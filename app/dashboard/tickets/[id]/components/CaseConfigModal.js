@@ -305,7 +305,14 @@ export default function CaseConfigModal({
                                     // Forzar el estado a "En Preparación" o "Para Coordinar" (si es recolección) siempre que se guarde el caso
                                     const isCollection = caseTypeInput === 'recoleccion' || (activeTask && isCollectionCase(activeTask.subject || ''));
                                     const targetStatus = isCollection ? 'Para Coordinar' : 'En Preparación';
-                                    const updatesToSave = { ...pendingTaskUpdates, status: targetStatus };
+                                    const updatesToSave = { ...pendingTaskUpdates };
+                                    
+                                    // Solo forzar salir de Pendiente si aún está en ese estado y no se ha modificado manualmente
+                                    if (!activeTask?.status || activeTask.status === 'Pendiente') {
+                                        if (!updatesToSave.status) {
+                                            updatesToSave.status = targetStatus;
+                                        }
+                                    }
                                     if (logisticsSaveRef.current) {
                                         const result = await logisticsSaveRef.current(updatesToSave);
                                         if (result?.error) return; // No cerrar si hubo error
