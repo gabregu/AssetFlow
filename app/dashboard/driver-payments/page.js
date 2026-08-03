@@ -352,128 +352,151 @@ export default function DriverPaymentsPage() {
         if (!printWindow) return alert('Por favor, permite las ventanas emergentes (pop-ups) en tu navegador.');
         
         const period = `${monthNames[selectedMonth]} de ${selectedYear}`;
-        const totalARS = exchangeRate > 0 ? (data.total * exchangeRate).toFixed(2) : '0.00';
-        const paidUSD = savedPaymentUSD || 0;
-        const debtUSD = data.total - paidUSD;
+        const rate = exchangeRate > 0 ? exchangeRate : 1;
+
+        // Always work in ARS as primary currency
+        const totalUSD = data.total;
+        const totalARS = totalUSD * rate;
+        const savedPaymentARS = (savedPaymentUSD || 0) * rate;
+        const debtARS = totalARS - savedPaymentARS;
 
         const savedDate = rates?.driverPaymentDates?.[monthKey]?.[driverName];
         const savedMethod = rates?.driverPaymentMethods?.[monthKey]?.[driverName];
         
-        let dateHtml = '';
-        if (savedDate) {
-            const parts = savedDate.split('-');
-            const formattedDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : savedDate;
-            dateHtml = `
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; color: #475569;">
-                    <span>Fecha de Pago:</span>
-                    <strong>${formattedDate}</strong>
-                </div>
-            `;
-        }
-        
-        let methodHtml = '';
-        if (savedMethod) {
-            methodHtml = `
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; color: #475569;">
-                    <span>Medio de Pago:</span>
-                    <strong>${savedMethod}</strong>
-                </div>
-            `;
-        }
-        
+        const formattedSavedDate = savedDate
+            ? savedDate.split('-').reverse().join('/')
+            : null;
+
+        // Build items rows — cost shown in ARS
         let itemsHtml = '';
-        data.items.forEach(item => {
-            const req = item.requester || '-';
+        data.items.forEach((item, idx) => {
+            const itemARS = item.cost * rate;
             const clientVal = item.client || 'N/A';
+            const dateVal = item.date
+                ? item.date.substring(0, 10).split('-').reverse().join('/')
+                : '-';
+            const bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
             itemsHtml += `
-                <tr>
-                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${item.id}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0;">${item.description}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${clientVal}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${req}</td>
-                    <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold;">USD ${item.cost.toFixed(2)}</td>
+                <tr style="background:${bg};">
+                    <td style="padding: 9px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">${idx + 1}</td>
+                    <td style="padding: 9px 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px;">${item.description}</td>
+                    <td style="padding: 9px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: center; color: #475569;">${clientVal}</td>
+                    <td style="padding: 9px 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; text-align: center; color: #475569;">${dateVal}</td>
+                    <td style="padding: 9px 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; font-size: 13px;">$ ${itemARS.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                 </tr>
             `;
         });
 
-        const arsHtml = exchangeRate > 0 ? `
-            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px; color: #64748b;">
-                <span>Total a Pagar (ARS):</span>
-                <strong>ARS ${totalARS}</strong>
-            </div>` : '';
+        // Totals section
+        const paidRowHtml = savedPaymentARS > 0 ? `
+            <tr>
+                <td colspan="4" style="padding: 8px 10px; text-align: right; font-size: 13px; color: #10b981;">Monto Abonado:</td>
+                <td style="padding: 8px 10px; text-align: right; font-weight: 700; font-size: 13px; color: #10b981;">$ ${savedPaymentARS.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            </tr>
+            <tr>
+                <td colspan="4" style="padding: 8px 10px; text-align: right; font-size: 13px; color: ${debtARS > 1 ? '#f59e0b' : '#64748b'};">Saldo Pendiente:</td>
+                <td style="padding: 8px 10px; text-align: right; font-weight: 700; font-size: 13px; color: ${debtARS > 1 ? '#f59e0b' : '#64748b'};">$ ${(debtARS > 1 ? debtARS : 0).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            </tr>
+        ` : '';
+
+        const paymentInfoHtml = (formattedSavedDate || savedMethod) ? `
+            <div style="margin-top: 18px; padding: 12px 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 13px;">
+                <div style="font-weight: 700; color: #166534; margin-bottom: 8px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">✓ Información de Pago</div>
+                ${formattedSavedDate ? `<div style="display:flex; justify-content:space-between; margin-bottom: 5px;"><span style="color:#475569;">Fecha de Pago:</span><strong>${formattedSavedDate}</strong></div>` : ''}
+                ${savedMethod ? `<div style="display:flex; justify-content:space-between;"><span style="color:#475569;">Medio de Pago:</span><strong>${savedMethod}</strong></div>` : ''}
+            </div>
+        ` : '';
+
+        const today = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>Liquidación de Servicios - ${driverName}</title>
+                    <title>Liquidación - ${driverName} - ${period}</title>
                     <style>
                         @page { size: A4; margin: 1.5cm; }
-                        body { font-family: system-ui, -apple-system, sans-serif; color: #1e293b; line-height: 1.5; }
-                        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-                        th { background: #f8fafc; padding: 10px; text-align: left; font-weight: 600; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
+                        * { box-sizing: border-box; }
+                        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #1e293b; line-height: 1.5; margin: 0; padding: 0; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 0; font-size: 13px; }
+                        th { background: #1e293b; color: #fff; padding: 10px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+                        th:last-child { text-align: right; }
+                        .header-band { background: #1e293b; color: white; padding: 22px 28px; border-radius: 10px; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+                        .badge { display: inline-block; background: rgba(255,255,255,0.15); padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; margin-top: 6px; }
+                        .total-box { margin-top: 24px; border: 2px solid #1e293b; border-radius: 10px; overflow: hidden; }
+                        .total-main { background: #1e293b; color: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+                        .total-main-label { font-size: 13px; font-weight: 600; opacity: 0.8; }
+                        .total-main-value { font-size: 26px; font-weight: 800; }
+                        .total-sub { padding: 0 20px; background: #f8fafc; }
+                        .footer { margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-end; }
+                        .signature-box { border-top: 1px solid #cbd5e1; padding-top: 8px; text-align: center; width: 200px; font-size: 11px; color: #94a3b8; }
+                        .generated { font-size: 10px; color: #cbd5e1; text-align: right; }
+                        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
                     </style>
                 </head>
                 <body>
-                    <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #334155; padding-bottom: 15px; margin-bottom: 20px;">
+                    <!-- HEADER -->
+                    <div class="header-band">
                         <div>
-                            <h1 style="margin: 0; font-size: 24px;">Liquidación de Servicios Logísticos</h1>
-                            <p style="margin: 5px 0 0; color: #64748b; font-size: 16px;">Conductor: <strong>${driverName}</strong></p>
+                            <div style="font-size: 11px; font-weight: 600; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">Liquidación de Servicios Logísticos</div>
+                            <div style="font-size: 22px; font-weight: 800;">${driverName}</div>
+                            <div class="badge">📅 ${period}</div>
                         </div>
                         <div style="text-align: right;">
-                            <div style="color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase;">Período</div>
-                            <div style="font-size: 18px; font-weight: bold;">${period}</div>
-                            <div style="margin-top: 5px; font-size: 12px; color: #64748b;">Tipo de Cambio: ${exchangeRate > 0 ? '1 USD = ' + exchangeRate + ' ARS' : 'N/A'}</div>
+                            <div style="font-size: 11px; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Tipo de Cambio</div>
+                            <div style="font-size: 16px; font-weight: 700;">1 USD = $ ${rate.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            <div style="font-size: 11px; opacity: 0.5; margin-top: 8px;">Emitido el ${today}</div>
                         </div>
                     </div>
 
+                    <!-- ITEMS TABLE -->
                     <table>
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Descripción</th>
-                                <th style="text-align: center;">Cliente</th>
-                                <th style="text-align: center;">Solicitante</th>
-                                <th style="text-align: right;">Costo</th>
+                                <th style="width: 32px;">#</th>
+                                <th>Descripción del Servicio</th>
+                                <th style="text-align: center; width: 110px;">Cliente</th>
+                                <th style="text-align: center; width: 90px;">Fecha</th>
+                                <th style="text-align: right; width: 130px;">Monto (ARS)</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${itemsHtml}
+                            <!-- SUBTOTAL ROW -->
+                            <tr style="background: #f1f5f9;">
+                                <td colspan="4" style="padding: 10px; text-align: right; font-size: 13px; font-weight: 700; color: #334155; border-top: 2px solid #cbd5e1;">
+                                    Total ${data.items.length} servicio${data.items.length !== 1 ? 's' : ''}:
+                                </td>
+                                <td style="padding: 10px; text-align: right; font-weight: 800; font-size: 15px; color: #1e293b; border-top: 2px solid #cbd5e1;">
+                                    $ ${totalARS.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                </td>
+                            </tr>
+                            ${paidRowHtml}
                         </tbody>
                     </table>
 
-                    <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
-                        <div style="width: 300px; background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                <span style="color: #64748b;">Servicios Completados:</span>
-                                <strong>${data.items.length}</strong>
+                    <!-- TOTAL BOX -->
+                    <div class="total-box">
+                        <div class="total-main">
+                            <div>
+                                <div class="total-main-label">TOTAL A PAGAR</div>
+                                <div style="font-size: 11px; opacity: 0.5; margin-top: 2px;">≈ USD ${totalUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} al tipo de cambio vigente</div>
                             </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 18px;">
-                                <span>Total a Pagar (USD):</span>
-                                <strong>USD ${data.total.toFixed(2)}</strong>
-                            </div>
-                            </div>
-                            ${arsHtml}
-                            ${dateHtml}
-                            ${methodHtml}
-                            <div style="border-top: 1px solid #cbd5e1; margin: 10px 0;"></div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #10b981;">
-                                <span>Monto Abonado:</span>
-                                <strong>USD ${paidUSD.toFixed(2)}</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; color: ${debtUSD > 0.01 ? '#f59e0b' : '#64748b'};">
-                                <span>Saldo Pendiente:</span>
-                                <strong>USD ${debtUSD > 0.01 ? debtUSD.toFixed(2) : '0.00'}</strong>
-                            </div>
+                            <div class="total-main-value">$ ${totalARS.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                         </div>
                     </div>
-                    
-                    <div style="margin-top: 50px; text-align: center; color: #94a3b8; font-size: 12px;">
-                        Documento generado desde el panel de control de AssetFlow.
+
+                    <!-- PAYMENT INFO -->
+                    ${paymentInfoHtml}
+
+                    <!-- FOOTER -->
+                    <div class="footer">
+                        <div class="signature-box">Firma y aclaración del conductor</div>
+                        <div class="generated">Documento generado por AssetFlow · ${today}</div>
                     </div>
-                    
+
                     <script>
                         window.onload = function() { window.print(); }
-                    </script>
+                    <\/script>
                 </body>
             </html>
         `);
