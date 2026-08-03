@@ -25,6 +25,23 @@ export default function DriverPaymentsPage() {
         return getExchangeRateForDate(rates, new Date(selectedYear, selectedMonth, 1));
     }, [rates, selectedMonth, selectedYear]);
 
+    const isClosedStatus = (statusStr) => {
+        if (!statusStr) return false;
+        const s = String(statusStr).trim().toLowerCase();
+        return [
+            'entregado',
+            'completada',
+            'completado',
+            'finalizado',
+            'recuperado',
+            'resuelto',
+            'cerrado',
+            'cerrada',
+            'servicio facturado',
+            'caso sfdc cerrado'
+        ].includes(s);
+    };
+
     const { driverStats, totalDue, totalPaid } = useMemo(() => {
         const stats = {};
         const processedTaskIds = new Set();
@@ -41,6 +58,16 @@ export default function DriverPaymentsPage() {
                 financials.taskFinancials.forEach(tFin => {
                     const taskObj = logisticsTasks.find(lt => String(lt.id) === String(tFin.taskId));
                     
+                    // Filter: Only include tasks/cases that are performed/closed
+                    let taskStatus = taskObj?.status;
+                    if (!taskStatus && ticket.associatedCases) {
+                        const assoc = ticket.associatedCases.find(c => String(c.caseNumber || c.id) === String(tFin.taskRef || tFin.taskId));
+                        if (assoc) taskStatus = assoc.status;
+                    }
+                    if (!taskStatus) taskStatus = ticket.logistics?.status || ticket.status;
+
+                    if (!isClosedStatus(taskStatus)) return;
+
                     // Unified task stable date
                     let taskDateStr = null;
                     if (taskObj) {
@@ -105,6 +132,9 @@ export default function DriverPaymentsPage() {
                 });
             } else {
                 // Normal single ticket
+                const ticketStatus = ticket.logistics?.status || ticket.status;
+                if (!isClosedStatus(ticketStatus)) return;
+
                 if (!ticketDateStr) return;
                 const date = new Date(ticketDateStr);
                 if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
@@ -133,6 +163,9 @@ export default function DriverPaymentsPage() {
         logisticsTasks.forEach(task => {
             if (task.id && processedTaskIds.has(String(task.id))) return;
             
+            // Filter: Only include tasks that are performed/closed
+            if (!isClosedStatus(task.status)) return;
+
             // Unified task stable date
             let taskDateStr = null;
             if (task.date && task.date !== 'Pendiente' && task.date !== 'Sin fecha') {
@@ -142,7 +175,7 @@ export default function DriverPaymentsPage() {
             } else {
                 taskDateStr = task.created_at ? task.created_at.substring(0, 10) : null;
             }
-            if (!taskDateStr || task.status !== 'Completada') return;
+            if (!taskDateStr) return;
 
             const date = new Date(taskDateStr.toString().includes('T') ? taskDateStr : taskDateStr + 'T00:00:00');
             if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
