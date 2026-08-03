@@ -673,62 +673,127 @@ export default function MyStatsPage() {
                     </div>
                 </Card>
 
-                {/* Gráfico de Evolución de 6 Meses */}
-                <Card style={{ padding: '1rem', backgroundColor: 'var(--surface)', display: 'flex', flexDirection: 'column', minHeight: '170px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                        <BarChart3 size={16} style={{ color: '#8b5cf6' }} />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Evolución 6 Meses</span>
+                {/* Gráfico de Evolución de 6 Meses — Premium */}
+                <Card style={{ padding: '1rem 1.25rem', backgroundColor: 'var(--surface)', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <BarChart3 size={16} style={{ color: '#8b5cf6' }} />
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Evolución 6 Meses</span>
+                        </div>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: 600 }}>servicios completados</span>
                     </div>
 
-                    <div style={{ 
-                        height: '90px', 
-                        display: 'flex', 
-                        alignItems: 'flex-end', 
-                        gap: '6px', 
-                        paddingBottom: '5px',
-                        borderBottom: '1px solid var(--border)'
-                    }}>
-                        {stats.historyData.map((h, i) => {
+                    {/* Chart area */}
+                    <div style={{ position: 'relative' }}>
+                        {/* Horizontal grid lines */}
+                        {(() => {
                             const maxTotal = Math.max(...stats.historyData.map(item => item.total), 1);
-                            const percentHeight = (h.total / maxTotal) * 100;
-                            const targetDate = new Date(new Date().getFullYear(), new Date().getMonth() - selectedMonthIndex, 1);
-                            const isCurrentSelected = h.month === targetDate.getMonth() && h.year === targetDate.getFullYear();
-                            
-                            return (
-                                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative' }}>
-                                    <span style={{ 
-                                        fontSize: '0.6rem', 
-                                        fontWeight: '800', 
-                                        color: isCurrentSelected ? '#8b5cf6' : 'var(--text-secondary)',
-                                        marginBottom: '2px'
-                                    }}>
-                                        {h.total}
+                            const gridLines = [0, 0.25, 0.5, 0.75, 1];
+                            return gridLines.map((pct, gi) => (
+                                <div key={gi} style={{
+                                    position: 'absolute',
+                                    left: 0, right: 0,
+                                    bottom: `calc(28px + ${pct * 140}px)`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    pointerEvents: 'none',
+                                    zIndex: 0
+                                }}>
+                                    <span style={{ fontSize: '0.55rem', color: 'var(--text-secondary)', fontWeight: 600, width: '18px', textAlign: 'right', flexShrink: 0 }}>
+                                        {pct > 0 ? Math.round(maxTotal * pct) : ''}
                                     </span>
-                                    
-                                    <div style={{
-                                        width: '100%',
-                                        maxWidth: '24px',
-                                        height: `${Math.max(percentHeight, 4)}%`,
-                                        background: isCurrentSelected 
-                                            ? 'linear-gradient(to top, #8b5cf6, #a78bfa)' 
-                                            : 'rgba(139, 92, 246, 0.15)',
-                                        borderRadius: '3px 3px 0 0',
-                                        transition: 'all 0.4s ease'
-                                    }} />
-                                    
-                                    <span style={{ 
-                                        fontSize: '0.6rem', 
-                                        fontWeight: 700, 
-                                        color: isCurrentSelected ? 'var(--text-main)' : 'var(--text-secondary)',
-                                        textTransform: 'capitalize',
-                                        marginTop: '4px'
-                                    }}>
-                                        {h.label}
-                                    </span>
+                                    <div style={{ flex: 1, height: '1px', background: pct === 0 ? 'var(--border)' : 'rgba(148,163,184,0.15)', borderStyle: pct === 0 ? 'solid' : 'dashed', borderWidth: pct === 0 ? '1px 0 0 0' : '1px 0 0 0' }} />
                                 </div>
-                            );
-                        })}
+                            ));
+                        })()}
+
+                        {/* Bars + labels */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'flex-end',
+                            gap: '8px',
+                            height: '168px',
+                            paddingLeft: '26px',
+                            paddingBottom: '28px',
+                            position: 'relative',
+                            zIndex: 1
+                        }}>
+                            {stats.historyData.map((h, i) => {
+                                const maxTotal = Math.max(...stats.historyData.map(item => item.total), 1);
+                                const barHeightPx = (h.total / maxTotal) * 140;
+                                const targetDate = new Date(new Date().getFullYear(), new Date().getMonth() - selectedMonthIndex, 1);
+                                const isCurrentSelected = h.month === targetDate.getMonth() && h.year === targetDate.getFullYear();
+                                const isEmpty = h.total === 0;
+                                const hRate = getExchangeRateForDate(rates, new Date(h.year, h.month, 15));
+
+                                return (
+                                    <div
+                                        key={i}
+                                        title={`${h.label}: ${h.total} servicios${hRate > 0 && h.earnings ? ` · $ ${(h.earnings * hRate).toLocaleString('es-AR', {minimumFractionDigits: 0, maximumFractionDigits: 0})} ARS` : ''}`}
+                                        style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '0', height: '100%', cursor: 'default' }}
+                                    >
+                                        {/* Value on top */}
+                                        <span style={{
+                                            fontSize: '0.65rem',
+                                            fontWeight: 800,
+                                            color: isCurrentSelected ? '#8b5cf6' : (isEmpty ? 'var(--text-secondary)' : 'var(--text-main)'),
+                                            marginBottom: '4px',
+                                            opacity: isEmpty ? 0.4 : 1,
+                                            transition: 'all 0.3s'
+                                        }}>
+                                            {h.total}
+                                        </span>
+
+                                        {/* Bar */}
+                                        <div style={{
+                                            width: '100%',
+                                            maxWidth: '32px',
+                                            height: `${Math.max(barHeightPx, isEmpty ? 4 : 8)}px`,
+                                            background: isCurrentSelected
+                                                ? 'linear-gradient(to top, #7c3aed, #a78bfa)'
+                                                : isEmpty
+                                                    ? 'rgba(148,163,184,0.12)'
+                                                    : 'linear-gradient(to top, rgba(139,92,246,0.5), rgba(167,139,250,0.25))',
+                                            borderRadius: '4px 4px 0 0',
+                                            boxShadow: isCurrentSelected ? '0 0 10px rgba(139,92,246,0.35)' : 'none',
+                                            transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                                            position: 'relative',
+                                            overflow: 'hidden'
+                                        }}>
+                                            {/* Shimmer on selected */}
+                                            {isCurrentSelected && (
+                                                <div style={{
+                                                    position: 'absolute', top: 0, left: '-100%', width: '60%', height: '100%',
+                                                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+                                                    animation: 'shimmer 2s infinite'
+                                                }} />
+                                            )}
+                                        </div>
+
+                                        {/* Month label */}
+                                        <span style={{
+                                            fontSize: '0.6rem',
+                                            fontWeight: isCurrentSelected ? 800 : 600,
+                                            color: isCurrentSelected ? '#8b5cf6' : 'var(--text-secondary)',
+                                            textTransform: 'capitalize',
+                                            marginTop: '6px',
+                                            letterSpacing: '0.02em'
+                                        }}>
+                                            {h.label}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
+
+                    <style>{`
+                        @keyframes shimmer {
+                            0% { left: -100%; }
+                            100% { left: 200%; }
+                        }
+                    `}</style>
                 </Card>
             </div>
 
