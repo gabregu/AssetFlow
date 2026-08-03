@@ -90,9 +90,37 @@ export default function DriverPaymentsPage() {
                     const method = tFin.method || '';
                     if (method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local')) {
                         const driverName = tFin.deliveryPerson;
-                        if (driverName && driverName !== 'N/A' && driverName !== 'Múltiple' && tFin.logisticCost > 0) {
+
+                        // Resolve effective logistic cost for this task:
+                        // If the parent ticket has a customLogisticCost set in the financial summary
+                        // (Proyección Financiera), use that as the final cost for the driver.
+                        // When there are multiple driver tasks, distribute proportionally.
+                        let effectiveLogisticCost = tFin.logisticCost;
+                        const rawCustom = ticket.deliveryDetails?.customLogisticCost;
+                        if (rawCustom !== null && rawCustom !== undefined && rawCustom !== '') {
+                            const customVal = parseFloat(rawCustom);
+                            if (!isNaN(customVal)) {
+                                const internalTasks = financials.taskFinancials.filter(t =>
+                                    (t.method || '').includes('Propio') ||
+                                    (t.method || '') === 'Envío Interno' ||
+                                    (t.method || '').toLowerCase().includes('local')
+                                );
+                                const totalAutoCost = internalTasks.reduce((s, t) => s + t.logisticCost, 0);
+                                // Distribute the override proportionally to each driver task
+                                effectiveLogisticCost = totalAutoCost > 0
+                                    ? customVal * (tFin.logisticCost / totalAutoCost)
+                                    : customVal / (internalTasks.length || 1);
+                                // Convert if saved in ARS
+                                if (ticket.deliveryDetails?.customLogisticCostCurrency === 'ARS') {
+                                    const r = getExchangeRateForDate(rates, ticket.createdAt || new Date());
+                                    effectiveLogisticCost = effectiveLogisticCost / (r > 0 ? r : 1);
+                                }
+                            }
+                        }
+
+                        if (driverName && driverName !== 'N/A' && driverName !== 'Múltiple' && effectiveLogisticCost > 0) {
                             if (!stats[driverName]) stats[driverName] = { total: 0, items: [] };
-                            stats[driverName].total += tFin.logisticCost;
+                            stats[driverName].total += effectiveLogisticCost;
                             stats[driverName].items.push({
                                 id: ticket.id,
                                 type: 'Sub-caso',
@@ -123,7 +151,7 @@ export default function DriverPaymentsPage() {
                                     return subject;
                                 })(),
                                 requester: ticket.requester || null,
-                                cost: tFin.logisticCost,
+                                cost: effectiveLogisticCost,
                                 date: taskDateStr,
                                 client: ticket.client || 'N/A'
                             });

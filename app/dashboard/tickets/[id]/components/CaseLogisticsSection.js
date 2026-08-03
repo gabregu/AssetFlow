@@ -96,8 +96,7 @@ export default function CaseLogisticsSection({
             time_slot: task.time_slot || task.timeSlot || 'AM',
             address: task.address || '',
             deliveryInfo: task.deliveryInfo || task.delivery_info || {},
-            assigned_to: task.assigned_to || task.assignedTo || '',
-            driver_cost_override: task.driver_cost_override ?? task.driverCostOverride ?? null
+            assigned_to: task.assigned_to || task.assignedTo || ''
         };
         localStateRef.current = initial;
         // setLocalValues(initial); // No se puede llamar set durante render, se hace en useEffect
@@ -130,8 +129,7 @@ export default function CaseLogisticsSection({
             time_slot: task.time_slot || task.timeSlot || 'AM',
             address: task.address || '',
             deliveryInfo: task.deliveryInfo || task.delivery_info || {},
-            assigned_to: task.assigned_to || task.assignedTo || '',
-            driver_cost_override: task.driver_cost_override ?? task.driverCostOverride ?? null
+            assigned_to: task.assigned_to || task.assignedTo || ''
         };
         setLocalValues(initialState);
         localStateRef.current = initialState;
@@ -247,7 +245,6 @@ export default function CaseLogisticsSection({
                 tracking_number: state.tracking_number,
                 address: state.address,
                 deliveryInfo: state.deliveryInfo,
-                driver_cost_override: state.driver_cost_override !== undefined ? state.driver_cost_override : null,
                 ...extraUpdates
             };
 
@@ -364,37 +361,6 @@ export default function CaseLogisticsSection({
                     </div>
                 )}
 
-                {showExecutionFields && localValues.method === 'Repartidor Propio' && (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
-                    <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>Costo Conductor (Override USD)</span>
-                            {localValues.driver_cost_override !== null && localValues.driver_cost_override !== undefined && localValues.driver_cost_override !== '' && (
-                                <button
-                                    type="button"
-                                    onClick={() => updateLogistics('driver_cost_override', null)}
-                                    style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, textTransform: 'uppercase' }}
-                                >
-                                    ↺ Usar tarifa automática
-                                </button>
-                            )}
-                        </label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className="form-input"
-                            value={localValues.driver_cost_override ?? ''}
-                            placeholder="Ej: 20.00 (dejar vacío para usar tarifa automática)"
-                            onChange={e => updateLogistics('driver_cost_override', e.target.value === '' ? null : parseFloat(e.target.value))}
-                            style={{ border: localValues.driver_cost_override != null ? '1px solid #f59e0b' : '1px solid var(--border)' }}
-                        />
-                        {localValues.driver_cost_override != null && (
-                            <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: '#f59e0b', fontWeight: 600 }}>
-                                ⚠ Override activo: se usará USD {Number(localValues.driver_cost_override).toFixed(2)} en lugar de la tarifa automática
-                            </p>
-                        )}
-                    </div>
-                )}
 
                 {showExecutionFields && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
