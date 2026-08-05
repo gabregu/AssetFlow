@@ -82,6 +82,7 @@ export default function MyDeliveriesPage() {
     const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
     const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
     const [returnForm, setReturnForm] = useState({
+        targetTicketId: '',
         deliveredByName: '',
         serial: '',
         deviceType: 'Laptop',
@@ -171,59 +172,104 @@ export default function MyDeliveriesPage() {
             const signatureDataUrl = getSignatureDataUrl();
             const clientName = getClientName ? getClientName(countryFilter) : (countryFilter || 'SFDC');
 
-            // 1. Crear el Ticket como adicional de recupero
-            const newTicketData = {
-                subject: `[RECUPERO ADICIONAL] ${returnForm.deviceType} S/N: ${returnForm.serial.trim()} - Recibido por ${currentUser?.name}`,
-                requester: returnForm.deliveredByName.trim(),
-                priority: 'Media',
-                status: 'Abierto',
-                deliveryStatus: 'Recibido',
-                client: clientName,
-                internalNotes: [
-                    {
-                        author: currentUser?.name || 'Conductor',
-                        date: now.toISOString(),
-                        text: `Dispositivo recibido por conductor ${currentUser?.name} el ${dateStr} a las ${timeStr}. ${returnForm.notes ? 'Obs: ' + returnForm.notes : ''}`.trim()
-                    }
-                ],
-                logistics: {
-                    type: 'Recupero',
-                    deliveryPerson: currentUser?.name || '',
-                    date: dateStr
-                },
-                associatedCases: [
-                    {
-                        caseNumber: 'Recupero Adicional',
+            // Find target ticket if specified
+            const selectedTicketId = returnForm.targetTicketId || (myAssignedDeliveries.length > 0 ? myAssignedDeliveries[0].id : null);
+            const targetTicket = tickets.find(t => t.id === selectedTicketId);
+
+            let ticketId = selectedTicketId;
+
+            if (targetTicket) {
+                // 1. Vincular la tarea de recupero adicional directamente al Ticket Principal existente (Aparecerá en Casos Asociados)
+                const randomSubId = `${targetTicket.id}-${Math.floor(Math.random() * 9000) + 1000}`;
+                
+                if (addLogisticsTask) {
+                    await addLogisticsTask({
+                        ticket_id: targetTicket.id,
+                        ticketId: targetTicket.id,
+                        caseNumber: randomSubId,
+                        subject: `Recupero Adicional - ${returnForm.deviceType} S/N: ${returnForm.serial.trim()}`,
                         method: 'Recupero',
-                        assets: [{ serial: returnForm.serial.trim(), type: 'Recupero' }]
-                    }
-                ],
-                deliveryDetails: {
-                    receivedBy: returnForm.deliveredByName.trim(),
-                    deliveredAt: now.toISOString(),
-                    actualTime: timeStr,
-                    notes: returnForm.notes,
-                    signatureDataUrl: signatureDataUrl
+                        status: 'Recibido',
+                        case_type: 'recoleccion',
+                        delivery_person: currentUser?.name || '',
+                        assigned_to: currentUser?.id || null,
+                        assets: [{ serial: returnForm.serial.trim(), type: returnForm.deviceType, action: 'Recupero' }],
+                        notes: returnForm.notes || '',
+                        date: dateStr
+                    });
                 }
-            };
 
-            const createdTicket = await addTicket(newTicketData);
-            if (!createdTicket) throw new Error('Error al crear el ticket. Intente nuevamente.');
-
-            const ticketId = createdTicket?.id || null;
-
-            // 2. Crear logistics_task vinculado al ticket
-            if (addLogisticsTask) {
-                await addLogisticsTask({
-                    ticket_id: ticketId,
-                    method: 'Recupero',
-                    status: 'Recibido',
-                    delivery_person: currentUser?.name || '',
-                    assigned_to: currentUser?.id || null,
-                    assets: [{ serial: returnForm.serial.trim(), type: returnForm.deviceType, action: 'Recupero' }],
-                    notes: returnForm.notes || '',
-                    date: dateStr
+                // 2. Agregar nota de recepción al historial interno del ticket principal
+                const currentNotes = targetTicket.internalNotes || [];
+                const newNote = {
+                    author: currentUser?.name || 'Conductor',
+                    date: now.toISOString(),
+                    text: `📦 RECUPERO ADICIONAL RECIBIDO: ${returnForm.deviceType} S/N: ${returnForm.serial.trim()} entregado por ${returnForm.deliveredByName.trim()}. ${returnForm.notes ? 'Obs: ' + returnForm.notes : ''}`.trim()
+                };
+                
+                await updateTicket(targetTicket.id, {
+                    internalNotes: [...currentNotes, newNote],
+                    deliveryDetails: {
+                        ...(targetTicket.deliveryDetails || {}),
+                        receivedBy: returnForm.deliveredByName.trim(),
+                        lastReceivedAt: now.toISOString(),
+                        signatureDataUrl: signatureDataUrl || targetTicket.deliveryDetails?.signatureDataUrl
+                    }
                 });
+            } else {
+                // Si no hay ticket principal activo, crear un Ticket Independiente nuevo de respaldo
+                const newTicketData = {
+                    subject: `[RECUPERO ADICIONAL] ${returnForm.deviceType} S/N: ${returnForm.serial.trim()} - Recibido por ${currentUser?.name}`,
+                    requester: returnForm.deliveredByName.trim(),
+                    priority: 'Media',
+                    status: 'Abierto',
+                    deliveryStatus: 'Recibido',
+                    client: clientName,
+                    internalNotes: [
+                        {
+                            author: currentUser?.name || 'Conductor',
+                            date: now.toISOString(),
+                            text: `Dispositivo recibido por conductor ${currentUser?.name} el ${dateStr} a las ${timeStr}. ${returnForm.notes ? 'Obs: ' + returnForm.notes : ''}`.trim()
+                        }
+                    ],
+                    logistics: {
+                        type: 'Recupero',
+                        deliveryPerson: currentUser?.name || '',
+                        date: dateStr
+                    },
+                    associatedCases: [
+                        {
+                            caseNumber: 'Recupero Adicional',
+                            method: 'Recupero',
+                            assets: [{ serial: returnForm.serial.trim(), type: returnForm.deviceType }]
+                        }
+                    ],
+                    deliveryDetails: {
+                        receivedBy: returnForm.deliveredByName.trim(),
+                        deliveredAt: now.toISOString(),
+                        actualTime: timeStr,
+                        notes: returnForm.notes,
+                        signatureDataUrl: signatureDataUrl
+                    }
+                };
+
+                const createdTicket = await addTicket(newTicketData);
+                if (!createdTicket) throw new Error('Error al crear el ticket. Intente nuevamente.');
+
+                ticketId = createdTicket?.id || null;
+
+                if (addLogisticsTask) {
+                    await addLogisticsTask({
+                        ticket_id: ticketId,
+                        method: 'Recupero',
+                        status: 'Recibido',
+                        delivery_person: currentUser?.name || '',
+                        assigned_to: currentUser?.id || null,
+                        assets: [{ serial: returnForm.serial.trim(), type: returnForm.deviceType, action: 'Recupero' }],
+                        notes: returnForm.notes || '',
+                        date: dateStr
+                    });
+                }
             }
 
             // 3. Generar PDF Remito
@@ -243,9 +289,9 @@ export default function MyDeliveriesPage() {
                 });
             }
 
-            showToast('Recepción registrada. Ticket creado y remito descargado.', 'success');
+            showToast('Recepción registrada correctamente. Remito generado.', 'success');
             setIsReturnModalOpen(false);
-            setReturnForm({ deliveredByName: '', serial: '', deviceType: 'Laptop', notes: '' });
+            setReturnForm({ targetTicketId: '', deliveredByName: '', serial: '', deviceType: 'Laptop', notes: '' });
             clearSignature();
             await refreshData();
         } catch (err) {
@@ -1589,7 +1635,27 @@ export default function MyDeliveriesPage() {
 
                         {/* Info banner */}
                         <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', padding: '0.75rem 1rem', fontSize: '0.85rem', color: '#92400e' }}>
-                            ⚠️ Al confirmar se creará un Ticket de Recupero Adicional y se descargará el remito para firmar.
+                            ⚠️ Al confirmar se agregará el caso asociado al servicio seleccionado y se descargará el remito.
+                        </div>
+
+                        {/* Selección del Servicio / Ticket Principal */}
+                        <div>
+                            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
+                                Asociar a Servicio / Ticket *
+                            </label>
+                            <select
+                                className="form-select"
+                                value={returnForm.targetTicketId || (myAssignedDeliveries.length > 0 ? myAssignedDeliveries[0].id : '')}
+                                onChange={e => setReturnForm(p => ({ ...p, targetTicketId: e.target.value }))}
+                                style={{ width: '100%', padding: '0.65rem 0.9rem', fontSize: '0.95rem' }}
+                            >
+                                {myAssignedDeliveries.map(d => (
+                                    <option key={d.id} value={d.id}>
+                                        [{d.displayId}] {d.requester ? `${d.requester} - ` : ''}{d.displaySubject || d.subject}
+                                    </option>
+                                ))}
+                                <option value="NEW_STANDALONE">➕ Crear como servicio independiente</option>
+                            </select>
                         </div>
 
                         {/* Quien entrega */}
@@ -1621,8 +1687,8 @@ export default function MyDeliveriesPage() {
                                 <option value="Laptop">Laptop</option>
                                 <option value="Celular">Celular / Smartphone</option>
                                 <option value="Tablet">Tablet</option>
-                                <option value="Accesorio">Accesorio</option>
                                 <option value="YubiKey">YubiKey</option>
+                                <option value="Accesorio">Accesorio</option>
                                 <option value="Otro">Otro</option>
                             </select>
                         </div>
