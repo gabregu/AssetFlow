@@ -131,7 +131,7 @@ export default function TicketsPage() {
         setNewTicket({ subject: '', requester: '', priority: 'Media', status: 'Pendiente', caseNumber: '', country: '', address: '', zipCode: '', phone: '', email: '', type: 'Entrega', floor: '', sycompCase: '', addressStatus: 'idle' });
     };
 
-    // Search existing tickets by requester name
+    // Search existing tickets by requester name (strictly isolated by active client)
     const handleRequesterChange = (value) => {
         setNewTicket(prev => ({ ...prev, requester: value }));
         setModalAddressStatus('idle');
@@ -143,10 +143,16 @@ export default function TicketsPage() {
         const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
         const query = normalize(value);
         const seen = new Set();
+        const expectedClient = getClientName(countryFilter);
+
         const matches = (tickets || [])
             .filter(t => {
+                // Strictly isolate by active client filter if a specific client is selected
+                if (expectedClient && expectedClient !== 'Todos') {
+                    if (t.client !== expectedClient) return false;
+                }
                 const name = normalize(t.requester);
-                return name.includes(query) && !seen.has(name) && seen.add(name);
+                return name && name.includes(query) && !seen.has(name) && seen.add(name);
             })
             .slice(0, 5)
             .map(t => ({
@@ -155,6 +161,7 @@ export default function TicketsPage() {
                 phone: t.logistics?.phone || '',
                 email: t.logistics?.email || '',
                 floor: t.logistics?.floorDept || '',
+                client: t.client || ''
             }));
         setRequesterSuggestions(matches);
         setShowSuggestions(matches.length > 0);
@@ -1345,25 +1352,41 @@ export default function TicketsPage() {
                         />
                         {showSuggestions && requesterSuggestions.length > 0 && (
                             <div style={{
-                                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
-                                background: 'var(--card-bg)', border: '1px solid var(--border)',
-                                borderRadius: '8px', boxShadow: 'var(--shadow-md)', overflow: 'hidden', marginTop: '2px'
+                                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999,
+                                background: 'var(--surface, #ffffff)', backgroundColor: 'var(--surface, #ffffff)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '8px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                                overflow: 'hidden', marginTop: '4px'
                             }}>
                                 {requesterSuggestions.map((s, i) => (
                                     <div
                                         key={i}
                                         onMouseDown={() => applyRequesterSuggestion(s)}
                                         style={{
-                                            padding: '0.6rem 1rem', cursor: 'pointer',
+                                            padding: '0.65rem 1rem', cursor: 'pointer',
+                                            background: 'var(--surface, #ffffff)', backgroundColor: 'var(--surface, #ffffff)',
                                             borderBottom: i < requesterSuggestions.length - 1 ? '1px solid var(--border)' : 'none',
-                                            display: 'flex', flexDirection: 'column', gap: '2px',
+                                            display: 'flex', flexDirection: 'column', gap: '3px',
+                                            transition: 'background 0.15s ease'
                                         }}
-                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--surface)'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.08)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'var(--surface, #ffffff)'}
                                     >
-                                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>{s.requester}</span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>{s.requester}</span>
+                                            {s.client && (
+                                                <span style={{ fontSize: '0.65rem', fontWeight: 600, padding: '1px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary-color)' }}>
+                                                    {s.client}
+                                                </span>
+                                            )}
+                                        </div>
                                         {s.address && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>📍 {s.address}</span>}
-                                        {s.phone && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>📞 {s.phone}</span>}
+                                        {(s.phone || s.email) && (
+                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', gap: '8px' }}>
+                                                {s.phone && <span>📞 {s.phone}</span>}
+                                                {s.email && <span>✉ {s.email}</span>}
+                                            </span>
+                                        )}
                                     </div>
                                 ))}
                             </div>
