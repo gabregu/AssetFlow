@@ -16,7 +16,8 @@ export function FinancialsSummary({ ticket }) {
         if (currentUser?.role !== 'admin' && currentUser?.role !== 'Gerencial') return null;
         const hasCustom = ticket?.deliveryDetails?.customLogisticCost || 
                           ticket?.deliveryDetails?.customServiceRevenue || 
-                          ticket?.deliveryDetails?.customLogisticRevenue;
+                          ticket?.deliveryDetails?.customLogisticRevenue ||
+                          ticket?.deliveryDetails?.customPostalCost;
         if (!hasCustom) return null;
         const ticketCopy = {
             ...ticket,
@@ -24,7 +25,8 @@ export function FinancialsSummary({ ticket }) {
                 ...ticket.deliveryDetails,
                 customLogisticCost: null,
                 customServiceRevenue: null,
-                customLogisticRevenue: null
+                customLogisticRevenue: null,
+                customPostalCost: null
             }
         };
         return calculateTicketFinancials(ticketCopy, rates, assets, users, logisticsTasks);
@@ -63,6 +65,7 @@ export function FinancialsSummary({ ticket }) {
     const serviceCurrency = ticket.deliveryDetails?.customServiceRevenueCurrency || 'USD';
     const logisticRevenueCurrency = ticket.deliveryDetails?.customLogisticRevenueCurrency || 'USD';
     const logisticCostCurrency = ticket.deliveryDetails?.customLogisticCostCurrency || (isARSMethod ? 'ARS' : 'USD');
+    const postalCostCurrency = ticket.deliveryDetails?.customPostalCostCurrency || (isARSMethod ? 'ARS' : 'USD');
 
     const placeholderServiceRevenue = (serviceCurrency === 'ARS') ? autoServiceRevenue * (rate > 0 ? rate : 1) : autoServiceRevenue;
     const placeholderLogisticRevenue = (logisticRevenueCurrency === 'ARS') ? autoLogisticRevenue * (rate > 0 ? rate : 1) : autoLogisticRevenue;
@@ -377,6 +380,89 @@ export function FinancialsSummary({ ticket }) {
                     ) : (
                         <span style={{ fontWeight: 600, color: '#ef4444' }}>- {formatUSD(logisticCost)}</span>
                     )}
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        Costo Envío Correo
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#ef4444' }}>-</span>
+                        <select
+                            disabled={ticket.deliveryDetails?.financialValuesConfirmed}
+                            value={postalCostCurrency}
+                            onChange={async (e) => {
+                                await updateTicket(ticket.id, {
+                                    deliveryDetails: {
+                                        ...ticket.deliveryDetails,
+                                        customPostalCostCurrency: e.target.value
+                                    }
+                                });
+                            }}
+                            style={{
+                                fontSize: '0.85rem',
+                                fontWeight: 700,
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#ef4444',
+                                cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'pointer',
+                                outline: 'none',
+                                paddingRight: '2px'
+                            }}
+                        >
+                            <option value="USD" style={{ color: '#000000' }}>USD</option>
+                            <option value="ARS" style={{ color: '#000000' }}>ARS</option>
+                        </select>
+                        <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            disabled={ticket.deliveryDetails?.financialValuesConfirmed}
+                            value={
+                                ticket.deliveryDetails?.customPostalCost !== undefined && ticket.deliveryDetails?.customPostalCost !== null 
+                                    ? ticket.deliveryDetails.customPostalCost 
+                                    : ''
+                            }
+                            placeholder="0.00"
+                            onChange={async (e) => {
+                                const val = e.target.value === '' ? null : parseFloat(e.target.value);
+                                await updateTicket(ticket.id, {
+                                    deliveryDetails: {
+                                        ...ticket.deliveryDetails,
+                                        customPostalCost: val,
+                                        customPostalCostCurrency: postalCostCurrency
+                                    }
+                                });
+                            }}
+                            style={{
+                                width: '75px',
+                                padding: '3px 6px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border)',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                color: '#ef4444',
+                                fontWeight: 600,
+                                textAlign: 'right',
+                                outline: 'none',
+                                transition: 'border-color 0.2s, background-color 0.2s',
+                                fontSize: '0.875rem',
+                                opacity: ticket.deliveryDetails?.financialValuesConfirmed ? 0.6 : 1,
+                                cursor: ticket.deliveryDetails?.financialValuesConfirmed ? 'not-allowed' : 'text'
+                            }}
+                            onFocus={(e) => {
+                                if (!ticket.deliveryDetails?.financialValuesConfirmed) {
+                                    e.target.style.borderColor = 'var(--primary-color)';
+                                    e.target.style.background = 'rgba(255, 255, 255, 0.08)';
+                                }
+                            }}
+                            onBlur={(e) => {
+                                if (!ticket.deliveryDetails?.financialValuesConfirmed) {
+                                    e.target.style.borderColor = 'var(--border)';
+                                    e.target.style.background = 'rgba(255, 255, 255, 0.05)';
+                                }
+                            }}
+                        />
+                    </div>
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '0.25rem' }}>

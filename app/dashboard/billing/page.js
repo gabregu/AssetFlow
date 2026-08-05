@@ -1689,7 +1689,8 @@ export default function BillingPage() {
                                 {(t.deliveryDetails?.customServiceRevenue !== null && t.deliveryDetails?.customServiceRevenue !== undefined || 
                                   t.deliveryDetails?.customLogisticRevenue !== null && t.deliveryDetails?.customLogisticRevenue !== undefined || 
                                   t.deliveryDetails?.customLogisticCost !== null && t.deliveryDetails?.customLogisticCost !== undefined ||
-                                  t.deliveryDetails?.customLogisticCostARS !== null && t.deliveryDetails?.customLogisticCostARS !== undefined) && (
+                                  t.deliveryDetails?.customLogisticCostARS !== null && t.deliveryDetails?.customLogisticCostARS !== undefined ||
+                                  t.deliveryDetails?.customPostalCost !== null && t.deliveryDetails?.customPostalCost !== undefined) && (
                                     <div style={{ 
                                         padding: '0.6rem 0.85rem', 
                                         background: 'rgba(245, 158, 11, 0.05)', 
