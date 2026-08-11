@@ -346,7 +346,7 @@ export default function InventoryPage() {
 
             // --- DEFAULT VISIBILITY ---
             let matchesDefaultVisibility = true;
-            if (searchFilter === '' && !codFilter && statusFilter !== 'Baja de Equipos' && !boxFilter) {
+            if (searchFilter === '' && !codFilter && !statusFilter && !boxFilter) {
                 matchesDefaultVisibility = a.assignee === 'Almacén' || a.assignee === 'En Almacén';
             }
 
@@ -1441,6 +1441,7 @@ export default function InventoryPage() {
             case 'Nuevo': return 'success';
             case 'Asignado': return 'info';
             case 'Recuperado': return 'info';
+            case 'Por Recuperar': return 'warning';
             case 'En Reparación': 
             case 'Verificacion HW': return 'warning';
             case 'Dañado':
@@ -1480,7 +1481,7 @@ export default function InventoryPage() {
     const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 4 : 0);
     const deviceTypes = ['Laptop', 'Smartphone', 'Tablet', 'Otros'];
 
-    const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'Verificacion HW', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
+    const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'Por Recuperar', 'Verificacion HW', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
 
     // Performance Optimization: Memoize all summary counts
     const { countsByType, totalCountsByType, countsByStatus } = React.useMemo(() => {
@@ -1511,6 +1512,8 @@ export default function InventoryPage() {
                     (a.status && a.status.toLowerCase().includes('baja de equipo')) || 
                     (a.assignee && a.assignee.toLowerCase().includes('baja de equipo'))
                 ).length;
+            } else if (status === 'Por Recuperar' || status === 'Verificacion HW') {
+                statusCounts[status] = allAssetsForGlobalCounts.filter(a => a.status === status).length;
             } else {
                 statusCounts[status] = filteredBySelectedType.filter(a => 
                     a.status === status || 
@@ -3039,6 +3042,7 @@ export default function InventoryPage() {
                                 <option value="Nuevo">Nuevo</option>
                                 <option value="Asignado">Asignado</option>
                                 <option value="Recuperado">Recuperado</option>
+                                <option value="Por Recuperar">Por Recuperar</option>
                                 <option value="Verificacion HW">Verificacion HW</option>
                                 <option value="En Reparación">En Reparación</option>
                                 <option value="Dañado">Dañado</option>
