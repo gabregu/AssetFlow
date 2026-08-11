@@ -945,7 +945,7 @@ export default function LogisticsHubPage() {
 
                                             const needsHwVerification = isOutbound
                                                 ? (task.status === 'En Preparación' || !task.status || task.status === 'Pendiente')
-                                                : (task.status === 'Entregado');
+                                                : (task.status === 'En Preparación' || !task.status || task.status === 'Pendiente' || task.status === 'Entregado');
 
                                             if (needsHwVerification) {
                                                 return (
@@ -1010,7 +1010,7 @@ export default function LogisticsHubPage() {
                     const isOutboundTask = isDeliveryCase(task.subject) || task.case_type === 'entrega' || task.caseType === 'entrega';
                     const needsHwVerification = isOutboundTask
                         ? (task.status === 'En Preparación' || !task.status || task.status === 'Pendiente')
-                        : (task.status === 'Entregado');
+                        : (task.status === 'En Preparación' || !task.status || task.status === 'Pendiente' || task.status === 'Entregado');
 
                     let actionBtn = btnGestionar;
                     if (needsHwVerification) {

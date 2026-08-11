@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from 'react';
+import { useJsApiLoader } from '@react-google-maps/api';
 import { useSafeSubmit } from '../../../lib/useSafeSubmit';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -180,10 +181,15 @@ export default function TicketsPage() {
         setShowSuggestions(false);
         setRequesterSuggestions([]);
     };
+    // Load Google Maps Script globally for this page (shares instance with ticket detail page)
+    const { isLoaded: isMapsLoaded } = useJsApiLoader({
+        id: 'google-map-script',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+        libraries: ['places', 'geometry']
+    });
 
-    // Validate address in the modal using Google Maps
     const validateModalAddress = () => {
-        if (typeof window === 'undefined' || !window.google || !window.google.maps) {
+        if (!isMapsLoaded || !window.google || !window.google.maps) {
             setModalAddressStatus('api_error');
             return;
         }
