@@ -248,13 +248,18 @@ export default function TicketsPage() {
         const resolvedStatuses = ['resuelto', 'cerrado', 'servicio facturado', 'caso sfdc cerrado', 'cancelado', 'entregado', 'finalizado', 'no requiere accion'];
         const activeTickets = tickets.filter(t => t && t.status && !resolvedStatuses.includes(t.status.toLowerCase().trim()));
 
-        // Agrupar por (requester normalizado + tipo de servicio normalizado)
+        // Agrupar por (requester normalizado + label del SRV badge)
+        // Usar el label del badge (ENT, REC, REE, GAR) como clave para que
+        // todas las variantes del mismo tipo (recupero/retiro/recolección → REC) 
+        // queden en el mismo grupo.
         const groups = {};
         for (const t of activeTickets) {
             const req = normalize(t.requester);
-            const type = normalize(t.type || t.logistics?.type || '');
-            if (!req || req === 'desconocido' || !type) continue;
-            const key = `${req}||${type}`;
+            if (!req || req === 'desconocido') continue;
+            const srvType = t.type || t.logistics?.type || '';
+            const typeLabel = getTypeStyles(srvType).label; // 'ENT', 'REC', 'REE', 'GAR', etc.
+            if (!typeLabel || typeLabel === 'N/A') continue;
+            const key = `${req}||${typeLabel}`;
             if (!groups[key]) groups[key] = [];
             groups[key].push(t.id);
         }
