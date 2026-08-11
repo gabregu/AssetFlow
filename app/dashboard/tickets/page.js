@@ -252,7 +252,7 @@ export default function TicketsPage() {
         const groups = {};
         for (const t of activeTickets) {
             const req = normalize(t.requester);
-            const type = normalize(t.logistics?.type || t.type || '');
+            const type = normalize(t.type || t.logistics?.type || '');
             if (!req || req === 'desconocido' || !type) continue;
             const key = `${req}||${type}`;
             if (!groups[key]) groups[key] = [];
