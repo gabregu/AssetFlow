@@ -232,6 +232,35 @@ export default function TicketsPage() {
 
     const canDelete = currentUser?.role === 'admin' || currentUser?.role === 'Gerencial' || currentUser?.role === 'Administrativo';
 
+    // ── DETECCIÓN DE DUPLICADOS ──────────────────────────────────────────────
+    // Detecta tickets activos que comparten el mismo solicitante + mismo tipo de
+    // servicio (Recolección/Entrega/etc.), lo que indica una posible duplicación
+    // por importación SFDC en dos momentos distintos.
+    const duplicateTicketIds = React.useMemo(() => {
+        if (!tickets || tickets.length === 0) return new Set();
+        const normalize = (v) => (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        const resolvedStatuses = ['resuelto', 'cerrado', 'servicio facturado', 'caso sfdc cerrado', 'cancelado', 'entregado', 'finalizado', 'no requiere accion'];
+        const activeTickets = tickets.filter(t => t && t.status && !resolvedStatuses.includes(t.status.toLowerCase().trim()));
+
+        // Agrupar por (requester normalizado + tipo de servicio normalizado)
+        const groups = {};
+        for (const t of activeTickets) {
+            const req = normalize(t.requester);
+            const type = normalize(t.logistics?.type || t.type || '');
+            if (!req || req === 'desconocido' || !type) continue;
+            const key = `${req}||${type}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(t.id);
+        }
+
+        // Los IDs que aparecen más de una vez en el mismo grupo son duplicados
+        const dupIds = new Set();
+        for (const ids of Object.values(groups)) {
+            if (ids.length >= 2) ids.forEach(id => dupIds.add(id));
+        }
+        return dupIds;
+    }, [tickets]);
+
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -392,6 +421,15 @@ export default function TicketsPage() {
 
                     const groupEntries = Object.values(groups);
 
+                    // Helper: normaliza texto para comparaciones
+                    const normalizeStr = (v) => (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+                    // Helper: clasifica el tipo de servicio para comparación
+                    const getLogType = (act) => act === 'ENTREGA' ? 'entrega' : act === 'REEMPLAZO' ? 'reemplazo' : 'recolección';
+                    // Statuses que se consideran cerrados (no fusionamos con ellos)
+                    const closedStatuses = ['resuelto', 'cerrado', 'servicio facturado', 'caso sfdc cerrado', 'cancelado', 'entregado', 'finalizado', 'no requiere accion'];
+
+                    let ticketsMerged = 0;
+
                     for (const groupData of groupEntries) {
                         const { employeeName, action, needsWarning, hasSwapBundle, cases: group } = groupData;
                         
@@ -424,6 +462,65 @@ export default function TicketsPage() {
 
                         if (uniqueGroupCases.length === 0) continue;
 
+                        // ── ANTI-DUPLICADO: Buscar ticket activo con mismo empleado + mismo tipo ──
+                        // Si ya existe un ticket abierto para este empleado con el mismo tipo de
+                        // servicio (ej. Recolección), fusionamos en vez de crear uno nuevo.
+                        const expectedLogType = getLogType(action);
+                        const existingActiveTicket = tickets && tickets.find(t => {
+                            if (!t || !t.status) return false;
+                            if (closedStatuses.includes(t.status.toLowerCase().trim())) return false;
+                            const sameRequester = normalizeStr(t.requester) === normalizeStr(employeeName);
+                            const tType = normalizeStr(t.logistics?.type || t.type || '');
+                            const sameType = tType.includes(expectedLogType) || expectedLogType.includes(tType);
+                            return sameRequester && sameType;
+                        });
+
+                        if (existingActiveTicket) {
+                            // ── MODO FUSIÓN: Añadir solo los casos verdaderamente nuevos al ticket existente ──
+                            const existingCaseNums = new Set(
+                                (existingActiveTicket.associatedCases || []).map(ac => String(ac.caseNumber || ac.case_number || '').trim())
+                            );
+                            const casesToMerge = uniqueGroupCases.filter(c => !existingCaseNums.has(String(c.caseNumber).trim()));
+
+                            if (casesToMerge.length > 0) {
+                                const mergedAssociatedCases = [
+                                    ...(existingActiveTicket.associatedCases || []),
+                                    ...casesToMerge.map(c => ({
+                                        caseNumber: c.caseNumber,
+                                        subject: c.subject,
+                                        status: c.status,
+                                        priority: c.priority,
+                                        dateOpened: c.dateOpened,
+                                        logistics: {
+                                            address: existingActiveTicket.logistics?.address || c.country,
+                                            phone: existingActiveTicket.logistics?.phone || c.mobile || '',
+                                            email: existingActiveTicket.logistics?.email || c.email || '',
+                                            method: '',
+                                            status: 'Pendiente'
+                                        }
+                                    }))
+                                ];
+
+                                const mergeNote = `=== AUTOMATIZACIÓN: CASOS FUSIONADOS (${new Date().toLocaleDateString()}) ===\n` +
+                                    `Se han añadido ${casesToMerge.length} nuevo(s) caso(s) SFDC a este ticket existente de ${employeeName}:\n` +
+                                    casesToMerge.map(c => `• [SFDC-${c.caseNumber}] ${c.subject}`).join('\n') +
+                                    `\n\n⚠️ Este ticket fue actualizado automáticamente en lugar de crear un duplicado.`;
+
+                                const existingNotes = existingActiveTicket.internalNotes || [];
+                                await updateTicket(existingActiveTicket.id, {
+                                    associatedCases: mergedAssociatedCases,
+                                    internalNotes: [...existingNotes, mergeNote]
+                                });
+                                ticketsMerged++;
+                                casesProcessed += casesToMerge.length;
+                            } else {
+                                // Todos los casos ya estaban en el ticket existente
+                                ticketsSkipped += uniqueGroupCases.length;
+                            }
+                            continue; // Pasar al siguiente grupo sin crear ticket nuevo
+                        }
+
+                        // ── MODO NORMAL: No existe ticket activo previo — crear uno nuevo ──
                         const mainCase = uniqueGroupCases[0];
                         const siblings = uniqueGroupCases.slice(1);
 
@@ -499,7 +596,8 @@ export default function TicketsPage() {
                         casesProcessed += uniqueGroupCases.length;
                     }
 
-                    showToast(`Importación completa: Se crearon ${ticketsCreated} servicios unificando ${casesProcessed} casos (${ticketsSkipped} omitidos por ya existir).`, 'success');
+                    const mergedMsg = ticketsMerged > 0 ? ` | ${ticketsMerged} fusionados en tickets existentes` : '';
+                    showToast(`Importación completa: ${ticketsCreated} creados, ${casesProcessed} casos procesados${mergedMsg} (${ticketsSkipped} omitidos).`, 'success');
                 } else {
                     // --- MODO STANDARD: Sin ninguna regla (Comportamiento actual) ---
                     for (const c of newCases) {
@@ -1244,8 +1342,23 @@ export default function TicketsPage() {
                                 // Date formatting
                                 const dateStr = ticket.date ? new Date(ticket.date).toLocaleDateString('es-AR') : '';
 
+                                // Detectar si este ticket es un duplicado potencial
+                                const isDuplicate = duplicateTicketIds.has(ticket.id);
+
                                 return (
-                                    <tr key={`${ticket.id}-${index}`} style={{ borderBottom: '1px solid var(--border)' }} className="table-row-hover">
+                                    <tr
+                                        key={`${ticket.id}-${index}`}
+                                        className="table-row-hover"
+                                        title={isDuplicate ? '⚠️ Posible duplicado: existe otro servicio activo para este solicitante con el mismo tipo. Verificar manualmente.' : undefined}
+                                        style={{
+                                            borderBottom: '1px solid var(--border)',
+                                            ...(isDuplicate ? {
+                                                background: 'linear-gradient(90deg, rgba(37,99,235,0.07) 0%, rgba(37,99,235,0.03) 100%)',
+                                                borderLeft: '3px solid #2563eb',
+                                                boxShadow: 'inset 3px 0 0 #2563eb'
+                                            } : {})
+                                        }}
+                                    >
                                         {canDelete && (
                                             <td style={{ padding: '1rem' }}>
                                                 <input
@@ -1257,7 +1370,21 @@ export default function TicketsPage() {
                                             </td>
                                         )}
                                         <td className="hover-container" style={{ padding: '1rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            {isDuplicate && (
+                                                <span
+                                                    title="Posible duplicado — mismo solicitante y tipo de servicio en otro ticket activo"
+                                                    style={{
+                                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                        width: '18px', height: '18px', borderRadius: '50%',
+                                                        background: '#2563eb', color: '#fff',
+                                                        fontSize: '0.6rem', fontWeight: 800,
+                                                        flexShrink: 0, cursor: 'help', lineHeight: 1
+                                                    }}
+                                                >2</span>
+                                            )}
                                             {ticket.id}
+                                            </div>
                                         </td>
                                         <td className="hover-container" style={{ padding: '1rem' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
