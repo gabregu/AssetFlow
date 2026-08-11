@@ -33,6 +33,7 @@ import { useStore } from '../../../lib/store';
 import { ServiceMap } from '../../components/ui/ServiceMap';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+import RecoveryConfirmationModal from './RecoveryConfirmationModal';
 
 const TrackingBadge = ({ method, trackingNumber }) => {
     const [copied, setCopied] = React.useState(false);
@@ -102,7 +103,7 @@ const TrackingBadge = ({ method, trackingNumber }) => {
 
 export default function LogisticsHubPage() {
 
-    const { logisticsTasks, tickets, users, updateLogisticsTask, countryFilter, getClientName, currentUser, assets, warehouseLocations } = useStore();
+    const { logisticsTasks, tickets, users, updateLogisticsTask, updateAsset, countryFilter, getClientName, currentUser, assets, warehouseLocations } = useStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
     const [driverFilter, setDriverFilter] = useState('All');
@@ -948,10 +949,12 @@ export default function LogisticsHubPage() {
                                                 : (task.status === 'En Preparación' || !task.status || task.status === 'Pendiente' || task.status === 'Entregado');
 
                                             if (needsHwVerification) {
+                                                const modalType = isOutbound ? 'prepare_shipping' : 'confirm_recovery';
+                                                const btnText = isOutbound ? 'Verificación HW' : (task.status === 'Entregado' ? 'Confirmar Recepción' : 'Verificación HW');
                                                 return (
                                                     <>
-                                                        <Button size="sm" style={{ background: '#10b981', color: 'white', border: 'none' }} icon={Package} onClick={() => setActionModal({ isOpen: true, type: 'prepare_shipping', task })}>
-                                                            Verificación HW
+                                                        <Button size="sm" style={{ background: isOutbound ? '#10b981' : '#16a34a', color: 'white', border: 'none' }} icon={Package} onClick={() => setActionModal({ isOpen: true, type: modalType, task })}>
+                                                            {btnText}
                                                         </Button>
                                                     </>
                                                 );
@@ -1014,9 +1017,11 @@ export default function LogisticsHubPage() {
 
                     let actionBtn = btnGestionar;
                     if (needsHwVerification) {
+                        const modalType = isOutboundTask ? 'prepare_shipping' : 'confirm_recovery';
+                        const btnText = isOutboundTask ? 'Verificación HW' : (task.status === 'Entregado' ? 'Confirmar Recepción' : 'Verificación HW');
                         actionBtn = (
-                            <Button size="sm" style={{ background: '#10b981', color: 'white', border: 'none', width: '100%' }} icon={Package} onClick={() => setActionModal({ isOpen: true, type: 'prepare_shipping', task })}>
-                                Verificación HW
+                            <Button size="sm" style={{ background: isOutboundTask ? '#10b981' : '#16a34a', color: 'white', border: 'none', width: '100%' }} icon={Package} onClick={() => setActionModal({ isOpen: true, type: modalType, task })}>
+                                {btnText}
                             </Button>
                         );
                     } else if (task.status === 'Para Coordinar') {
@@ -1104,7 +1109,17 @@ export default function LogisticsHubPage() {
 
             {/* MODALS */}
             
-            {/* 1. Modal Prepare Shipping (Verificación HW) */}
+            {/* 0. Modal Confirm Recovery (Recepción y Verificación de Retiro con Fotos y Estado) */}
+            <RecoveryConfirmationModal
+                isOpen={actionModal.isOpen && actionModal.type === 'confirm_recovery'}
+                onClose={handleModalClose}
+                task={actionModal.task}
+                assets={assets}
+                updateLogisticsTask={updateLogisticsTask}
+                updateAsset={updateAsset}
+            />
+
+            {/* 1. Modal Prepare Shipping (Verificación HW - Outbound) */}
             {(() => {
                 const modalTask = actionModal.task;
                 const isOutboundTask = modalTask ? (isDeliveryCase(modalTask.subject) || modalTask.case_type === 'entrega' || modalTask.caseType === 'entrega') : true;
