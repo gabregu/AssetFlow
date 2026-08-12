@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { useJsApiLoader } from '@react-google-maps/api';
 
-const libraries = ['geometry'];
+const libraries = ['places', 'geometry'];
 
 // Helper to identify unconfigured automatic SFDC cases
 const isAutoUnconfiguredCase = (task) => {
