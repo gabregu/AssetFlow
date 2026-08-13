@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import InstructionsCard from './InstructionsCard';
+import DriverCaseModal from './DriverCaseModal';
 import { getStatusVariant } from '../../constants';
 
 export default function DriverDetailView({ 
@@ -27,11 +28,18 @@ export default function DriverDetailView({
     updateTicket, 
     currentUser,
     unifiedTasks,
-    setSelectedCaseIndex
+    updateLogisticsTask
 }) {
+    // Estado LOCAL para el modal del conductor — no toca el CaseConfigModal de admin
+    const [selectedTaskIndex, setSelectedTaskIndex] = useState(null);
+    const selectedTask = selectedTaskIndex !== null ? (unifiedTasks || [])[selectedTaskIndex] : null;
+
     // Extraer datos del contacto de forma segura (asegurando primitivos para evitar fallos de React)
     const contactName = typeof ticket?.requester === 'string' ? ticket.requester : 'Destinatario';
-    const contactPhone = typeof ticket?.deliveryDetails?.contactPhone === 'string' || typeof ticket?.deliveryDetails?.contactPhone === 'number' ? String(ticket.deliveryDetails.contactPhone) : '';
+    const contactPhone = typeof ticket?.logistics?.phone === 'string' || typeof ticket?.logistics?.phone === 'number'
+        ? String(ticket.logistics.phone)
+        : (typeof ticket?.deliveryDetails?.contactPhone === 'string' || typeof ticket?.deliveryDetails?.contactPhone === 'number'
+            ? String(ticket.deliveryDetails.contactPhone) : '');
     const address = typeof ticket?.logistics?.address === 'string' ? ticket.logistics.address : 'Dirección no especificada';
     const floorDept = typeof ticket?.logistics?.floorDept === 'string' || typeof ticket?.logistics?.floorDept === 'number' ? String(ticket.logistics.floorDept) : '';
     const status = typeof ticket?.logistics?.status === 'string' ? ticket.logistics.status : 'Pendiente';
@@ -51,10 +59,21 @@ export default function DriverDetailView({
         window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
     };
 
+    // (no necesario — usamos updateLogisticsTask directamente con task.id)
 
     return (
         <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '3rem' }}>
             
+            {/* Modal liviano del conductor */}
+            <DriverCaseModal
+                isOpen={selectedTaskIndex !== null}
+                onClose={() => setSelectedTaskIndex(null)}
+                task={selectedTask}
+                ticket={ticket}
+                updateLogisticsTask={updateLogisticsTask}
+                currentUser={currentUser}
+            />
+
             {/* Header / Botón Volver */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <Link href="/dashboard/my-tickets">
@@ -130,7 +149,7 @@ export default function DriverDetailView({
             </Card>
 
             {/* TASKS / ITEMS CARD */}
-            <Card title="Ítems del Caso" action={<p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Toca un ítem para coordinar</p>}>
+            <Card title="Ítems del Caso" action={<p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Toca un ítem para ver detalle</p>}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {(() => {
                         const visibleTasks = (unifiedTasks || []).filter(t => {
@@ -144,13 +163,13 @@ export default function DriverDetailView({
                             return <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem', padding: '1rem' }}>No hay ítems para coordinar.</p>;
                         }
 
-                        return visibleTasks.map((task) => {
+                        return visibleTasks.map((task, visibleIdx) => {
                             const originalIdx = (unifiedTasks || []).findIndex(t => t === task || (t && t.id && task && t.id === task.id));
                             
                             return (
                                 <div 
-                                    key={task.id || `task-${originalIdx}`} 
-                                    onClick={() => setSelectedCaseIndex(originalIdx)}
+                                    key={task.id || `task-${visibleIdx}`} 
+                                    onClick={() => setSelectedTaskIndex(originalIdx)}
                                     style={{ 
                                         padding: '1rem', 
                                         border: '1px solid var(--border)', 
@@ -186,7 +205,7 @@ export default function DriverDetailView({
                                         icon={Settings} 
                                         style={{ width: '100%', marginTop: '1rem', fontSize: '0.75rem', borderTop: '1px solid #f1f5f9', borderRadius: 0, height: '32px' }}
                                     >
-                                        TOCAR PARA COORDINAR DÍA/HORA
+                                        VER DETALLE / CONFIRMAR ENTREGA
                                     </Button>
                                 </div>
                             );

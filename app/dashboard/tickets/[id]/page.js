@@ -87,7 +87,7 @@ export default function TicketDetailPage() {
                     updateTicket={updateTicket}
                     currentUser={currentUser}
                     unifiedTasks={unifiedTasks}
-                    setSelectedCaseIndex={setSelectedCaseIndex}
+                    updateLogisticsTask={updateLogisticsTask}
                 />
             ) : (
                 /* VISTA ADMINISTRADOR (Completa) */
@@ -184,8 +184,8 @@ export default function TicketDetailPage() {
                 </>
             )}
 
-            {/* MODALS (Comunes para ambas vistas) */}
-            <CaseConfigModal 
+            {/* MODALS (Solo para Administradores — no renderizar para Conductores) */}
+            {currentUser?.role !== 'Conductor' && <CaseConfigModal 
                 ticket={ticket}
                 editedData={editedData}
                 setEditedData={setEditedData}
@@ -217,9 +217,9 @@ export default function TicketDetailPage() {
                 updateAsset={updateAsset}
                 updateConsumableStock={updateConsumableStock}
                 currentUser={currentUser}
-            />
+            />}
             
-            <InventorySelectorModal
+            {currentUser?.role !== 'Conductor' && <InventorySelectorModal
                 isOpen={isInventorySelectorOpen}
                 onClose={() => {
                     setIsInventorySelectorOpen(false);
@@ -233,7 +233,7 @@ export default function TicketDetailPage() {
                 })}
                 task={(selectedCaseIndex !== null && unifiedTasks[selectedCaseIndex]) || null}
                 onUpdateTask={handleUpdateTask}
-            />
+            />}
         </div>
     );
 }
