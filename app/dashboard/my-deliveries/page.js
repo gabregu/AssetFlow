@@ -30,6 +30,21 @@ import { generateTicketPDF } from '../../../lib/pdf-generator';
 import { uploadDevicePhoto } from '../../../lib/upload';
 import { supabase } from '../../../lib/supabase';
 
+// Helper to format WhatsApp links
+const getWhatsAppLink = (phone) => {
+    let clean = (phone || '').replace(/\D/g, '');
+    if (!clean) return '#';
+    // Si es de Argentina y no tiene el 9 (longitud 12, ej: 5411...)
+    if (clean.startsWith('54') && !clean.startsWith('549') && clean.length === 12) {
+        clean = '549' + clean.slice(2);
+    }
+    // Si no tiene código de país y tiene 10 dígitos (Arg), le agregamos 549
+    else if (clean.length === 10 && (clean.startsWith('11') || clean.startsWith('15') || clean.startsWith('2') || clean.startsWith('3'))) {
+        clean = '549' + clean;
+    }
+    return `https://wa.me/${clean}`;
+};
+
 export default function MyDeliveriesPage() {
     const { 
         tickets, 
@@ -988,22 +1003,51 @@ export default function MyDeliveriesPage() {
                                                                 Turno: {delivery.timeSlot || 'AM'}
                                                             </div>
                                                             {delivery.displayPhone && delivery.displayPhone !== 'Sin teléfono' && (
-                                                                <a 
-                                                                    href={`tel:${delivery.displayPhone}`}
-                                                                    style={{ 
-                                                                        display: 'flex', 
-                                                                        alignItems: 'center', 
-                                                                        gap: '0.4rem', 
-                                                                        color: 'var(--primary-color)',
-                                                                        textDecoration: 'none',
-                                                                        fontWeight: 700
-                                                                    }}
-                                                                >
-                                                                    <div style={{ width: '18px', height: '18px', background: 'var(--primary-color)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                                                                        <span style={{ fontSize: '10px' }}>📞</span>
-                                                                    </div>
-                                                                    {delivery.displayPhone}
-                                                                </a>
+                                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                                    <a 
+                                                                        href={`tel:${delivery.displayPhone}`}
+                                                                        style={{ 
+                                                                            display: 'flex', 
+                                                                            alignItems: 'center', 
+                                                                            gap: '0.4rem', 
+                                                                            color: 'var(--primary-color)',
+                                                                            textDecoration: 'none',
+                                                                            fontWeight: 700
+                                                                        }}
+                                                                    >
+                                                                        <div style={{ width: '18px', height: '18px', background: 'var(--primary-color)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                                                                            <span style={{ fontSize: '10px' }}>📞</span>
+                                                                        </div>
+                                                                        {delivery.displayPhone}
+                                                                    </a>
+                                                                    <a 
+                                                                        href={getWhatsAppLink(delivery.displayPhone)}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        style={{ 
+                                                                            display: 'flex', 
+                                                                            alignItems: 'center', 
+                                                                            justifyContent: 'center',
+                                                                            width: '24px', 
+                                                                            height: '24px', 
+                                                                            background: '#25D366', 
+                                                                            borderRadius: '50%', 
+                                                                            color: 'white',
+                                                                            textDecoration: 'none',
+                                                                            marginLeft: '0.6rem',
+                                                                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                                                                            transition: 'transform 0.2s ease',
+                                                                            cursor: 'pointer'
+                                                                        }}
+                                                                        className="hover-scale"
+                                                                        title="Enviar WhatsApp"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                                                            <path d="M12.004 2c-5.518 0-9.996 4.477-9.996 9.996 0 1.763.46 3.479 1.337 4.996L2 22l5.144-1.35c1.47.8 3.119 1.22 4.86 1.22 5.518 0 9.996-4.477 9.996-9.996 0-5.518-4.477-9.996-9.996-9.996zm6.398 14.288c-.252.712-1.252 1.3-1.724 1.393-.42.083-.967.149-2.766-.596-2.298-.952-3.778-3.29-3.892-3.443-.115-.152-.934-1.242-.934-2.37 0-1.127.591-1.681.802-1.905.21-.224.458-.28.61-.28h.439c.143 0 .334-.052.52.4.191.463.649 1.583.706 1.698.057.115.095.248.019.4-.076.152-.115.248-.229.382-.115.133-.242.297-.344.4-.115.115-.236.242-.102.473.134.23 1.05 1.737 2.25 2.808 1.157 1.031 2.133 1.35 2.438 1.503.305.152.48.133.659-.076.178-.21.763-.888.966-1.194.204-.305.407-.257.687-.152.28.105 1.776.837 2.082.99.306.153.51.229.585.353.076.124.076.721-.176 1.433z"/>
+                                                                        </svg>
+                                                                    </a>
+                                                                </div>
                                                             )}
                                                         </div>
 
