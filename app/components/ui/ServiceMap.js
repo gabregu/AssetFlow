@@ -67,7 +67,7 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-        libraries: ['geometry'] // Must match the loader options used in parent pages
+        libraries: ['places', 'geometry'] // Must match all other useJsApiLoader calls in the app
     });
 
     const [map, setMap] = useState(null);

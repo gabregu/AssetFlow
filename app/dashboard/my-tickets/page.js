@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useJsApiLoader } from '@react-google-maps/api';
 
-const GOOGLE_MAPS_LIBRARIES = ['geometry'];
+const GOOGLE_MAPS_LIBRARIES = ['places', 'geometry'];
 
 export default function MyTicketsPage() {
     const router = useRouter();
