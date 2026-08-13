@@ -272,7 +272,7 @@ export function useTicketDetail() {
         const normalize = (val) => (val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         const requesterName = normalize(ticket.requester);
         
-        // Sincronización robusta dse duplicados: revisar tanto el campo legacy como la tabla real de base de datos
+        // Sincronización robusta de duplicados: revisar tanto el campo legacy como la tabla real de base de datos
         const linkedLegacy = (ticket.associatedCases || []).map(c => c.caseNumber).filter(Boolean);
         const linkedReal = (ticketTasks || []).map(c => c.caseNumber).filter(Boolean);
         // Casos excluidos manualmente por el usuario (borrados desde la UI)
@@ -283,13 +283,62 @@ export function useTicketDetail() {
         const mainCaseMatch = (ticket.subject || '').match(/SFDC-(\d+)/);
         if (mainCaseMatch) allLinked.push(mainCaseMatch[1]);
 
+        // ─── NUEVO: Construir un índice de todos los casos ya manejados en el sistema ───
+        // Un caso SFDC está "ya manejado" si aparece en logisticsTasks, en associatedCases
+        // de CUALQUIER otro ticket, en el subject de otro ticket, o en su excludedCases.
+        const terminalStatuses = ['Caso SFDC Cerrado', 'Servicio Facturado', 'Cancelado', 'Entregado', 'Facturado'];
+        
+        const allHandledCaseNumbers = new Set();
+
+        // 1. Casos en logistics_tasks (nueva arquitectura)
+        (logisticsTasks || []).forEach(lt => {
+            const cn = lt.case_number || lt.caseNumber;
+            if (cn) allHandledCaseNumbers.add(String(cn).trim());
+        });
+
+        // 2. Casos asociados en CUALQUIER otro ticket (no el actual)
+        (tickets || []).forEach(t => {
+            if (t.id === ticket.id) return; // saltar el ticket actual
+
+            // Caso principal en el subject
+            const m = (t.subject || '').match(/SFDC-(\d+)/);
+            if (m) allHandledCaseNumbers.add(m[1]);
+
+            // En associatedCases del ticket
+            (t.associatedCases || []).forEach(ac => {
+                const cn = ac.caseNumber || ac.case_number;
+                if (cn) allHandledCaseNumbers.add(String(cn).trim());
+            });
+
+            // En excludedCases del ticket
+            (t.excludedCases || []).forEach(ec => {
+                if (ec) allHandledCaseNumbers.add(String(ec).trim());
+            });
+
+            // Si el ticket mismo está en estado terminal, marcar sus casos para no re-vincularlos
+            if (terminalStatuses.includes(t.status)) {
+                const ms = (t.subject || '').match(/SFDC-(\d+)/);
+                if (ms) allHandledCaseNumbers.add(ms[1]);
+            }
+        });
+        // ─────────────────────────────────────────────────────────────────────────────────
+
         const siblings = sfdcCases.filter(sc => {
             const rf = normalize(sc.requestedFor);
-            return rf === requesterName && !allLinked.includes(sc.caseNumber);
+            const caseNum = String(sc.caseNumber || '').trim();
+            
+            // 1. Debe ser del mismo solicitante
+            if (rf !== requesterName) return false;
+            // 2. No debe estar ya vinculado a este ticket
+            if (allLinked.includes(caseNum)) return false;
+            // 3. No debe estar ya manejado en ningún otro ticket del sistema
+            if (allHandledCaseNumbers.has(caseNum)) return false;
+            
+            return true;
         });
 
         if (siblings.length > 0) {
-            console.log(`Auto-linking ${siblings.length} sibling cases for ${ticket.requester}`);
+            console.log(`Auto-linking ${siblings.length} NEW sibling cases for ${ticket.requester} (${siblings.map(s => s.caseNumber).join(', ')})`);
             
             // Registrar que ya se procedió a la vinculación de este ticket para no repetirlo
             autoLinkedRef.current[ticket.id] = true;
@@ -310,6 +359,9 @@ export function useTicketDetail() {
             // Notar que NO llamamos a setEditedData aquí directamente para no interrumpir al usuario.
             // El primer useEffect sincronizará editedData si el usuario NO está editando.
             updateTicket(ticket.id, updatedTicketData);
+        } else {
+            // Aunque no haya nuevos casos para vincular, marcar como procesado para no volver a correr
+            autoLinkedRef.current[ticket.id] = true;
         }
     }, [ticket?.id, ticket?.requester, sfdcCases]); // Dependencias estables
 
