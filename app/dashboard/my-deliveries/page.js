@@ -485,6 +485,7 @@ export default function MyDeliveriesPage() {
 
         // 1. Procesar tareas de la nueva tabla relacional
         logisticsTasks.forEach(task => {
+            if (!task) return;
             const driverName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
             const driverUid = String(task.assigned_to || task.assignedTo || '');
             
@@ -568,6 +569,7 @@ export default function MyDeliveriesPage() {
             // B. REVISAR CASOS ASOCIADOS LEGACY (Unificado por normalizador ahora)
             if (t.associatedCases && Array.isArray(t.associatedCases)) {
                 t.associatedCases.forEach((c, idx) => {
+                    if (!c) return;
                     const cDriverName = (c.delivery_person || '').toLowerCase();
                     const cDriverUid = String(c.assigned_to || '');
                     const isCaseAssigned = (cDriverName && (cDriverName === uName || uName.includes(cDriverName) || cDriverName.includes(uName))) || 
