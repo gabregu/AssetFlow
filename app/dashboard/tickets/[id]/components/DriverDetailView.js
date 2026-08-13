@@ -134,7 +134,8 @@ export default function DriverDetailView({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {(() => {
                         const visibleTasks = unifiedTasks.filter(t => {
-                            const s = (t.status || '').toLowerCase().trim();
+                            if (!t) return false;
+                            const s = (typeof t.status === 'string' ? t.status : '').toLowerCase().trim();
                             // Filtramos robusto contra variantes de "No requiere accion" o "Sin intervencion"
                             return s !== 'no requiere accion' && s !== 'sin intervención' && s !== 'sin intervencion' && !s.includes('no requiere');
                         });

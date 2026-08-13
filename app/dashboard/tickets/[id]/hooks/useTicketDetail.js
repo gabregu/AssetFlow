@@ -82,7 +82,7 @@ export function useTicketDetail() {
         
         // Deduplicar por caseNumber (evitar duplicar si ya existe en ticketTasks)
         const filteredLegacy = legacyCases.filter(lc => 
-            lc.caseNumber && lc.caseNumber !== 'Caso Principal' && 
+            lc && lc.caseNumber && lc.caseNumber !== 'Caso Principal' && 
             !baseTasks.some(rt => String(rt.caseNumber || rt.case_number).trim() === String(lc.caseNumber).trim())
         );
 
@@ -190,8 +190,8 @@ export function useTicketDetail() {
 
         // Si editedData está vacío, o hay una sincronización pendiente (nuevos casos asociados en el store),
         // o el ticketID cambió, procedemos a actualizar/sincronizar.
-        const storeCases = ticket.associatedCases || [];
-        const localCases = (editedData && editedData.associatedCases) || [];
+        const storeCases = Array.isArray(ticket.associatedCases) ? ticket.associatedCases : [];
+        const localCases = Array.isArray(editedData?.associatedCases) ? editedData.associatedCases : [];
         const storeChat = Array.isArray(ticket.chatLog) ? ticket.chatLog : [];
         const localChat = Array.isArray(editedData?.chatLog) ? editedData.chatLog : [];
         
@@ -217,7 +217,7 @@ export function useTicketDetail() {
                 : (hasRealTasks ? (editedData.associatedCases || []) : [...storeCases]);
             
             if (!hasRealTasks && normalizedCases.length === 0) {
-                const oldAssets = ticket.associatedAssets || (ticket.associatedAssetSerial ? [{ serial: ticket.associatedAssetSerial, type: ticket.logistics?.type || 'Entrega' }] : []);
+                const oldAssets = Array.isArray(ticket.associatedAssets) ? ticket.associatedAssets : (ticket.associatedAssetSerial ? [{ serial: ticket.associatedAssetSerial, type: ticket.logistics?.type || 'Entrega' }] : []);
                 normalizedCases = [{
                     caseNumber: 'Caso Principal',
                     subject: ticket.subject || 'Gestion de Servicio',
@@ -233,7 +233,7 @@ export function useTicketDetail() {
                     }
                 }];
             } else if (!hasRealTasks) {
-                normalizedCases = normalizedCases.map(c => ({
+                normalizedCases = normalizedCases.filter(Boolean).map(c => ({
                     ...c,
                     assets: c.assets || [],
                     accessories: c.accessories || { backpack: false, screenFilter: false, filterSize: '14"' },
