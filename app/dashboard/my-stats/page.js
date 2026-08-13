@@ -40,13 +40,14 @@ export default function MyStatsPage() {
         
         // --- 1. PROCESAR SUB-CASOS ---
         logisticsTasks.forEach(task => {
+            if (!task) return;
             const drvName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
             const drvId = String(task.assigned_to || task.assignedTo || '');
             const isMeByName = drvName && (drvName === uName || uName.includes(drvName) || drvName.includes(uName));
             const isMeById = drvId && (drvId === uId);
             
             if (isMeByName || isMeById) {
-                const pTicket = tickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
+                const pTicket = tickets.find(t => t && String(t.id) === String(task.ticket_id || task.ticketId));
                 items.push({
                     id: pTicket?.id || task.ticket_id || 'N/A',
                     taskId: task.id,
@@ -70,7 +71,8 @@ export default function MyStatsPage() {
 
         // --- 2. PROCESAR TICKETS LEGACY ---
         tickets.forEach(ticket => {
-            const hasNewTasks = logisticsTasks.some(tk => String(tk.ticket_id) === String(ticket.id));
+            if (!ticket) return;
+            const hasNewTasks = logisticsTasks.some(tk => tk && String(tk.ticket_id) === String(ticket.id));
             if (hasNewTasks) return;
 
             const tDriverName = (ticket.logistics?.delivery_person || ticket.logistics?.deliveryPerson || '').trim().toLowerCase();
