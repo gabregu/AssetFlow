@@ -29,12 +29,12 @@ export default function DriverDetailView({
     unifiedTasks,
     setSelectedCaseIndex
 }) {
-    // Extraer datos del contacto
-    const contactName = ticket.requester || 'Destinatario';
-    const contactPhone = ticket.deliveryDetails?.contactPhone || '';
-    const address = ticket.logistics?.address || 'Dirección no especificada';
-    const floorDept = ticket.logistics?.floorDept || '';
-    const status = ticket.logistics?.status || 'Pendiente';
+    // Extraer datos del contacto de forma segura (asegurando primitivos para evitar fallos de React)
+    const contactName = typeof ticket?.requester === 'string' ? ticket.requester : 'Destinatario';
+    const contactPhone = typeof ticket?.deliveryDetails?.contactPhone === 'string' || typeof ticket?.deliveryDetails?.contactPhone === 'number' ? String(ticket.deliveryDetails.contactPhone) : '';
+    const address = typeof ticket?.logistics?.address === 'string' ? ticket.logistics.address : 'Dirección no especificada';
+    const floorDept = typeof ticket?.logistics?.floorDept === 'string' || typeof ticket?.logistics?.floorDept === 'number' ? String(ticket.logistics.floorDept) : '';
+    const status = typeof ticket?.logistics?.status === 'string' ? ticket.logistics.status : 'Pendiente';
 
     const handleWhatsApp = () => {
         if (!contactPhone) return;
@@ -163,19 +163,19 @@ export default function DriverDetailView({
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <Package size={16} style={{ color: 'var(--primary-color)' }} />
-                                            <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{task.caseNumber || `Sub-caso`}</span>
+                                            <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{typeof task.caseNumber === 'string' || typeof task.caseNumber === 'number' ? task.caseNumber : `Sub-caso`}</span>
                                         </div>
-                                        <Badge variant={getStatusVariant(task.status)}>{task.status || 'Pendiente'}</Badge>
+                                        <Badge variant={getStatusVariant(typeof task.status === 'string' ? task.status : 'Pendiente')}>{typeof task.status === 'string' ? task.status : 'Pendiente'}</Badge>
                                     </div>
                                     
-                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-main)' }}>{task.subject}</h4>
+                                    <h4 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--text-main)' }}>{typeof task.subject === 'string' ? task.subject : 'Caso Asociado'}</h4>
                                     
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            <Calendar size={14} /> {task.date || 'Sin fecha'}
+                                            <Calendar size={14} /> {typeof task.date === 'string' ? task.date : 'Sin fecha'}
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            <Clock size={14} /> {task.time_slot || 'Por coordinar'}
+                                            <Clock size={14} /> {typeof task.time_slot === 'string' ? task.time_slot : 'Por coordinar'}
                                         </div>
                                     </div>
 

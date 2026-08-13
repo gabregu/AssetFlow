@@ -192,8 +192,8 @@ export function useTicketDetail() {
         // o el ticketID cambió, procedemos a actualizar/sincronizar.
         const storeCases = ticket.associatedCases || [];
         const localCases = (editedData && editedData.associatedCases) || [];
-        const storeChat = ticket.chatLog || [];
-        const localChat = (editedData && editedData.chatLog) || [];
+        const storeChat = Array.isArray(ticket.chatLog) ? ticket.chatLog : [];
+        const localChat = Array.isArray(editedData?.chatLog) ? editedData.chatLog : [];
         
         const needsInitialSync = !editedData || Object.keys(editedData).length === 0 || editedData.id !== ticket.id;
         const needsBackgroundSync = storeCases.length > localCases.length;
@@ -254,8 +254,8 @@ export function useTicketDetail() {
                 ...prev,
                 ...ticket,
                 associatedCases: normalizedCases,
-                internalNotes: ticket.internalNotes || [],
-                chatLog: ticket.chatLog || [],
+                internalNotes: Array.isArray(ticket.internalNotes) ? ticket.internalNotes : [],
+                chatLog: Array.isArray(ticket.chatLog) ? ticket.chatLog : [],
                 instructionsUpdatedBy: ticket.instructionsUpdatedBy
             }));
         }

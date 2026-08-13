@@ -41,7 +41,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
         }
     }, []);
 
-    const chatLog = editedData.chatLog || [];
+    const chatLog = Array.isArray(editedData?.chatLog) ? editedData.chatLog : [];
 
     useEffect(() => {
         scrollToBottom();
