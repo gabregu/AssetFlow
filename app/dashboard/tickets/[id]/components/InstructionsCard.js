@@ -156,17 +156,17 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                         {isEditingContext ? (
                             <textarea 
                                 style={{ width: '100%', border: 'none', background: 'white', borderRadius: '4px', padding: '4px', fontSize: '0.8rem', resize: 'none', minHeight: '50px' }}
-                                value={tempContext}
+                                value={typeof tempContext === 'string' ? tempContext : ''}
                                 onChange={e => setTempContext(e.target.value)}
                                 autoFocus
                             />
                         ) : (
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: '1.3', fontStyle: tempContext ? 'normal' : 'italic' }}>
-                                {tempContext || 'Toca el ícono para agregar instrucción.'}
+                                {typeof tempContext === 'string' && tempContext ? tempContext : 'Toca el ícono para agregar instrucción.'}
                             </div>
                         )}
                         
-                        {editedData.instructionsUpdatedBy && !isEditingContext && (
+                        {typeof editedData?.instructionsUpdatedBy === 'string' && !isEditingContext && (
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', opacity: 0.6, marginTop: '4px', textAlign: 'right' }}>
                                 Modificado por {editedData.instructionsUpdatedBy}
                             </div>
@@ -214,7 +214,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                                             opacity: 0.8,
                                             fontWeight: 600
                                         }}>
-                                            {msg.user} • {formatCommentDateTime(msg.timestamp)}
+                                            {typeof msg.user === 'string' ? msg.user : 'Usuario'} • {formatCommentDateTime(typeof msg.timestamp === 'string' ? msg.timestamp : '')}
                                         </div>
                                         <div style={{ 
                                             padding: '0.4rem 0.6rem', 
@@ -226,7 +226,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                                             boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                                             border: isMe ? 'none' : '1px solid #e2e8f0'
                                         }}>
-                                            {msg.text}
+                                            {typeof msg.text === 'string' ? msg.text : ''}
                                         </div>
                                     </div>
                                 );

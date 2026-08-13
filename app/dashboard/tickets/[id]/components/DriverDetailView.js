@@ -133,7 +133,7 @@ export default function DriverDetailView({
             <Card title="Ítems del Caso" action={<p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Toca un ítem para coordinar</p>}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {(() => {
-                        const visibleTasks = unifiedTasks.filter(t => {
+                        const visibleTasks = (unifiedTasks || []).filter(t => {
                             if (!t) return false;
                             const s = (typeof t.status === 'string' ? t.status : '').toLowerCase().trim();
                             // Filtramos robusto contra variantes de "No requiere accion" o "Sin intervencion"
@@ -145,7 +145,7 @@ export default function DriverDetailView({
                         }
 
                         return visibleTasks.map((task) => {
-                            const originalIdx = unifiedTasks.findIndex(t => t === task || (t && t.id && task && t.id === task.id));
+                            const originalIdx = (unifiedTasks || []).findIndex(t => t === task || (t && t.id && task && t.id === task.id));
                             
                             return (
                                 <div 
