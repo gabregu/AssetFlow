@@ -191,6 +191,7 @@ export default function InstructionsCard({ ticket, editedData, setEditedData, up
                             </div>
                         ) : (
                             chatLog.map((msg, idx) => {
+                                if (!msg) return null;
                                 const isMe = msg.user === currentUser?.name;
                                 return (
                                     <div 

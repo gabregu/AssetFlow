@@ -38,13 +38,13 @@ export default function DriverDetailView({
 
     const handleWhatsApp = () => {
         if (!contactPhone) return;
-        const cleanPhone = contactPhone.replace(/\D/g, '');
+        const cleanPhone = String(contactPhone).replace(/\D/g, '');
         window.open(`https://wa.me/${cleanPhone}`, '_blank');
     };
 
     const handleCall = () => {
         if (!contactPhone) return;
-        window.location.href = `tel:${contactPhone}`;
+        window.location.href = `tel:${String(contactPhone)}`;
     };
 
     const handleNavigate = () => {
@@ -62,7 +62,7 @@ export default function DriverDetailView({
                 </Link>
                 <div style={{ flex: 1 }}>
                     <h2 style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.01em' }}>Detalle de Servicio</h2>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Ticket #{ticket.id.toString().substring(0, 8)}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Ticket #{ticket?.id ? ticket.id.toString().substring(0, 8) : ''}</p>
                 </div>
                 <Badge variant={getStatusVariant(status)} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>
                     {status}
@@ -144,7 +144,7 @@ export default function DriverDetailView({
                         }
 
                         return visibleTasks.map((task) => {
-                            const originalIdx = unifiedTasks.findIndex(t => t === task || (t.id && t.id === task.id));
+                            const originalIdx = unifiedTasks.findIndex(t => t === task || (t && t.id && task && t.id === task.id));
                             
                             return (
                                 <div 
