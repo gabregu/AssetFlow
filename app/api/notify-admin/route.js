@@ -3,6 +3,17 @@ import { supabase } from '@/lib/supabase';
 
 export async function POST(request) {
     try {
+        // Validar Token de Autenticación
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json({ error: 'No autorizado: Falta cabecera de autorización' }, { status: 401 });
+        }
+        const token = authHeader.split(' ')[1];
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        if (authError || !user) {
+            return NextResponse.json({ error: 'No autorizado: Sesión inválida' }, { status: 401 });
+        }
+
         const body = await request.json();
         const { task, ticket } = body;
 

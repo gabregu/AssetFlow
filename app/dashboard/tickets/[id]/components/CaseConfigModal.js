@@ -12,6 +12,7 @@ import { FileText, Package, RotateCcw, Boxes } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdf-generator';
 import { Button } from '@/app/components/ui/Button';
 import { useSafeSubmit } from '@/lib/useSafeSubmit';
+import { supabase } from '@/lib/supabase';
 
 export default function CaseConfigModal({
     ticket,
@@ -325,11 +326,17 @@ export default function CaseConfigModal({
 
                                     // Add Notification Logic if transitioned to 'En Preparación'
                                     if (!isCollection && activeTask.status !== 'En Preparación') {
-                                        fetch('/api/notify-admin', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ task: activeTask, ticket: ticket })
-                                        }).catch(err => console.error("Error sending admin notification", err));
+                                        supabase.auth.getSession().then(({ data: { session } }) => {
+                                            const token = session?.access_token;
+                                            fetch('/api/notify-admin', {
+                                                method: 'POST',
+                                                headers: { 
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': token ? `Bearer ${token}` : ''
+                                                },
+                                                body: JSON.stringify({ task: activeTask, ticket: ticket })
+                                            }).catch(err => console.error("Error sending admin notification", err));
+                                        });
                                     }
 
                                     setSelectedCaseIndex(null);

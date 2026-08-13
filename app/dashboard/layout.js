@@ -35,7 +35,6 @@ export default function DashboardLayout({ children }) {
         return null; // Will redirect in useEffect
     }
 
-    /*
     if (currentUser.role === 'pending') {
         return (
             <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--background)', padding: '2rem', textAlign: 'center' }}>
@@ -57,7 +56,6 @@ export default function DashboardLayout({ children }) {
             </div>
         );
     }
-    */
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--background)' }}>

@@ -65,7 +65,7 @@ export default function ImportCODPage() {
             <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
                 <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Herramienta Automática COD Abril 2026</h1>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                    Sube el archivo "COD2026 - Tabla de Seriales.csv". El sistema usará tu sesión activa para brincar las restricciones de seguridad y actualizar la base de datos automáticamente.
+                    {"Sube el archivo \"COD2026 - Tabla de Seriales.csv\". El sistema usará tu sesión activa para brincar las restricciones de seguridad y actualizar la base de datos automáticamente."}
                 </p>
                 
                 <input 
