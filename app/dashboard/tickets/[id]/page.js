@@ -88,6 +88,7 @@ export default function TicketDetailPage() {
                     currentUser={currentUser}
                     unifiedTasks={unifiedTasks}
                     updateLogisticsTask={updateLogisticsTask}
+                    addLogisticsTask={addLogisticsTask}
                 />
             ) : (
                 /* VISTA ADMINISTRADOR (Completa) */

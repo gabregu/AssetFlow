@@ -331,6 +331,7 @@ export default function LogisticsHubPage() {
         });
 
         return {
+            enPreparacion: filtered.filter(t => t.status === 'En Preparación').length,
             porCoordinar: filtered.filter(t => t.status === 'Para Coordinar').length,
             enTransito: filtered.filter(t => t.status === 'En Transito').length,
             total: filtered.length
@@ -694,25 +695,87 @@ export default function LogisticsHubPage() {
                 </div>
             </div>
 
-            {/* Metrics cards */}
-            <div className="grid-responsive-3" style={{ marginBottom: '2rem' }}>
-                <Card className="p-4" style={{ borderLeft: '4px solid #f97316' }}>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Por Coordinar</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem' }}>
+            {/* Metrics cards — clickeables para filtrar */}
+            <div className="grid-responsive-4" style={{ marginBottom: '2rem' }}>
+                {/* En Preparación */}
+                <Card
+                    className="p-4"
+                    onClick={() => setStatusFilter(statusFilter === 'En Preparación' ? 'All' : 'En Preparación')}
+                    style={{
+                        borderLeft: '4px solid #8b5cf6',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        backgroundColor: statusFilter === 'En Preparación' ? 'rgba(139,92,246,0.1)' : 'var(--surface)',
+                        boxShadow: statusFilter === 'En Preparación' ? 'inset 0 0 0 1.5px #8b5cf6, var(--shadow-sm)' : 'var(--shadow-sm)',
+                        transform: statusFilter === 'En Preparación' ? 'translateY(-2px)' : 'none',
+                    }}
+                >
+                    <div style={{ color: statusFilter === 'En Preparación' ? '#8b5cf6' : 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', transition: 'color 0.2s' }}>En Preparación</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem', color: statusFilter === 'En Preparación' ? '#8b5cf6' : 'var(--text-main)' }}>
+                        {metrics.enPreparacion}
+                    </div>
+                    {statusFilter === 'En Preparación' && <div style={{ fontSize: '0.7rem', color: '#8b5cf6', marginTop: '4px', fontWeight: 600 }}>✓ Filtrando</div>}
+                </Card>
+
+                {/* Por Coordinar */}
+                <Card
+                    className="p-4"
+                    onClick={() => setStatusFilter(statusFilter === 'Para Coordinar' ? 'All' : 'Para Coordinar')}
+                    style={{
+                        borderLeft: '4px solid #f97316',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        backgroundColor: statusFilter === 'Para Coordinar' ? 'rgba(249,115,22,0.1)' : 'var(--surface)',
+                        boxShadow: statusFilter === 'Para Coordinar' ? 'inset 0 0 0 1.5px #f97316, var(--shadow-sm)' : 'var(--shadow-sm)',
+                        transform: statusFilter === 'Para Coordinar' ? 'translateY(-2px)' : 'none',
+                    }}
+                >
+                    <div style={{ color: statusFilter === 'Para Coordinar' ? '#f97316' : 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', transition: 'color 0.2s' }}>Por Coordinar</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem', color: statusFilter === 'Para Coordinar' ? '#f97316' : 'var(--text-main)' }}>
                         {metrics.porCoordinar}
                     </div>
+                    {statusFilter === 'Para Coordinar' && <div style={{ fontSize: '0.7rem', color: '#f97316', marginTop: '4px', fontWeight: 600 }}>✓ Filtrando</div>}
                 </Card>
-                <Card className="p-4" style={{ borderLeft: '4px solid #3b82f6' }}>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>En Tránsito</div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem' }}>
+
+                {/* En Tránsito */}
+                <Card
+                    className="p-4"
+                    onClick={() => setStatusFilter(statusFilter === 'En Transito' ? 'All' : 'En Transito')}
+                    style={{
+                        borderLeft: '4px solid #3b82f6',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        backgroundColor: statusFilter === 'En Transito' ? 'rgba(59,130,246,0.1)' : 'var(--surface)',
+                        boxShadow: statusFilter === 'En Transito' ? 'inset 0 0 0 1.5px #3b82f6, var(--shadow-sm)' : 'var(--shadow-sm)',
+                        transform: statusFilter === 'En Transito' ? 'translateY(-2px)' : 'none',
+                    }}
+                >
+                    <div style={{ color: statusFilter === 'En Transito' ? '#3b82f6' : 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', transition: 'color 0.2s' }}>En Tránsito</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem', color: statusFilter === 'En Transito' ? '#3b82f6' : 'var(--text-main)' }}>
                         {metrics.enTransito}
                     </div>
+                    {statusFilter === 'En Transito' && <div style={{ fontSize: '0.7rem', color: '#3b82f6', marginTop: '4px', fontWeight: 600 }}>✓ Filtrando</div>}
                 </Card>
-                <Card className="p-4" style={{ background: 'var(--primary-color)', color: 'white' }}>
-                    <div style={{ opacity: 0.8, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Tareas</div>
+
+                {/* Total Tareas */}
+                <Card
+                    className="p-4"
+                    onClick={() => setStatusFilter('All')}
+                    style={{
+                        background: statusFilter === 'All' ? 'var(--primary-color)' : 'var(--surface)',
+                        borderLeft: statusFilter === 'All' ? 'none' : '4px solid var(--primary-color)',
+                        color: statusFilter === 'All' ? 'white' : 'var(--text-main)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        boxShadow: statusFilter === 'All' ? '0 4px 14px rgba(59,130,246,0.35)' : 'var(--shadow-sm)',
+                        transform: statusFilter === 'All' ? 'translateY(-2px)' : 'none',
+                    }}
+                >
+                    <div style={{ opacity: statusFilter === 'All' ? 0.85 : 0.6, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Tareas</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: 700, marginTop: '0.25rem' }}>
                         {metrics.total}
                     </div>
+                    {statusFilter === 'All' && <div style={{ fontSize: '0.7rem', opacity: 0.8, marginTop: '4px', fontWeight: 600 }}>✓ Todos los estados</div>}
                 </Card>
             </div>
 

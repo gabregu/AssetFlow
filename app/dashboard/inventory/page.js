@@ -821,14 +821,20 @@ export default function InventoryPage() {
     };
 
     // Yubikey Handlers
-    const [newYubikey, setNewYubikey] = useState({ name: 'YubiKey 5 NFC', model: '5 NFC', serial: '', status: 'Nuevo', country: 'Argentina' });
+    const [newYubikey, setNewYubikey] = useState({ type: 'YubiKey 5 NFC', serial: '', status: 'Nuevo', country: 'Argentina' });
 
     const handleAddYubikey = async (e) => {
         e.preventDefault();
         try {
-            await addYubikey({ ...newYubikey });
+            const yubiType = newYubikey.type || newYubikey.name || 'YubiKey 5 NFC';
+            await addYubikey({ 
+                type: yubiType,
+                serial: newYubikey.serial,
+                status: newYubikey.status,
+                country: newYubikey.country || 'Argentina'
+            });
             setIsAddYubikeyModalOpen(false);
-            setNewYubikey({ name: 'YubiKey 5 NFC', model: '5 NFC', serial: '', status: 'Nuevo', country: 'Argentina' });
+            setNewYubikey({ type: 'YubiKey 5 NFC', serial: '', status: 'Nuevo', country: 'Argentina' });
             alert("Security Key creada correctamente");
         } catch (error) {
             alert("Error al crear Security Key: " + error.message);
@@ -1456,7 +1462,9 @@ export default function InventoryPage() {
         if (countryFilter === 'Todos') return assetList;
         return assetList.filter(a => {
             if (a.country) {
-                return a.country.toLowerCase().includes(countryFilter.toLowerCase());
+                const c1 = a.country.toLowerCase();
+                const c2 = countryFilter.toLowerCase();
+                return c1.includes(c2) || c2.includes(c1);
             } else if (a.notes && a.notes.includes(countryFilter)) {
                 return true; // Fallback: check notes if country was imported there
             } else {
@@ -1788,97 +1796,7 @@ export default function InventoryPage() {
 
             {/* Global Inventory KPIs Removidos */}
 
-            {/* --- TABLA YUBIKEYS (SECURITY KEYS) --- */}
-            {activeTab === 'yubikeys' && (
-                <Card
-                    title="Inventario de Security Keys (Yubikeys)"
-                    action={
-                        (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial' || currentUser?.role === 'Administrativo') && (
-                            <Button 
-                                size="sm" 
-                                icon={Plus} 
-                                title="Añadir Security Key"
-                                onClick={() => setIsAddYubikeyModalOpen(true)}
-                            >
-                                Añadir Security Key
-                            </Button>
-                        )
-                    }
-                >
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                        Gestión de llaves de seguridad físicas. Monitoreo por cantidad y estado.
-                    </p>
 
-                    <div className="table-responsive">
-                        {yubikeys.length === 0 && <p style={{ padding: '1rem', color: 'var(--text-secondary)' }}>No hay Security Keys registradas.</p>}
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                    <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>MODELO</th>
-                                    <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>STOCK</th>
-                                    <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>ESTADO</th>
-                                    <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>PAÍS</th>
-                                    <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {applyCountryFilter(yubikeys).map((item) => (
-                                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                        <td style={{ padding: '1rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                <div style={{ padding: '0.5rem', backgroundColor: 'var(--background)', borderRadius: '10px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                                                    <Key size={18} />
-                                                </div>
-                                                <div>
-                                                    <span style={{ fontWeight: 600, display: 'block' }}>{item.name}</span>
-                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.model}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td style={{ padding: '1rem', fontWeight: 600, fontSize: '1rem' }}>
-                                            {item.stock} <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-secondary)' }}>Unidades</span>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            <Badge variant={getStatusVariant(item.status)}>{item.status}</Badge>
-                                        </td>
-                                        <td style={{ padding: '1rem' }}>
-                                            {item.country && (
-                                                <span style={{
-                                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                                    width: '24px', height: '24px', borderRadius: '4px',
-                                                    backgroundColor: 'var(--background)', border: '1px solid var(--border)',
-                                                    fontSize: '0.7rem', fontWeight: 700
-                                                }} title={item.country}>
-                                                    {getCountryInitial(item.country)}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                                                <Button variant="ghost" size="sm" icon={Edit3} onClick={() => {
-                                                    setSelectedYubikey(item);
-                                                    setYubikeyStockChange(item.stock);
-                                                    setIsYubikeyModalOpen(true);
-                                                }} />
-                                                {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        icon={Trash2}
-                                                        onClick={() => handleDeleteYubikeyItem(item.id)}
-                                                        style={{ color: '#ef4444' }}
-                                                        title="Eliminar item"
-                                                    />
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
-            )}
             {/* Resumen Ejecutivo de Inventario */}
             {activeTab === 'hardware' && (
                 <Card style={{ marginBottom: '2rem' }}>
@@ -3683,7 +3601,7 @@ export default function InventoryPage() {
                     setIsAddYubikeyModalOpen(false);
                     setIsYubikeyModalOpen(false);
                     setSelectedYubikey(null);
-                    setNewYubikey({ name: '', model: '', serial: '', status: 'Nuevo', country: 'Argentina' }); // Reset form
+                    setNewYubikey({ type: 'YubiKey 5 NFC', serial: '', status: 'Nuevo', country: 'Argentina' }); // Reset form
                 }}
                 title={selectedYubikey ? "Editar Security Key" : "Añadir Security Key"}
             >
@@ -3698,28 +3616,17 @@ export default function InventoryPage() {
                     }
                 }}>
                     <div className="form-group">
-                        <label className="form-label">Nombre del Modelo</label>
+                        <label className="form-label">Modelo / Tipo de Security Key</label>
                         <input
                             type="text"
                             required
                             className="form-input"
-                            value={selectedYubikey ? selectedYubikey.name : newYubikey.name}
-                            onChange={(e) => selectedYubikey ? setSelectedYubikey({ ...selectedYubikey, name: e.target.value }) : setNewYubikey({ ...newYubikey, name: e.target.value })}
+                            value={selectedYubikey ? (selectedYubikey.type || selectedYubikey.name || '') : (newYubikey.type || newYubikey.name || '')}
+                            onChange={(e) => selectedYubikey ? setSelectedYubikey({ ...selectedYubikey, type: e.target.value }) : setNewYubikey({ ...newYubikey, type: e.target.value })}
                             placeholder="Ej: YubiKey 5 NFC"
                         />
                     </div>
-                    <div className="form-group">
-                        <label className="form-label">Modelo / Serie</label>
-                        <input
-                            type="text"
-                            required
-                            className="form-input"
-                            value={selectedYubikey ? selectedYubikey.model : newYubikey.model}
-                            onChange={(e) => selectedYubikey ? setSelectedYubikey({ ...selectedYubikey, model: e.target.value }) : setNewYubikey({ ...newYubikey, model: e.target.value })}
-                            placeholder="Ej: 5 NFC / Bio"
-                        />
-                    </div>
-                    {/* Serial Number Field - New */}
+                    {/* Serial Number Field */}
                     <div className="form-group">
                         <label className="form-label">Número de Serie (Serial)</label>
                         <input

@@ -4,7 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
-import { Search, Eye, History, Filter, ArrowUpRight } from 'lucide-react';
+import { Search, Eye, History, Filter, ArrowUpRight, FileText, TrendingUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -100,7 +100,10 @@ export default function HistoryPage() {
         return 'Entrega'; 
     }, [logisticsTasks]);
 
-    const [selectedMonth, setSelectedMonth] = useState('All'); // 'All' or 'YYYY-MM'
+    // Default to current month
+    const now = new Date();
+    const currentMonthValue = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const [selectedMonth, setSelectedMonth] = useState(currentMonthValue);
 
     // Restricted access? Usually history is open but let's assume same roles as tickets for now or maybe everyone?
     // User didn't specify roles, but implied it's a view for "everyone" or admins? 
@@ -161,7 +164,27 @@ export default function HistoryPage() {
             });
         }
         return result;
-    }, [historicalTickets, filter, sortConfig, columnFilters, countryFilter, getLocalCompletedDateStr, getClientName]);
+    }, [historicalTickets, filter, sortConfig, columnFilters, countryFilter, selectedMonth, getLocalCompletedDateStr, getClientName]);
+
+    // Breakdown por categoría del período filtrado
+    const monthlyBreakdown = useMemo(() => {
+        let newHire = 0, collection = 0, delivery = 0;
+        sortedAndFilteredTickets.forEach(t => {
+            const subject = (t.subject || '').toLowerCase();
+            if (subject.includes('new hire')) {
+                newHire++;
+            } else if (
+                subject.includes('collection') ||
+                subject.includes('offboarding') ||
+                subject.includes('recupero')
+            ) {
+                collection++;
+            } else {
+                delivery++;
+            }
+        });
+        return { newHire, collection, delivery, total: sortedAndFilteredTickets.length };
+    }, [sortedAndFilteredTickets]);
 
     const getStatusVariant = (status) => {
         switch (status) {
@@ -190,6 +213,48 @@ export default function HistoryPage() {
                         <History size={24} />
                     </div>
                 </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '3px solid #3b82f6' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>New Hire</p>
+                        <div style={{ padding: '0.4rem', background: 'rgba(59,130,246,.12)', borderRadius: '8px' }}>
+                            <FileText size={15} color="#3b82f6" />
+                        </div>
+                    </div>
+                    <h2 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0, color: '#3b82f6' }}>{monthlyBreakdown.newHire}</h2>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0 }}>Incorporaciones del período</p>
+                </Card>
+
+                <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '3px solid #f59e0b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Collection</p>
+                        <div style={{ padding: '0.4rem', background: 'rgba(245,158,11,.12)', borderRadius: '8px' }}>
+                            <ArrowUpRight size={15} color="#f59e0b" />
+                        </div>
+                    </div>
+                    <h2 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0, color: '#f59e0b' }}>{monthlyBreakdown.collection}</h2>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0 }}>Collection / Offboarding / Recupero</p>
+                </Card>
+
+                <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '3px solid #22c55e' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Delivery</p>
+                        <div style={{ padding: '0.4rem', background: 'rgba(34,197,94,.12)', borderRadius: '8px' }}>
+                            <TrendingUp size={15} color="#22c55e" />
+                        </div>
+                    </div>
+                    <h2 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0, color: '#22c55e' }}>{monthlyBreakdown.delivery}</h2>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0 }}>Resto de servicios</p>
+                </Card>
+
+                <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--primary-color)', color: 'white' }}>
+                    <p style={{ fontSize: '0.8rem', opacity: 0.85, fontWeight: 600, margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total del Período</p>
+                    <h2 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>{monthlyBreakdown.total}</h2>
+                    <p style={{ fontSize: '0.72rem', opacity: 0.75, margin: 0 }}>Servicios completados</p>
+                </Card>
             </div>
 
             <Card className="p-0">

@@ -3,8 +3,8 @@ import React, { useEffect } from 'react';
 import { useStore } from '../../lib/store';
 import { supabase } from '../../lib/supabase';
 import {
-    AlertCircle, TrendingUp, CheckCircle, Users, Plus,
-    Search, Truck, FileText, Clock, Tag, Mail, Info, Package, History
+    AlertCircle, TrendingUp, CheckCircle, ShieldAlert, LayoutList, Plus,
+    Search, Truck, FileText, Clock, Tag, Mail, Info, Package, History, Users
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { CountryFilter } from '../components/layout/CountryFilter';
@@ -184,10 +184,34 @@ export default function Dashboard() {
     }, [assets, countryFilter]);
 
     // ── KPIs ───────────────────────────────────────────────────────────────
-    const openTickets = filteredTickets.filter(t => t.status === 'Pendiente').length;
-    const inProgress = filteredTickets.filter(t => t.status === 'En Progreso').length;
-    const resolved = filteredTickets.filter(t => ['Resuelto', 'Cerrado'].includes(t.status)).length;
-    const assignedAssets = filteredAssets.filter(a => a.assignee && !['Almacén', 'En Almacén'].includes(a.assignee)).length;
+    const ACTIVE_STATUSES = ['Pendiente', 'En Progreso', 'Bloqueado / A la Espera'];
+    const pendingTickets = filteredTickets.filter(t => t.status === 'Pendiente').length;
+    const inProgress     = filteredTickets.filter(t => t.status === 'En Progreso').length;
+    const blocked        = filteredTickets.filter(t => t.status === 'Bloqueado / A la Espera').length;
+    const totalTickets   = pendingTickets + inProgress + blocked; // solo activos
+
+    // Resueltos: solo del mes en curso
+    const now = new Date();
+    const currentYear  = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const resolvedThisMonth = filteredTickets.filter(t => {
+        const isResolved = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status);
+        if (!isResolved) return false;
+        const dateStr = t.created_at || t.createdAt || t.date || t.dateOpened;
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
+        return !isNaN(d.getTime()) && d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+    }).length;
+
+    // Tickets del mes en curso (para gráfico de carga de trabajo)
+    const currentMonthTickets = React.useMemo(() => {
+        return filteredTickets.filter(t => {
+            const dateStr = t.created_at || t.createdAt || t.date || t.dateOpened;
+            if (!dateStr) return false;
+            const d = new Date(dateStr);
+            return !isNaN(d.getTime()) && d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+        });
+    }, [filteredTickets, currentYear, currentMonth]);
 
     // ── Months data for historical workloads ────────────────────────────────
     const availableMonths = React.useMemo(() => {
@@ -245,25 +269,28 @@ export default function Dashboard() {
             </div>
 
             {/* ── KPI Cards ─────────────────────────────────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
-                <KpiCard label="Servicios Abiertos" value={openTickets} icon={AlertCircle}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: '1rem', marginBottom: '1.75rem' }}>
+                <KpiCard label="Total de Servicios" value={totalTickets} icon={LayoutList}
                     color="#3b82f6" bg="rgba(59,130,246,.1)"
-                    sub={`${openTickets} Activos en cola`} />
+                    sub={`Activos en ${countryFilter}`} />
+                <KpiCard label="Pendientes" value={pendingTickets} icon={AlertCircle}
+                    color="#f59e0b" bg="rgba(245,158,11,.1)"
+                    sub="En cola, sin asignar" />
                 <KpiCard label="En Progreso" value={inProgress} icon={TrendingUp}
-                    color="#f59e0b" bg="rgba(234,179,8,.1)"
+                    color="#0ea5e9" bg="rgba(14,165,233,.1)"
                     sub="Trabajando activamente" />
-                <KpiCard label="Resueltos (Total)" value={resolved} icon={CheckCircle}
+                <KpiCard label="Bloqueado / A la Espera" value={blocked} icon={ShieldAlert}
+                    color="#ef4444" bg="rgba(239,68,68,.1)"
+                    sub="Requieren atención" subColor="#ef4444" />
+                <KpiCard label="Resueltos (este mes)" value={resolvedThisMonth} icon={CheckCircle}
                     color="#22c55e" bg="rgba(34,197,94,.1)"
-                    sub="Completados histórico" subColor="#22c55e" />
-                <KpiCard label="Activos Asignados" value={assignedAssets} icon={Users}
-                    color="#8b5cf6" bg="rgba(139,92,246,.1)"
-                    sub="En manos de usuarios" />
+                    sub={`${now.toLocaleString('es-AR', { month: 'long', year: 'numeric' })}`} subColor="#22c55e" />
             </div>
 
             {/* ── Workload + Charts ──────────────────────────────────────── */}
             <WorkloadSection 
-                title="Carga de Trabajo (Empleados)"
-                tickets={filteredTickets}
+                title={`Carga de Trabajo — ${now.toLocaleString('es-AR', { month: 'long', year: 'numeric' })}`}
+                tickets={currentMonthTickets}
                 users={users}
                 logisticsTasks={logisticsTasks}
                 isHistorical={false}

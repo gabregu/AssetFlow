@@ -108,6 +108,58 @@ export default function MyDeliveriesPage() {
     const [hasSignature, setHasSignature] = useState(false);
     const lastPos = React.useRef(null);
 
+    // Firma Digital para Modal de Entrega / Recupero Principal
+    const deliverySignatureCanvasRef = React.useRef(null);
+    const [isDeliveryDrawing, setIsDeliveryDrawing] = useState(false);
+    const [hasDeliverySignature, setHasDeliverySignature] = useState(false);
+    const deliveryLastPos = React.useRef(null);
+
+    const getDeliverySignatureDataUrl = () => {
+        const canvas = deliverySignatureCanvasRef.current;
+        if (!canvas || !hasDeliverySignature) return null;
+        return canvas.toDataURL('image/png');
+    };
+
+    const clearDeliverySignature = () => {
+        const canvas = deliverySignatureCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        setHasDeliverySignature(false);
+    };
+
+    const handleDeliverySignatureStart = (e) => {
+        e.preventDefault();
+        const canvas = deliverySignatureCanvasRef.current;
+        if (!canvas) return;
+        setIsDeliveryDrawing(true);
+        deliveryLastPos.current = getCanvasPos(e, canvas);
+    };
+
+    const handleDeliverySignatureMove = (e) => {
+        e.preventDefault();
+        if (!isDeliveryDrawing) return;
+        const canvas = deliverySignatureCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const pos = getCanvasPos(e, canvas);
+        ctx.beginPath();
+        ctx.moveTo(deliveryLastPos.current.x, deliveryLastPos.current.y);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        deliveryLastPos.current = pos;
+        setHasDeliverySignature(true);
+    };
+
+    const handleDeliverySignatureEnd = (e) => {
+        e.preventDefault();
+        setIsDeliveryDrawing(false);
+        deliveryLastPos.current = null;
+    };
+
     const getSignatureDataUrl = () => {
         const canvas = signatureCanvasRef.current;
         if (!canvas) return null;
@@ -404,6 +456,8 @@ export default function MyDeliveriesPage() {
                 }
             }
 
+            const signatureDataUrl = getDeliverySignatureDataUrl();
+
             // Lógica para actualizar usando la nueva tabla de tareas
             if (selectedDelivery.taskId) {
                 // Actualizar la tarea relacional directamente
@@ -417,7 +471,8 @@ export default function MyDeliveriesPage() {
                         actualTime: formValues.actualTime,
                         sendWhatsapp: formValues.sendWhatsapp,
                         emailAddress: formValues.emailAddress,
-                        photoUrl: formValues.photoUrl || null
+                        photoUrl: formValues.photoUrl || null,
+                        signatureDataUrl: signatureDataUrl || null
                     }
                 });
             } else if (selectedDelivery.isMainTicket) {
@@ -433,7 +488,8 @@ export default function MyDeliveriesPage() {
                         actualTime: formValues.actualTime,
                         sendWhatsapp: formValues.sendWhatsapp,
                         emailAddress: formValues.emailAddress,
-                        photoUrl: formValues.photoUrl || null
+                        photoUrl: formValues.photoUrl || null,
+                        signatureDataUrl: signatureDataUrl || null
                     }
                 };
                 const success = await updateTicket(selectedDelivery.id, { logistics: updatedLogistics });
@@ -456,7 +512,8 @@ export default function MyDeliveriesPage() {
                                 actualTime: formValues.actualTime,
                                 sendWhatsapp: formValues.sendWhatsapp,
                                 emailAddress: formValues.emailAddress,
-                                photoUrl: formValues.photoUrl || null
+                                photoUrl: formValues.photoUrl || null,
+                                signatureDataUrl: signatureDataUrl || null
                             }
                         }
                     };
@@ -470,10 +527,11 @@ export default function MyDeliveriesPage() {
             setIsDeliveryModalOpen(false);
             setCompletedDeliveryForPdf({
                 delivery: selectedDelivery,
-                form: { ...formValues }
+                form: { ...formValues, signatureDataUrl }
             });
             setShowDownloadPrompt(true);
             setDeliveryForm({ receivedBy: '', dni: '', notes: '', deliveredDate: '', actualTime: '', photoUrl: null, sendWhatsapp: false, emailAddress: '' });
+            clearDeliverySignature();
         }
     });
 
@@ -1418,6 +1476,53 @@ export default function MyDeliveriesPage() {
                             )}
                         </div>
 
+                        {/* Firma Digital (Opcional) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                                    Firma Digital
+                                </label>
+                                {hasDeliverySignature && (
+                                    <button
+                                        type="button"
+                                        onClick={clearDeliverySignature}
+                                        style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '4px', 
+                                            background: 'none', 
+                                            border: '1px solid var(--border)', 
+                                            borderRadius: '6px', 
+                                            padding: '2px 8px', 
+                                            cursor: 'pointer', 
+                                            fontSize: '0.75rem', 
+                                            color: 'var(--text-secondary)' 
+                                        }}
+                                    >
+                                        <XIcon size={12} /> Borrar
+                                    </button>
+                                )}
+                            </div>
+                            <div style={{ border: `2px solid ${hasDeliverySignature ? '#10b981' : 'var(--border)'}`, borderRadius: '8px', overflow: 'hidden', background: 'white', touchAction: 'none' }}>
+                                <canvas
+                                    ref={deliverySignatureCanvasRef}
+                                    width={500}
+                                    height={150}
+                                    style={{ width: '100%', height: '120px', display: 'block', cursor: 'crosshair' }}
+                                    onMouseDown={handleDeliverySignatureStart}
+                                    onMouseMove={handleDeliverySignatureMove}
+                                    onMouseUp={handleDeliverySignatureEnd}
+                                    onMouseLeave={handleDeliverySignatureEnd}
+                                    onTouchStart={handleDeliverySignatureStart}
+                                    onTouchMove={handleDeliverySignatureMove}
+                                    onTouchEnd={handleDeliverySignatureEnd}
+                                />
+                            </div>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0' }}>
+                                {hasDeliverySignature ? '✅ Firma capturada' : 'Firme en el recuadro con el dedo o el mouse'}
+                            </p>
+                        </div>
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem' }}>
                             <div style={{ display: 'flex', gap: '1rem' }}>
                                 <Button 
@@ -1530,7 +1635,8 @@ export default function MyDeliveriesPage() {
                                             dni: form.dni,
                                             notes: form.notes,
                                             actualTime: form.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                            deliveredAt: deliveredAtTime
+                                            deliveredAt: deliveredAtTime,
+                                            signatureDataUrl: form.signatureDataUrl || null
                                         }, 'download');
                                     }, 0);
                                 }
@@ -1553,9 +1659,57 @@ export default function MyDeliveriesPage() {
                             type="button" 
                             variant="primary" 
                             onClick={() => {
-                                if (showDownloadPrompt.ticket) {
-                                    const { ticket: virtualTicket, assets, form } = showDownloadPrompt;
+                                if (completedDeliveryForPdf) {
+                                    const { delivery, form } = completedDeliveryForPdf;
                                     
+                                    let associatedAssets = [];
+                                    if (delivery.taskAssets && delivery.taskAssets.length > 0) {
+                                        associatedAssets = delivery.taskAssets;
+                                    } else if (delivery.associatedAssets && delivery.associatedAssets.length > 0) {
+                                        associatedAssets = delivery.associatedAssets;
+                                    } else if (delivery.assetInfo?.serial) {
+                                        associatedAssets = [{
+                                            serial: delivery.assetInfo.serial,
+                                            type: delivery.assetInfo.model || 'Hardware',
+                                            name: delivery.assetInfo.name || '-'
+                                        }];
+                                    }
+
+                                    const mappedAccessories = {};
+                                    if (Array.isArray(delivery.taskAccessories)) {
+                                        delivery.taskAccessories.forEach(acc => {
+                                            const name = typeof acc === 'string' ? acc : (acc.name || acc);
+                                            if (name === 'Mochila Técnica' || name === 'backpack') mappedAccessories.backpack = true;
+                                            else if (name === 'Filtro de Pantalla' || name === 'screenFilter') mappedAccessories.screenFilter = true;
+                                            else if (name === 'Mouse Óptico' || name === 'mouse') mappedAccessories.mouse = true;
+                                            else if (name === 'Teclado USB' || name === 'keyboard') mappedAccessories.keyboard = true;
+                                            else if (name === 'Auriculares con Micrófono' || name === 'headset') mappedAccessories.headset = true;
+                                            else if (name === 'Cargador Original' || name === 'charger') mappedAccessories.charger = true;
+                                            else if (name) mappedAccessories[name] = true;
+                                        });
+                                    } else if (delivery.taskAccessories && typeof delivery.taskAccessories === 'object') {
+                                        Object.assign(mappedAccessories, delivery.taskAccessories);
+                                    } else {
+                                        Object.assign(mappedAccessories, delivery.accessories || {});
+                                    }
+
+                                    const mappedYubikeys = (delivery.taskYubikeys && delivery.taskYubikeys.length > 0
+                                        ? delivery.taskYubikeys
+                                        : delivery.yubikeys || []
+                                    ).map(yk => ({
+                                        serial: typeof yk === 'string' ? yk : yk.serial,
+                                        type: (typeof yk === 'object' && yk?.type) || delivery.logistics?.type || 'Entrega'
+                                    }));
+
+                                    const virtualTicket = {
+                                        ...delivery,
+                                        subject: delivery.displaySubject || delivery.subject,
+                                        caseNumber: delivery.caseNumber || delivery.case_number || (delivery.taskId ? delivery.displayId : ''),
+                                        associatedAssets,
+                                        accessories: mappedAccessories,
+                                        yubikeys: mappedYubikeys
+                                    };
+
                                     const deliveredAtTime = (() => {
                                         if (form.deliveredDate && form.actualTime) {
                                             const [yr, mo, dy] = form.deliveredDate.split('-').map(Number);
@@ -1574,7 +1728,8 @@ export default function MyDeliveriesPage() {
                                             dni: form.dni,
                                             notes: form.notes,
                                             actualTime: form.actualTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                                            deliveredAt: deliveredAtTime
+                                            deliveredAt: deliveredAtTime,
+                                            signatureDataUrl: form.signatureDataUrl || null
                                         }, 'share');
                                     }, 0);
                                 }

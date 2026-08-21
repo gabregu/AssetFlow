@@ -28,7 +28,8 @@ export default function DriverDetailView({
     updateTicket, 
     currentUser,
     unifiedTasks,
-    updateLogisticsTask
+    updateLogisticsTask,
+    addLogisticsTask
 }) {
     // Estado LOCAL para el modal del conductor — no toca el CaseConfigModal de admin
     const [selectedTaskIndex, setSelectedTaskIndex] = useState(null);
@@ -59,8 +60,6 @@ export default function DriverDetailView({
         window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
     };
 
-    // (no necesario — usamos updateLogisticsTask directamente con task.id)
-
     return (
         <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', paddingBottom: '3rem' }}>
             
@@ -71,6 +70,8 @@ export default function DriverDetailView({
                 task={selectedTask}
                 ticket={ticket}
                 updateLogisticsTask={updateLogisticsTask}
+                addLogisticsTask={addLogisticsTask}
+                updateTicket={updateTicket}
                 currentUser={currentUser}
             />
 
