@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
     Activity,
     Truck,
@@ -22,7 +22,10 @@ import {
     Check,
     Map as MapIcon,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    Navigation,
+    Loader2,
+    X as XIcon
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -107,6 +110,120 @@ export default function LogisticsHubPage() {
     const [statusFilter, setStatusFilter] = useState('All');
     const [driverFilter, setDriverFilter] = useState('All');
     const [showMap, setShowMap] = useState(false);
+
+    // ── Optimizar Recorrido ──────────────────────────────────────────────────
+    const [isOptimizing, setIsOptimizing] = useState(false);
+    const [showOriginMenu, setShowOriginMenu] = useState(false);
+    const [optimizedTaskOrder, setOptimizedTaskOrder] = useState(null); // null = sin optimizar
+    const originMenuRef = useRef(null);
+
+    const ORIGIN_OPTIONS = [
+        { id: 'castiglia', label: 'Padre Castiglia 1638', sub: 'Boulogne, Buenos Aires', address: 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina' },
+        { id: 'fraga',     label: 'Depósito Fraga',       sub: 'Fraga 1312, CABA',       address: 'Fraga 1312, Buenos Aires, Argentina' },
+        { id: 'gps',       label: 'Mi ubicación actual',  sub: 'GPS del dispositivo',     address: null },
+    ];
+
+    // Cerrar menú al hacer click fuera
+    React.useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (originMenuRef.current && !originMenuRef.current.contains(e.target)) {
+                setShowOriginMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleOptimizeRoute = useCallback(async (originOption) => {
+        setShowOriginMenu(false);
+
+        // Solo las tareas visibles con dirección
+        const visibleTasks = tasks.filter(t => t.displayAddress && t.displayAddress !== 'Sin dirección');
+        if (visibleTasks.length < 2) {
+            alert('Se necesitan al menos 2 tareas con dirección para optimizar la ruta.');
+            return;
+        }
+
+        // Asegurarse de que Google Maps esté cargado
+        if (!window.google?.maps?.DirectionsService) {
+            alert('La API de Google Maps no está disponible aún. Intentá de nuevo en unos segundos.');
+            return;
+        }
+
+        setIsOptimizing(true);
+
+        try {
+            // 1. Obtener punto de origen
+            let originAddress = originOption.address;
+            if (originOption.id === 'gps') {
+                originAddress = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(
+                        pos => resolve(`${pos.coords.latitude},${pos.coords.longitude}`),
+                        err => reject(new Error('No se pudo obtener la ubicación GPS: ' + err.message)),
+                        { timeout: 10000 }
+                    );
+                });
+            }
+
+            // 2. Armar waypoints (máx 25 por llamada de Directions API)
+            const maxWaypoints = 23; // Google permite 25 pero dejamos margen
+            const tasksToOptimize = visibleTasks.slice(0, maxWaypoints);
+
+            const waypoints = tasksToOptimize.map(t => ({
+                location: t.displayAddress,
+                stopover: true
+            }));
+
+            // El último destino es el último waypoint como destino final
+            const destination = tasksToOptimize[tasksToOptimize.length - 1].displayAddress;
+            // El primer waypoint lo usamos como destino del primer tramo, el resto como intermedios
+            const intermediateWaypoints = waypoints.slice(0, -1);
+
+            const directionsService = new window.google.maps.DirectionsService();
+
+            const result = await new Promise((resolve, reject) => {
+                directionsService.route(
+                    {
+                        origin: originAddress,
+                        destination: destination,
+                        waypoints: intermediateWaypoints,
+                        optimizeWaypoints: true,
+                        travelMode: window.google.maps.TravelMode.DRIVING,
+                    },
+                    (response, status) => {
+                        if (status === 'OK') resolve(response);
+                        else reject(new Error(`Google Directions API error: ${status}`));
+                    }
+                );
+            });
+
+            // 3. Leer el orden optimizado devuelto por Google
+            const optimizedIndexes = result.routes[0].waypoint_order; // ej: [2, 0, 1]
+
+            // Reconstruir orden: primero los que Google optimizó, luego el destino final
+            const reordered = [
+                ...optimizedIndexes.map(i => tasksToOptimize[i]),
+                tasksToOptimize[tasksToOptimize.length - 1]
+            ];
+
+            // Guardar IDs en orden optimizado para la tabla
+            setOptimizedTaskOrder(reordered.map(t => t.id));
+
+            // 4. Guardar deliveryOrder en BD para cada tarea
+            const savePromises = reordered.map((task, idx) =>
+                updateLogisticsTask(task.id, { deliveryOrder: idx + 1 })
+            );
+            await Promise.all(savePromises);
+
+            alert(`✅ Ruta optimizada y guardada. ${reordered.length} paradas ordenadas desde "${originOption.label}".`);
+
+        } catch (err) {
+            console.error('Error optimizando ruta:', err);
+            alert('Error al calcular la ruta: ' + err.message);
+        } finally {
+            setIsOptimizing(false);
+        }
+    }, [tasks, updateLogisticsTask]);
 
     const activeDrivers = useMemo(() => {
         return (users || []).filter(u => 
@@ -637,8 +754,9 @@ export default function LogisticsHubPage() {
                     </h1>
                     <p style={{ color: 'var(--text-secondary)' }}>Gestión centralizada de todas las entregas y retiros de cliente {countryFilter}.</p>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }} className="flex-mobile-column">
-                    <div style={{ position: 'relative', width: '100%' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }} className="flex-mobile-column">
+                    {/* Buscador */}
+                    <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
                         <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} size={18} />
                         <input 
                             type="text" 
@@ -654,24 +772,8 @@ export default function LogisticsHubPage() {
                             }}
                         />
                     </div>
-                    <select 
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        style={{
-                            padding: '0.6rem 1rem',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border)',
-                            background: 'var(--surface)',
-                            width: '100%'
-                        }}
-                    >
-                        <option value="All">Todos los Estados</option>
-                        <option value="En Preparación">En Preparación</option>
-                        <option value="Para Coordinar">Para Coordinar</option>
-                        <option value="En Transito">En Tránsito</option>
-                        <option value="Entregado">Entregado</option>
-                    </select>
 
+                    {/* Filtro conductor */}
                     <select 
                         value={driverFilter}
                         onChange={(e) => setDriverFilter(e.target.value)}
@@ -680,7 +782,6 @@ export default function LogisticsHubPage() {
                             borderRadius: 'var(--radius-md)',
                             border: '1px solid var(--border)',
                             background: 'var(--surface)',
-                            width: '100%',
                             minWidth: '180px'
                         }}
                     >
@@ -691,6 +792,107 @@ export default function LogisticsHubPage() {
                         ))}
                     </select>
 
+                    {/* Botón Optimizar Recorrido */}
+                    <div ref={originMenuRef} style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setShowOriginMenu(v => !v)}
+                            disabled={isOptimizing}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.6rem 1.1rem',
+                                borderRadius: 'var(--radius-md)',
+                                border: optimizedTaskOrder ? '2px solid #10b981' : '1px solid var(--border)',
+                                background: optimizedTaskOrder ? 'rgba(16,185,129,0.08)' : 'var(--surface)',
+                                color: optimizedTaskOrder ? '#10b981' : 'var(--text-main)',
+                                fontWeight: 600,
+                                fontSize: '0.875rem',
+                                cursor: isOptimizing ? 'not-allowed' : 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            {isOptimizing
+                                ? <><Loader2 size={16} className="animate-spin" /> Calculando...</>
+                                : optimizedTaskOrder
+                                    ? <><Navigation size={16} /> Ruta Activa <ChevronDown size={14} /></>
+                                    : <><Navigation size={16} /> Optimizar Recorrido <ChevronDown size={14} /></>
+                            }
+                        </button>
+
+                        {showOriginMenu && (
+                            <div style={{
+                                position: 'absolute',
+                                top: 'calc(100% + 8px)',
+                                right: 0,
+                                zIndex: 200,
+                                background: 'var(--surface)',
+                                border: '1px solid var(--border)',
+                                borderRadius: '12px',
+                                boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                                minWidth: '280px',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Seleccionar punto de salida
+                                </div>
+                                {ORIGIN_OPTIONS.map(opt => (
+                                    <button
+                                        key={opt.id}
+                                        onClick={() => handleOptimizeRoute(opt)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.75rem',
+                                            width: '100%',
+                                            padding: '0.85rem 1rem',
+                                            background: 'none',
+                                            border: 'none',
+                                            borderBottom: '1px solid var(--border)',
+                                            cursor: 'pointer',
+                                            textAlign: 'left',
+                                            transition: 'background 0.15s'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--background)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                    >
+                                        <div style={{
+                                            width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+                                            background: opt.id === 'gps' ? 'rgba(59,130,246,0.1)' : 'rgba(16,185,129,0.1)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            color: opt.id === 'gps' ? '#3b82f6' : '#10b981'
+                                        }}>
+                                            {opt.id === 'gps' ? <Navigation size={16} /> : <MapPin size={16} />}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-main)' }}>{opt.label}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{opt.sub}</div>
+                                        </div>
+                                    </button>
+                                ))}
+                                {optimizedTaskOrder && (
+                                    <button
+                                        onClick={() => setOptimizedTaskOrder(null)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                            width: '100%', padding: '0.75rem 1rem',
+                                            background: 'none', border: 'none',
+                                            cursor: 'pointer', color: '#ef4444',
+                                            fontWeight: 600, fontSize: '0.85rem',
+                                            textAlign: 'left'
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.05)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                    >
+                                        <XIcon size={14} /> Limpiar orden optimizado
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Imprimir */}
                     <Button icon={Printer} onClick={handlePrintRouteReport} variant="secondary">Imprimir Hub</Button>
                 </div>
             </div>
@@ -815,12 +1017,38 @@ export default function LogisticsHubPage() {
                 </Card>
             </div>
 
+            {/* Banner de ruta activa */}
+            {optimizedTaskOrder && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    padding: '0.75rem 1.25rem',
+                    background: 'rgba(16,185,129,0.08)',
+                    border: '1px solid rgba(16,185,129,0.25)',
+                    borderRadius: '10px',
+                    marginBottom: '1rem',
+                    fontSize: '0.875rem',
+                    color: '#065f46',
+                    fontWeight: 500
+                }}>
+                    <Navigation size={16} style={{ color: '#10b981', flexShrink: 0 }} />
+                    <span>
+                        <strong>Ruta optimizada activa</strong> — La tabla está ordenada según el recorrido calculado por Google Maps y guardado en la base de datos.
+                    </span>
+                    <button
+                        onClick={() => setOptimizedTaskOrder(null)}
+                        style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontWeight: 700, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}
+                    >
+                        <XIcon size={13} /> Limpiar
+                    </button>
+                </div>
+            )}
+
             {/* Global Tasks Table */}
             <Card style={{ padding: 0 }} className="table-responsive">
                 <table className="desktop-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ background: 'var(--background)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)' }}>
                         <tr>
-                            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, width: '140px' }}>ID</th>
+                            <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600, width: '140px' }}>{optimizedTaskOrder ? '# · ID' : 'ID'}</th>
                             <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Usuario / Asunto</th>
                             <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Dirección</th>
                             <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Responsable</th>
@@ -830,17 +1058,40 @@ export default function LogisticsHubPage() {
                         </tr>
                     </thead>
                     <tbody>
-                        {tasks.length === 0 ? (
-                            <tr>
-                                <td colSpan="7" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                    <Package size={48} style={{ opacity: 0.1, marginBottom: '1rem' }} />
-                                    <p>No se encontraron tareas con estos filtros.</p>
-                                </td>
-                            </tr>
-                        ) : tasks.map(task => (
+                        {(() => {
+                            const displayTasks = optimizedTaskOrder
+                                ? [...tasks].sort((a, b) => {
+                                    const ia = optimizedTaskOrder.indexOf(a.id);
+                                    const ib = optimizedTaskOrder.indexOf(b.id);
+                                    if (ia === -1 && ib === -1) return 0;
+                                    if (ia === -1) return 1;
+                                    if (ib === -1) return -1;
+                                    return ia - ib;
+                                })
+                                : tasks;
+                            if (displayTasks.length === 0) return (
+                                <tr>
+                                    <td colSpan="7" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                        <Package size={48} style={{ opacity: 0.1, marginBottom: '1rem' }} />
+                                        <p>No se encontraron tareas con estos filtros.</p>
+                                    </td>
+                                </tr>
+                            );
+                            return displayTasks.map((task, taskIdx) => (
                             <tr key={task.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} className="hover-row">
                                 <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-main)', fontSize: '0.9rem' }}>
-                                    {task.ticket_id}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        {optimizedTaskOrder && (
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                width: '22px', height: '22px', borderRadius: '50%',
+                                                background: '#10b981', color: 'white',
+                                                fontSize: '0.7rem', fontWeight: 800,
+                                                flexShrink: 0
+                                            }}>{taskIdx + 1}</span>
+                                        )}
+                                        {task.ticket_id}
+                                    </div>
                                 </td>
                                 <td style={{ padding: '1rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1045,7 +1296,8 @@ export default function LogisticsHubPage() {
                                     </div>
                                 </td>
                             </tr>
-                        ))}
+                        ));
+                        })()}
                     </tbody>
                 </table>
 
