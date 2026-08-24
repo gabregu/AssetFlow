@@ -111,119 +111,6 @@ export default function LogisticsHubPage() {
     const [driverFilter, setDriverFilter] = useState('All');
     const [showMap, setShowMap] = useState(false);
 
-    // ── Optimizar Recorrido ──────────────────────────────────────────────────
-    const [isOptimizing, setIsOptimizing] = useState(false);
-    const [showOriginMenu, setShowOriginMenu] = useState(false);
-    const [optimizedTaskOrder, setOptimizedTaskOrder] = useState(null); // null = sin optimizar
-    const originMenuRef = useRef(null);
-
-    const ORIGIN_OPTIONS = [
-        { id: 'castiglia', label: 'Padre Castiglia 1638', sub: 'Boulogne, Buenos Aires', address: 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina' },
-        { id: 'fraga',     label: 'Depósito Fraga',       sub: 'Fraga 1312, CABA',       address: 'Fraga 1312, Buenos Aires, Argentina' },
-        { id: 'gps',       label: 'Mi ubicación actual',  sub: 'GPS del dispositivo',     address: null },
-    ];
-
-    // Cerrar menú al hacer click fuera
-    React.useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (originMenuRef.current && !originMenuRef.current.contains(e.target)) {
-                setShowOriginMenu(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const handleOptimizeRoute = useCallback(async (originOption) => {
-        setShowOriginMenu(false);
-
-        // Solo las tareas visibles con dirección
-        const visibleTasks = tasks.filter(t => t.displayAddress && t.displayAddress !== 'Sin dirección');
-        if (visibleTasks.length < 2) {
-            alert('Se necesitan al menos 2 tareas con dirección para optimizar la ruta.');
-            return;
-        }
-
-        // Asegurarse de que Google Maps esté cargado
-        if (!window.google?.maps?.DirectionsService) {
-            alert('La API de Google Maps no está disponible aún. Intentá de nuevo en unos segundos.');
-            return;
-        }
-
-        setIsOptimizing(true);
-
-        try {
-            // 1. Obtener punto de origen
-            let originAddress = originOption.address;
-            if (originOption.id === 'gps') {
-                originAddress = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(
-                        pos => resolve(`${pos.coords.latitude},${pos.coords.longitude}`),
-                        err => reject(new Error('No se pudo obtener la ubicación GPS: ' + err.message)),
-                        { timeout: 10000 }
-                    );
-                });
-            }
-
-            // 2. Armar waypoints (máx 25 por llamada de Directions API)
-            const maxWaypoints = 23; // Google permite 25 pero dejamos margen
-            const tasksToOptimize = visibleTasks.slice(0, maxWaypoints);
-
-            const waypoints = tasksToOptimize.map(t => ({
-                location: t.displayAddress,
-                stopover: true
-            }));
-
-            // El último destino es el último waypoint como destino final
-            const destination = tasksToOptimize[tasksToOptimize.length - 1].displayAddress;
-            // El primer waypoint lo usamos como destino del primer tramo, el resto como intermedios
-            const intermediateWaypoints = waypoints.slice(0, -1);
-
-            const directionsService = new window.google.maps.DirectionsService();
-
-            const result = await new Promise((resolve, reject) => {
-                directionsService.route(
-                    {
-                        origin: originAddress,
-                        destination: destination,
-                        waypoints: intermediateWaypoints,
-                        optimizeWaypoints: true,
-                        travelMode: window.google.maps.TravelMode.DRIVING,
-                    },
-                    (response, status) => {
-                        if (status === 'OK') resolve(response);
-                        else reject(new Error(`Google Directions API error: ${status}`));
-                    }
-                );
-            });
-
-            // 3. Leer el orden optimizado devuelto por Google
-            const optimizedIndexes = result.routes[0].waypoint_order; // ej: [2, 0, 1]
-
-            // Reconstruir orden: primero los que Google optimizó, luego el destino final
-            const reordered = [
-                ...optimizedIndexes.map(i => tasksToOptimize[i]),
-                tasksToOptimize[tasksToOptimize.length - 1]
-            ];
-
-            // Guardar IDs en orden optimizado para la tabla
-            setOptimizedTaskOrder(reordered.map(t => t.id));
-
-            // 4. Guardar deliveryOrder en BD para cada tarea
-            const savePromises = reordered.map((task, idx) =>
-                updateLogisticsTask(task.id, { deliveryOrder: idx + 1 })
-            );
-            await Promise.all(savePromises);
-
-            alert(`✅ Ruta optimizada y guardada. ${reordered.length} paradas ordenadas desde "${originOption.label}".`);
-
-        } catch (err) {
-            console.error('Error optimizando ruta:', err);
-            alert('Error al calcular la ruta: ' + err.message);
-        } finally {
-            setIsOptimizing(false);
-        }
-    }, [tasks, updateLogisticsTask]);
 
     const activeDrivers = useMemo(() => {
         return (users || []).filter(u => 
@@ -455,7 +342,121 @@ export default function LogisticsHubPage() {
         };
     }, [logisticsTasks, tickets, searchTerm, countryFilter, driverFilter]);
 
+    // ── Optimizar Recorrido ──────────────────────────────────────────────────
+    const [isOptimizing, setIsOptimizing] = useState(false);
+    const [showOriginMenu, setShowOriginMenu] = useState(false);
+    const [optimizedTaskOrder, setOptimizedTaskOrder] = useState(null); // null = sin optimizar
+    const originMenuRef = useRef(null);
+
+    const ORIGIN_OPTIONS = [
+        { id: 'castiglia', label: 'Padre Castiglia 1638', sub: 'Boulogne, Buenos Aires', address: 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina' },
+        { id: 'fraga',     label: 'Depósito Fraga',       sub: 'Fraga 1312, CABA',       address: 'Fraga 1312, Buenos Aires, Argentina' },
+        { id: 'gps',       label: 'Mi ubicación actual',  sub: 'GPS del dispositivo',     address: null },
+    ];
+
+    // Cerrar menú al hacer click fuera
+    React.useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (originMenuRef.current && !originMenuRef.current.contains(e.target)) {
+                setShowOriginMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleOptimizeRoute = useCallback(async (originOption) => {
+        setShowOriginMenu(false);
+
+        // Solo las tareas visibles con dirección
+        const visibleTasks = tasks.filter(t => t.displayAddress && t.displayAddress !== 'Sin dirección');
+        if (visibleTasks.length < 2) {
+            alert('Se necesitan al menos 2 tareas con dirección para optimizar la ruta.');
+            return;
+        }
+
+        // Asegurarse de que Google Maps esté cargado
+        if (!window.google?.maps?.DirectionsService) {
+            alert('La API de Google Maps no está disponible aún. Intentá de nuevo en unos segundos.');
+            return;
+        }
+
+        setIsOptimizing(true);
+
+        try {
+            // 1. Obtener punto de origen
+            let originAddress = originOption.address;
+            if (originOption.id === 'gps') {
+                originAddress = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(
+                        pos => resolve(`${pos.coords.latitude},${pos.coords.longitude}`),
+                        err => reject(new Error('No se pudo obtener la ubicación GPS: ' + err.message)),
+                        { timeout: 10000 }
+                    );
+                });
+            }
+
+            // 2. Armar waypoints (máx 25 por llamada de Directions API)
+            const maxWaypoints = 23; // Google permite 25 pero dejamos margen
+            const tasksToOptimize = visibleTasks.slice(0, maxWaypoints);
+
+            const waypoints = tasksToOptimize.map(t => ({
+                location: t.displayAddress,
+                stopover: true
+            }));
+
+            // El último destino es el último waypoint como destino final
+            const destination = tasksToOptimize[tasksToOptimize.length - 1].displayAddress;
+            // El primer waypoint lo usamos como destino del primer tramo, el resto como intermedios
+            const intermediateWaypoints = waypoints.slice(0, -1);
+
+            const directionsService = new window.google.maps.DirectionsService();
+
+            const result = await new Promise((resolve, reject) => {
+                directionsService.route(
+                    {
+                        origin: originAddress,
+                        destination: destination,
+                        waypoints: intermediateWaypoints,
+                        optimizeWaypoints: true,
+                        travelMode: window.google.maps.TravelMode.DRIVING,
+                    },
+                    (response, status) => {
+                        if (status === 'OK') resolve(response);
+                        else reject(new Error(`Google Directions API error: ${status}`));
+                    }
+                );
+            });
+
+            // 3. Leer el orden optimizado devuelto por Google
+            const optimizedIndexes = result.routes[0].waypoint_order; // ej: [2, 0, 1]
+
+            // Reconstruir orden: primero los que Google optimizó, luego el destino final
+            const reordered = [
+                ...optimizedIndexes.map(i => tasksToOptimize[i]),
+                tasksToOptimize[tasksToOptimize.length - 1]
+            ];
+
+            // Guardar IDs en orden optimizado para la tabla
+            setOptimizedTaskOrder(reordered.map(t => t.id));
+
+            // 4. Guardar deliveryOrder en BD para cada tarea
+            const savePromises = reordered.map((task, idx) =>
+                updateLogisticsTask(task.id, { deliveryOrder: idx + 1 })
+            );
+            await Promise.all(savePromises);
+
+            alert(`✅ Ruta optimizada y guardada. ${reordered.length} paradas ordenadas desde "${originOption.label}".`);
+
+        } catch (err) {
+            console.error('Error optimizando ruta:', err);
+            alert('Error al calcular la ruta: ' + err.message);
+        } finally {
+            setIsOptimizing(false);
+        }
+    }, [tasks, updateLogisticsTask]);
     
+
     const mapItems = React.useMemo(() => {
         if (!showMap) return [];
         return tasks.map(task => ({
