@@ -1447,27 +1447,7 @@ export default function DeliveriesPage() {
                                     FECHA <SortIcon column="date" />
                                 </th>
                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        ESTADO
-                                        <select
-                                            value={statusFilter}
-                                            onChange={(e) => setStatusFilter(e.target.value)}
-                                            style={{
-                                                fontSize: '0.75rem',
-                                                padding: '2px',
-                                                border: '1px solid var(--border)',
-                                                borderRadius: '4px',
-                                                backgroundColor: 'var(--background)',
-                                                color: 'var(--text-main)',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            <option value="All">Todos</option>
-                                            <option value="Pendiente">Pendiente</option>
-                                            <option value="En Transito">En Tránsito</option>
-                                            <option value="Entregado">Entregado</option>
-                                        </select>
-                                    </div>
+                                    ESTADO
                                 </th>
                                 <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right' }}>ACCIONES</th>
                             </tr>
