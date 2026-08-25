@@ -927,7 +927,17 @@ export default function TicketsPage() {
                 taskRecipients.some(rec => rec.includes(filter.toLowerCase())) ||
                 taskAddresses.some(addr => addr.includes(filter.toLowerCase()));
 
-            const matchesStatus = columnFilters.status === 'All' || t.status === columnFilters.status;
+            const isCurrentMonth = (dateStr) => {
+                if (!dateStr) return false;
+                const tDate = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+                const now = new Date();
+                return tDate.getFullYear() === now.getFullYear() && tDate.getMonth() === now.getMonth();
+            };
+
+            const matchesStatus = columnFilters.status === 'All' || 
+                (columnFilters.status === 'Resuelto' 
+                    ? (t.status === 'Resuelto' && isCurrentMonth(t.date)) 
+                    : t.status === columnFilters.status);
             const matchesRequester = !columnFilters.requester || String(t.requester || '').toLowerCase().includes(columnFilters.requester.toLowerCase());
 
             // Excluir Resueltos de esta vista, a menos que estemos buscando explicitamente ese estado
@@ -1019,12 +1029,22 @@ export default function TicketsPage() {
         const expectedClient = getClientName(countryFilter);
         const filteredByCountry = (tickets || []).filter(t => expectedClient === 'Todos' || t.client === expectedClient);
 
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+
+        const isCurrentMonth = (dateStr) => {
+            if (!dateStr) return false;
+            const tDate = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+            return tDate.getFullYear() === currentYear && tDate.getMonth() === currentMonth;
+        };
+
         return {
             total: filteredByCountry.filter(t => isTicketActive(t)).length,
             pendientes: filteredByCountry.filter(t => t.status === 'Pendiente').length,
             enProgreso: filteredByCountry.filter(t => t.status === 'En Progreso').length,
             bloqueados: filteredByCountry.filter(t => t.status === 'Bloqueado / A la Espera').length,
-            resueltos: filteredByCountry.filter(t => t.status === 'Resuelto').length
+            resueltos: filteredByCountry.filter(t => t.status === 'Resuelto' && isCurrentMonth(t.date)).length
         };
     }, [tickets, countryFilter]);
 
