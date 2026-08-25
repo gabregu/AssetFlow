@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { useStore } from '../../../lib/store';
-import { Filter, Search, ArrowRight, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { Filter, Search, ArrowRight, Upload, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Plus, Loader2 } from 'lucide-react';
 import { useRef, useMemo } from 'react';
 
 
@@ -15,7 +15,7 @@ import { CopyButton } from '../../components/ui/CopyButton';
 
 export default function SFDCCasesPage() {
     const router = useRouter();
-    const { sfdcCases, tickets, logisticsTasks, addTicket, updateTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter, getClientName, entities = [] } = useStore();
+    const { sfdcCases, tickets, logisticsTasks, addTicket, updateTicket, importSfdcCases, clearSfdcCases, removeSfdcCase, lastImportedCases, currentUser, users, countryFilter, getClientName, entities = [], isHeavyDataReady } = useStore();
     
     useEffect(() => {
         if (countryFilter && !countryFilter.toLowerCase().includes('sfdc')) {
@@ -916,6 +916,15 @@ export default function SFDCCasesPage() {
         const file = e.target.files[0];
         if (!file) return;
 
+        // ✅ GUARD: Prevenir importación antes de que los datos pesados estén listos
+        // Esto evita que se creen tickets duplicados si el usuario importa antes de que
+        // tickets y logistics_tasks se hayan cargado desde Supabase en segundo plano.
+        if (!isHeavyDataReady) {
+            e.target.value = null; // Reset input
+            alert('⏳ Los datos del sistema aún se están sincronizando en segundo plano.\n\nPor favor, esperá 2-3 segundos y volvé a intentarlo para evitar crear casos duplicados.');
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = async (event) => {
             const buffer = event.target.result;
@@ -1209,8 +1218,19 @@ export default function SFDCCasesPage() {
                             accept=".csv"
                             onChange={handleFileUpload}
                         />
-                        <Button icon={Upload} onClick={() => fileInputRef.current.click()}>
-                            Importar CSV
+                        <Button
+                            icon={isHeavyDataReady ? Upload : Loader2}
+                            onClick={() => {
+                                if (!isHeavyDataReady) {
+                                    alert('⏳ Los datos aún se están sincronizando. Por favor, esperá unos segundos.');
+                                    return;
+                                }
+                                fileInputRef.current.click();
+                            }}
+                            disabled={!isHeavyDataReady}
+                            title={!isHeavyDataReady ? 'Esperando sincronización de datos...' : 'Importar CSV de Salesforce'}
+                        >
+                            {isHeavyDataReady ? 'Importar CSV' : 'Sincronizando...'}
                         </Button>
                     </div>
                     {(currentUser?.role === 'admin' || currentUser?.role === 'Gerencial') && countryFilter !== 'Todos' && (
