@@ -114,7 +114,9 @@ export default function WarehousePage() {
         updateWarehouseLocation,
         renameWarehouseGroup,
         currentUser,
-        countryFilter 
+        countryFilter,
+        depositoConfig,
+        updateDepositoConfig
     } = useStore();
 
     // Mapping and Audit States
@@ -164,6 +166,8 @@ export default function WarehousePage() {
     const [renameGroupType, setRenameGroupType] = useState('W');
     const [renameGroupManufacturer, setRenameGroupManufacturer] = useState('NINGUNO');
     const [renameGroupCategory, setRenameGroupCategory] = useState('');
+    const [renameGroupRows, setRenameGroupRows] = useState(5);
+    const [renameGroupCols, setRenameGroupCols] = useState(10);
     const [manufacturers, setManufacturers] = useState(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('warehouse_manufacturers');
@@ -714,8 +718,8 @@ export default function WarehousePage() {
                     const repisa = parts[1];
                     const estante = parts[2];
                     let nextPos = null;
-                    
-                    for (let p = 1; p <= 10; p++) {
+                    const config = depositoConfig[`DEP-${repisa}`] || { rows: 5, cols: 10 };
+                    for (let p = 1; p <= config.cols; p++) {
                         const candidateId = `DEP-${repisa}-${estante}-${p}`;
                         if (!assets.some(a => a.locationId === candidateId)) {
                             nextPos = p;
@@ -780,8 +784,8 @@ export default function WarehousePage() {
                         const repisa = parts[1];
                         const estante = parts[2];
                         let nextPos = null;
-                        
-                        for (let p = 1; p <= 10; p++) {
+                        const config = depositoConfig[`DEP-${repisa}`] || { rows: 5, cols: 10 };
+                        for (let p = 1; p <= config.cols; p++) {
                             const candidateId = `DEP-${repisa}-${estante}-${p}`;
                             if (!assets.some(a => a.locationId === candidateId)) {
                                 nextPos = p;
@@ -1033,6 +1037,12 @@ export default function WarehousePage() {
         }
 
         if (newAisle && newAisle !== renameGroupOldName) {
+            if (renameGroupType === 'D') {
+                updateDepositoConfig({
+                    ...depositoConfig,
+                    [newAisle]: { rows: Number(renameGroupRows), cols: Number(renameGroupCols) }
+                });
+            }
             const res = await renameWarehouseGroup(renameGroupOldName, newAisle);
             if (res?.error) {
                 alert("Error al renombrar: " + res.error.message);
@@ -1040,6 +1050,12 @@ export default function WarehousePage() {
                 setIsRenameGroupModalOpen(false);
             }
         } else {
+            if (renameGroupType === 'D' && newAisle === renameGroupOldName) {
+                updateDepositoConfig({
+                    ...depositoConfig,
+                    [newAisle]: { rows: Number(renameGroupRows), cols: Number(renameGroupCols) }
+                });
+            }
             setIsRenameGroupModalOpen(false);
         }
     };
@@ -1190,6 +1206,12 @@ export default function WarehousePage() {
                                     setRenameGroupManufacturer(mfg);
                                     setRenameGroupCategory(cat);
                                     
+                                    if (type === 'D') {
+                                        const config = depositoConfig[aisle] || { rows: 5, cols: 10 };
+                                        setRenameGroupRows(config.rows);
+                                        setRenameGroupCols(config.cols);
+                                    }
+                                    
                                     setIsRenameGroupModalOpen(true);
                                 }}
                                 style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
@@ -1224,7 +1246,12 @@ export default function WarehousePage() {
                 </div>
                 
                 {/* Cell grid box */}
-                {isDepZone ? (
+                {isDepZone ? (() => {
+                    const config = depositoConfig[aisle] || { rows: 5, cols: 10 };
+                    const estantesIndices = Array.from({ length: config.rows }, (_, i) => config.rows - i);
+                    const posIndices = Array.from({ length: config.cols }, (_, i) => i + 1);
+
+                    return (
                     <div style={{ 
                         display: 'flex', 
                         flexDirection: 'column', 
@@ -1238,13 +1265,13 @@ export default function WarehousePage() {
                             Total dispositivos en {getDisplayAisle(aisle)}: {aisleAssetsCount}
                         </div>
                         
-                        {[5, 4, 3, 2, 1].map(estante => (
+                        {estantesIndices.map(estante => (
                             <div key={`estante-${estante}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <div style={{ width: '16px', textAlign: 'right', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                                     {estante}
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: '6px', flex: 1 }}>
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(pos => {
+                                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${config.cols}, 1fr)`, gap: '6px', flex: 1 }}>
+                                    {posIndices.map(pos => {
                                         const locId = `${aisle}-${estante}-${pos}`;
                                         const loc = locations.find(l => l.id === locId) || { id: locId };
                                         const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
@@ -1292,7 +1319,8 @@ export default function WarehousePage() {
                             </div>
                         ))}
                     </div>
-                ) : (
+                );
+                })() : (
                     <div style={{ 
                         display: 'grid', 
                         gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', 
@@ -2619,6 +2647,35 @@ export default function WarehousePage() {
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                             />
                         </div>
+                        
+                        {renameGroupType === 'D' && (
+                            <>
+                                <div className="form-group">
+                                    <label className="form-label">Filas (Estantes)</label>
+                                    <input
+                                        type="number"
+                                        value={renameGroupRows}
+                                        onChange={e => setRenameGroupRows(e.target.value)}
+                                        className="form-input"
+                                        min="1" max="20"
+                                        required
+                                        style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Columnas (Posiciones)</label>
+                                    <input
+                                        type="number"
+                                        value={renameGroupCols}
+                                        onChange={e => setRenameGroupCols(e.target.value)}
+                                        className="form-input"
+                                        min="1" max="50"
+                                        required
+                                        style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                    />
+                                </div>
+                            </>
+                        )}
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                         <Button type="button" variant="ghost" onClick={() => setIsRenameGroupModalOpen(false)}>
