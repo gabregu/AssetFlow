@@ -624,6 +624,24 @@ export default function WarehousePage() {
             const locAssets = assets.filter(a => a.locationId === loc.id);
             if (locAssets.length === 1) {
                 setSelectedAssetId(locAssets[0].id);
+            } else if (locAssets.length === 0) {
+                setSelectedAssetId(null);
+                setTimeout(() => {
+                    const scannedId = window.prompt(`La ubicación ${loc.id} está vacía.\n\nEscanee o ingrese el ID/Serial del Activo para asignarlo aquí:`);
+                    if (scannedId) {
+                        const val = scannedId.trim().toUpperCase();
+                        const searchNormAsset = normalizeId(val);
+                        const asset = assets.find(a => 
+                            normalizeId(a.id) === searchNormAsset || 
+                            (a.serial && normalizeId(a.serial) === searchNormAsset)
+                        );
+                        if (asset) {
+                            confirmMapping(asset.id, loc.id);
+                        } else {
+                            alert("Activo no encontrado: " + val);
+                        }
+                    }
+                }, 50);
             } else {
                 setSelectedAssetId(null);
             }
