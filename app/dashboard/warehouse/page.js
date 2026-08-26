@@ -974,18 +974,24 @@ export default function WarehousePage() {
         e.preventDefault();
         
         let newAisle = renameGroupCategory.trim().toUpperCase();
-        newAisle = combineAisleName(renameGroupManufacturer, newAisle);
-        
-        if (renameGroupType === 'H') {
-            if (!newAisle.endsWith('-H')) newAisle = `${newAisle}-H`;
-        } else if (renameGroupType === 'W') {
-            if (newAisle.endsWith('-H')) {
-                newAisle = newAisle.slice(0, -2);
-            } else if (newAisle.startsWith('H-')) {
-                newAisle = newAisle.slice(2);
-            }
-            if (isLocH(newAisle)) {
-                newAisle = `${newAisle}-W`;
+        if (renameGroupType === 'D') {
+            let letter = newAisle.replace(/^REPISA\s+/i, '').trim();
+            if (!letter) letter = newAisle; 
+            newAisle = `DEP-${letter}`;
+        } else {
+            newAisle = combineAisleName(renameGroupManufacturer, newAisle);
+            
+            if (renameGroupType === 'H') {
+                if (!newAisle.endsWith('-H')) newAisle = `${newAisle}-H`;
+            } else if (renameGroupType === 'W') {
+                if (newAisle.endsWith('-H')) {
+                    newAisle = newAisle.slice(0, -2);
+                } else if (newAisle.startsWith('H-')) {
+                    newAisle = newAisle.slice(2);
+                }
+                if (isLocH(newAisle)) {
+                    newAisle = `${newAisle}-W`;
+                }
             }
         }
 
@@ -2474,8 +2480,12 @@ export default function WarehousePage() {
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                             >
                                 <option value="W">LOCACIÓN W (Estándar)</option>
-                                <option value="H">LOCACI\u00d3N H (Especiales / Hist\u00f3rico)</option>`n                                <option value="D">\ud83d\udfe2 DEP\u00d3SITO (Repisa - Estante - Posici\u00f3n)</option>`n                            </select>`n                        </div>`n                        {/* Fabricante dropdown */}
-                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
+                                <option value="D">🟢 DEPÓSITO (Repisa - Estante - Posición)</option>
+                            </select>
+                        </div>
+                        {/* Fabricante dropdown */}
+                        <div className="form-group" style={{ gridColumn: 'span 2', display: renameGroupType === 'D' ? 'none' : 'block' }}>
                             <label className="form-label">Fabricante (Pre-agrupación)</label>
                             <select 
                                 value={renameGroupManufacturer} 
@@ -2490,13 +2500,13 @@ export default function WarehousePage() {
                             </select>
                         </div>
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                            <label className="form-label">Grupo (Categoría)</label>
+                            <label className="form-label">{renameGroupType === 'D' ? 'Letra de Repisa' : 'Grupo (Categoría)'}</label>
                             <input
                                 type="text"
                                 value={renameGroupCategory}
                                 onChange={e => setRenameGroupCategory(e.target.value)}
                                 className="form-input"
-                                placeholder="Ej: B, PRECISION 3490"
+                                placeholder={renameGroupType === 'D' ? "Ej: Z" : "Ej: B, PRECISION 3490"}
                                 required
                                 autoFocus
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
