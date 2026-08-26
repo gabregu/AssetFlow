@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
     Search, 
@@ -2297,9 +2297,9 @@ export default function WarehousePage() {
                                     <div style={{ fontSize: '0.68rem', color: '#6b7280', marginTop: '2px' }}>Repisa {depRepisa} · Estante {depEstante} ({depEstante === '1' ? 'suelo' : depEstante === '5' ? 'más alto' : `nivel ${depEstante}`}) · Posición {depPosicion} ({depPosicion === '1' ? 'más izq.' : depPosicion === '5' ? 'más der.' : `pos. ${depPosicion}`})</div>
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Repisa (A–E)</label>
+                                    <label className="form-label">Repisa (A–Z)</label>
                                     <select value={depRepisa} onChange={e => setDepRepisa(e.target.value)} className="form-input" style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #a7f3d0', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '1rem', fontWeight: 700 }}>
-                                        {['A','B','C','D','E'].map(r => <option key={r} value={r}>Repisa {r}</option>)}
+                                        {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(r => <option key={r} value={r}>Repisa {r}</option>)}
                                     </select>
                                 </div>
                                 <div className="form-group">
@@ -2309,9 +2309,9 @@ export default function WarehousePage() {
                                     </select>
                                 </div>
                                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                                    <label className="form-label">Posición (1 = izquierda, 5 = derecha)</label>
+                                    <label className="form-label">Posición (1 = izquierda, 10 = derecha)</label>
                                     <select value={depPosicion} onChange={e => setDepPosicion(e.target.value)} className="form-input" style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #a7f3d0', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '1rem', fontWeight: 700 }}>
-                                        {[1,2,3,4,5].map(n => <option key={n} value={String(n)}>Posición {n}{n===1?' (más izquierda)':n===5?' (más derecha)':''}</option>)}
+                                        {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={String(n)}>Posición {n}{n===1?' (más izquierda)':n===10?' (más derecha)':''}</option>)}
                                     </select>
                                 </div>
                             </>
