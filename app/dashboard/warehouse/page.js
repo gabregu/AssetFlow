@@ -679,12 +679,56 @@ export default function WarehousePage() {
     };
 
     const confirmMapping = async (assetId, locationId) => {
-        const res = await mapAssetToLocation(assetId, locationId);
+        let finalLocationId = locationId;
+        const isDep = locationId.startsWith('DEP-');
+
+        if (isDep) {
+            const targetAssets = assets.filter(a => a.locationId === locationId);
+            if (targetAssets.length > 0) {
+                const parts = locationId.split('-');
+                if (parts.length === 4) {
+                    const repisa = parts[1];
+                    const estante = parts[2];
+                    let nextPos = null;
+                    
+                    for (let p = 1; p <= 10; p++) {
+                        const candidateId = `DEP-${repisa}-${estante}-${p}`;
+                        if (!assets.some(a => a.locationId === candidateId)) {
+                            nextPos = p;
+                            break;
+                        }
+                    }
+
+                    if (nextPos !== null) {
+                        const candidateId = `DEP-${repisa}-${estante}-${nextPos}`;
+                        if (candidateId !== locationId) {
+                            const doMove = window.confirm(
+                                `⚠️ La ubicación ${locationId} ya está ocupada.\n\n` +
+                                `¿Querés asignar el equipo a la próxima posición libre automáticamente: ${candidateId}?`
+                            );
+                            if (doMove) {
+                                finalLocationId = candidateId;
+                                if (!warehouseLocations.some(l => l.id === candidateId)) {
+                                    await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: candidateId, country: countryFilter });
+                                }
+                            } else {
+                                return; // Cancel mapping completely
+                            }
+                        }
+                    } else {
+                        const force = window.confirm(`Todas las posiciones en DEP-${repisa}-${estante} están ocupadas.\n\n¿Forzar asignación en ${locationId}?`);
+                        if (!force) return;
+                    }
+                }
+            }
+        }
+
+        const res = await mapAssetToLocation(assetId, finalLocationId);
         if (!res.error) {
             setScannedAsset(null);
             setMappingStep(1);
             setIsMappingMode(false);
-            alert(`¡Éxito! Activo vinculado a ${locationId}`);
+            alert(`¡Éxito! Activo vinculado a ${finalLocationId}`);
         } else {
             alert("Error al vincular: " + res.error.message);
         }
@@ -694,19 +738,59 @@ export default function WarehousePage() {
         if (e) e.preventDefault();
         if (!movingAsset || !targetLocationId) return;
 
+        let finalTargetId = targetLocationId;
         const targetAssets = assets.filter(a => a.locationId === targetLocationId);
         
         try {
             if (targetAssets.length > 0) {
-                const confirmMove = window.confirm(
-                    `La ubicación destino (${targetLocationId}) ya está ocupada por el activo:\n` +
-                    `"${targetAssets[0].name}" (SN: ${targetAssets[0].serial || 'N/A'}).\n\n` +
-                    `¿Desea agregar este activo a dicha ubicación?`
-                );
-                if (!confirmMove) return;
+                const isDep = targetLocationId.startsWith('DEP-');
+                if (isDep) {
+                    const parts = targetLocationId.split('-');
+                    if (parts.length === 4) {
+                        const repisa = parts[1];
+                        const estante = parts[2];
+                        let nextPos = null;
+                        
+                        for (let p = 1; p <= 10; p++) {
+                            const candidateId = `DEP-${repisa}-${estante}-${p}`;
+                            if (!assets.some(a => a.locationId === candidateId)) {
+                                nextPos = p;
+                                break;
+                            }
+                        }
+
+                        if (nextPos !== null) {
+                            const candidateId = `DEP-${repisa}-${estante}-${nextPos}`;
+                            if (candidateId !== targetLocationId) {
+                                const doMove = window.confirm(
+                                    `⚠️ La ubicación destino ${targetLocationId} ya está ocupada.\n\n` +
+                                    `¿Querés mover el equipo a la próxima posición libre automáticamente: ${candidateId}?`
+                                );
+                                if (doMove) {
+                                    finalTargetId = candidateId;
+                                    if (!warehouseLocations.some(l => l.id === candidateId)) {
+                                        await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: candidateId, country: countryFilter });
+                                    }
+                                } else {
+                                    return; // Cancel mapping completely
+                                }
+                            }
+                        } else {
+                            const force = window.confirm(`Todas las posiciones en DEP-${repisa}-${estante} están ocupadas.\n\n¿Forzar movimiento a ${targetLocationId}?`);
+                            if (!force) return;
+                        }
+                    }
+                } else {
+                    const confirmMove = window.confirm(
+                        `La ubicación destino (${targetLocationId}) ya está ocupada por el activo:\n` +
+                        `"${targetAssets[0].name}" (SN: ${targetAssets[0].serial || 'N/A'}).\n\n` +
+                        `¿Desea agregar este activo a dicha ubicación?`
+                    );
+                    if (!confirmMove) return;
+                }
             }
 
-            const res = await mapAssetToLocation(movingAsset.id, targetLocationId);
+            const res = await mapAssetToLocation(movingAsset.id, finalTargetId);
             if (res.error) {
                 alert("Error al mover el activo: " + (res.error.message || res.error));
                 return;
