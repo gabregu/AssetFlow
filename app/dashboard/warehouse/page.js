@@ -1279,8 +1279,28 @@ export default function WarehousePage() {
                                         
                                         const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
                                         
-                                        let bgColor = assetCount > 0 ? '#10b981' : 'transparent';
-                                        let borderColor = assetCount > 0 ? '#10b981' : 'var(--border)';
+                                        let bgColor = 'transparent';
+                                        let borderColor = 'var(--border)';
+
+                                        if (assetCount > 0) {
+                                            const status = locationAssets[0]?.status?.toUpperCase() || '';
+                                            if (status.includes('NUEVO')) {
+                                                bgColor = '#10b981'; // Green
+                                                borderColor = '#10b981';
+                                            } else if (status.includes('RECUPERADO')) {
+                                                bgColor = '#3b82f6'; // Blue
+                                                borderColor = '#3b82f6';
+                                            } else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) {
+                                                bgColor = '#f97316'; // Orange
+                                                borderColor = '#f97316';
+                                            } else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) {
+                                                bgColor = '#ef4444'; // Red
+                                                borderColor = '#ef4444';
+                                            } else {
+                                                bgColor = '#10b981'; // Default green
+                                                borderColor = '#10b981';
+                                            }
+                                        }
                                         
                                         if (isAuditMode && auditLocation?.id === locId) {
                                             bgColor = '#8b5cf6';
