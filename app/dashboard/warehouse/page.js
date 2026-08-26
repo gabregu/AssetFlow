@@ -594,13 +594,19 @@ export default function WarehousePage() {
 
     const handleScanLocation = (locationId) => {
         const searchNorm = normalizeId(locationId);
-        const loc = warehouseLocations.find(l => 
+        let loc = warehouseLocations.find(l => 
             normalizeId(l.id) === searchNorm
         );
 
         if (!loc) {
-            alert("Ubicación no encontrada: " + locationId);
-            return;
+            // Auto-mock DEP location if it matches format DEP-X-Y-Z
+            const parts = locationId.split('-');
+            if (locationId.startsWith('DEP-') && parts.length === 4) {
+                loc = { id: locationId, aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], country: countryFilter };
+            } else {
+                alert("Ubicación no encontrada: " + locationId);
+                return;
+            }
         }
 
         setSelectedGroup(null);
@@ -1187,75 +1193,145 @@ export default function WarehousePage() {
                 </div>
                 
                 {/* Cell grid box */}
-                <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', 
-                    gap: '6px',
-                    background: 'var(--background-secondary)',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    border: '1px dashed var(--border)'
-                }}>
-                    {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
-                        const locationAssets = assets.filter(a => 
-                            (countryFilter === 'Todos' || a.country === countryFilter) &&
-                            a.locationId === loc.id
-                        );
-                        const assetCount = locationAssets.length;
-                        const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
+                {isDepZone ? (
+                    <div style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '6px',
+                        background: 'var(--background)',
+                        padding: '16px 12px 12px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #a7f3d0'
+                    }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#065f46', marginBottom: '8px', paddingLeft: '24px' }}>
+                            Total dispositivos en {getDisplayAisle(aisle)}: {aisleAssetsCount}
+                        </div>
                         
-                        let bgColor = 'var(--surface)';
-                        let textColor = 'var(--text-main)';
-                        let borderColor = 'var(--border)';
-                        let borderStyle = 'solid';
+                        {[5, 4, 3, 2, 1].map(estante => (
+                            <div key={`estante-${estante}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ width: '16px', textAlign: 'right', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                    {estante}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: '6px', flex: 1 }}>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(pos => {
+                                        const locId = `${aisle}-${estante}-${pos}`;
+                                        const loc = locations.find(l => l.id === locId) || { id: locId };
+                                        const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                                        const assetCount = locationAssets.length;
+                                        
+                                        const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
+                                        
+                                        let bgColor = assetCount > 0 ? '#10b981' : 'transparent';
+                                        let borderColor = assetCount > 0 ? '#10b981' : 'var(--border)';
+                                        
+                                        if (isAuditMode && auditLocation?.id === locId) {
+                                            bgColor = '#8b5cf6';
+                                            borderColor = '#8b5cf6';
+                                        }
 
-                        if (assetCount > 0) {
-                            textColor = 'white';
-                            const status = locationAssets[0]?.status;
-                            if (['Mantenimiento', 'Dañado'].includes(status)) {
-                                bgColor = '#f97316';
-                            } else if (status === 'Asignado') {
-                                bgColor = '#84cc16';
-                            } else {
-                                bgColor = '#2563eb';
-                            }
-                            borderColor = 'transparent';
-                        } else {
-                            borderStyle = 'dashed';
-                        }
-
-                        if (isAuditMode && auditLocation?.id === loc.id) {
-                            bgColor = '#8b5cf6';
-                            textColor = 'white';
-                            borderColor = 'transparent';
-                        }
-
-                        return (
-                            <div 
-                                key={loc.id}
-                                onClick={() => handleScanLocation(loc.id)}
-                                style={{
-                                    aspectRatio: '1.4/1',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: bgColor,
-                                    color: textColor,
-                                    borderRadius: '6px',
-                                    border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : `1px ${borderStyle} ${borderColor}`,
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease',
-                                    boxShadow: isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
-                                    position: 'relative'
-                                }}
-                                title={`${loc.id} (${assetCount} equipos)`}
-                            >
-                                {renderCellContent(loc, assetCount, locationAssets)}
+                                        return (
+                                            <div 
+                                                key={`pos-${pos}`}
+                                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+                                            >
+                                                <div 
+                                                    onClick={() => handleScanLocation(locId)}
+                                                    style={{
+                                                        width: '100%',
+                                                        aspectRatio: '1/1',
+                                                        borderRadius: '50%',
+                                                        background: bgColor,
+                                                        border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#047857'}` : `1px solid ${borderColor}`,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s ease',
+                                                        boxShadow: isSelected ? '0 0 8px rgba(16,185,129,0.3)' : 'none',
+                                                        opacity: assetCount > 0 ? 1 : 0.4
+                                                    }}
+                                                    title={`${locId} (${assetCount} equipos)`}
+                                                />
+                                                {estante === 1 && (
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '2px' }}>
+                                                        {pos}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        );
-                    })}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', 
+                        gap: '6px',
+                        background: 'var(--background-secondary)',
+                        padding: '8px',
+                        borderRadius: '8px',
+                        border: '1px dashed var(--border)'
+                    }}>
+                        {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
+                            const locationAssets = assets.filter(a => 
+                                (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                a.locationId === loc.id
+                            );
+                            const assetCount = locationAssets.length;
+                            const isSelected = selectedLocation?.id === loc.id || auditLocation?.id === loc.id;
+                            
+                            let bgColor = 'var(--surface)';
+                            let textColor = 'var(--text-main)';
+                            let borderColor = 'var(--border)';
+                            let borderStyle = 'solid';
+
+                            if (assetCount > 0) {
+                                textColor = 'white';
+                                const status = locationAssets[0]?.status;
+                                if (['Mantenimiento', 'Dañado'].includes(status)) {
+                                    bgColor = '#f97316';
+                                } else if (status === 'Asignado') {
+                                    bgColor = '#84cc16';
+                                } else {
+                                    bgColor = '#2563eb';
+                                }
+                                borderColor = 'transparent';
+                            } else {
+                                borderStyle = 'dashed';
+                            }
+
+                            if (isAuditMode && auditLocation?.id === loc.id) {
+                                bgColor = '#8b5cf6';
+                                textColor = 'white';
+                                borderColor = 'transparent';
+                            }
+
+                            return (
+                                <div 
+                                    key={loc.id}
+                                    onClick={() => handleScanLocation(loc.id)}
+                                    style={{
+                                        aspectRatio: '1.4/1',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: bgColor,
+                                        color: textColor,
+                                        borderRadius: '6px',
+                                        border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : `1px ${borderStyle} ${borderColor}`,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease',
+                                        boxShadow: isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
+                                        position: 'relative'
+                                    }}
+                                    title={`${loc.id} (${assetCount} equipos)`}
+                                >
+                                    {renderCellContent(loc, assetCount, locationAssets)}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         );
     };
