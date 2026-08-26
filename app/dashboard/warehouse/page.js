@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
     Search, 
@@ -37,8 +37,13 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 
-// Helper to classify aisles between Location W and Location H
+// Helper to classify aisles between Location W, H, and DEPÓSITO
+const isLocDep = (aisleName) => {
+    return (aisleName || '').toUpperCase().startsWith('DEP-');
+};
+
 const isLocH = (aisleName) => {
+    if (isLocDep(aisleName)) return false; // DEP is never H
     const upper = (aisleName || '').toUpperCase();
     if (upper.endsWith('-H') || upper.startsWith('H-')) return true;
     if (upper.endsWith('-W') || upper.startsWith('W-')) return false;
@@ -52,6 +57,11 @@ const isLocH = (aisleName) => {
 };
 
 const getDisplayAisle = (aisleName) => {
+    if (isLocDep(aisleName)) {
+        // DEP-A → Repisa A
+        const repisa = (aisleName || '').toUpperCase().replace(/^DEP-/, '');
+        return `Repisa ${repisa}`;
+    }
     return (aisleName || '').replace(/-H$/i, '').replace(/^H-/i, '').replace(/-W$/i, '').replace(/^W-/i, '').trim();
 };
 
@@ -143,6 +153,10 @@ export default function WarehousePage() {
     const [editLocationType, setEditLocationType] = useState('W');
     const [newLocManufacturer, setNewLocManufacturer] = useState('NINGUNO');
     const [editLocManufacturer, setEditLocManufacturer] = useState('NINGUNO');
+    // Depósito-specific state (Repisa A-E, Estante 1-5, Posición 1-5)
+    const [depRepisa, setDepRepisa] = useState('A');
+    const [depEstante, setDepEstante] = useState('1');
+    const [depPosicion, setDepPosicion] = useState('1');
     
     // Rename Group States
     const [isRenameGroupModalOpen, setIsRenameGroupModalOpen] = useState(false);
@@ -300,13 +314,19 @@ export default function WarehousePage() {
         return filteredEntries;
     }, [groupedLocations, groupOrder, filteredAssets, selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch, assets]);
 
-    // Split between Location W and Location H
+    // Split between Location W, H and DEPÓSITO
     const locationsW = useMemo(() => {
-        return sortedGroupedLocations.filter(([aisle]) => !isLocH(aisle));
+        return sortedGroupedLocations.filter(([aisle]) => !isLocH(aisle) && !isLocDep(aisle));
     }, [sortedGroupedLocations]);
 
     const locationsH = useMemo(() => {
         return sortedGroupedLocations.filter(([aisle]) => isLocH(aisle));
+    }, [sortedGroupedLocations]);
+
+    const locationsD = useMemo(() => {
+        // Sort DEP aisles by repisa letter (A→E), then by natural estante/posición
+        const deps = sortedGroupedLocations.filter(([aisle]) => isLocDep(aisle));
+        return deps.sort(([a], [b]) => a.localeCompare(b));
     }, [sortedGroupedLocations]);
 
     // Stats calculations
@@ -315,7 +335,7 @@ export default function WarehousePage() {
             if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
             if (!a.locationId) return false;
             const loc = warehouseLocations.find(l => l.id === a.locationId);
-            return loc && !isLocH(loc.aisle);
+            return loc && !isLocH(loc.aisle) && !isLocDep(loc.aisle);
         }).length;
     }, [assets, warehouseLocations, countryFilter]);
 
@@ -325,6 +345,15 @@ export default function WarehousePage() {
             if (!a.locationId) return false;
             const loc = warehouseLocations.find(l => l.id === a.locationId);
             return loc && isLocH(loc.aisle);
+        }).length;
+    }, [assets, warehouseLocations, countryFilter]);
+
+    const totalAssetsDep = useMemo(() => {
+        return assets.filter(a => {
+            if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
+            if (!a.locationId) return false;
+            const loc = warehouseLocations.find(l => l.id === a.locationId);
+            return loc && isLocDep(loc.aisle);
         }).length;
     }, [assets, warehouseLocations, countryFilter]);
 
@@ -359,8 +388,9 @@ export default function WarehousePage() {
     }, [warehouseLocations, countryFilter]);
 
     const moveGroup = (aisle, direction) => {
+        if (isLocDep(aisle)) return; // DEP aisles are always sorted A→E automatically
         const isH = isLocH(aisle);
-        const sameTypeAisles = groupOrder.filter(a => isLocH(a) === isH);
+        const sameTypeAisles = groupOrder.filter(a => !isLocDep(a) && isLocH(a) === isH);
         const idxInType = sameTypeAisles.indexOf(aisle);
         if (idxInType === -1) return;
         
@@ -385,13 +415,13 @@ export default function WarehousePage() {
     };
 
     const sortGroupsAlphabetically = (isH) => {
-        const sameTypeAisles = groupOrder.filter(a => isLocH(a) === isH);
+        const sameTypeAisles = groupOrder.filter(a => !isLocDep(a) && isLocH(a) === isH);
         const sorted = [...sameTypeAisles].sort((a, b) => a.localeCompare(b));
         
         const newOrder = [...groupOrder];
         let sortedIdx = 0;
         for (let i = 0; i < newOrder.length; i++) {
-            if (isLocH(newOrder[i]) === isH) {
+            if (!isLocDep(newOrder[i]) && isLocH(newOrder[i]) === isH) {
                 newOrder[i] = sorted[sortedIdx];
                 sortedIdx++;
             }
@@ -743,7 +773,30 @@ export default function WarehousePage() {
 
         setIsSavingLocation(true);
         try {
-            let aisleName = newLoc.aisle.trim().toUpperCase();
+            let aisleName, fullId;
+
+            if (newLocationType === 'D') {
+                // DEPÓSITO: Repisa (A-E) → aisle = DEP-A, section = estante (1-5), level = posición (1-5)
+                aisleName = `DEP-${depRepisa}`;
+                const section = depEstante;
+                const level = depPosicion;
+                fullId = `${aisleName}-${section}-${level}`;
+                const adjustedLoc = { aisle: aisleName, section, level };
+                const res = await addWarehouseLocation({ ...adjustedLoc, id: fullId, country: countryFilter });
+                if (res.error) {
+                    if (res.error.code === '23505') {
+                        alert(`La ubicación ${fullId} ya existe en el sistema.`);
+                    } else {
+                        alert("Error al crear ubicación: " + res.error.message);
+                    }
+                } else {
+                    setIsAddLocationModalOpen(false);
+                    setDepRepisa('A'); setDepEstante('1'); setDepPosicion('1');
+                }
+                return;
+            }
+
+            aisleName = newLoc.aisle.trim().toUpperCase();
             aisleName = combineAisleName(newLocManufacturer, aisleName);
             
             if (newLocationType === 'H') {
@@ -761,7 +814,7 @@ export default function WarehousePage() {
             }
 
             const adjustedLoc = { ...newLoc, aisle: aisleName };
-            const fullId = `${aisleName}-${adjustedLoc.section}-${adjustedLoc.level}`;
+            fullId = `${aisleName}-${adjustedLoc.section}-${adjustedLoc.level}`;
             const res = await addWarehouseLocation({ ...adjustedLoc, id: fullId, country: countryFilter });
             
             if (res.error) {
@@ -957,13 +1010,13 @@ export default function WarehousePage() {
         }
     };
 
-    const renderAisle = (aisle, locations, totalAislesCount, listAislesArray, isHZone = false) => {
+    const renderAisle = (aisle, locations, totalAislesCount, listAislesArray, isHZone = false, isDepZone = false) => {
         const aisleAssetsCount = assets.filter(a => 
             (countryFilter === 'Todos' || a.country === countryFilter) &&
             locations.some(loc => loc.id === a.locationId)
         ).length;
         
-        const badgeColor = isHZone ? '#64748b' : '#2563eb';
+        const badgeColor = isDepZone ? '#10b981' : (isHZone ? '#64748b' : '#2563eb');
         
         return (
             <div key={aisle} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -979,7 +1032,7 @@ export default function WarehousePage() {
                                     e.stopPropagation();
                                     setRenameGroupOldName(aisle);
                                     
-                                    let type = isLocH(aisle) ? 'H' : 'W';
+                                    let type = isLocDep(aisle) ? 'D' : (isLocH(aisle) ? 'H' : 'W');
                                     let mfg = detectManufacturer(aisle, manufacturers);
                                     let cat = getDisplayAisle(aisle);
                                     
@@ -1274,7 +1327,7 @@ export default function WarehousePage() {
             {/* Dashboard grid structure */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }} className="flex-mobile-column">
                 
-                {/* Main Mapping Columns (Locación W and Locación H) */}
+                {/* Main Mapping Columns (Locación W, H and DEPÓSITO) */}
                 <div style={{ display: 'flex', gap: '1.5rem', minHeight: '600px' }} className="flex-mobile-column">
                     
                     {/* LOCACIÓN W */}
@@ -1389,6 +1442,40 @@ export default function WarehousePage() {
                                 ) : (
                                     locationsH.map(([aisle, locations]) => renderAisle(aisle, locations, locationsH.length, locationsH, true))
                                 )
+                            )}
+                        </div>
+                    </Card>
+
+                    {/* LOCACIÓN DEPÓSITO */}
+                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #d1fae5' }}>
+                        <div style={{ borderBottom: '2px solid #a7f3d0', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#065f46' }}>DEPÓSITO</h2>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', backgroundColor: '#ecfdf5', padding: '3px 8px', borderRadius: '12px' }}>
+                                    {locationsD.length} Repisas
+                                </span>
+                                <span style={{ fontSize: '0.7rem', color: '#6b7280', backgroundColor: 'var(--background-secondary)', padding: '2px 6px', borderRadius: '8px', fontWeight: 600 }}>
+                                    {totalAssetsDep} equipos
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* DEP legend */}
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.68rem', color: '#6b7280', fontWeight: 600 }}>
+                            <span style={{ background: '#ecfdf5', color: '#059669', padding: '2px 6px', borderRadius: '4px' }}>Formato: Repisa - Estante - Posición</span>
+                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 6px', borderRadius: '4px' }}>Estante 1 = suelo → 5 = alto</span>
+                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 6px', borderRadius: '4px' }}>Pos. 1 = izq → 5 = der</span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {locationsD.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                                    <Box size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.2, color: '#10b981' }} />
+                                    <p style={{ fontSize: '0.85rem' }}>No hay ubicaciones en el Depósito aún.</p>
+                                    <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>Usá "+ Nueva Ubicación" y seleccioná DEPÓSITO.</p>
+                                </div>
+                            ) : (
+                                locationsD.map(([aisle, locations]) => renderAisle(aisle, locations, locationsD.length, locationsD, false, true))
                             )}
                         </div>
                     </Card>
@@ -2190,66 +2277,101 @@ export default function WarehousePage() {
                             <label className="form-label">Ubicación Destino (Zona)</label>
                             <select 
                                 value={newLocationType} 
-                                onChange={e => setNewLocationType(e.target.value)}
+                                onChange={e => { setNewLocationType(e.target.value); }}
                                 className="form-input"
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                             >
                                 <option value="W">LOCACIÓN W (Estándar)</option>
                                 <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
+                                <option value="D">🟢 DEPÓSITO (Repisa - Estante - Posición)</option>
                             </select>
                         </div>
-                        {/* Fabricante dropdown */}
-                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                            <label className="form-label">Fabricante (Pre-agrupación)</label>
-                            <select 
-                                value={newLocManufacturer} 
-                                onChange={e => setNewLocManufacturer(e.target.value)}
-                                className="form-input"
-                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                            >
-                                <option value="NINGUNO">Ninguno (Usar solo Grupo)</option>
-                                {manufacturers.map(m => (
-                                    <option key={m} value={m}>{m}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Grupo (Categoría)</label>
-                            <input 
-                                className="form-input" 
-                                placeholder="Ej: B" 
-                                required
-                                value={newLoc.aisle}
-                                onChange={e => setNewLoc({ ...newLoc, aisle: e.target.value.toUpperCase() })}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Sección (Rack)</label>
-                            <input 
-                                className="form-input" 
-                                placeholder="Ej: 03" 
-                                required
-                                value={newLoc.section}
-                                onChange={e => setNewLoc({ ...newLoc, section: e.target.value })}
-                            />
-                        </div>
-                    </div>
-                    <div className="form-group" style={{ marginBottom: '2rem' }}>
-                        <label className="form-label">Nivel (Level)</label>
-                        <input 
-                            className="form-input" 
-                            placeholder="Ej: 2" 
-                            required
-                            value={newLoc.level}
-                            onChange={e => setNewLoc({ ...newLoc, level: e.target.value })}
-                        />
+
+                        {newLocationType === 'D' ? (
+                            // === DEPÓSITO: Guided dropdowns ===
+                            <>
+                                {/* Preview */}
+                                <div style={{ gridColumn: 'span 2', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '0.75rem', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '0.72rem', color: '#065f46', fontWeight: 700, marginBottom: '4px' }}>Código que se generará</div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#059669', letterSpacing: '0.1em' }}>DEP-{depRepisa}-{depEstante}-{depPosicion}</div>
+                                    <div style={{ fontSize: '0.68rem', color: '#6b7280', marginTop: '2px' }}>Repisa {depRepisa} · Estante {depEstante} ({depEstante === '1' ? 'suelo' : depEstante === '5' ? 'más alto' : `nivel ${depEstante}`}) · Posición {depPosicion} ({depPosicion === '1' ? 'más izq.' : depPosicion === '5' ? 'más der.' : `pos. ${depPosicion}`})</div>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Repisa (A–E)</label>
+                                    <select value={depRepisa} onChange={e => setDepRepisa(e.target.value)} className="form-input" style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #a7f3d0', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '1rem', fontWeight: 700 }}>
+                                        {['A','B','C','D','E'].map(r => <option key={r} value={r}>Repisa {r}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Estante (1 = suelo, 5 = alto)</label>
+                                    <select value={depEstante} onChange={e => setDepEstante(e.target.value)} className="form-input" style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #a7f3d0', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '1rem', fontWeight: 700 }}>
+                                        {[1,2,3,4,5].map(n => <option key={n} value={String(n)}>Estante {n}{n===1?' (suelo)':n===5?' (más alto)':''}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label className="form-label">Posición (1 = izquierda, 5 = derecha)</label>
+                                    <select value={depPosicion} onChange={e => setDepPosicion(e.target.value)} className="form-input" style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #a7f3d0', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '1rem', fontWeight: 700 }}>
+                                        {[1,2,3,4,5].map(n => <option key={n} value={String(n)}>Posición {n}{n===1?' (más izquierda)':n===5?' (más derecha)':''}</option>)}
+                                    </select>
+                                </div>
+                            </>
+                        ) : (
+                            // === W / H: Original fields ===
+                            <>
+                                {/* Fabricante dropdown */}
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label className="form-label">Fabricante (Pre-agrupación)</label>
+                                    <select 
+                                        value={newLocManufacturer} 
+                                        onChange={e => setNewLocManufacturer(e.target.value)}
+                                        className="form-input"
+                                        style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                    >
+                                        <option value="NINGUNO">Ninguno (Usar solo Grupo)</option>
+                                        {manufacturers.map(m => (
+                                            <option key={m} value={m}>{m}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Grupo (Categoría)</label>
+                                    <input 
+                                        className="form-input" 
+                                        placeholder="Ej: B" 
+                                        required
+                                        value={newLoc.aisle}
+                                        onChange={e => setNewLoc({ ...newLoc, aisle: e.target.value.toUpperCase() })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Sección (Rack)</label>
+                                    <input 
+                                        className="form-input" 
+                                        placeholder="Ej: 03" 
+                                        required
+                                        value={newLoc.section}
+                                        onChange={e => setNewLoc({ ...newLoc, section: e.target.value })}
+                                    />
+                                </div>
+                                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label className="form-label">Nivel (Level)</label>
+                                    <input 
+                                        className="form-input" 
+                                        placeholder="Ej: 2" 
+                                        required
+                                        value={newLoc.level}
+                                        onChange={e => setNewLoc({ ...newLoc, level: e.target.value })}
+                                    />
+                                </div>
+                            </>
+                        )}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                         <Button type="button" variant="ghost" onClick={() => setIsAddLocationModalOpen(false)} disabled={isSavingLocation}>
                             Cancelar
                         </Button>
-                        <Button type="submit" loading={isSavingLocation}>
-                            {isSavingLocation ? 'Creando...' : 'Crear Ubicación'}
+                        <Button type="submit" loading={isSavingLocation} style={newLocationType === 'D' ? { backgroundColor: '#10b981', color: 'white' } : {}}>
+                            {isSavingLocation ? 'Creando...' : (newLocationType === 'D' ? `Crear DEP-${depRepisa}-${depEstante}-${depPosicion}` : 'Crear Ubicación')}
                         </Button>
                     </div>
                 </form>
@@ -2268,10 +2390,7 @@ export default function WarehousePage() {
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                             >
                                 <option value="W">LOCACIÓN W (Estándar)</option>
-                                <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
-                            </select>
-                        </div>
-                        {/* Fabricante dropdown */}
+                                <option value="H">LOCACI\u00d3N H (Especiales / Hist\u00f3rico)</option>`n                                <option value="D">\ud83d\udfe2 DEP\u00d3SITO (Repisa - Estante - Posici\u00f3n)</option>`n                            </select>`n                        </div>`n                        {/* Fabricante dropdown */}
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                             <label className="form-label">Fabricante (Pre-agrupación)</label>
                             <select 
@@ -2324,10 +2443,7 @@ export default function WarehousePage() {
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                             >
                                 <option value="W">LOCACIÓN W (Estándar)</option>
-                                <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
-                            </select>
-                        </div>
-                        {/* Fabricante dropdown */}
+                                <option value="H">LOCACI\u00d3N H (Especiales / Hist\u00f3rico)</option>`n                                <option value="D">\ud83d\udfe2 DEP\u00d3SITO (Repisa - Estante - Posici\u00f3n)</option>`n                            </select>`n                        </div>`n                        {/* Fabricante dropdown */}
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                             <label className="form-label">Fabricante (Pre-agrupación)</label>
                             <select 
@@ -2496,3 +2612,4 @@ export default function WarehousePage() {
         </div>
     );
 }
+
