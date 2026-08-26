@@ -1798,232 +1798,6 @@ export default function WarehousePage() {
                         </Card>
                     )}
 
-                    {/* Resumen y Filtros Rápidos */}
-                    <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Resumen y Filtros Rápidos</h3>
-                        
-                        {/* Vista Rápida de Stock */}
-                        <div>
-                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vista Rápida de Stock</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.2rem' }}>
-                                        <span>Stock Total W</span>
-                                        <span>{totalAssetsW}</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '12px', background: 'var(--background-secondary)', borderRadius: '6px', overflow: 'hidden' }}>
-                                        <div style={{ 
-                                            width: `${(totalAssetsW / Math.max(totalAssetsW + totalAssetsH, 1)) * 100}%`, 
-                                            height: '100%', 
-                                            background: '#2563eb', 
-                                            borderRadius: '6px', 
-                                            transition: 'width 0.4s ease' 
-                                        }}></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.2rem' }}>
-                                        <span>Stock Total H</span>
-                                        <span>{totalAssetsH}</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '12px', background: 'var(--background-secondary)', borderRadius: '6px', overflow: 'hidden' }}>
-                                        <div style={{ 
-                                            width: `${(totalAssetsH / Math.max(totalAssetsW + totalAssetsH, 1)) * 100}%`, 
-                                            height: '100%', 
-                                            background: '#64748b', 
-                                            borderRadius: '6px', 
-                                            transition: 'width 0.4s ease' 
-                                        }}></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Estado Global (Donut Chart) */}
-                        <div>
-                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Estado Global</h4>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                                {/* Custom CSS Conic-Gradient Donut */}
-                                <div style={{
-                                    width: '100px',
-                                    height: '100px',
-                                    borderRadius: '50%',
-                                    background: `conic-gradient(
-                                        #2563eb 0% ${percentEnStock}%, 
-                                        #84cc16 ${percentEnStock}% ${percentEnStock + percentAsignado}%, 
-                                        #f97316 ${percentEnStock + percentAsignado}% 100%
-                                    )`,
-                                    position: 'relative',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    boxShadow: 'inset 0 0 1px rgba(0,0,0,0.1)'
-                                }}>
-                                    <div style={{
-                                        width: '64px',
-                                        height: '64px',
-                                        borderRadius: '50%',
-                                        backgroundColor: 'var(--surface)',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 800
-                                    }}>
-                                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.55rem', textTransform: 'uppercase' }}>Total</span>
-                                        <span style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>{statusCounts.actualTotal}</span>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
-                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563eb' }}></div>
-                                        <span style={{ flex: 1 }}>En Stock</span>
-                                        <span style={{ color: 'var(--text-secondary)' }}>{statusCounts.enStock}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
-                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#84cc16' }}></div>
-                                        <span style={{ flex: 1 }}>Asignado</span>
-                                        <span style={{ color: 'var(--text-secondary)' }}>{statusCounts.asignado}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
-                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f97316' }}></div>
-                                        <span style={{ flex: 1 }}>Mantenim.</span>
-                                        <span style={{ color: 'var(--text-secondary)' }}>{statusCounts.mantenimiento}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Filtros de Marca */}
-                        <div>
-                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filtros de Marca</h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                                <button
-                                    onClick={() => setSelectedBrand('ALL')}
-                                    style={{
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
-                                        background: selectedBrand === 'ALL' ? 'var(--primary-color)' : 'var(--background-secondary)',
-                                        color: selectedBrand === 'ALL' ? 'white' : 'var(--text-main)',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '8px', cursor: 'pointer', outline: 'none',
-                                        transition: 'all 0.15s ease'
-                                    }}
-                                >
-                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: selectedBrand === 'ALL' ? 'rgba(255,255,255,0.2)' : '#e2e8f0', color: selectedBrand === 'ALL' ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>★</div>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Todos</span>
-                                </button>
-
-                                {manufacturers.map(m => {
-                                    const isSel = selectedBrand === m;
-                                    return (
-                                        <button
-                                            key={m}
-                                            onClick={() => setSelectedBrand(m)}
-                                            style={{
-                                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
-                                                background: isSel ? 'var(--primary-color)' : 'var(--background-secondary)',
-                                                color: isSel ? 'white' : 'var(--text-main)',
-                                                border: '1px solid var(--border)',
-                                                borderRadius: '8px', cursor: 'pointer', outline: 'none',
-                                                transition: 'all 0.15s ease'
-                                            }}
-                                        >
-                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: isSel ? 'rgba(255,255,255,0.2)' : '#e2e8f0', color: isSel ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
-                                                {m.substring(0, 2)}
-                                            </div>
-                                            <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>{m}</span>
-                                        </button>
-                                    );
-                                })}
-
-                                <button 
-                                    onClick={() => setIsManageManufacturersOpen(true)}
-                                    style={{
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
-                                        background: 'var(--background-secondary)', border: '1px solid var(--border)',
-                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
-                                    }}
-                                >
-                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#e2e8f0', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800 }}>+</div>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Gestionar</span>
-                                </button>
-                            </div>
-                        </div>
-                    </Card>
-
-                    {/* Búsqueda Avanzada */}
-                    <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                            <SlidersHorizontal size={16} />
-                            <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0 }}>Búsqueda Avanzada</h3>
-                        </div>
-
-                        <div className="search-box">
-                            <Search className="search-icon" size={16} />
-                            <input 
-                                className="search-input"
-                                placeholder="Buscar Ubicación o Serial..."
-                                value={locationSearch}
-                                onChange={e => setLocationSearch(e.target.value)}
-                                style={{ padding: '0.5rem 1rem 0.5rem 2.25rem', fontSize: '0.8rem' }}
-                            />
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>CPU</label>
-                                <select 
-                                    value={cpuFilter} 
-                                    onChange={e => setCpuFilter(e.target.value)}
-                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
-                                >
-                                    <option value="ALL">Cualquier CPU</option>
-                                    <option value="M4">Apple M4</option>
-                                    <option value="M3">Apple M3</option>
-                                    <option value="M2">Apple M2</option>
-                                    <option value="M1">Apple M1</option>
-                                    <option value="Ultra">Intel Ultra</option>
-                                    <option value="Core">Intel Core</option>
-                                    <option value="i7">Core i7</option>
-                                    <option value="i5">Core i5</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Memoria RAM</label>
-                                <select 
-                                    value={ramFilter} 
-                                    onChange={e => setRamFilter(e.target.value)}
-                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
-                                >
-                                    <option value="ALL">Cualquier RAM</option>
-                                    <option value="64GB">64 GB</option>
-                                    <option value="48GB">48 GB</option>
-                                    <option value="36GB">36 GB</option>
-                                    <option value="32GB">32 GB</option>
-                                    <option value="24GB">24 GB</option>
-                                    <option value="16GB">16 GB</option>
-                                    <option value="8GB">8 GB</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Estado</label>
-                                <select 
-                                    value={statusFilter} 
-                                    onChange={e => setStatusFilter(e.target.value)}
-                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
-                                >
-                                    <option value="ALL">Cualquier Estado</option>
-                                    <option value="Disponible">En Stock / Disponible</option>
-                                    <option value="Asignado">Asignado</option>
-                                    <option value="Mantenimiento">Mantenimiento / Dañado</option>
-                                </select>
-                            </div>
-                        </div>
-                    </Card>
-
                     {/* Información de Selección */}
                     {(() => {
                         if (selectedGroup) {
@@ -2318,6 +2092,232 @@ export default function WarehousePage() {
                             </Card>
                         );
                     })()}
+                    {/* Resumen y Filtros Rápidos */}
+                    <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Resumen y Filtros Rápidos</h3>
+                        
+                        {/* Vista Rápida de Stock */}
+                        <div>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vista Rápida de Stock</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.2rem' }}>
+                                        <span>Stock Total W</span>
+                                        <span>{totalAssetsW}</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '12px', background: 'var(--background-secondary)', borderRadius: '6px', overflow: 'hidden' }}>
+                                        <div style={{ 
+                                            width: `${(totalAssetsW / Math.max(totalAssetsW + totalAssetsH, 1)) * 100}%`, 
+                                            height: '100%', 
+                                            background: '#2563eb', 
+                                            borderRadius: '6px', 
+                                            transition: 'width 0.4s ease' 
+                                        }}></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.2rem' }}>
+                                        <span>Stock Total H</span>
+                                        <span>{totalAssetsH}</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '12px', background: 'var(--background-secondary)', borderRadius: '6px', overflow: 'hidden' }}>
+                                        <div style={{ 
+                                            width: `${(totalAssetsH / Math.max(totalAssetsW + totalAssetsH, 1)) * 100}%`, 
+                                            height: '100%', 
+                                            background: '#64748b', 
+                                            borderRadius: '6px', 
+                                            transition: 'width 0.4s ease' 
+                                        }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Estado Global (Donut Chart) */}
+                        <div>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Estado Global</h4>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                                {/* Custom CSS Conic-Gradient Donut */}
+                                <div style={{
+                                    width: '100px',
+                                    height: '100px',
+                                    borderRadius: '50%',
+                                    background: `conic-gradient(
+                                        #2563eb 0% ${percentEnStock}%, 
+                                        #84cc16 ${percentEnStock}% ${percentEnStock + percentAsignado}%, 
+                                        #f97316 ${percentEnStock + percentAsignado}% 100%
+                                    )`,
+                                    position: 'relative',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: 'inset 0 0 1px rgba(0,0,0,0.1)'
+                                }}>
+                                    <div style={{
+                                        width: '64px',
+                                        height: '64px',
+                                        borderRadius: '50%',
+                                        backgroundColor: 'var(--surface)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 800
+                                    }}>
+                                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.55rem', textTransform: 'uppercase' }}>Total</span>
+                                        <span style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>{statusCounts.actualTotal}</span>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#2563eb' }}></div>
+                                        <span style={{ flex: 1 }}>En Stock</span>
+                                        <span style={{ color: 'var(--text-secondary)' }}>{statusCounts.enStock}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#84cc16' }}></div>
+                                        <span style={{ flex: 1 }}>Asignado</span>
+                                        <span style={{ color: 'var(--text-secondary)' }}>{statusCounts.asignado}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f97316' }}></div>
+                                        <span style={{ flex: 1 }}>Mantenim.</span>
+                                        <span style={{ color: 'var(--text-secondary)' }}>{statusCounts.mantenimiento}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Filtros de Marca */}
+                        <div>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filtros de Marca</h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                                <button
+                                    onClick={() => setSelectedBrand('ALL')}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
+                                        background: selectedBrand === 'ALL' ? 'var(--primary-color)' : 'var(--background-secondary)',
+                                        color: selectedBrand === 'ALL' ? 'white' : 'var(--text-main)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '8px', cursor: 'pointer', outline: 'none',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: selectedBrand === 'ALL' ? 'rgba(255,255,255,0.2)' : '#e2e8f0', color: selectedBrand === 'ALL' ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>★</div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Todos</span>
+                                </button>
+
+                                {manufacturers.map(m => {
+                                    const isSel = selectedBrand === m;
+                                    return (
+                                        <button
+                                            key={m}
+                                            onClick={() => setSelectedBrand(m)}
+                                            style={{
+                                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
+                                                background: isSel ? 'var(--primary-color)' : 'var(--background-secondary)',
+                                                color: isSel ? 'white' : 'var(--text-main)',
+                                                border: '1px solid var(--border)',
+                                                borderRadius: '8px', cursor: 'pointer', outline: 'none',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                        >
+                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: isSel ? 'rgba(255,255,255,0.2)' : '#e2e8f0', color: isSel ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>
+                                                {m.substring(0, 2)}
+                                            </div>
+                                            <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>{m}</span>
+                                        </button>
+                                    );
+                                })}
+
+                                <button 
+                                    onClick={() => setIsManageManufacturersOpen(true)}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '6px',
+                                        background: 'var(--background-secondary)', border: '1px solid var(--border)',
+                                        borderRadius: '8px', cursor: 'pointer', outline: 'none'
+                                    }}
+                                >
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#e2e8f0', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800 }}>+</div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700 }}>Gestionar</span>
+                                </button>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Búsqueda Avanzada */}
+                    <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+                            <SlidersHorizontal size={16} />
+                            <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0 }}>Búsqueda Avanzada</h3>
+                        </div>
+
+                        <div className="search-box">
+                            <Search className="search-icon" size={16} />
+                            <input 
+                                className="search-input"
+                                placeholder="Buscar Ubicación o Serial..."
+                                value={locationSearch}
+                                onChange={e => setLocationSearch(e.target.value)}
+                                style={{ padding: '0.5rem 1rem 0.5rem 2.25rem', fontSize: '0.8rem' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>CPU</label>
+                                <select 
+                                    value={cpuFilter} 
+                                    onChange={e => setCpuFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
+                                >
+                                    <option value="ALL">Cualquier CPU</option>
+                                    <option value="M4">Apple M4</option>
+                                    <option value="M3">Apple M3</option>
+                                    <option value="M2">Apple M2</option>
+                                    <option value="M1">Apple M1</option>
+                                    <option value="Ultra">Intel Ultra</option>
+                                    <option value="Core">Intel Core</option>
+                                    <option value="i7">Core i7</option>
+                                    <option value="i5">Core i5</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Memoria RAM</label>
+                                <select 
+                                    value={ramFilter} 
+                                    onChange={e => setRamFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
+                                >
+                                    <option value="ALL">Cualquier RAM</option>
+                                    <option value="64GB">64 GB</option>
+                                    <option value="48GB">48 GB</option>
+                                    <option value="36GB">36 GB</option>
+                                    <option value="32GB">32 GB</option>
+                                    <option value="24GB">24 GB</option>
+                                    <option value="16GB">16 GB</option>
+                                    <option value="8GB">8 GB</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Estado</label>
+                                <select 
+                                    value={statusFilter} 
+                                    onChange={e => setStatusFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
+                                >
+                                    <option value="ALL">Cualquier Estado</option>
+                                    <option value="Disponible">En Stock / Disponible</option>
+                                    <option value="Asignado">Asignado</option>
+                                    <option value="Mantenimiento">Mantenimiento / Dañado</option>
+                                </select>
+                            </div>
+                        </div>
+                    </Card>
+
                 </div>
             </div>
 
