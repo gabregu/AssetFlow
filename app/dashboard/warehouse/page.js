@@ -728,6 +728,12 @@ export default function WarehousePage() {
                 }
             }
         }
+        if (finalLocationId.startsWith('DEP-') && !warehouseLocations.some(l => l.id === finalLocationId)) {
+            const parts = finalLocationId.split('-');
+            if (parts.length === 4) {
+                await addWarehouseLocation({ aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], id: finalLocationId, country: countryFilter });
+            }
+        }
 
         const res = await mapAssetToLocation(assetId, finalLocationId);
         if (!res.error) {
@@ -793,6 +799,13 @@ export default function WarehousePage() {
                         `¿Desea agregar este activo a dicha ubicación?`
                     );
                     if (!confirmMove) return;
+                }
+            }
+
+            if (finalTargetId.startsWith('DEP-') && !warehouseLocations.some(l => l.id === finalTargetId)) {
+                const parts = finalTargetId.split('-');
+                if (parts.length === 4) {
+                    await addWarehouseLocation({ aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], id: finalTargetId, country: countryFilter });
                 }
             }
 
