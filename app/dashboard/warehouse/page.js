@@ -1633,63 +1633,7 @@ export default function WarehousePage() {
                         </div>
                     </Card>
 
-                    {/* LOCACIÓN H */}
-                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        <div style={{ borderBottom: '2px solid var(--border)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: 'var(--text-main)' }}>LOCACIÓN H</h2>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', backgroundColor: 'var(--background-secondary)', padding: '3px 8px', borderRadius: '12px' }}>
-                                    {locationsH.length} Grupos
-                                </span>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="xs"
-                                icon={ArrowUpDown}
-                                onClick={() => sortGroupsAlphabetically(true)}
-                                title="Ordenar Grupos H (A-Z)"
-                                style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px' }}
-                            >
-                                Ordenar A-Z
-                            </Button>
-                        </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            {locationsH.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
-                                    <Navigation size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.2 }} />
-                                    <p style={{ fontSize: '0.85rem' }}>No hay grupos coincidentes.</p>
-                                </div>
-                            ) : (
-                                groupByBrand ? (
-                                    (() => {
-                                        const groupedH = getGroupedByBrand(locationsH, manufacturers);
-                                        return Object.entries(groupedH).filter(([_, items]) => items.length > 0).map(([brandName, items]) => {
-                                            const brandAssetsCount = items.reduce((acc, [_, locations]) => {
-                                                const locIds = locations.map(l => l.id);
-                                                return acc + assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && locIds.includes(a.locationId)).length;
-                                            }, 0);
-                                            return (
-                                                <div key={brandName} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.85rem', background: 'var(--background-secondary)' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem', marginBottom: '0.25rem' }}>
-                                                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{brandName}</h3>
-                                                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#64748b', backgroundColor: '#e2e8f0', padding: '2px 8px', borderRadius: '10px' }}>
-                                                            {items.length} grupos • {brandAssetsCount} equipos
-                                                        </span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
-                                                        {items.map(([aisle, locations]) => renderAisle(aisle, locations, locationsH.length, locationsH, true))}
-                                                    </div>
-                                                </div>
-                                            );
-                                        });
-                                    })()
-                                ) : (
-                                    locationsH.map(([aisle, locations]) => renderAisle(aisle, locations, locationsH.length, locationsH, true))
-                                )
-                            )}
-                        </div>
-                    </Card>
 
                     {/* LOCACIÓN DEPÓSITO */}
                     <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #d1fae5' }}>
@@ -2127,24 +2071,9 @@ export default function WarehousePage() {
                                     </div>
                                     <div style={{ width: '100%', height: '12px', background: 'var(--background-secondary)', borderRadius: '6px', overflow: 'hidden' }}>
                                         <div style={{ 
-                                            width: `${(totalAssetsW / Math.max(totalAssetsW + totalAssetsH, 1)) * 100}%`, 
+                                            width: `100%`, 
                                             height: '100%', 
                                             background: '#2563eb', 
-                                            borderRadius: '6px', 
-                                            transition: 'width 0.4s ease' 
-                                        }}></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.2rem' }}>
-                                        <span>Stock Total H</span>
-                                        <span>{totalAssetsH}</span>
-                                    </div>
-                                    <div style={{ width: '100%', height: '12px', background: 'var(--background-secondary)', borderRadius: '6px', overflow: 'hidden' }}>
-                                        <div style={{ 
-                                            width: `${(totalAssetsH / Math.max(totalAssetsW + totalAssetsH, 1)) * 100}%`, 
-                                            height: '100%', 
-                                            background: '#64748b', 
                                             borderRadius: '6px', 
                                             transition: 'width 0.4s ease' 
                                         }}></div>
@@ -2527,7 +2456,6 @@ export default function WarehousePage() {
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                             >
                                 <option value="W">LOCACIÓN W (Estándar)</option>
-                                <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
                                 <option value="D">🟢 DEPÓSITO (Repisa - Estante - Posición)</option>
                             </select>
                         </div>
@@ -2635,7 +2563,6 @@ export default function WarehousePage() {
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                             >
                                 <option value="W">LOCACIÓN W (Estándar)</option>
-                                <option value="H">LOCACIÓN H (Especiales / Histórico)</option>
                                 <option value="D">🟢 DEPÓSITO (Repisa - Estante - Posición)</option>
                             </select>
                         </div>
@@ -2721,7 +2648,10 @@ export default function WarehousePage() {
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                             >
                                 <option value="W">LOCACIÓN W (Estándar)</option>
-                                <option value="H">LOCACI\u00d3N H (Especiales / Hist\u00f3rico)</option>`n                                <option value="D">\ud83d\udfe2 DEP\u00d3SITO (Repisa - Estante - Posici\u00f3n)</option>`n                            </select>`n                        </div>`n                        {/* Fabricante dropdown */}
+                                <option value="D">🟢 DEPÓSITO (Repisa - Estante - Posición)</option>
+                            </select>
+                        </div>
+                        {/* Fabricante dropdown */}
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                             <label className="form-label">Fabricante (Pre-agrupación)</label>
                             <select 
