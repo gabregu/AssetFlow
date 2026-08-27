@@ -56,6 +56,8 @@ const isLocH = (aisleName) => {
     return legacyH.includes(upper);
 };
 
+const isLocCaja = (aisle) => aisle?.toUpperCase().startsWith('CAJA');
+
 const getDisplayAisle = (aisleName) => {
     if (isLocDep(aisleName)) {
         // DEP-A → Repisa A
@@ -320,7 +322,7 @@ export default function WarehousePage() {
 
     // Split between Location W, H and DEPÓSITO
     const locationsW = useMemo(() => {
-        return sortedGroupedLocations.filter(([aisle]) => !isLocH(aisle) && !isLocDep(aisle));
+        return sortedGroupedLocations.filter(([aisle]) => !isLocH(aisle) && !isLocDep(aisle) && !isLocCaja(aisle));
     }, [sortedGroupedLocations]);
 
     const locationsH = useMemo(() => {
@@ -339,7 +341,7 @@ export default function WarehousePage() {
             if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
             if (!a.locationId) return false;
             const loc = warehouseLocations.find(l => l.id === a.locationId);
-            return loc && !isLocH(loc.aisle) && !isLocDep(loc.aisle);
+            return loc && !isLocH(loc.aisle) && !isLocDep(loc.aisle) && !isLocCaja(loc.aisle);
         }).length;
     }, [assets, warehouseLocations, countryFilter]);
 
@@ -1634,6 +1636,80 @@ export default function WarehousePage() {
                     </Card>
 
 
+
+                    {/* ZONA CAJAS */}
+                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #fde047' }}>
+                        <div style={{ borderBottom: '2px solid #fef08a', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#854d0e' }}>ZONA CAJAS</h2>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a16207', backgroundColor: '#fef9c3', padding: '3px 8px', borderRadius: '12px' }}>
+                                    {depositoConfig?.cajasCount || 80} Cajas EOL
+                                </span>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="xs"
+                                icon={Edit3}
+                                onClick={() => {
+                                    const count = prompt('Ingrese el número total de cajas EOL:', depositoConfig?.cajasCount || 80);
+                                    if(count && !isNaN(count)) {
+                                        updateDepositoConfig({ ...depositoConfig, cajasCount: parseInt(count) });
+                                    }
+                                }}
+                                title="Editar cantidad de cajas"
+                                style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px' }}
+                            >
+                                Editar
+                            </Button>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowX: 'auto' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(28px, 1fr))', gap: '8px', padding: '0.5rem 0' }}>
+                                {Array.from({ length: depositoConfig?.cajasCount || 80 }, (_, i) => i + 1).map(cajaNum => {
+                                    const locId = `CAJA-${cajaNum}`;
+                                    const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                                    const assetCount = locationAssets.length;
+                                    const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
+                                    
+                                    let bgColor = 'transparent';
+                                    let borderColor = 'var(--border)';
+
+                                    if (assetCount > 0) {
+                                        const status = locationAssets[0]?.status?.toUpperCase() || '';
+                                        if (status.includes('NUEVO')) { bgColor = '#10b981'; borderColor = '#10b981'; }
+                                        else if (status.includes('RECUPERADO')) { bgColor = '#3b82f6'; borderColor = '#3b82f6'; }
+                                        else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) { bgColor = '#f97316'; borderColor = '#f97316'; }
+                                        else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) { bgColor = '#ef4444'; borderColor = '#ef4444'; }
+                                        else { bgColor = '#10b981'; borderColor = '#10b981'; }
+                                    }
+                                    
+                                    if (isAuditMode && auditLocation?.id === locId) {
+                                        bgColor = '#8b5cf6';
+                                        borderColor = '#8b5cf6';
+                                    }
+                                    
+                                    return (
+                                        <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                            <div 
+                                                onClick={() => handleScanLocation(locId)}
+                                                style={{
+                                                    width: '28px', height: '28px', borderRadius: '4px',
+                                                    backgroundColor: isSelected ? 'var(--primary-color)' : bgColor,
+                                                    border: isSelected ? '2px solid var(--primary-color)' : `1px solid ${borderColor}`,
+                                                    boxShadow: isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none',
+                                                    cursor: 'pointer', transition: 'all 0.2s ease',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                }}
+                                                title={locId}
+                                            >
+                                                {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
+                                            </div>
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{cajaNum}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </Card>
 
                     {/* LOCACIÓN DEPÓSITO */}
                     <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #d1fae5' }}>
