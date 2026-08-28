@@ -198,6 +198,8 @@ export default function WarehousePage() {
     const [ramFilter, setRamFilter] = useState('ALL');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [locationSearch, setLocationSearch] = useState('');
+    const [modelFilter, setModelFilter] = useState('ALL');   // MBA | MBP | ALL
+    const [sizeFilter, setSizeFilter] = useState('ALL');     // 13 | 14 | 15 | 16 | ALL
 
     // Helper to normalize IDs for comparison
     const normalizeId = (id) => {
@@ -255,14 +257,28 @@ export default function WarehousePage() {
                 if (!nameMatch && !serialMatch && !idMatch && !locMatch) return false;
             }
 
+            // Model Filter (MBA / MBP)
+            if (modelFilter !== 'ALL') {
+                const nameLower = (asset.name || '').toUpperCase();
+                if (!nameLower.startsWith(modelFilter)) return false;
+            }
+
+            // Size Filter (13 / 14 / 15 / 16 pulgadas)
+            if (sizeFilter !== 'ALL') {
+                const nameLower = (asset.name || '').toLowerCase();
+                // Match " 13 " or "13"" patterns like "MBA 13 M4"
+                const sizePattern = new RegExp(`\\b${sizeFilter}\\b`);
+                if (!sizePattern.test(nameLower)) return false;
+            }
+
             return true;
         });
-    }, [assets, countryFilter, selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch]);
+    }, [assets, countryFilter, selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch, modelFilter, sizeFilter]);
 
     // Compute set of highlighted locationIds (when any search/filter is active)
     const hasActiveSearch = useMemo(() => {
-        return selectedBrand !== 'ALL' || cpuFilter !== 'ALL' || ramFilter !== 'ALL' || statusFilter !== 'ALL' || locationSearch !== '';
-    }, [selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch]);
+        return selectedBrand !== 'ALL' || cpuFilter !== 'ALL' || ramFilter !== 'ALL' || statusFilter !== 'ALL' || locationSearch !== '' || modelFilter !== 'ALL' || sizeFilter !== 'ALL';
+    }, [selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch, modelFilter, sizeFilter]);
 
     const highlightedLocationIds = useMemo(() => {
         if (!hasActiveSearch) return new Set();
@@ -310,7 +326,7 @@ export default function WarehousePage() {
     // Sorted Grouped Locations, filtered by active filters
     const sortedGroupedLocations = useMemo(() => {
         const entries = Object.entries(groupedLocations);
-        const hasActiveFilter = selectedBrand !== 'ALL' || cpuFilter !== 'ALL' || ramFilter !== 'ALL' || statusFilter !== 'ALL' || locationSearch !== '';
+        const hasActiveFilter = selectedBrand !== 'ALL' || cpuFilter !== 'ALL' || ramFilter !== 'ALL' || statusFilter !== 'ALL' || locationSearch !== '' || modelFilter !== 'ALL' || sizeFilter !== 'ALL';
 
         const filteredEntries = entries.map(([aisle, locations]) => {
             const matchingLocs = locations.filter(loc => {
@@ -2516,7 +2532,7 @@ export default function WarehousePage() {
                             <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, flex: 1 }}>Búsqueda Avanzada</h3>
                             {hasActiveSearch && (
                                 <button
-                                    onClick={() => { setLocationSearch(''); setSelectedBrand('ALL'); setCpuFilter('ALL'); setRamFilter('ALL'); setStatusFilter('ALL'); }}
+                                    onClick={() => { setLocationSearch(''); setSelectedBrand('ALL'); setCpuFilter('ALL'); setRamFilter('ALL'); setStatusFilter('ALL'); setModelFilter('ALL'); setSizeFilter('ALL'); }}
                                     title="Limpiar filtros"
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', lineHeight: 1 }}
                                 >
@@ -2569,6 +2585,36 @@ export default function WarehousePage() {
                                     ))}
                                     <option value="WINDOWS">Solo Windows</option>
                                 </select>
+                            </div>
+
+                            {/* Model Filter (MBA / MBP) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Modelo</label>
+                                    <select
+                                        value={modelFilter}
+                                        onChange={e => setModelFilter(e.target.value)}
+                                        style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${modelFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none', fontWeight: modelFilter !== 'ALL' ? 700 : 400 }}
+                                    >
+                                        <option value="ALL">Todos</option>
+                                        <option value="MBA">✈ MBA (MacBook Air)</option>
+                                        <option value="MBP">💼 MBP (MacBook Pro)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Pulgadas</label>
+                                    <select
+                                        value={sizeFilter}
+                                        onChange={e => setSizeFilter(e.target.value)}
+                                        style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${sizeFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none', fontWeight: sizeFilter !== 'ALL' ? 700 : 400 }}
+                                    >
+                                        <option value="ALL">Todas</option>
+                                        <option value="13">13"</option>
+                                        <option value="14">14"</option>
+                                        <option value="15">15"</option>
+                                        <option value="16">16"</option>
+                                    </select>
+                                </div>
                             </div>
 
                             <div>
