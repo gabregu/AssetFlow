@@ -608,7 +608,10 @@ export default function WarehousePage() {
             // Auto-mock DEP location if it matches format DEP-X-Y-Z
             const parts = locationId.split('-');
             if (locationId.startsWith('DEP-') && parts.length === 4) {
-                loc = { id: locationId, aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], country: countryFilter };
+                loc = { id: locationId, aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], country: countryFilter === 'Todos' ? 'AR' : countryFilter };
+            } else if (locationId.toUpperCase().startsWith('CAJA-')) {
+                const cajaNum = locationId.toUpperCase().replace(/^CAJA-/, '');
+                loc = { id: locationId.toUpperCase(), aisle: 'CAJA', section: '-', level: cajaNum, country: countryFilter === 'Todos' ? 'AR' : countryFilter };
             } else {
                 alert("Ubicación no encontrada: " + locationId);
                 return;
@@ -1062,8 +1065,205 @@ export default function WarehousePage() {
         }
     };
 
+    const handlePrintCajaQrLabel = async (cajaId) => {
+        try {
+            const locId = cajaId.startsWith('CAJA-') ? cajaId : `CAJA-${cajaId}`;
+            const cajaNum = locId.replace(/^CAJA-/i, '');
+            const cajaAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+            
+            const assetLines = cajaAssets.map((a, idx) => `${idx + 1}. ${a.serial}${a.name ? ` (${a.name})` : ''} - ${a.status || 'EOL'}`).join('\n');
+            const qrText = `📦 ASSETFLOW | CAJA ${cajaNum}\nTotal: ${cajaAssets.length} Equipos EOL\n--------------------------------\n${assetLines || '(Caja vacía)'}`;
+            
+            const qrDataUrl = await QRCode.toDataURL(qrText, {
+                errorCorrectionLevel: 'M',
+                margin: 1,
+                width: 250
+            });
+
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            const content = `
+                <html>
+                    <head>
+                        <style>
+                            @page { size: 50mm 25mm; margin: 0; }
+                            * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+                            html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
+                            .label-container {
+                                width: 50mm;
+                                height: 25mm;
+                                padding: 1.5mm 2.5mm;
+                                display: flex;
+                                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="label-container">
+                            <div style="display: flex; height: 100%; width: 100%; gap: 2mm; align-items: center;">
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 22mm;">
+                                    <img src="${qrDataUrl}" style="width: 20mm; height: 20mm; object-fit: contain;" />
+                                    <span style="font-size: 3.5pt; font-weight: 700; color: #64748b; margin-top: 0.3mm; text-align: center;">Escanear QR</span>
+                                </div>
+                                <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; height: 100%; overflow: hidden; padding: 0.5mm 0;">
+                                    <div>
+                                        <div style="font-size: 4.5pt; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 0.05em;">ZONA CAJAS • EOL</div>
+                                        <div style="font-size: 11pt; font-weight: 900; color: #000; line-height: 1.1; margin-top: 0.5mm;">CAJA ${cajaNum}</div>
+                                        <div style="font-size: 6pt; font-weight: 800; color: #1e293b; margin-top: 0.5mm;">${cajaAssets.length} Equipos EOL</div>
+                                    </div>
+                                    <div style="font-size: 4.5pt; color: #475569; line-height: 1.1; border-top: 0.5px dashed #cbd5e1; padding-top: 0.5mm; max-height: 8mm; overflow: hidden;">
+                                        ${cajaAssets.slice(0, 3).map(a => `<div>• ${a.serial}</div>`).join('')}
+                                        ${cajaAssets.length > 3 ? `<div style="font-weight: 700; color: #b45309;">+${cajaAssets.length - 3} seriales más...</div>` : ''}
+                                    </div>
+                                    <div style="font-size: 3.5pt; color: #94a3b8; font-weight: 700; text-align: right;">AssetFlow WMS</div>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                            window.onload = () => {
+                                window.print();
+                                setTimeout(() => window.close(), 500);
+                            };
+                        </script>
+                    </body>
+                </html>
+            `;
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+        } catch (err) {
+            console.error('Print QR error:', err);
+            alert('Error al generar etiqueta QR de la caja');
+        }
+    };
+
+    const handlePrintAllCajasLabels = async (onlyOccupied = false) => {
+        try {
+            const totalCount = depositoConfig?.cajasCount || 80;
+            const boxNumbers = Array.from({ length: totalCount }, (_, i) => i + 1)
+                .filter(num => {
+                    if (!onlyOccupied) return true;
+                    const locId = `CAJA-${num}`;
+                    return assets.some(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                });
+
+            if (boxNumbers.length === 0) {
+                alert('No hay cajas con equipos para imprimir.');
+                return;
+            }
+
+            const labelsHtml = await Promise.all(boxNumbers.map(async (num) => {
+                const locId = `CAJA-${num}`;
+                const cajaAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                const assetLines = cajaAssets.map((a, idx) => `${idx + 1}. ${a.serial}${a.name ? ` (${a.name})` : ''} - ${a.status || 'EOL'}`).join('\n');
+                const qrText = `📦 ASSETFLOW | CAJA ${num}\nTotal: ${cajaAssets.length} Equipos EOL\n--------------------------------\n${assetLines || '(Caja vacía)'}`;
+                
+                const qrDataUrl = await QRCode.toDataURL(qrText, {
+                    errorCorrectionLevel: 'M',
+                    margin: 1,
+                    width: 250
+                });
+
+                return `
+                    <div class="label-page">
+                        <div class="label-container">
+                            <div style="display: flex; height: 100%; width: 100%; gap: 2mm; align-items: center;">
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 22mm;">
+                                    <img src="${qrDataUrl}" style="width: 20mm; height: 20mm; object-fit: contain;" />
+                                    <span style="font-size: 3.5pt; font-weight: 700; color: #64748b; margin-top: 0.3mm; text-align: center;">Escanear QR</span>
+                                </div>
+                                <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; height: 100%; overflow: hidden; padding: 0.5mm 0;">
+                                    <div>
+                                        <div style="font-size: 4.5pt; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 0.05em;">ZONA CAJAS • EOL</div>
+                                        <div style="font-size: 11pt; font-weight: 900; color: #000; line-height: 1.1; margin-top: 0.5mm;">CAJA ${num}</div>
+                                        <div style="font-size: 6pt; font-weight: 800; color: #1e293b; margin-top: 0.5mm;">${cajaAssets.length} Equipos EOL</div>
+                                    </div>
+                                    <div style="font-size: 4.5pt; color: #475569; line-height: 1.1; border-top: 0.5px dashed #cbd5e1; padding-top: 0.5mm; max-height: 8mm; overflow: hidden;">
+                                        ${cajaAssets.slice(0, 3).map(a => `<div>• ${a.serial}</div>`).join('')}
+                                        ${cajaAssets.length > 3 ? `<div style="font-weight: 700; color: #b45309;">+${cajaAssets.length - 3} seriales más...</div>` : ''}
+                                    </div>
+                                    <div style="font-size: 3.5pt; color: #94a3b8; font-weight: 700; text-align: right;">AssetFlow WMS</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }));
+
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            const content = `
+                <html>
+                    <head>
+                        <style>
+                            @page { size: 50mm 25mm; margin: 0; }
+                            * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+                            html, body { width: 50mm; margin: 0; padding: 0; background: #fff; }
+                            .label-page {
+                                width: 50mm;
+                                height: 25mm;
+                                page-break-after: always;
+                                break-after: page;
+                                overflow: hidden;
+                            }
+                            .label-container {
+                                width: 50mm;
+                                height: 25mm;
+                                padding: 1.5mm 2.5mm;
+                                display: flex;
+                                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${labelsHtml.join('')}
+                        <script>
+                            window.onload = () => {
+                                window.print();
+                                setTimeout(() => window.close(), 500);
+                            };
+                        </script>
+                    </body>
+                </html>
+            `;
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+        } catch (err) {
+            console.error('Batch print error:', err);
+            alert('Error al generar etiquetas masivas');
+        }
+    };
+
     const handlePrintLocationLabel = async (location) => {
         try {
+            if (isLocCaja(location.aisle) || (location.id && location.id.toUpperCase().startsWith('CAJA-'))) {
+                await handlePrintCajaQrLabel(location.id);
+                return;
+            }
+
             const canvas = document.createElement('canvas');
             JsBarcode(canvas, location.id, {
                 format: "CODE128",
@@ -1646,21 +1846,37 @@ export default function WarehousePage() {
                                     {depositoConfig?.cajasCount || 80} Cajas EOL
                                 </span>
                             </div>
-                            <Button
-                                variant="outline"
-                                size="xs"
-                                icon={Edit3}
-                                onClick={() => {
-                                    const count = prompt('Ingrese el número total de cajas EOL:', depositoConfig?.cajasCount || 80);
-                                    if(count && !isNaN(count)) {
-                                        updateDepositoConfig({ ...depositoConfig, cajasCount: parseInt(count) });
-                                    }
-                                }}
-                                title="Editar cantidad de cajas"
-                                style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px' }}
-                            >
-                                Editar
-                            </Button>
+                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                <Button
+                                    variant="outline"
+                                    size="xs"
+                                    icon={Printer}
+                                    onClick={() => {
+                                        if (confirm("¿Desea imprimir las etiquetas QR de todas las cajas con equipos?")) {
+                                            handlePrintAllCajasLabels(true);
+                                        }
+                                    }}
+                                    title="Imprimir etiquetas QR de todas las cajas con equipos"
+                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px', borderColor: '#fef08a', color: '#854d0e' }}
+                                >
+                                    Etiquetas QR
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="xs"
+                                    icon={Edit3}
+                                    onClick={() => {
+                                        const count = prompt('Ingrese el número total de cajas EOL:', depositoConfig?.cajasCount || 80);
+                                        if(count && !isNaN(count)) {
+                                            updateDepositoConfig({ ...depositoConfig, cajasCount: parseInt(count) });
+                                        }
+                                    }}
+                                    title="Editar cantidad de cajas"
+                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px' }}
+                                >
+                                    Editar
+                                </Button>
+                            </div>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowX: 'auto' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(28px, 1fr))', gap: '8px', padding: '0.5rem 0' }}>
@@ -2022,7 +2238,9 @@ export default function WarehousePage() {
                                             icon={Printer} 
                                             onClick={() => handlePrintLocationLabel(selectedLocation)}
                                             style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
-                                        >Etiqueta</Button>
+                                        >
+                                            {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta'}
+                                        </Button>
                                     </div>
                                     <Button 
                                         variant="primary" 
@@ -2097,7 +2315,9 @@ export default function WarehousePage() {
                                         icon={Printer} 
                                         onClick={() => handlePrintLocationLabel(selectedLocation)}
                                         style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
-                                    >Etiqueta</Button>
+                                    >
+                                        {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta'}
+                                    </Button>
                                 </div>
                                 {asset && (
                                     <Button 
