@@ -1071,13 +1071,17 @@ export default function WarehousePage() {
             const cajaNum = locId.replace(/^CAJA-/i, '');
             const cajaAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
             
-            const assetLines = cajaAssets.map((a, idx) => `${idx + 1}. ${a.serial}${a.name ? ` (${a.name})` : ''} - ${a.status || 'EOL'}`).join('\n');
-            const qrText = `📦 ASSETFLOW | CAJA ${cajaNum}\nTotal: ${cajaAssets.length} Equipos EOL\n--------------------------------\n${assetLines || '(Caja vacía)'}`;
+            const assetLines = cajaAssets.map((a, idx) => `${idx + 1}. ${a.serial}`).join('\n');
+            const qrText = `CAJA ${cajaNum} (${cajaAssets.length} EOL):\n${assetLines || '(Vacia)'}`;
             
             const qrDataUrl = await QRCode.toDataURL(qrText, {
-                errorCorrectionLevel: 'M',
-                margin: 1,
-                width: 250
+                errorCorrectionLevel: 'L',
+                margin: 3,
+                width: 320,
+                color: {
+                    dark: '#000000',
+                    light: '#ffffff'
+                }
             });
 
             let iframe = document.getElementById('print-iframe');
@@ -1101,7 +1105,7 @@ export default function WarehousePage() {
                             .label-container {
                                 width: 50mm;
                                 height: 25mm;
-                                padding: 1.5mm 2.5mm;
+                                padding: 1.5mm 2mm;
                                 display: flex;
                                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                             }
@@ -1110,9 +1114,9 @@ export default function WarehousePage() {
                     <body>
                         <div class="label-container">
                             <div style="display: flex; height: 100%; width: 100%; gap: 2mm; align-items: center;">
-                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 22mm;">
-                                    <img src="${qrDataUrl}" style="width: 20mm; height: 20mm; object-fit: contain;" />
-                                    <span style="font-size: 3.5pt; font-weight: 700; color: #64748b; margin-top: 0.3mm; text-align: center;">Escanear QR</span>
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 23mm; height: 23mm; background: #fff;">
+                                    <img src="${qrDataUrl}" style="width: 22mm; height: 22mm; object-fit: contain; image-rendering: -webkit-optimize-contrast; image-rendering: pixelated;" />
+                                    <span style="font-size: 3.5pt; font-weight: 700; color: #64748b; margin-top: 0.2mm; text-align: center;">Escanear QR</span>
                                 </div>
                                 <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; height: 100%; overflow: hidden; padding: 0.5mm 0;">
                                     <div>
@@ -1120,7 +1124,7 @@ export default function WarehousePage() {
                                         <div style="font-size: 11pt; font-weight: 900; color: #000; line-height: 1.1; margin-top: 0.5mm;">CAJA ${cajaNum}</div>
                                         <div style="font-size: 6pt; font-weight: 800; color: #1e293b; margin-top: 0.5mm;">${cajaAssets.length} Equipos EOL</div>
                                     </div>
-                                    <div style="font-size: 4.5pt; color: #475569; line-height: 1.1; border-top: 0.5px dashed #cbd5e1; padding-top: 0.5mm; max-height: 8mm; overflow: hidden;">
+                                    <div style="font-size: 4.5pt; color: #475569; line-height: 1.15; border-top: 0.5px dashed #cbd5e1; padding-top: 0.5mm; max-height: 8.5mm; overflow: hidden;">
                                         ${cajaAssets.slice(0, 3).map(a => `<div>• ${a.serial}</div>`).join('')}
                                         ${cajaAssets.length > 3 ? `<div style="font-weight: 700; color: #b45309;">+${cajaAssets.length - 3} seriales más...</div>` : ''}
                                     </div>
@@ -1166,22 +1170,26 @@ export default function WarehousePage() {
             const labelsHtml = await Promise.all(boxNumbers.map(async (num) => {
                 const locId = `CAJA-${num}`;
                 const cajaAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
-                const assetLines = cajaAssets.map((a, idx) => `${idx + 1}. ${a.serial}${a.name ? ` (${a.name})` : ''} - ${a.status || 'EOL'}`).join('\n');
-                const qrText = `📦 ASSETFLOW | CAJA ${num}\nTotal: ${cajaAssets.length} Equipos EOL\n--------------------------------\n${assetLines || '(Caja vacía)'}`;
+                const assetLines = cajaAssets.map((a, idx) => `${idx + 1}. ${a.serial}`).join('\n');
+                const qrText = `CAJA ${num} (${cajaAssets.length} EOL):\n${assetLines || '(Vacia)'}`;
                 
                 const qrDataUrl = await QRCode.toDataURL(qrText, {
-                    errorCorrectionLevel: 'M',
-                    margin: 1,
-                    width: 250
+                    errorCorrectionLevel: 'L',
+                    margin: 3,
+                    width: 320,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
                 });
 
                 return `
                     <div class="label-page">
                         <div class="label-container">
                             <div style="display: flex; height: 100%; width: 100%; gap: 2mm; align-items: center;">
-                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 22mm;">
-                                    <img src="${qrDataUrl}" style="width: 20mm; height: 20mm; object-fit: contain;" />
-                                    <span style="font-size: 3.5pt; font-weight: 700; color: #64748b; margin-top: 0.3mm; text-align: center;">Escanear QR</span>
+                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 23mm; height: 23mm; background: #fff;">
+                                    <img src="${qrDataUrl}" style="width: 22mm; height: 22mm; object-fit: contain; image-rendering: -webkit-optimize-contrast; image-rendering: pixelated;" />
+                                    <span style="font-size: 3.5pt; font-weight: 700; color: #64748b; margin-top: 0.2mm; text-align: center;">Escanear QR</span>
                                 </div>
                                 <div style="flex: 1; display: flex; flex-direction: column; justify-content: space-between; height: 100%; overflow: hidden; padding: 0.5mm 0;">
                                     <div>
@@ -1189,7 +1197,7 @@ export default function WarehousePage() {
                                         <div style="font-size: 11pt; font-weight: 900; color: #000; line-height: 1.1; margin-top: 0.5mm;">CAJA ${num}</div>
                                         <div style="font-size: 6pt; font-weight: 800; color: #1e293b; margin-top: 0.5mm;">${cajaAssets.length} Equipos EOL</div>
                                     </div>
-                                    <div style="font-size: 4.5pt; color: #475569; line-height: 1.1; border-top: 0.5px dashed #cbd5e1; padding-top: 0.5mm; max-height: 8mm; overflow: hidden;">
+                                    <div style="font-size: 4.5pt; color: #475569; line-height: 1.15; border-top: 0.5px dashed #cbd5e1; padding-top: 0.5mm; max-height: 8.5mm; overflow: hidden;">
                                         ${cajaAssets.slice(0, 3).map(a => `<div>• ${a.serial}</div>`).join('')}
                                         ${cajaAssets.length > 3 ? `<div style="font-weight: 700; color: #b45309;">+${cajaAssets.length - 3} seriales más...</div>` : ''}
                                     </div>
