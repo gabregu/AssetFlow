@@ -1894,35 +1894,12 @@ export default function WarehousePage() {
                     >
                         {isAuditMode ? "Cancelar Auditoría" : "Modo Auditoría"}
                     </Button>
-                    <div style={{ display: 'flex', alignItems: 'stretch' }}>
-                        <Button 
-                            variant={isMappingMode ? "primary" : "outline"} 
-                            icon={ScanLine}
-                            onClick={toggleScanMode}
-                            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0, borderRight: 'none' }}
-                        >
-                            {isMappingMode ? "Cancelar Mapeo" : "Modo Escaneo"}
-                        </Button>
-                        <Button
-                            variant={isMappingMode ? "primary" : "outline"}
-                            icon={Printer}
-                            onClick={handlePrintControlBarcode}
-                            title="Imprimir Código de Control"
-                            style={{
-                                borderTopLeftRadius: 0,
-                                borderBottomLeftRadius: 0,
-                                padding: '0 0.75rem',
-                                borderLeft: isMappingMode ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border)'
-                            }}
-                        />
-                    </div>
                     <Button 
-                        variant={groupByBrand ? "primary" : "outline"} 
-                        icon={SlidersHorizontal}
-                        onClick={() => setGroupByBrand(!groupByBrand)}
-                        style={{ borderColor: groupByBrand ? 'transparent' : '#3b82f6', color: groupByBrand ? 'white' : '#3b82f6' }}
+                        variant={isMappingMode ? "primary" : "outline"} 
+                        icon={ScanLine}
+                        onClick={toggleScanMode}
                     >
-                        {groupByBrand ? "Vista Plana" : "Agrupar Fabricantes"}
+                        {isMappingMode ? "Cancelar Mapeo" : "Modo Escaneo"}
                     </Button>
                     <Button icon={Plus} onClick={() => {
                         setNewLoc({ id: '', aisle: '', section: '', level: '' });
