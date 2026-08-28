@@ -696,3 +696,12 @@ a {
         grid-column: 1 / -1;
     }
 }
+
+/* === Search Pulse / Blink Animation === */
+@keyframes search-pulse-glow {
+    0%, 100% { box-shadow: 0 0 6px 2px rgba(250,204,21,0.55); opacity: 1; }
+    50% { box-shadow: 0 0 18px 6px rgba(250,204,21,0.95); opacity: 0.88; }
+}
+.search-pulse {
+    animation: search-pulse-glow 1.1s ease-in-out infinite !important;
+}
