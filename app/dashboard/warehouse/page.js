@@ -27,7 +27,9 @@ import {
     ArrowUpDown,
     Laptop,
     SlidersHorizontal,
-    Download
+    Download,
+    Camera,
+    QrCode
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
@@ -145,6 +147,9 @@ export default function WarehousePage() {
     const [auditLocation, setAuditLocation] = useState(null);
     const [scannedAuditAssets, setScannedAuditAssets] = useState([]);
     const [auditSearchQuery, setAuditSearchQuery] = useState('');
+    
+    // Camera QR Scanner State
+    const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
     
     // Modals
     const [isAddLocationModalOpen, setIsAddLocationModalOpen] = useState(false);
@@ -1071,11 +1076,11 @@ export default function WarehousePage() {
             const cajaNum = locId.replace(/^CAJA-/i, '');
             const cajaAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
             
-            const assetLines = cajaAssets.map((a, idx) => `${idx + 1}. ${a.serial}`).join('\n');
-            const qrText = `CAJA ${cajaNum} (${cajaAssets.length} EOL):\n${assetLines || '(Vacia)'}`;
+            const origin = typeof window !== 'undefined' ? window.location.origin : 'https://assetflow-yawi.vercel.app';
+            const qrUrl = `${origin}/dashboard/warehouse?caja=${cajaNum}`;
             
-            const qrDataUrl = await QRCode.toDataURL(qrText, {
-                errorCorrectionLevel: 'L',
+            const qrDataUrl = await QRCode.toDataURL(qrUrl, {
+                errorCorrectionLevel: 'M',
                 margin: 3,
                 width: 320,
                 color: {
@@ -1167,14 +1172,14 @@ export default function WarehousePage() {
                 return;
             }
 
+            const origin = typeof window !== 'undefined' ? window.location.origin : 'https://assetflow-yawi.vercel.app';
             const labelsHtml = await Promise.all(boxNumbers.map(async (num) => {
                 const locId = `CAJA-${num}`;
                 const cajaAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
-                const assetLines = cajaAssets.map((a, idx) => `${idx + 1}. ${a.serial}`).join('\n');
-                const qrText = `CAJA ${num} (${cajaAssets.length} EOL):\n${assetLines || '(Vacia)'}`;
+                const qrUrl = `${origin}/dashboard/warehouse?caja=${num}`;
                 
-                const qrDataUrl = await QRCode.toDataURL(qrText, {
-                    errorCorrectionLevel: 'L',
+                const qrDataUrl = await QRCode.toDataURL(qrUrl, {
+                    errorCorrectionLevel: 'M',
                     margin: 3,
                     width: 320,
                     color: {
@@ -1264,6 +1269,119 @@ export default function WarehousePage() {
             alert('Error al generar etiquetas masivas');
         }
     };
+
+    const handleScannerDecoded = (decodedText) => {
+        const text = (decodedText || '').trim();
+        let targetCaja = null;
+
+        try {
+            if (text.includes('?')) {
+                const url = new URL(text.startsWith('http') ? text : `https://dummy.com/${text}`);
+                const cajaVal = url.searchParams.get('caja');
+                const locVal = url.searchParams.get('loc');
+                if (cajaVal) targetCaja = cajaVal.toUpperCase().startsWith('CAJA-') ? cajaVal.toUpperCase() : `CAJA-${cajaVal}`;
+                else if (locVal) targetCaja = locVal.toUpperCase();
+            }
+        } catch (e) {}
+
+        if (!targetCaja) {
+            const match = text.match(/CAJA[- ]?(\d+)/i);
+            if (match) {
+                targetCaja = `CAJA-${match[1]}`;
+            }
+        }
+
+        if (targetCaja) {
+            handleScanLocation(targetCaja);
+        } else {
+            const searchNorm = normalizeId(text);
+            const loc = warehouseLocations.find(l => normalizeId(l.id) === searchNorm);
+            if (loc) {
+                handleScanLocation(loc.id);
+            } else {
+                const asset = assets.find(a => normalizeId(a.serial) === searchNorm || normalizeId(a.id) === searchNorm);
+                if (asset && asset.locationId) {
+                    handleScanLocation(asset.locationId);
+                } else {
+                    alert(`Código escaneado: ${text}\nNo se encontró caja o activo correspondiente.`);
+                }
+            }
+        }
+    };
+
+    // Auto-select location from URL params on load
+    useEffect(() => {
+        if (typeof window !== 'undefined' && assets.length > 0) {
+            const params = new URLSearchParams(window.location.search);
+            const cajaParam = params.get('caja');
+            const locParam = params.get('loc');
+            const target = cajaParam ? (cajaParam.toUpperCase().startsWith('CAJA-') ? cajaParam.toUpperCase() : `CAJA-${cajaParam}`) : locParam;
+            if (target) {
+                setTimeout(() => {
+                    handleScanLocation(target.toUpperCase());
+                }, 300);
+            }
+        }
+    }, [assets.length]);
+
+    // Handle Camera Scanner Lifecycle
+    useEffect(() => {
+        let scanner = null;
+        let isMounted = true;
+
+        if (isCameraScannerOpen) {
+            const timer = setTimeout(async () => {
+                try {
+                    const { Html5Qrcode } = await import('html5-qrcode');
+                    const element = document.getElementById('caja-qr-reader');
+                    if (!element || !isMounted) return;
+
+                    scanner = new Html5Qrcode('caja-qr-reader');
+                    await scanner.start(
+                        { facingMode: 'environment' },
+                        {
+                            fps: 10,
+                            qrbox: { width: 220, height: 220 }
+                        },
+                        (decodedText) => {
+                            if (decodedText && isMounted) {
+                                handleScannerDecoded(decodedText);
+                                if (scanner && scanner.isScanning) {
+                                    scanner.stop().then(() => {
+                                        try { scanner.clear(); } catch (e) {}
+                                        setIsCameraScannerOpen(false);
+                                    }).catch(() => {
+                                        setIsCameraScannerOpen(false);
+                                    });
+                                } else {
+                                    setIsCameraScannerOpen(false);
+                                }
+                            }
+                        },
+                        () => {}
+                    );
+                } catch (err) {
+                    console.error('Camera scanner error:', err);
+                }
+            }, 300);
+
+            return () => {
+                isMounted = false;
+                clearTimeout(timer);
+                if (scanner) {
+                    try {
+                        if (scanner.isScanning) {
+                            scanner.stop().then(() => {
+                                try { scanner.clear(); } catch (e) {}
+                            }).catch(console.error);
+                        } else {
+                            scanner.clear();
+                        }
+                    } catch (e) {}
+                }
+            };
+        }
+    }, [isCameraScannerOpen]);
 
     const handlePrintLocationLabel = async (location) => {
         try {
@@ -1854,7 +1972,17 @@ export default function WarehousePage() {
                                     {depositoConfig?.cajasCount || 80} Cajas EOL
                                 </span>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <Button
+                                    variant="primary"
+                                    size="xs"
+                                    icon={Camera}
+                                    onClick={() => setIsCameraScannerOpen(true)}
+                                    title="Escanear código QR de la caja con la cámara"
+                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px', backgroundColor: '#eab308', borderColor: '#ca8a04', color: '#713f12', fontWeight: 800 }}
+                                >
+                                    Escanear Caja
+                                </Button>
                                 <Button
                                     variant="outline"
                                     size="xs"
@@ -3090,6 +3218,70 @@ export default function WarehousePage() {
 
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
                         <Button onClick={() => setIsManageManufacturersOpen(false)}>Cerrar</Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Escáner de Cámara */}
+            <Modal 
+                isOpen={isCameraScannerOpen} 
+                onClose={() => setIsCameraScannerOpen(false)} 
+                title="Escanear Código QR de Caja / Activo"
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                    <div 
+                        id="caja-qr-reader" 
+                        style={{ 
+                            width: '100%', 
+                            maxWidth: '320px', 
+                            minHeight: '260px', 
+                            borderRadius: '12px', 
+                            overflow: 'hidden',
+                            backgroundColor: '#000',
+                            border: '2px solid var(--border)'
+                        }}
+                    />
+                    <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                        Apunte la cámara al código QR de la caja para abrir sus equipos al instante.
+                    </div>
+                    
+                    <div style={{ width: '100%', borderTop: '1px solid var(--border)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>
+                            O ingrese el número de caja manualmente:
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <input 
+                                type="number"
+                                min="1"
+                                max={depositoConfig?.cajasCount || 80}
+                                placeholder="Ej: 1"
+                                id="manual-caja-input"
+                                className="form-input"
+                                style={{ flex: 1, padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        const val = e.target.value;
+                                        if (val) {
+                                            handleScanLocation(`CAJA-${val}`);
+                                            setIsCameraScannerOpen(false);
+                                        }
+                                    }
+                                }}
+                            />
+                            <Button
+                                size="sm"
+                                variant="primary"
+                                onClick={() => {
+                                    const input = document.getElementById('manual-caja-input');
+                                    if (input && input.value) {
+                                        handleScanLocation(`CAJA-${input.value}`);
+                                        setIsCameraScannerOpen(false);
+                                    }
+                                }}
+                            >
+                                Ir a Caja
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </Modal>
