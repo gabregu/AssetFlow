@@ -2417,7 +2417,7 @@ export default function WarehousePage() {
                                     {asset ? (
                                         <>
                                             <div><strong>Modelo:</strong> {asset.name}</div>
-                                            <div><strong>Serie:</strong> {asset.model_number || asset.part_number || 'Latitude 5520'}</div>
+                                            <div><strong>N/P:</strong> {asset.model_number || asset.part_number || 'N/A'}</div>
                                             <div><strong>SN:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{asset.serial || 'N/A'}</span></div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                 <strong>Estado:</strong> 
