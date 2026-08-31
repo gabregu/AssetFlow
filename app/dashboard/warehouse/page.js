@@ -675,6 +675,9 @@ export default function WarehousePage() {
             } else if (locationId.toUpperCase().startsWith('CAJA-')) {
                 const cajaNum = locationId.toUpperCase().replace(/^CAJA-/, '');
                 loc = { id: locationId.toUpperCase(), aisle: 'CAJA', section: '-', level: cajaNum, country: countryFilter === 'Todos' ? 'AR' : countryFilter };
+            } else if (locationId.toUpperCase().startsWith('REV-')) {
+                const revNum = locationId.toUpperCase().replace(/^REV-/, '');
+                loc = { id: locationId.toUpperCase(), aisle: 'REV', section: '-', level: revNum, country: countryFilter === 'Todos' ? 'AR' : countryFilter };
             } else {
                 alert("Ubicación no encontrada: " + locationId);
                 return;
