@@ -2063,6 +2063,89 @@ export default function WarehousePage() {
                                     const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
                                     const assetCount = locationAssets.length;
                                     const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
+                                    const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
+                                    const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
+
+                                    let bgColor = 'transparent';
+                                    let borderColor = 'var(--border)';
+
+                                    if (assetCount > 0) {
+                                        const status = locationAssets[0]?.status?.toUpperCase() || '';
+                                        if (status.includes('NUEVO')) { bgColor = '#10b981'; borderColor = '#10b981'; }
+                                        else if (status.includes('RECUPERADO')) { bgColor = '#3b82f6'; borderColor = '#3b82f6'; }
+                                        else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) { bgColor = '#f97316'; borderColor = '#f97316'; }
+                                        else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) { bgColor = '#ef4444'; borderColor = '#ef4444'; }
+                                        else { bgColor = '#10b981'; borderColor = '#10b981'; }
+                                    }
+                                    
+                                    if (isAuditMode && auditLocation?.id === locId) {
+                                        bgColor = '#8b5cf6';
+                                        borderColor = '#8b5cf6';
+                                    }
+                                    
+                                    return (
+                                        <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                            <div 
+                                                onClick={() => handleScanLocation(locId)}
+                                                className={isHighlighted ? 'search-pulse' : ''}
+                                                style={{
+                                                    width: '28px', height: '28px', borderRadius: '4px',
+                                                    background: isHighlighted ? '#facc15' : (isSelected ? 'var(--primary-color)' : bgColor),
+                                                    border: isSelected ? '2px solid var(--primary-color)' : (isHighlighted ? '2px solid #eab308' : `1px solid ${borderColor}`),
+                                                    boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : (isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none'),
+                                                    opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
+                                                    cursor: 'pointer', transition: 'all 0.2s ease',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                }}
+                                                title={locId}
+                                            >
+                                                {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
+                                            </div>
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{cajaNum}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* ZONA REVISIÓN / TRANSICIÓN */}
+                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #bfdbfe' }}>
+                        <div style={{ borderBottom: '2px solid #dbeafe', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#1e3a8a' }}>ZONA REVISIÓN / TRANSICIÓN</h2>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '12px' }}>
+                                    {depositoConfig?.revisionCount || 40} Posiciones
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <Button
+                                    variant="outline"
+                                    size="xs"
+                                    icon={Edit3}
+                                    onClick={() => {
+                                        const count = prompt('Ingrese la cantidad de posiciones de Revisión:', depositoConfig?.revisionCount || 40);
+                                        if(count && !isNaN(count)) {
+                                            updateDepositoConfig({ ...depositoConfig, revisionCount: parseInt(count) });
+                                        }
+                                    }}
+                                    title="Editar cantidad de posiciones"
+                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px', borderColor: '#bfdbfe', color: '#1e40af' }}
+                                >
+                                    Editar
+                                </Button>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowX: 'auto' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(28px, 1fr))', gap: '8px', padding: '0.5rem 0' }}>
+                                {Array.from({ length: depositoConfig?.revisionCount || 40 }, (_, i) => i + 1).map(revNum => {
+                                    const locId = `REV-${revNum}`;
+                                    const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                                    const assetCount = locationAssets.length;
+                                    const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
+                                    
+                                    const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
+                                    const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
                                     
                                     let bgColor = 'transparent';
                                     let borderColor = 'var(--border)';
@@ -2085,11 +2168,13 @@ export default function WarehousePage() {
                                         <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                                             <div 
                                                 onClick={() => handleScanLocation(locId)}
+                                                className={isHighlighted ? 'search-pulse' : ''}
                                                 style={{
                                                     width: '28px', height: '28px', borderRadius: '4px',
-                                                    backgroundColor: isSelected ? 'var(--primary-color)' : bgColor,
-                                                    border: isSelected ? '2px solid var(--primary-color)' : `1px solid ${borderColor}`,
-                                                    boxShadow: isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none',
+                                                    background: isHighlighted ? '#facc15' : (isSelected ? 'var(--primary-color)' : bgColor),
+                                                    border: isSelected ? '2px solid var(--primary-color)' : (isHighlighted ? '2px solid #eab308' : `1px solid ${borderColor}`),
+                                                    boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : (isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none'),
+                                                    opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
                                                     cursor: 'pointer', transition: 'all 0.2s ease',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center'
                                                 }}
@@ -2097,7 +2182,7 @@ export default function WarehousePage() {
                                             >
                                                 {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
                                             </div>
-                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{cajaNum}</span>
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{revNum}</span>
                                         </div>
                                     );
                                 })}
