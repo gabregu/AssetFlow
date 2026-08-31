@@ -145,10 +145,21 @@ export default function WarehousePage() {
     const [isEditAssetModalOpen, setIsEditAssetModalOpen] = useState(false);
     const [editingAssetObj, setEditingAssetObj] = useState(null);
     const [editAssetForm, setEditAssetForm] = useState({
+        name: '',
+        type: 'Laptop',
         serial: '',
-        model: '',
-        part_number: '',
         status: 'Disponible',
+        assignee: 'Almacén',
+        country: 'Argentina',
+        date: new Date().toISOString().substring(0, 10),
+        vendor: 'Other',
+        purchaseOrder: '',
+        oem: '',
+        sfdcCase: '',
+        imei: '-',
+        imei2: '',
+        modelNumber: '',
+        partNumber: '',
         hardwareSpec: ''
     });
     const [isSavingAsset, setIsSavingAsset] = useState(false);
@@ -156,10 +167,21 @@ export default function WarehousePage() {
     const handleOpenEditAsset = (assetToEdit) => {
         setEditingAssetObj(assetToEdit);
         setEditAssetForm({
+            name: assetToEdit.name || assetToEdit.model || '',
+            type: assetToEdit.type || 'Laptop',
             serial: assetToEdit.serial || '',
-            model: assetToEdit.model || assetToEdit.name || '',
-            part_number: assetToEdit.model_number || assetToEdit.part_number || '',
             status: assetToEdit.status || 'Disponible',
+            assignee: assetToEdit.assignee || 'Almacén',
+            country: assetToEdit.country || 'Argentina',
+            date: assetToEdit.date ? String(assetToEdit.date).substring(0, 10) : new Date().toISOString().substring(0, 10),
+            vendor: assetToEdit.vendor || 'Other',
+            purchaseOrder: assetToEdit.purchaseOrder || assetToEdit.po || '',
+            oem: assetToEdit.oem || '',
+            sfdcCase: assetToEdit.sfdcCase || assetToEdit.case || '',
+            imei: assetToEdit.imei || '-',
+            imei2: assetToEdit.imei2 || '',
+            modelNumber: assetToEdit.modelNumber || assetToEdit.model_number || '',
+            partNumber: assetToEdit.partNumber || assetToEdit.part_number || '',
             hardwareSpec: assetToEdit.hardwareSpec || ''
         });
         setIsEditAssetModalOpen(true);
@@ -174,23 +196,36 @@ export default function WarehousePage() {
             const updatedBy = currentUser?.name || 'Administrador';
 
             await updateAsset(editingAssetObj.id, {
+                name: editAssetForm.name.trim(),
+                model: editAssetForm.name.trim(),
+                type: editAssetForm.type,
                 serial: editAssetForm.serial.trim(),
-                model: editAssetForm.model.trim(),
-                name: editAssetForm.model.trim(),
-                model_number: editAssetForm.part_number.trim(),
-                part_number: editAssetForm.part_number.trim(),
                 status: editAssetForm.status,
+                assignee: editAssetForm.assignee.trim() || 'Almacén',
+                country: editAssetForm.country,
+                date: editAssetForm.date,
+                vendor: editAssetForm.vendor,
+                purchaseOrder: editAssetForm.purchaseOrder.trim(),
+                oem: editAssetForm.oem.trim(),
+                sfdcCase: editAssetForm.sfdcCase.trim(),
+                imei: editAssetForm.imei.trim(),
+                imei2: editAssetForm.imei2.trim(),
+                modelNumber: editAssetForm.modelNumber.trim(),
+                model_number: editAssetForm.modelNumber.trim(),
+                partNumber: editAssetForm.partNumber.trim(),
+                part_number: editAssetForm.partNumber.trim(),
                 hardwareSpec: editAssetForm.hardwareSpec.trim(),
                 dateLastUpdate: now,
-                updatedBy: updatedBy
+                updatedBy: updatedBy,
+                lastAssetCheck: now
             });
 
             setIsEditAssetModalOpen(false);
             setEditingAssetObj(null);
-            alert('Equipo actualizado correctamente.');
+            alert('Activo actualizado correctamente.');
         } catch (err) {
             console.error('Error actualizando activo:', err);
-            alert('Error al actualizar el equipo.');
+            alert('Error al actualizar el activo.');
         } finally {
             setIsSavingAsset(false);
         }
@@ -2495,7 +2530,7 @@ export default function WarehousePage() {
                                             variant="outline" 
                                             size="sm" 
                                             icon={Edit3} 
-                                            onClick={() => router.push(`/dashboard/inventory?edit=${asset.id}`)}
+                                            onClick={() => handleOpenEditAsset(asset)}
                                             style={{ flex: '1 1 calc(50% - 0.25rem)', height: '32px', fontSize: '0.75rem' }}
                                         >Editar Equipo</Button>
                                     )}
@@ -3466,65 +3501,237 @@ export default function WarehousePage() {
                 </div>
             </Modal>
 
-            {/* Modal Editar Equipo */}
+            {/* Modal Editar Activo (Mismas opciones que en Inventario) */}
             <Modal
                 isOpen={isEditAssetModalOpen}
                 onClose={() => setIsEditAssetModalOpen(false)}
-                title="Editar Detalles del Equipo"
+                title="Editar Activo"
             >
-                <form onSubmit={handleSaveEditAsset} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '0.5rem' }}>
+                <form onSubmit={handleSaveEditAsset} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '0.5rem', maxHeight: '80vh', overflowY: 'auto', paddingRight: '0.25rem' }}>
                     <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Número de Serie (SN)</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Nombre del Modelo / Descripción</label>
                         <input 
                             type="text" 
-                            value={editAssetForm.serial} 
-                            onChange={e => setEditAssetForm({ ...editAssetForm, serial: e.target.value })}
-                            className="form-input"
                             required
-                            style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Modelo</label>
-                        <input 
-                            type="text" 
-                            value={editAssetForm.model} 
-                            onChange={e => setEditAssetForm({ ...editAssetForm, model: e.target.value })}
-                            className="form-input"
-                            required
-                            style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Número de Parte (N/P)</label>
-                        <input 
-                            type="text" 
-                            value={editAssetForm.part_number} 
-                            onChange={e => setEditAssetForm({ ...editAssetForm, part_number: e.target.value })}
+                            value={editAssetForm.name} 
+                            onChange={e => setEditAssetForm({ ...editAssetForm, name: e.target.value })}
+                            placeholder="Ej: Dell Precision 3490 INTEL ULTRA 5 32GB 256GB"
                             className="form-input"
                             style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                         />
                     </div>
 
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Estado</label>
-                        <select 
-                            value={editAssetForm.status} 
-                            onChange={e => setEditAssetForm({ ...editAssetForm, status: e.target.value })}
-                            className="form-input"
-                            style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
-                        >
-                            <option value="Disponible">Disponible</option>
-                            <option value="Nuevo">Nuevo</option>
-                            <option value="Recuperado">Recuperado</option>
-                            <option value="Asignado">Asignado</option>
-                            <option value="Mantenimiento">Mantenimiento</option>
-                            <option value="Dañado">Dañado</option>
-                            <option value="EOL">EOL / Cajas EOL</option>
-                            <option value="Baja de Equipo">Baja de Equipo</option>
-                        </select>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Tipo de Activo</label>
+                            <select 
+                                value={editAssetForm.type} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, type: e.target.value })}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                <option value="Laptop">Laptop</option>
+                                <option value="Smartphone">Smartphone</option>
+                                <option value="Tablet">Tablet</option>
+                                <option value="Otros">Otros</option>
+                                <option value="Security keys">Security keys</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Número de Serie (S/N)</label>
+                            <input 
+                                type="text" 
+                                required
+                                value={editAssetForm.serial} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, serial: e.target.value })}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Estado</label>
+                            <select 
+                                value={editAssetForm.status} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, status: e.target.value })}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                <option value="Nuevo">Nuevo</option>
+                                <option value="Asignado">Asignado</option>
+                                <option value="Recuperado">Recuperado</option>
+                                <option value="Disponible">Disponible</option>
+                                <option value="Por Recuperar">Por Recuperar</option>
+                                <option value="Verificacion HW">Verificacion HW</option>
+                                <option value="En Reparación">En Reparación</option>
+                                <option value="Mantenimiento">Mantenimiento</option>
+                                <option value="Dañado">Dañado</option>
+                                <option value="EOL">EOL</option>
+                                <option value="Baja de Equipo">Baja de Equipo</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Asignado a</label>
+                            <select 
+                                value={['Almacén', 'Baja de Equipo', 'En Reparación'].includes(editAssetForm.assignee) ? editAssetForm.assignee : (editAssetForm.assignee === '' ? 'Almacén' : 'Asignado')}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    if (val === 'Asignado') {
+                                        setEditAssetForm({ ...editAssetForm, assignee: '' });
+                                    } else {
+                                        setEditAssetForm({ ...editAssetForm, assignee: val });
+                                    }
+                                }}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                <option value="Almacén">Almacén</option>
+                                <option value="Asignado">Asignado</option>
+                                <option value="Baja de Equipo">Baja de Equipo</option>
+                                <option value="En Reparación">En Reparación</option>
+                            </select>
+                            {!['Almacén', 'Baja de Equipo', 'En Reparación'].includes(editAssetForm.assignee) && (
+                                <input 
+                                    type="text" 
+                                    placeholder="Nombre del asignado..." 
+                                    value={editAssetForm.assignee} 
+                                    onChange={e => setEditAssetForm({ ...editAssetForm, assignee: e.target.value })}
+                                    className="form-input"
+                                    style={{ width: '100%', padding: '0.5rem 0.75rem', marginTop: '0.4rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Cliente</label>
+                            <select 
+                                value={editAssetForm.country} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, country: e.target.value })}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                {entities.map(ent => <option key={ent.id} value={ent.name}>{ent.name}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Fecha de Ingreso</label>
+                            <input 
+                                type="date" 
+                                value={editAssetForm.date} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, date: e.target.value })}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Proveedor</label>
+                            <select 
+                                value={editAssetForm.vendor} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, vendor: e.target.value })}
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            >
+                                <option value="MacStation">MacStation</option>
+                                <option value="Tacco">Tacco</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Orden de Compra (PO)</label>
+                            <input 
+                                type="text" 
+                                value={editAssetForm.purchaseOrder} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, purchaseOrder: e.target.value })}
+                                placeholder="PO-XXXX"
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>OEM</label>
+                            <input 
+                                type="text" 
+                                value={editAssetForm.oem} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, oem: e.target.value })}
+                                placeholder="Ej: DELL / APPLE"
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>CASO</label>
+                            <input 
+                                type="text" 
+                                value={editAssetForm.sfdcCase} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, sfdcCase: e.target.value })}
+                                placeholder="Case #..."
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>IMEI (Solo Smartphones)</label>
+                            <input 
+                                type="text" 
+                                value={editAssetForm.imei} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, imei: e.target.value })}
+                                placeholder="358900..."
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>IMEI 2 (Opcional)</label>
+                            <input 
+                                type="text" 
+                                value={editAssetForm.imei2} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, imei2: e.target.value })}
+                                placeholder="358900..."
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Modelo Técnico</label>
+                            <input 
+                                type="text" 
+                                value={editAssetForm.modelNumber} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, modelNumber: e.target.value })}
+                                placeholder="Ej: Latitude 3490"
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Part Number (N/P)</label>
+                            <input 
+                                type="text" 
+                                value={editAssetForm.partNumber} 
+                                onChange={e => setEditAssetForm({ ...editAssetForm, partNumber: e.target.value })}
+                                placeholder="Part Number..."
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                            />
+                        </div>
                     </div>
 
                     <div className="form-group">
@@ -3539,12 +3746,12 @@ export default function WarehousePage() {
                         />
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
                         <Button type="button" variant="secondary" onClick={() => setIsEditAssetModalOpen(false)}>
                             Cancelar
                         </Button>
                         <Button type="submit" variant="primary" disabled={isSavingAsset}>
-                            {isSavingAsset ? 'Guardando...' : 'Guardar Cambios'}
+                            {isSavingAsset ? 'Guardando...' : 'Guardar Activo'}
                         </Button>
                     </div>
                 </form>
