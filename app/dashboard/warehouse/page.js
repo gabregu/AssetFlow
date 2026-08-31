@@ -1943,383 +1943,211 @@ export default function WarehousePage() {
             </div>
 
             {/* Dashboard grid structure */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }} className="flex-mobile-column">
+            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.5rem', alignItems: 'start' }} className="flex-mobile-column">
                 
-                {/* Main Mapping Columns (Locación W, H and DEPÓSITO) */}
-                <div style={{ display: 'flex', gap: '1.5rem', minHeight: '600px' }} className="flex-mobile-column">
-                    
-                    {/* LOCACIÓN W */}
-                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                        <div style={{ borderBottom: '2px solid var(--border)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: 'var(--text-main)' }}>LOCACIÓN W</h2>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '12px' }}>
-                                    {locationsW.length} Grupos
-                                </span>
-                            </div>
-                            <Button
-                                variant="outline"
-                                size="xs"
-                                icon={ArrowUpDown}
-                                onClick={() => sortGroupsAlphabetically(false)}
-                                title="Ordenar Grupos W (A-Z)"
-                                style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px' }}
-                            >
-                                Ordenar A-Z
-                            </Button>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            {locationsW.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
-                                    <Navigation size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.2 }} />
-                                    <p style={{ fontSize: '0.85rem' }}>No hay grupos coincidentes.</p>
-                                </div>
-                            ) : (
-                                groupByBrand ? (
-                                    (() => {
-                                        const groupedW = getGroupedByBrand(locationsW, manufacturers);
-                                        return Object.entries(groupedW).filter(([_, items]) => items.length > 0).map(([brandName, items]) => {
-                                            const brandAssetsCount = items.reduce((acc, [_, locations]) => {
-                                                const locIds = locations.map(l => l.id);
-                                                return acc + assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && locIds.includes(a.locationId)).length;
-                                            }, 0);
-                                            return (
-                                                <div key={brandName} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.85rem', background: 'var(--background-secondary)' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem', marginBottom: '0.25rem' }}>
-                                                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{brandName}</h3>
-                                                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#2563eb', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '10px' }}>
-                                                            {items.length} grupos • {brandAssetsCount} equipos
-                                                        </span>
-                                                    </div>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
-                                                        {items.map(([aisle, locations]) => renderAisle(aisle, locations, locationsW.length, locationsW, false))}
-                                                    </div>
-                                                </div>
-                                            );
-                                        });
-                                    })()
-                                ) : (
-                                    locationsW.map(([aisle, locations]) => renderAisle(aisle, locations, locationsW.length, locationsW, false))
-                                )
-                            )}
-                        </div>
-                    </Card>
-
-
-
-                    {/* ZONA CAJAS */}
-                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #fde047' }}>
-                        <div style={{ borderBottom: '2px solid #fef08a', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#854d0e' }}>ZONA CAJAS</h2>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a16207', backgroundColor: '#fef9c3', padding: '3px 8px', borderRadius: '12px' }}>
-                                    {depositoConfig?.cajasCount || 80} Cajas EOL
-                                </span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                <Button
-                                    variant="primary"
-                                    size="xs"
-                                    icon={Camera}
-                                    onClick={() => setIsCameraScannerOpen(true)}
-                                    title="Escanear código QR de la caja con la cámara"
-                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px', backgroundColor: '#eab308', borderColor: '#ca8a04', color: '#713f12', fontWeight: 800 }}
-                                >
-                                    Escanear Caja
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="xs"
-                                    icon={Printer}
-                                    onClick={() => {
-                                        if (confirm("¿Desea imprimir las etiquetas QR de todas las cajas con equipos?")) {
-                                            handlePrintAllCajasLabels(true);
-                                        }
-                                    }}
-                                    title="Imprimir etiquetas QR de todas las cajas con equipos"
-                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px', borderColor: '#fef08a', color: '#854d0e' }}
-                                >
-                                    Etiquetas QR
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="xs"
-                                    icon={Edit3}
-                                    onClick={() => {
-                                        const count = prompt('Ingrese el número total de cajas EOL:', depositoConfig?.cajasCount || 80);
-                                        if(count && !isNaN(count)) {
-                                            updateDepositoConfig({ ...depositoConfig, cajasCount: parseInt(count) });
-                                        }
-                                    }}
-                                    title="Editar cantidad de cajas"
-                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px' }}
-                                >
-                                    Editar
-                                </Button>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowX: 'auto' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(28px, 1fr))', gap: '8px', padding: '0.5rem 0' }}>
-                                {Array.from({ length: depositoConfig?.cajasCount || 80 }, (_, i) => i + 1).map(cajaNum => {
-                                    const locId = `CAJA-${cajaNum}`;
-                                    const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
-                                    const assetCount = locationAssets.length;
-                                    const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
-                                    const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
-                                    const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
-
-                                    let bgColor = 'transparent';
-                                    let borderColor = 'var(--border)';
-
-                                    if (assetCount > 0) {
-                                        const status = locationAssets[0]?.status?.toUpperCase() || '';
-                                        if (status.includes('NUEVO')) { bgColor = '#10b981'; borderColor = '#10b981'; }
-                                        else if (status.includes('RECUPERADO')) { bgColor = '#3b82f6'; borderColor = '#3b82f6'; }
-                                        else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) { bgColor = '#f97316'; borderColor = '#f97316'; }
-                                        else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) { bgColor = '#ef4444'; borderColor = '#ef4444'; }
-                                        else { bgColor = '#10b981'; borderColor = '#10b981'; }
-                                    }
-                                    
-                                    if (isAuditMode && auditLocation?.id === locId) {
-                                        bgColor = '#8b5cf6';
-                                        borderColor = '#8b5cf6';
-                                    }
-                                    
-                                    return (
-                                        <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                                            <div 
-                                                onClick={() => handleScanLocation(locId)}
-                                                className={isHighlighted ? 'search-pulse' : ''}
-                                                style={{
-                                                    width: '28px', height: '28px', borderRadius: '4px',
-                                                    background: isHighlighted ? '#facc15' : (isSelected ? 'var(--primary-color)' : bgColor),
-                                                    border: isSelected ? '2px solid var(--primary-color)' : (isHighlighted ? '2px solid #eab308' : `1px solid ${borderColor}`),
-                                                    boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : (isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none'),
-                                                    opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
-                                                    cursor: 'pointer', transition: 'all 0.2s ease',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                }}
-                                                title={locId}
-                                            >
-                                                {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
-                                            </div>
-                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{cajaNum}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </Card>
-
-                    {/* ZONA REVISIÓN / TRANSICIÓN */}
-                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #bfdbfe' }}>
-                        <div style={{ borderBottom: '2px solid #dbeafe', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#1e3a8a' }}>ZONA REVISIÓN / TRANSICIÓN</h2>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '12px' }}>
-                                    {depositoConfig?.revisionCount || 40} Posiciones
-                                </span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                <Button
-                                    variant="outline"
-                                    size="xs"
-                                    icon={Edit3}
-                                    onClick={() => {
-                                        const count = prompt('Ingrese la cantidad de posiciones de Revisión:', depositoConfig?.revisionCount || 40);
-                                        if(count && !isNaN(count)) {
-                                            updateDepositoConfig({ ...depositoConfig, revisionCount: parseInt(count) });
-                                        }
-                                    }}
-                                    title="Editar cantidad de posiciones"
-                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px', borderColor: '#bfdbfe', color: '#1e40af' }}
-                                >
-                                    Editar
-                                </Button>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowX: 'auto' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(28px, 1fr))', gap: '8px', padding: '0.5rem 0' }}>
-                                {Array.from({ length: depositoConfig?.revisionCount || 40 }, (_, i) => i + 1).map(revNum => {
-                                    const locId = `REV-${revNum}`;
-                                    const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
-                                    const assetCount = locationAssets.length;
-                                    const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
-                                    
-                                    const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
-                                    const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
-                                    
-                                    let bgColor = 'transparent';
-                                    let borderColor = 'var(--border)';
-
-                                    if (assetCount > 0) {
-                                        const status = locationAssets[0]?.status?.toUpperCase() || '';
-                                        if (status.includes('NUEVO')) { bgColor = '#10b981'; borderColor = '#10b981'; }
-                                        else if (status.includes('RECUPERADO')) { bgColor = '#3b82f6'; borderColor = '#3b82f6'; }
-                                        else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) { bgColor = '#f97316'; borderColor = '#f97316'; }
-                                        else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) { bgColor = '#ef4444'; borderColor = '#ef4444'; }
-                                        else { bgColor = '#10b981'; borderColor = '#10b981'; }
-                                    }
-                                    
-                                    if (isAuditMode && auditLocation?.id === locId) {
-                                        bgColor = '#8b5cf6';
-                                        borderColor = '#8b5cf6';
-                                    }
-                                    
-                                    return (
-                                        <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                                            <div 
-                                                onClick={() => handleScanLocation(locId)}
-                                                className={isHighlighted ? 'search-pulse' : ''}
-                                                style={{
-                                                    width: '28px', height: '28px', borderRadius: '4px',
-                                                    background: isHighlighted ? '#facc15' : (isSelected ? 'var(--primary-color)' : bgColor),
-                                                    border: isSelected ? '2px solid var(--primary-color)' : (isHighlighted ? '2px solid #eab308' : `1px solid ${borderColor}`),
-                                                    boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : (isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none'),
-                                                    opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
-                                                    cursor: 'pointer', transition: 'all 0.2s ease',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                                }}
-                                                title={locId}
-                                            >
-                                                {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
-                                            </div>
-                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{revNum}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </Card>
-
-                    {/* LOCACIÓN DEPÓSITO */}
-                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #d1fae5' }}>
-                        <div style={{ borderBottom: '2px solid #a7f3d0', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#065f46' }}>DEPÓSITO</h2>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', backgroundColor: '#ecfdf5', padding: '3px 8px', borderRadius: '12px' }}>
-                                    {locationsD.length} Repisas
-                                </span>
-                                <span style={{ fontSize: '0.7rem', color: '#6b7280', backgroundColor: 'var(--background-secondary)', padding: '2px 6px', borderRadius: '8px', fontWeight: 600 }}>
-                                    {totalAssetsDep} equipos
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* DEP legend */}
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.68rem', color: '#6b7280', fontWeight: 600 }}>
-                            <span style={{ background: '#ecfdf5', color: '#059669', padding: '2px 6px', borderRadius: '4px' }}>Formato: Repisa - Estante - Posición</span>
-                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 6px', borderRadius: '4px' }}>Estante 1 = suelo → 5 = alto</span>
-                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 6px', borderRadius: '4px' }}>Pos. 1 = izq → 5 = der</span>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            {locationsD.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
-                                    <Box size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.2, color: '#10b981' }} />
-                                    <p style={{ fontSize: '0.85rem' }}>No hay ubicaciones en el Depósito aún.</p>
-                                    <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>Usá "+ Nueva Ubicación" y seleccioná DEPÓSITO.</p>
-                                </div>
-                            ) : (
-                                locationsD.map(([aisle, locations]) => renderAisle(aisle, locations, locationsD.length, locationsD, false, true))
-                            )}
-                        </div>
-                    </Card>
-                </div>
-
-                {/* Right Sidebar - Stats, brand filters, details */}
+                {/* Left Panel: Search & Selection Info */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    
-                    {/* WMS Scanners Consoles */}
-                    {isMappingMode && (
-                        <Card style={{ padding: '1.25rem', border: '2px solid var(--primary-color)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                                <ScanLine size={18} color="var(--primary-color)" />
-                                <h3 style={{ fontSize: '0.95rem', fontWeight: 800 }}>Consola de Mapping</h3>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                <div style={{ padding: '0.75rem', background: 'var(--background)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: mappingStep >= 1 ? 'var(--primary-color)' : 'var(--border)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>1</div>
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, display: 'flex', flexDirection: 'column' }}>
-                                        {scannedAsset ? `Activo: ${scannedAsset.id}` : "Escanee el Activo"}
-                                        {scannedAsset?.locationId && <span style={{ fontSize: '0.65rem', color: '#f59e0b' }}>En: {scannedAsset.locationId}</span>}
-                                    </span>
-                                    {scannedAsset && <CheckCircle2 size={14} color="#22c55e" style={{ marginLeft: 'auto' }} />}
-                                </div>
-                                <div style={{ padding: '0.75rem', background: 'var(--background)', borderRadius: '8px', border: mappingStep === 2 ? '1px solid var(--primary-color)' : '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem', opacity: mappingStep === 2 ? 1 : 0.5 }}>
-                                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: mappingStep >= 2 ? 'var(--primary-color)' : 'var(--border)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>2</div>
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Escanee la Ubicación</span>
-                                </div>
-                                <form onSubmit={mappingStep === 1 ? handleScanAsset : handleLocationSearchSubmit}>
-                                    <div className="search-box">
-                                        <Scan className="search-icon" size={16} />
-                                        <input 
-                                            className="search-input"
-                                            placeholder={mappingStep === 1 ? "Scan Activo..." : "Scan Ubicación..."}
-                                            value={searchQuery}
-                                            onChange={e => setSearchQuery(e.target.value)}
-                                            autoFocus
-                                        />
-                                    </div>
-                                </form>
-                            </div>
-                        </Card>
-                    )}
-
-                    {isAuditMode && (
-                        <Card style={{ padding: '1.25rem', border: '2px solid #8b5cf6' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                                <ShieldCheck size={18} color="#8b5cf6" />
-                                <h3 style={{ fontSize: '0.95rem', fontWeight: 800 }}>Consola de Auditoría</h3>
-                            </div>
-                            {!auditLocation ? (
-                                <div style={{ textAlign: 'center', padding: '1.25rem', background: 'rgba(139, 92, 246, 0.04)', borderRadius: '10px', border: '1px dashed #8b5cf6' }}>
-                                    <p style={{ fontSize: '0.8rem', color: '#6d28d9', fontWeight: 700 }}>Seleccione un estante en el mapa para iniciar la auditoría.</p>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', background: '#8b5cf6', color: 'white', borderRadius: '8px', fontWeight: 800, fontSize: '0.8rem' }}>
-                                        <span>Auditando: {auditLocation.id}</span>
-                                        <span>{assets.filter(a => a.locationId === auditLocation.id).length} items</span>
-                                    </div>
-                                    <form onSubmit={handleAuditScan}>
-                                        <div className="search-box">
-                                            <Scan className="search-icon" size={16} />
-                                            <input 
-                                                className="search-input"
-                                                placeholder="Escanee activo físicamente..."
-                                                value={auditSearchQuery}
-                                                onChange={e => setAuditSearchQuery(e.target.value)}
-                                                autoFocus
-                                            />
-                                        </div>
-                                    </form>
-                                    <div style={{ maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        {assets.filter(a => a.locationId === auditLocation.id).map(expected => {
-                                            const isFound = scannedAuditAssets.find(s => s.id === expected.id);
-                                            return (
-                                                <div key={expected.id} style={{ padding: '0.5rem', borderRadius: '6px', background: isFound ? 'rgba(34, 197, 94, 0.08)' : 'rgba(0,0,0,0.02)', border: `1px solid ${isFound ? '#22c55e' : 'var(--border)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-                                                    <span style={{ fontWeight: 600 }}>{expected.name}</span>
-                                                    {isFound ? <CheckCircle2 size={12} color="#22c55e" /> : <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '1px solid #ccc' }} />}
-                                                </div>
-                                            );
-                                        })}
-                                        {scannedAuditAssets.filter(s => s.locationId !== auditLocation.id).map(extra => (
-                                            <div key={extra.id} style={{ padding: '0.5rem', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid #ef4444', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#ef4444' }}>
-                                                <span style={{ fontWeight: 600 }}>Extra: {extra.name}</span>
-                                                <XCircle size={12} color="#ef4444" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <Button fullWidth style={{ background: '#8b5cf6', color: 'white' }} onClick={finishAudit}>
-                                        Finalizar Auditoría
-                                    </Button>
-                                </div>
+                    {/* Búsqueda Avanzada - Tarjeta Principal */}
+                    <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.65rem' }}>
+                            <SlidersHorizontal size={16} style={{ color: 'var(--primary-color)' }} />
+                            <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, flex: 1 }}>Búsqueda Avanzada</h3>
+                            {hasActiveSearch && (
+                                <button
+                                    onClick={() => { setLocationSearch(''); setSelectedBrand('ALL'); setCpuFilter('ALL'); setRamFilter('ALL'); setStatusFilter('ALL'); setModelFilter('ALL'); setSizeFilter('ALL'); }}
+                                    title="Limpiar filtros"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', lineHeight: 1 }}
+                                >
+                                    ✕ Limpiar
+                                </button>
                             )}
-                        </Card>
-                    )}
+                        </div>
 
+                        {/* Mini status summary strip */}
+                        <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--background-secondary)', borderRadius: '8px', padding: '0.5rem 0.75rem', alignItems: 'center' }}>
+                            <div style={{
+                                width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+                                background: `conic-gradient(#2563eb 0% ${percentEnStock}%, #84cc16 ${percentEnStock}% ${percentEnStock + percentAsignado}%, #f97316 ${percentEnStock + percentAsignado}% 100%)`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 8px var(--background-secondary)'
+                            }} />
+                            <div style={{ display: 'flex', gap: '0.6rem', flex: 1, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#2563eb' }}>● {statusCounts.enStock} Stock</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#84cc16' }}>● {statusCounts.asignado} Asig.</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f97316' }}>● {statusCounts.mantenimiento} Mant.</span>
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{statusCounts.actualTotal}</span>
+                        </div>
+
+                        {/* Search input */}
+                        <div className="search-box">
+                            <Search className="search-icon" size={16} />
+                            <input 
+                                className="search-input"
+                                placeholder="N/S, nombre, ubicación..."
+                                value={locationSearch}
+                                onChange={e => setLocationSearch(e.target.value)}
+                                style={{ padding: '0.5rem 1rem 0.5rem 2.25rem', fontSize: '0.8rem' }}
+                            />
+                        </div>
+
+                        {/* Filters */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+
+                            {/* Brand filter */}
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Marca</label>
+                                <select 
+                                    value={selectedBrand} 
+                                    onChange={e => setSelectedBrand(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${selectedBrand !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none', fontWeight: selectedBrand !== 'ALL' ? 700 : 400 }}
+                                >
+                                    <option value="ALL">Todas las marcas</option>
+                                    {manufacturers.map(m => (
+                                        <option key={m} value={m}>{m}</option>
+                                    ))}
+                                    <option value="WINDOWS">Solo Windows</option>
+                                </select>
+                            </div>
+
+                            {/* Model Filter (MBA / MBP) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Modelo</label>
+                                    <select
+                                        value={modelFilter}
+                                        onChange={e => setModelFilter(e.target.value)}
+                                        style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${modelFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none', fontWeight: modelFilter !== 'ALL' ? 700 : 400 }}
+                                    >
+                                        <option value="ALL">Todos</option>
+                                        <option value="MBA">✈ MBA (MacBook Air)</option>
+                                        <option value="MBP">💼 MBP (MacBook Pro)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Pulgadas</label>
+                                    <select
+                                        value={sizeFilter}
+                                        onChange={e => setSizeFilter(e.target.value)}
+                                        style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${sizeFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none', fontWeight: sizeFilter !== 'ALL' ? 700 : 400 }}
+                                    >
+                                        <option value="ALL">Todas</option>
+                                        <option value="13">13"</option>
+                                        <option value="14">14"</option>
+                                        <option value="15">15"</option>
+                                        <option value="16">16"</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>CPU</label>
+                                <select 
+                                    value={cpuFilter} 
+                                    onChange={e => setCpuFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${cpuFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
+                                >
+                                    <option value="ALL">Cualquier CPU</option>
+                                    {uniqueCpus.map(cpu => (
+                                        <option key={cpu} value={cpu}>
+                                            {cpu.startsWith('M') ? `Apple ${cpu}` : (['ULTRA', 'CORE', 'I3', 'I5', 'I7', 'I9'].includes(cpu) ? `Intel ${cpu}` : cpu)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Memoria RAM</label>
+                                <select 
+                                    value={ramFilter} 
+                                    onChange={e => setRamFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${ramFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
+                                >
+                                    <option value="ALL">Cualquier RAM</option>
+                                    {uniqueRams.map(ram => (
+                                        <option key={ram} value={ram}>{ram}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Estado</label>
+                                <select 
+                                    value={statusFilter} 
+                                    onChange={e => setStatusFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${statusFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
+                                >
+                                    <option value="ALL">Cualquier Estado</option>
+                                    <option value="Disponible">En Stock / Disponible</option>
+                                    <option value="Asignado">Asignado</option>
+                                    <option value="Mantenimiento">Mantenimiento / Dañado</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Result count */}
+                        {hasActiveSearch && (
+                            <div style={{ 
+                                background: highlightedLocationIds.size > 0 ? 'rgba(250,204,21,0.1)' : 'rgba(239,68,68,0.08)',
+                                border: `1px solid ${highlightedLocationIds.size > 0 ? 'rgba(250,204,21,0.4)' : 'rgba(239,68,68,0.3)'}`,
+                                borderRadius: '8px', padding: '0.6rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
+                            }}>
+                                <span style={{ fontSize: '1rem' }}>{highlightedLocationIds.size > 0 ? '🔍' : '😶'}</span>
+                                <div>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: 800, color: highlightedLocationIds.size > 0 ? '#854d0e' : '#991b1b' }}>
+                                        {highlightedLocationIds.size > 0 
+                                            ? `${filteredAssets.length} equipo${filteredAssets.length !== 1 ? 's' : ''} encontrado${filteredAssets.length !== 1 ? 's' : ''}`
+                                            : 'Sin resultados'}
+                                    </div>
+                                    {highlightedLocationIds.size > 0 && (
+                                        <div style={{ fontSize: '0.68rem', color: '#92400e' }}>
+                                            en {highlightedLocationIds.size} ubicación{highlightedLocationIds.size !== 1 ? 'es' : ''} — titilan en el mapa
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Brand quick-filter chips */}
+                        <div>
+                            <h4 style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acceso Rápido por Marca</h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
+                                <button
+                                    onClick={() => setSelectedBrand('ALL')}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '5px',
+                                        background: selectedBrand === 'ALL' ? 'var(--primary-color)' : 'var(--background-secondary)',
+                                        color: selectedBrand === 'ALL' ? 'white' : 'var(--text-main)',
+                                        border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer', outline: 'none', transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    <div style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: selectedBrand === 'ALL' ? 'rgba(255,255,255,0.2)' : '#e2e8f0', color: selectedBrand === 'ALL' ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800 }}>★</div>
+                                    <span style={{ fontSize: '0.6rem', fontWeight: 700 }}>Todos</span>
+                                </button>
+                                {manufacturers.map(m => {
+                                    const isSel = selectedBrand === m;
+                                    return (
+                                        <button key={m} onClick={() => setSelectedBrand(isSel ? 'ALL' : m)} style={{
+                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '5px',
+                                            background: isSel ? 'var(--primary-color)' : 'var(--background-secondary)',
+                                            color: isSel ? 'white' : 'var(--text-main)',
+                                            border: `1px solid ${isSel ? 'var(--primary-color)' : 'var(--border)'}`, borderRadius: '8px', cursor: 'pointer', outline: 'none', transition: 'all 0.15s ease'
+                                        }}>
+                                            <div style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: isSel ? 'rgba(255,255,255,0.2)' : '#e2e8f0', color: isSel ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800 }}>{m.substring(0, 2)}</div>
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 700 }}>{m}</span>
+                                        </button>
+                                    );
+                                })}
+                                <button onClick={() => setIsManageManufacturersOpen(true)} style={{
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '5px',
+                                    background: 'var(--background-secondary)', border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer', outline: 'none'
+                                }}>
+                                    <div style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: '#e2e8f0', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800 }}>+</div>
+                                    <span style={{ fontSize: '0.6rem', fontWeight: 700 }}>Gestionar</span>
+                                </button>
+                            </div>
+                        </div>
+                    </Card>
                     {/* Información de Selección */}
                     {(() => {
                         if (selectedGroup) {
@@ -2618,208 +2446,327 @@ export default function WarehousePage() {
                             </Card>
                         );
                     })()}
-                    {/* Búsqueda Avanzada - Tarjeta Principal */}
-                    <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {/* Header */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.65rem' }}>
-                            <SlidersHorizontal size={16} style={{ color: 'var(--primary-color)' }} />
-                            <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, flex: 1 }}>Búsqueda Avanzada</h3>
-                            {hasActiveSearch && (
-                                <button
-                                    onClick={() => { setLocationSearch(''); setSelectedBrand('ALL'); setCpuFilter('ALL'); setRamFilter('ALL'); setStatusFilter('ALL'); setModelFilter('ALL'); setSizeFilter('ALL'); }}
-                                    title="Limpiar filtros"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', lineHeight: 1 }}
-                                >
-                                    ✕ Limpiar
-                                </button>
+                </div>
+
+                {/* Right Panel: Mapping Area */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }} className="flex-mobile-column">
+                    {/* LOCACIÓN DEPÓSITO */}
+                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #d1fae5' }}>
+                        <div style={{ borderBottom: '2px solid #a7f3d0', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#065f46' }}>DEPÓSITO</h2>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', backgroundColor: '#ecfdf5', padding: '3px 8px', borderRadius: '12px' }}>
+                                    {locationsD.length} Repisas
+                                </span>
+                                <span style={{ fontSize: '0.7rem', color: '#6b7280', backgroundColor: 'var(--background-secondary)', padding: '2px 6px', borderRadius: '8px', fontWeight: 600 }}>
+                                    {totalAssetsDep} equipos
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* DEP legend */}
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.68rem', color: '#6b7280', fontWeight: 600 }}>
+                            <span style={{ background: '#ecfdf5', color: '#059669', padding: '2px 6px', borderRadius: '4px' }}>Formato: Repisa - Estante - Posición</span>
+                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 6px', borderRadius: '4px' }}>Estante 1 = suelo → 5 = alto</span>
+                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 6px', borderRadius: '4px' }}>Pos. 1 = izq → 5 = der</span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {locationsD.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                                    <Box size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.2, color: '#10b981' }} />
+                                    <p style={{ fontSize: '0.85rem' }}>No hay ubicaciones en el Depósito aún.</p>
+                                    <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>Usá "+ Nueva Ubicación" y seleccioná DEPÓSITO.</p>
+                                </div>
+                            ) : (
+                                locationsD.map(([aisle, locations]) => renderAisle(aisle, locations, locationsD.length, locationsD, false, true))
                             )}
                         </div>
+                    </Card>
+                </div>
 
-                        {/* Mini status summary strip */}
-                        <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--background-secondary)', borderRadius: '8px', padding: '0.5rem 0.75rem', alignItems: 'center' }}>
-                            <div style={{
-                                width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
-                                background: `conic-gradient(#2563eb 0% ${percentEnStock}%, #84cc16 ${percentEnStock}% ${percentEnStock + percentAsignado}%, #f97316 ${percentEnStock + percentAsignado}% 100%)`,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 8px var(--background-secondary)'
-                            }} />
-                            <div style={{ display: 'flex', gap: '0.6rem', flex: 1, flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#2563eb' }}>● {statusCounts.enStock} Stock</span>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#84cc16' }}>● {statusCounts.asignado} Asig.</span>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f97316' }}>● {statusCounts.mantenimiento} Mant.</span>
+                {/* Right Sidebar - Stats, brand filters, details */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    
+                    {/* WMS Scanners Consoles */}
+                    {isMappingMode && (
+                        <Card style={{ padding: '1.25rem', border: '2px solid var(--primary-color)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                                <ScanLine size={18} color="var(--primary-color)" />
+                                <h3 style={{ fontSize: '0.95rem', fontWeight: 800 }}>Consola de Mapping</h3>
                             </div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{statusCounts.actualTotal}</span>
-                        </div>
-
-                        {/* Search input */}
-                        <div className="search-box">
-                            <Search className="search-icon" size={16} />
-                            <input 
-                                className="search-input"
-                                placeholder="N/S, nombre, ubicación..."
-                                value={locationSearch}
-                                onChange={e => setLocationSearch(e.target.value)}
-                                style={{ padding: '0.5rem 1rem 0.5rem 2.25rem', fontSize: '0.8rem' }}
-                            />
-                        </div>
-
-                        {/* Filters */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-
-                            {/* Brand filter */}
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Marca</label>
-                                <select 
-                                    value={selectedBrand} 
-                                    onChange={e => setSelectedBrand(e.target.value)}
-                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${selectedBrand !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none', fontWeight: selectedBrand !== 'ALL' ? 700 : 400 }}
-                                >
-                                    <option value="ALL">Todas las marcas</option>
-                                    {manufacturers.map(m => (
-                                        <option key={m} value={m}>{m}</option>
-                                    ))}
-                                    <option value="WINDOWS">Solo Windows</option>
-                                </select>
-                            </div>
-
-                            {/* Model Filter (MBA / MBP) */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Modelo</label>
-                                    <select
-                                        value={modelFilter}
-                                        onChange={e => setModelFilter(e.target.value)}
-                                        style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${modelFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none', fontWeight: modelFilter !== 'ALL' ? 700 : 400 }}
-                                    >
-                                        <option value="ALL">Todos</option>
-                                        <option value="MBA">✈ MBA (MacBook Air)</option>
-                                        <option value="MBP">💼 MBP (MacBook Pro)</option>
-                                    </select>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <div style={{ padding: '0.75rem', background: 'var(--background)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: mappingStep >= 1 ? 'var(--primary-color)' : 'var(--border)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>1</div>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, display: 'flex', flexDirection: 'column' }}>
+                                        {scannedAsset ? `Activo: ${scannedAsset.id}` : "Escanee el Activo"}
+                                        {scannedAsset?.locationId && <span style={{ fontSize: '0.65rem', color: '#f59e0b' }}>En: {scannedAsset.locationId}</span>}
+                                    </span>
+                                    {scannedAsset && <CheckCircle2 size={14} color="#22c55e" style={{ marginLeft: 'auto' }} />}
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Pulgadas</label>
-                                    <select
-                                        value={sizeFilter}
-                                        onChange={e => setSizeFilter(e.target.value)}
-                                        style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${sizeFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none', fontWeight: sizeFilter !== 'ALL' ? 700 : 400 }}
-                                    >
-                                        <option value="ALL">Todas</option>
-                                        <option value="13">13"</option>
-                                        <option value="14">14"</option>
-                                        <option value="15">15"</option>
-                                        <option value="16">16"</option>
-                                    </select>
+                                <div style={{ padding: '0.75rem', background: 'var(--background)', borderRadius: '8px', border: mappingStep === 2 ? '1px solid var(--primary-color)' : '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem', opacity: mappingStep === 2 ? 1 : 0.5 }}>
+                                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: mappingStep >= 2 ? 'var(--primary-color)' : 'var(--border)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>2</div>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Escanee la Ubicación</span>
                                 </div>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>CPU</label>
-                                <select 
-                                    value={cpuFilter} 
-                                    onChange={e => setCpuFilter(e.target.value)}
-                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${cpuFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
-                                >
-                                    <option value="ALL">Cualquier CPU</option>
-                                    {uniqueCpus.map(cpu => (
-                                        <option key={cpu} value={cpu}>
-                                            {cpu.startsWith('M') ? `Apple ${cpu}` : (['ULTRA', 'CORE', 'I3', 'I5', 'I7', 'I9'].includes(cpu) ? `Intel ${cpu}` : cpu)}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Memoria RAM</label>
-                                <select 
-                                    value={ramFilter} 
-                                    onChange={e => setRamFilter(e.target.value)}
-                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${ramFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
-                                >
-                                    <option value="ALL">Cualquier RAM</option>
-                                    {uniqueRams.map(ram => (
-                                        <option key={ram} value={ram}>{ram}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Estado</label>
-                                <select 
-                                    value={statusFilter} 
-                                    onChange={e => setStatusFilter(e.target.value)}
-                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${statusFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
-                                >
-                                    <option value="ALL">Cualquier Estado</option>
-                                    <option value="Disponible">En Stock / Disponible</option>
-                                    <option value="Asignado">Asignado</option>
-                                    <option value="Mantenimiento">Mantenimiento / Dañado</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Result count */}
-                        {hasActiveSearch && (
-                            <div style={{ 
-                                background: highlightedLocationIds.size > 0 ? 'rgba(250,204,21,0.1)' : 'rgba(239,68,68,0.08)',
-                                border: `1px solid ${highlightedLocationIds.size > 0 ? 'rgba(250,204,21,0.4)' : 'rgba(239,68,68,0.3)'}`,
-                                borderRadius: '8px', padding: '0.6rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
-                            }}>
-                                <span style={{ fontSize: '1rem' }}>{highlightedLocationIds.size > 0 ? '🔍' : '😶'}</span>
-                                <div>
-                                    <div style={{ fontSize: '0.78rem', fontWeight: 800, color: highlightedLocationIds.size > 0 ? '#854d0e' : '#991b1b' }}>
-                                        {highlightedLocationIds.size > 0 
-                                            ? `${filteredAssets.length} equipo${filteredAssets.length !== 1 ? 's' : ''} encontrado${filteredAssets.length !== 1 ? 's' : ''}`
-                                            : 'Sin resultados'}
+                                <form onSubmit={mappingStep === 1 ? handleScanAsset : handleLocationSearchSubmit}>
+                                    <div className="search-box">
+                                        <Scan className="search-icon" size={16} />
+                                        <input 
+                                            className="search-input"
+                                            placeholder={mappingStep === 1 ? "Scan Activo..." : "Scan Ubicación..."}
+                                            value={searchQuery}
+                                            onChange={e => setSearchQuery(e.target.value)}
+                                            autoFocus
+                                        />
                                     </div>
-                                    {highlightedLocationIds.size > 0 && (
-                                        <div style={{ fontSize: '0.68rem', color: '#92400e' }}>
-                                            en {highlightedLocationIds.size} ubicación{highlightedLocationIds.size !== 1 ? 'es' : ''} — titilan en el mapa
-                                        </div>
-                                    )}
-                                </div>
+                                </form>
                             </div>
-                        )}
-
-                        {/* Brand quick-filter chips */}
-                        <div>
-                            <h4 style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acceso Rápido por Marca</h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
-                                <button
-                                    onClick={() => setSelectedBrand('ALL')}
-                                    style={{
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '5px',
-                                        background: selectedBrand === 'ALL' ? 'var(--primary-color)' : 'var(--background-secondary)',
-                                        color: selectedBrand === 'ALL' ? 'white' : 'var(--text-main)',
-                                        border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer', outline: 'none', transition: 'all 0.15s ease'
+                        </Card>
+                    )}
+                    {/* Middle Row: Revision & Cajas */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }} className="flex-mobile-column">
+                    {/* ZONA REVISIÓN / TRANSICIÓN */}
+                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #bfdbfe' }}>
+                        <div style={{ borderBottom: '2px solid #dbeafe', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#1e3a8a' }}>ZONA REVISIÓN / TRANSICIÓN</h2>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '12px' }}>
+                                    {depositoConfig?.revisionCount || 40} Posiciones
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <Button
+                                    variant="outline"
+                                    size="xs"
+                                    icon={Edit3}
+                                    onClick={() => {
+                                        const count = prompt('Ingrese la cantidad de posiciones de Revisión:', depositoConfig?.revisionCount || 40);
+                                        if(count && !isNaN(count)) {
+                                            updateDepositoConfig({ ...depositoConfig, revisionCount: parseInt(count) });
+                                        }
                                     }}
+                                    title="Editar cantidad de posiciones"
+                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px', borderColor: '#bfdbfe', color: '#1e40af' }}
                                 >
-                                    <div style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: selectedBrand === 'ALL' ? 'rgba(255,255,255,0.2)' : '#e2e8f0', color: selectedBrand === 'ALL' ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800 }}>★</div>
-                                    <span style={{ fontSize: '0.6rem', fontWeight: 700 }}>Todos</span>
-                                </button>
-                                {manufacturers.map(m => {
-                                    const isSel = selectedBrand === m;
+                                    Editar
+                                </Button>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowX: 'auto' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(28px, 1fr))', gap: '8px', padding: '0.5rem 0' }}>
+                                {Array.from({ length: depositoConfig?.revisionCount || 40 }, (_, i) => i + 1).map(revNum => {
+                                    const locId = `REV-${revNum}`;
+                                    const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                                    const assetCount = locationAssets.length;
+                                    const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
+                                    
+                                    const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
+                                    const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
+                                    
+                                    let bgColor = 'transparent';
+                                    let borderColor = 'var(--border)';
+
+                                    if (assetCount > 0) {
+                                        const status = locationAssets[0]?.status?.toUpperCase() || '';
+                                        if (status.includes('NUEVO')) { bgColor = '#10b981'; borderColor = '#10b981'; }
+                                        else if (status.includes('RECUPERADO')) { bgColor = '#3b82f6'; borderColor = '#3b82f6'; }
+                                        else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) { bgColor = '#f97316'; borderColor = '#f97316'; }
+                                        else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) { bgColor = '#ef4444'; borderColor = '#ef4444'; }
+                                        else { bgColor = '#10b981'; borderColor = '#10b981'; }
+                                    }
+                                    
+                                    if (isAuditMode && auditLocation?.id === locId) {
+                                        bgColor = '#8b5cf6';
+                                        borderColor = '#8b5cf6';
+                                    }
+                                    
                                     return (
-                                        <button key={m} onClick={() => setSelectedBrand(isSel ? 'ALL' : m)} style={{
-                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '5px',
-                                            background: isSel ? 'var(--primary-color)' : 'var(--background-secondary)',
-                                            color: isSel ? 'white' : 'var(--text-main)',
-                                            border: `1px solid ${isSel ? 'var(--primary-color)' : 'var(--border)'}`, borderRadius: '8px', cursor: 'pointer', outline: 'none', transition: 'all 0.15s ease'
-                                        }}>
-                                            <div style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: isSel ? 'rgba(255,255,255,0.2)' : '#e2e8f0', color: isSel ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800 }}>{m.substring(0, 2)}</div>
-                                            <span style={{ fontSize: '0.6rem', fontWeight: 700 }}>{m}</span>
-                                        </button>
+                                        <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                            <div 
+                                                onClick={() => handleScanLocation(locId)}
+                                                className={isHighlighted ? 'search-pulse' : ''}
+                                                style={{
+                                                    width: '28px', height: '28px', borderRadius: '4px',
+                                                    background: isHighlighted ? '#facc15' : (isSelected ? 'var(--primary-color)' : bgColor),
+                                                    border: isSelected ? '2px solid var(--primary-color)' : (isHighlighted ? '2px solid #eab308' : `1px solid ${borderColor}`),
+                                                    boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : (isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none'),
+                                                    opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
+                                                    cursor: 'pointer', transition: 'all 0.2s ease',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                }}
+                                                title={locId}
+                                            >
+                                                {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
+                                            </div>
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{revNum}</span>
+                                        </div>
                                     );
                                 })}
-                                <button onClick={() => setIsManageManufacturersOpen(true)} style={{
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '5px',
-                                    background: 'var(--background-secondary)', border: '1px solid var(--border)', borderRadius: '8px', cursor: 'pointer', outline: 'none'
-                                }}>
-                                    <div style={{ width: '26px', height: '26px', borderRadius: '50%', backgroundColor: '#e2e8f0', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 800 }}>+</div>
-                                    <span style={{ fontSize: '0.6rem', fontWeight: 700 }}>Gestionar</span>
-                                </button>
                             </div>
                         </div>
                     </Card>
+                    {/* ZONA CAJAS */}
+                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #fde047' }}>
+                        <div style={{ borderBottom: '2px solid #fef08a', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#854d0e' }}>ZONA CAJAS</h2>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a16207', backgroundColor: '#fef9c3', padding: '3px 8px', borderRadius: '12px' }}>
+                                    {depositoConfig?.cajasCount || 80} Cajas EOL
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <Button
+                                    variant="primary"
+                                    size="xs"
+                                    icon={Camera}
+                                    onClick={() => setIsCameraScannerOpen(true)}
+                                    title="Escanear código QR de la caja con la cámara"
+                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px', backgroundColor: '#eab308', borderColor: '#ca8a04', color: '#713f12', fontWeight: 800 }}
+                                >
+                                    Escanear Caja
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="xs"
+                                    icon={Printer}
+                                    onClick={() => {
+                                        if (confirm("¿Desea imprimir las etiquetas QR de todas las cajas con equipos?")) {
+                                            handlePrintAllCajasLabels(true);
+                                        }
+                                    }}
+                                    title="Imprimir etiquetas QR de todas las cajas con equipos"
+                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px', borderColor: '#fef08a', color: '#854d0e' }}
+                                >
+                                    Etiquetas QR
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="xs"
+                                    icon={Edit3}
+                                    onClick={() => {
+                                        const count = prompt('Ingrese el número total de cajas EOL:', depositoConfig?.cajasCount || 80);
+                                        if(count && !isNaN(count)) {
+                                            updateDepositoConfig({ ...depositoConfig, cajasCount: parseInt(count) });
+                                        }
+                                    }}
+                                    title="Editar cantidad de cajas"
+                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px' }}
+                                >
+                                    Editar
+                                </Button>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowX: 'auto' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(28px, 1fr))', gap: '8px', padding: '0.5rem 0' }}>
+                                {Array.from({ length: depositoConfig?.cajasCount || 80 }, (_, i) => i + 1).map(cajaNum => {
+                                    const locId = `CAJA-${cajaNum}`;
+                                    const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                                    const assetCount = locationAssets.length;
+                                    const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
+                                    const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
+                                    const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
 
+                                    let bgColor = 'transparent';
+                                    let borderColor = 'var(--border)';
+
+                                    if (assetCount > 0) {
+                                        const status = locationAssets[0]?.status?.toUpperCase() || '';
+                                        if (status.includes('NUEVO')) { bgColor = '#10b981'; borderColor = '#10b981'; }
+                                        else if (status.includes('RECUPERADO')) { bgColor = '#3b82f6'; borderColor = '#3b82f6'; }
+                                        else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) { bgColor = '#f97316'; borderColor = '#f97316'; }
+                                        else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) { bgColor = '#ef4444'; borderColor = '#ef4444'; }
+                                        else { bgColor = '#10b981'; borderColor = '#10b981'; }
+                                    }
+                                    
+                                    if (isAuditMode && auditLocation?.id === locId) {
+                                        bgColor = '#8b5cf6';
+                                        borderColor = '#8b5cf6';
+                                    }
+                                    
+                                    return (
+                                        <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                            <div 
+                                                onClick={() => handleScanLocation(locId)}
+                                                className={isHighlighted ? 'search-pulse' : ''}
+                                                style={{
+                                                    width: '28px', height: '28px', borderRadius: '4px',
+                                                    background: isHighlighted ? '#facc15' : (isSelected ? 'var(--primary-color)' : bgColor),
+                                                    border: isSelected ? '2px solid var(--primary-color)' : (isHighlighted ? '2px solid #eab308' : `1px solid ${borderColor}`),
+                                                    boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : (isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none'),
+                                                    opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
+                                                    cursor: 'pointer', transition: 'all 0.2s ease',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                }}
+                                                title={locId}
+                                            >
+                                                {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
+                                            </div>
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{cajaNum}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </Card>
+                    </div>
+
+                    {/* LOCACIÓN W */}
+                    <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ borderBottom: '2px solid var(--border)', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: 'var(--text-main)' }}>LOCACIÓN W</h2>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', backgroundColor: '#eff6ff', padding: '3px 8px', borderRadius: '12px' }}>
+                                    {locationsW.length} Grupos
+                                </span>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="xs"
+                                icon={ArrowUpDown}
+                                onClick={() => sortGroupsAlphabetically(false)}
+                                title="Ordenar Grupos W (A-Z)"
+                                style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px' }}
+                            >
+                                Ordenar A-Z
+                            </Button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {locationsW.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                                    <Navigation size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.2 }} />
+                                    <p style={{ fontSize: '0.85rem' }}>No hay grupos coincidentes.</p>
+                                </div>
+                            ) : (
+                                groupByBrand ? (
+                                    (() => {
+                                        const groupedW = getGroupedByBrand(locationsW, manufacturers);
+                                        return Object.entries(groupedW).filter(([_, items]) => items.length > 0).map(([brandName, items]) => {
+                                            const brandAssetsCount = items.reduce((acc, [_, locations]) => {
+                                                const locIds = locations.map(l => l.id);
+                                                return acc + assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && locIds.includes(a.locationId)).length;
+                                            }, 0);
+                                            return (
+                                                <div key={brandName} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.85rem', background: 'var(--background-secondary)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.4rem', marginBottom: '0.25rem' }}>
+                                                        <h3 style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-main)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{brandName}</h3>
+                                                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#2563eb', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '10px' }}>
+                                                            {items.length} grupos • {brandAssetsCount} equipos
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
+                                                        {items.map(([aisle, locations]) => renderAisle(aisle, locations, locationsW.length, locationsW, false))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        });
+                                    })()
+                                ) : (
+                                    locationsW.map(([aisle, locations]) => renderAisle(aisle, locations, locationsW.length, locationsW, false))
+                                )
+                            )}
+                        </div>
+                    </Card>
                 </div>
             </div>
 
