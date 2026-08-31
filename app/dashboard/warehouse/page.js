@@ -1707,8 +1707,8 @@ export default function WarehousePage() {
                                                     onClick={() => handleScanLocation(locId)}
                                                     className={isHighlighted ? 'search-pulse' : ''}
                                                     style={{
-                                                        width: '100%',
-                                                        aspectRatio: '1/1',
+                                                        width: '22px',
+                                                        height: '22px',
                                                         borderRadius: '50%',
                                                         background: isHighlighted ? '#facc15' : bgColor,
                                                         border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#047857'}` : isHighlighted ? `2px solid #eab308` : `1px solid ${borderColor}`,
@@ -1735,7 +1735,7 @@ export default function WarehousePage() {
                 })() : (
                     <div style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(22px, 1fr))', 
                         gap: '6px',
                         background: 'var(--background-secondary)',
                         padding: '8px',
