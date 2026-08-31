@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
     Search, 
     Plus, 
@@ -109,6 +110,7 @@ const getGroupedByBrand = (locations, manufacturersList = []) => {
 };
 
 export default function WarehousePage() {
+    const router = useRouter();
     const { 
         warehouseLocations,
         assets, 
@@ -2493,7 +2495,7 @@ export default function WarehousePage() {
                                             variant="outline" 
                                             size="sm" 
                                             icon={Edit3} 
-                                            onClick={() => handleOpenEditAsset(asset)}
+                                            onClick={() => router.push(`/dashboard/inventory?edit=${asset.id}`)}
                                             style={{ flex: '1 1 calc(50% - 0.25rem)', height: '32px', fontSize: '0.75rem' }}
                                         >Editar Equipo</Button>
                                     )}

@@ -489,6 +489,19 @@ export default function InventoryPage() {
         setIsModalOpen(true);
     };
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const editId = params.get('edit') || params.get('editAsset');
+        if (editId && assets && assets.length > 0) {
+            const found = assets.find(a => String(a.id) === String(editId) || String(a.serial).toLowerCase() === String(editId).toLowerCase());
+            if (found) {
+                handleEdit(found);
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+        }
+    }, [assets]);
+
     const handleDelete = (id) => {
         if (window.confirm('¿Estás seguro de que deseas eliminar este activo?')) {
             deleteAsset(id);
