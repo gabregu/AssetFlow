@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { calculateTicketFinancials, calculateTaskFinancials, getExchangeRateForDate } from '@/lib/billing';
-import { CreditCard, Save, ChevronLeft, ChevronRight, Truck, Calendar, User, Printer, Briefcase } from 'lucide-react';
+import { CreditCard, Save, ChevronLeft, ChevronRight, Truck, Calendar, User, Printer, Briefcase, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DriverPaymentsPage() {
@@ -18,6 +18,16 @@ export default function DriverPaymentsPage() {
     const [localChecks, setLocalChecks] = useState({});
     const [selectedDriver, setSelectedDriver] = useState('Todos');
     const [selectedClientFilter, setSelectedClientFilter] = useState('Todos');
+    
+    // Extra items state
+    const [extraServiceText, setExtraServiceText] = useState({});
+    const [extraServiceValue, setExtraServiceValue] = useState({});
+    const [showExtraForm, setShowExtraForm] = useState({});
+    
+    const [showGlobalExtraModal, setShowGlobalExtraModal] = useState(false);
+    const [globalExtraDriver, setGlobalExtraDriver] = useState('');
+    const [globalExtraText, setGlobalExtraText] = useState('');
+    const [globalExtraValue, setGlobalExtraValue] = useState('');
     
     const monthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
     
@@ -230,6 +240,29 @@ export default function DriverPaymentsPage() {
             }
         });
         
+        // 3. Process Driver Extra Items
+        const currentExtra = rates?.driverExtraItems?.[monthKey] || {};
+        Object.entries(currentExtra).forEach(([driverName, extraList]) => {
+            if (Array.isArray(extraList) && extraList.length > 0) {
+                extraList.forEach(extraItem => {
+                    if (extraItem && Number(extraItem.cost) > 0) {
+                        if (!stats[driverName]) stats[driverName] = { total: 0, items: [] };
+                        stats[driverName].total += Number(extraItem.cost);
+                        stats[driverName].items.push({
+                            id: extraItem.id,
+                            type: 'Extra',
+                            description: extraItem.description,
+                            requester: null,
+                            cost: Number(extraItem.cost),
+                            date: extraItem.date || new Date().toISOString().substring(0, 10),
+                            client: extraItem.client || 'Extra / Adicional',
+                            isExtra: true
+                        });
+                    }
+                });
+            }
+        });
+        
         let tDue = 0;
         let tPaid = 0;
         
@@ -345,6 +378,81 @@ export default function DriverPaymentsPage() {
         });
         
         alert(`Liquidación guardada para ${driverName}`);
+    };
+
+    const handleAddExtraItem = async (driverName, customText, customVal) => {
+        const text = (customText !== undefined ? customText : (extraServiceText[driverName] || '')).trim();
+        const val = parseFloat(customText !== undefined ? customVal : extraServiceValue[driverName]);
+
+        if (!driverName || !driverName.trim()) {
+            alert('Por favor seleccione o ingrese el nombre del conductor.');
+            return;
+        }
+        if (!text) {
+            alert('Por favor ingrese la descripción del servicio extra.');
+            return;
+        }
+        if (isNaN(val) || val <= 0) {
+            alert('Por favor ingrese un monto válido en USD mayor a 0.');
+            return;
+        }
+
+        const currentExtra = rates?.driverExtraItems || {};
+        const monthExtra = currentExtra[monthKey] || {};
+        const driverExtra = monthExtra[driverName] || [];
+
+        const newItem = {
+            id: `EXTRA-${Date.now()}`,
+            type: 'Extra',
+            description: text,
+            cost: val,
+            date: new Date().toISOString().substring(0, 10),
+            client: 'Extra / Adicional'
+        };
+
+        const newRates = {
+            ...rates,
+            driverExtraItems: {
+                ...currentExtra,
+                [monthKey]: {
+                    ...monthExtra,
+                    [driverName]: [...driverExtra, newItem]
+                }
+            }
+        };
+
+        await updateRates(newRates, true);
+
+        setExtraServiceText(prev => ({ ...prev, [driverName]: '' }));
+        setExtraServiceValue(prev => ({ ...prev, [driverName]: '' }));
+        setShowExtraForm(prev => ({ ...prev, [driverName]: false }));
+        setShowGlobalExtraModal(false);
+        setGlobalExtraText('');
+        setGlobalExtraValue('');
+        setGlobalExtraDriver('');
+    };
+
+    const handleDeleteExtraItem = async (driverName, itemId) => {
+        if (!window.confirm('¿Está seguro de eliminar este ítem extra?')) return;
+
+        const currentExtra = rates?.driverExtraItems || {};
+        const monthExtra = currentExtra[monthKey] || {};
+        const driverExtra = monthExtra[driverName] || [];
+
+        const updatedDriverExtra = driverExtra.filter(item => item.id !== itemId);
+
+        const newRates = {
+            ...rates,
+            driverExtraItems: {
+                ...currentExtra,
+                [monthKey]: {
+                    ...monthExtra,
+                    [driverName]: updatedDriverExtra
+                }
+            }
+        };
+
+        await updateRates(newRates, true);
     };
 
     const handlePrintDriverCases = (driverName, data, savedPaymentUSD) => {
@@ -573,8 +681,81 @@ export default function DriverPaymentsPage() {
                             </div>
                         </>
                     )}
+
+                    {/* Botón Agregar Dinero Extra */}
+                    <Button 
+                        onClick={() => setShowGlobalExtraModal(!showGlobalExtraModal)}
+                        style={{ backgroundColor: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '12px', padding: '0.6rem 1rem' }}
+                    >
+                        <Plus size={18} /> Agregar Dinero Extra
+                    </Button>
                 </div>
             </div>
+
+            {/* Modal / Formulario Global para Dinero Extra */}
+            {showGlobalExtraModal && (
+                <Card style={{ border: '2px solid var(--primary-color)', background: 'var(--background)' }}>
+                    <div style={{ padding: '0.5rem' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--text-main)' }}>
+                            ➕ Agregar Dinero Extra / Servicio Adicional
+                        </h3>
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                            <div style={{ flex: '1 1 200px' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>CONDUCTOR</label>
+                                <input 
+                                    type="text"
+                                    list="drivers-list"
+                                    placeholder="Nombre del Conductor..."
+                                    value={globalExtraDriver}
+                                    onChange={(e) => setGlobalExtraDriver(e.target.value)}
+                                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                />
+                                <datalist id="drivers-list">
+                                    {Object.keys(driverStats).map(name => (
+                                        <option key={name} value={name} />
+                                    ))}
+                                </datalist>
+                            </div>
+                            <div style={{ flex: '2 1 250px' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>SERVICIO / CONCEPTO EXTRA</label>
+                                <input 
+                                    type="text"
+                                    placeholder="Ej: Flete adicional, Peajes, Tarea especial..."
+                                    value={globalExtraText}
+                                    onChange={(e) => setGlobalExtraText(e.target.value)}
+                                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                />
+                            </div>
+                            <div style={{ flex: '1 1 120px' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>VALOR (USD)</label>
+                                <input 
+                                    type="number"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={globalExtraValue}
+                                    onChange={(e) => setGlobalExtraValue(e.target.value)}
+                                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <Button 
+                                    onClick={() => handleAddExtraItem(globalExtraDriver, globalExtraText, globalExtraValue)}
+                                    style={{ backgroundColor: 'var(--primary-color)', color: 'white', padding: '0.5rem 1rem' }}
+                                >
+                                    Guardar Item
+                                </Button>
+                                <Button 
+                                    variant="secondary"
+                                    onClick={() => setShowGlobalExtraModal(false)}
+                                    style={{ padding: '0.5rem 1rem' }}
+                                >
+                                    Cancelar
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            )}
 
             {/* Resumen General */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
@@ -670,6 +851,51 @@ export default function DriverPaymentsPage() {
                                     </div>
                                 </div>
 
+                                {/* Formulario Inline Dinero Extra por Conductor */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>SERVICIOS Y GASTOS ({filteredItems.length})</span>
+                                    <Button 
+                                        variant="secondary"
+                                        size="xs"
+                                        onClick={() => setShowExtraForm(prev => ({ ...prev, [name]: !prev[name] }))}
+                                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                    >
+                                        <Plus size={14} /> {showExtraForm[name] ? 'Cancelar' : 'Agregar Dinero Extra'}
+                                    </Button>
+                                </div>
+
+                                {showExtraForm[name] && (
+                                    <div style={{ display: 'flex', gap: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                                        <div style={{ flex: '2 1 200px' }}>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>SERVICIO / CONCEPTO EXTRA</label>
+                                            <input 
+                                                type="text"
+                                                placeholder="Ej: Flete adicional, Peajes, Tarea especial..."
+                                                value={extraServiceText[name] || ''}
+                                                onChange={(e) => setExtraServiceText({ ...extraServiceText, [name]: e.target.value })}
+                                                style={{ width: '100%', padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                            />
+                                        </div>
+                                        <div style={{ flex: '1 1 120px' }}>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>VALOR (USD)</label>
+                                            <input 
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                                value={extraServiceValue[name] || ''}
+                                                onChange={(e) => setExtraServiceValue({ ...extraServiceValue, [name]: e.target.value })}
+                                                style={{ width: '100%', padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                            />
+                                        </div>
+                                        <Button 
+                                            onClick={() => handleAddExtraItem(name)}
+                                            style={{ backgroundColor: 'var(--primary-color)', color: 'white', padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
+                                        >
+                                            <Plus size={15} style={{ marginRight: '4px' }} /> Agregar
+                                        </Button>
+                                    </div>
+                                )}
+
                                 {/* Tabla de servicios */}
                                 <div style={{ overflowX: 'auto', marginBottom: '1.5rem', background: 'var(--background)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -702,8 +928,28 @@ export default function DriverPaymentsPage() {
                                                         {item.type === 'Ticket' || item.type === 'Sub-caso' ? <Link href={`/dashboard/tickets/${item.id}`}>{item.id}</Link> : item.id}
                                                     </td>
                                                     <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', textDecoration: isChecked ? 'line-through' : 'none', opacity: isChecked ? 0.6 : 1 }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                             <span>{item.description}</span>
+                                                            {item.isExtra && (
+                                                                <button
+                                                                    onClick={() => handleDeleteExtraItem(name, item.id)}
+                                                                    title="Eliminar ítem extra"
+                                                                    style={{
+                                                                        background: 'rgba(239, 68, 68, 0.1)',
+                                                                        color: '#ef4444',
+                                                                        border: 'none',
+                                                                        borderRadius: '4px',
+                                                                        padding: '2px 6px',
+                                                                        cursor: 'pointer',
+                                                                        fontSize: '0.7rem',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '2px'
+                                                                    }}
+                                                                >
+                                                                    <Trash2 size={12} /> Borrar
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '0.75rem 1rem', opacity: isChecked ? 0.6 : 1 }}>
