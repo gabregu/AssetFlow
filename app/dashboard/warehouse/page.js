@@ -120,7 +120,8 @@ export default function WarehousePage() {
         currentUser,
         countryFilter,
         depositoConfig,
-        updateDepositoConfig
+        updateDepositoConfig,
+        updateAsset
     } = useStore();
 
     // Mapping and Audit States
@@ -137,6 +138,61 @@ export default function WarehousePage() {
     const [isMoveAssetModalOpen, setIsMoveAssetModalOpen] = useState(false);
     const [movingAsset, setMovingAsset] = useState(null);
     const [targetLocationId, setTargetLocationId] = useState('');
+
+    // Edit Asset States
+    const [isEditAssetModalOpen, setIsEditAssetModalOpen] = useState(false);
+    const [editingAssetObj, setEditingAssetObj] = useState(null);
+    const [editAssetForm, setEditAssetForm] = useState({
+        serial: '',
+        model: '',
+        part_number: '',
+        status: 'Disponible',
+        hardwareSpec: ''
+    });
+    const [isSavingAsset, setIsSavingAsset] = useState(false);
+
+    const handleOpenEditAsset = (assetToEdit) => {
+        setEditingAssetObj(assetToEdit);
+        setEditAssetForm({
+            serial: assetToEdit.serial || '',
+            model: assetToEdit.model || assetToEdit.name || '',
+            part_number: assetToEdit.model_number || assetToEdit.part_number || '',
+            status: assetToEdit.status || 'Disponible',
+            hardwareSpec: assetToEdit.hardwareSpec || ''
+        });
+        setIsEditAssetModalOpen(true);
+    };
+
+    const handleSaveEditAsset = async (e) => {
+        e.preventDefault();
+        if (!editingAssetObj) return;
+        try {
+            setIsSavingAsset(true);
+            const now = new Date().toISOString();
+            const updatedBy = currentUser?.name || 'Administrador';
+
+            await updateAsset(editingAssetObj.id, {
+                serial: editAssetForm.serial.trim(),
+                model: editAssetForm.model.trim(),
+                name: editAssetForm.model.trim(),
+                model_number: editAssetForm.part_number.trim(),
+                part_number: editAssetForm.part_number.trim(),
+                status: editAssetForm.status,
+                hardwareSpec: editAssetForm.hardwareSpec.trim(),
+                dateLastUpdate: now,
+                updatedBy: updatedBy
+            });
+
+            setIsEditAssetModalOpen(false);
+            setEditingAssetObj(null);
+            alert('Equipo actualizado correctamente.');
+        } catch (err) {
+            console.error('Error actualizando activo:', err);
+            alert('Error al actualizar el equipo.');
+        } finally {
+            setIsSavingAsset(false);
+        }
+    };
 
     // Move All Assets States
     const [isMoveAllModalOpen, setIsMoveAllModalOpen] = useState(false);
@@ -2431,7 +2487,16 @@ export default function WarehousePage() {
                                     )}
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                                    {asset && (
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            icon={Edit3} 
+                                            onClick={() => handleOpenEditAsset(asset)}
+                                            style={{ flex: '1 1 calc(50% - 0.25rem)', height: '32px', fontSize: '0.75rem' }}
+                                        >Editar Equipo</Button>
+                                    )}
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
@@ -2446,14 +2511,14 @@ export default function WarehousePage() {
                                             setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
                                             setIsEditLocationModalOpen(true);
                                         }}
-                                        style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
-                                    >Editar</Button>
+                                        style={{ flex: asset ? '1 1 calc(50% - 0.25rem)' : '1', height: '32px', fontSize: '0.75rem' }}
+                                    >Editar Ubicación</Button>
                                     <Button 
                                         variant="outline" 
                                         size="sm" 
                                         icon={Printer} 
                                         onClick={() => handlePrintLocationLabel(selectedLocation)}
-                                        style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
+                                        style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem' }}
                                     >
                                         {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta'}
                                     </Button>
@@ -3397,6 +3462,90 @@ export default function WarehousePage() {
                         </div>
                     </div>
                 </div>
+            </Modal>
+
+            {/* Modal Editar Equipo */}
+            <Modal
+                isOpen={isEditAssetModalOpen}
+                onClose={() => setIsEditAssetModalOpen(false)}
+                title="Editar Detalles del Equipo"
+            >
+                <form onSubmit={handleSaveEditAsset} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '0.5rem' }}>
+                    <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Número de Serie (SN)</label>
+                        <input 
+                            type="text" 
+                            value={editAssetForm.serial} 
+                            onChange={e => setEditAssetForm({ ...editAssetForm, serial: e.target.value })}
+                            className="form-input"
+                            required
+                            style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Modelo</label>
+                        <input 
+                            type="text" 
+                            value={editAssetForm.model} 
+                            onChange={e => setEditAssetForm({ ...editAssetForm, model: e.target.value })}
+                            className="form-input"
+                            required
+                            style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Número de Parte (N/P)</label>
+                        <input 
+                            type="text" 
+                            value={editAssetForm.part_number} 
+                            onChange={e => setEditAssetForm({ ...editAssetForm, part_number: e.target.value })}
+                            className="form-input"
+                            style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Estado</label>
+                        <select 
+                            value={editAssetForm.status} 
+                            onChange={e => setEditAssetForm({ ...editAssetForm, status: e.target.value })}
+                            className="form-input"
+                            style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                        >
+                            <option value="Disponible">Disponible</option>
+                            <option value="Nuevo">Nuevo</option>
+                            <option value="Recuperado">Recuperado</option>
+                            <option value="Asignado">Asignado</option>
+                            <option value="Mantenimiento">Mantenimiento</option>
+                            <option value="Dañado">Dañado</option>
+                            <option value="EOL">EOL / Cajas EOL</option>
+                            <option value="Baja de Equipo">Baja de Equipo</option>
+                        </select>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Especificaciones (Hardware Specs)</label>
+                        <input 
+                            type="text" 
+                            value={editAssetForm.hardwareSpec} 
+                            onChange={e => setEditAssetForm({ ...editAssetForm, hardwareSpec: e.target.value })}
+                            placeholder="Ej: M1 Pro / 16GB / 512GB"
+                            className="form-input"
+                            style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                        <Button type="button" variant="secondary" onClick={() => setIsEditAssetModalOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" variant="primary" disabled={isSavingAsset}>
+                            {isSavingAsset ? 'Guardando...' : 'Guardar Cambios'}
+                        </Button>
+                    </div>
+                </form>
             </Modal>
 
             <style jsx>{`
