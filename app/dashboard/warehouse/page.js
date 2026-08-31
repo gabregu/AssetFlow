@@ -1735,7 +1735,7 @@ export default function WarehousePage() {
                 })() : (
                     <div style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(36px, 1fr))', 
                         gap: '6px',
                         background: 'var(--background-secondary)',
                         padding: '8px',
@@ -2473,7 +2473,7 @@ export default function WarehousePage() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             {locationsD.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
                                     <Box size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.2, color: '#10b981' }} />
                                     <p style={{ fontSize: '0.85rem' }}>No hay ubicaciones en el Depósito aún.</p>
                                     <p style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '0.5rem' }}>Usá "+ Nueva Ubicación" y seleccioná DEPÓSITO.</p>
@@ -2586,7 +2586,7 @@ export default function WarehousePage() {
                                                 onClick={() => handleScanLocation(locId)}
                                                 className={isHighlighted ? 'search-pulse' : ''}
                                                 style={{
-                                                    width: '28px', height: '28px', borderRadius: '4px',
+                                                    width: '22px', height: '22px', borderRadius: '4px',
                                                     background: isHighlighted ? '#facc15' : (isSelected ? 'var(--primary-color)' : bgColor),
                                                     border: isSelected ? '2px solid var(--primary-color)' : (isHighlighted ? '2px solid #eab308' : `1px solid ${borderColor}`),
                                                     boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : (isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none'),
@@ -2689,7 +2689,7 @@ export default function WarehousePage() {
                                                 onClick={() => handleScanLocation(locId)}
                                                 className={isHighlighted ? 'search-pulse' : ''}
                                                 style={{
-                                                    width: '28px', height: '28px', borderRadius: '4px',
+                                                    width: '22px', height: '22px', borderRadius: '4px',
                                                     background: isHighlighted ? '#facc15' : (isSelected ? 'var(--primary-color)' : bgColor),
                                                     border: isSelected ? '2px solid var(--primary-color)' : (isHighlighted ? '2px solid #eab308' : `1px solid ${borderColor}`),
                                                     boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : (isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none'),
