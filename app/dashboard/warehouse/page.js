@@ -1043,6 +1043,36 @@ export default function WarehousePage() {
         }
     };
 
+    const handleDeleteGroup = async (aisle, e) => {
+        e.stopPropagation();
+        
+        const locationsToDelete = warehouseLocations.filter(l => l.aisle === aisle);
+        const hasAssets = locationsToDelete.some(loc => 
+            assets.some(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === loc.id)
+        );
+        if (hasAssets) {
+            alert('No se puede eliminar la repisa porque contiene equipos asignados. Reubique los equipos primero.');
+            return;
+        }
+        
+        if (!window.confirm(`¿Está seguro de eliminar la repisa "${aisle}" y todas sus posiciones? Esta acción no se puede deshacer.`)) return;
+        
+        let errorOcurred = false;
+        for (const loc of locationsToDelete) {
+            const res = await deleteWarehouseLocation(loc.id);
+            if (res.error) {
+                errorOcurred = true;
+                alert("Error al eliminar la posición " + loc.id + ": " + res.error.message);
+                break;
+            }
+        }
+        
+        if (!errorOcurred) {
+            setSelectedGroup(null);
+            alert('Repisa eliminada correctamente.');
+        }
+    };
+
     const handleEditLocation = async (e) => {
         e.preventDefault();
         setIsSavingEditLocation(true);
@@ -1556,55 +1586,67 @@ export default function WarehousePage() {
                     <h3 onClick={() => { setSelectedGroup(aisle); setSelectedLocation(null); }} style={{ fontSize: '0.78rem', fontWeight: 800, color: selectedGroup === aisle ? 'var(--primary-color)' : 'var(--text-secondary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, cursor: 'pointer' }}>
                         <span style={{ borderBottom: selectedGroup === aisle ? '2px solid var(--primary-color)' : 'none' }}>{getDisplayAisle(aisle)}</span>
                         {currentUser?.role === 'admin' && (
-                            <Button 
-                                variant="ghost" 
-                                size="xs" 
-                                icon={Edit3} 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRenameGroupOldName(aisle);
-                                    
-                                    let type = isLocDep(aisle) ? 'D' : (isLocH(aisle) ? 'H' : 'W');
-                                    let mfg = detectManufacturer(aisle, manufacturers);
-                                    let cat = getDisplayAisle(aisle);
-                                    
-                                    if (mfg !== 'NINGUNO') {
-                                        // Handle known Apple prefixes
-                                        const aliases = ['MBA ', 'MBA-', 'MBP ', 'MBP-', 'MACBOOK', 'IMAC', 'MAC '];
-                                        let matchedAlias = '';
-                                        if (mfg === 'APPLE') {
-                                            for (let alias of aliases) {
-                                                if (cat.toUpperCase().startsWith(alias)) {
-                                                    matchedAlias = alias;
-                                                    break;
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Button 
+                                    variant="ghost" 
+                                    size="xs" 
+                                    icon={Edit3} 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setRenameGroupOldName(aisle);
+                                        
+                                        let type = isLocDep(aisle) ? 'D' : (isLocH(aisle) ? 'H' : 'W');
+                                        let mfg = detectManufacturer(aisle, manufacturers);
+                                        let cat = getDisplayAisle(aisle);
+                                        
+                                        if (mfg !== 'NINGUNO') {
+                                            // Handle known Apple prefixes
+                                            const aliases = ['MBA ', 'MBA-', 'MBP ', 'MBP-', 'MACBOOK', 'IMAC', 'MAC '];
+                                            let matchedAlias = '';
+                                            if (mfg === 'APPLE') {
+                                                for (let alias of aliases) {
+                                                    if (cat.toUpperCase().startsWith(alias)) {
+                                                        matchedAlias = alias;
+                                                        break;
+                                                    }
                                                 }
+                                                if (matchedAlias) {
+                                                    cat = cat.substring(matchedAlias.length).trim();
+                                                }
+                                            } else {
+                                                let substr = cat;
+                                                if (substr.toUpperCase().startsWith(mfg + ' ')) {
+                                                    substr = substr.substring(mfg.length + 1).trim();
+                                                } else if (substr.toUpperCase().startsWith(mfg)) {
+                                                    substr = substr.substring(mfg.length).trim();
+                                                }
+                                                cat = substr;
                                             }
                                         }
-                                        
-                                        if (matchedAlias) {
-                                            // Don't strip the alias from the category name for Apple products
-                                            // The category is just the whole thing (e.g., "MBA 13 M4")
-                                        } else if (cat.toUpperCase().startsWith(mfg.toUpperCase())) {
-                                            let substr = cat.substring(mfg.length).trim();
-                                            if (substr.startsWith('-')) substr = substr.substring(1).trim();
-                                            cat = substr;
-                                        }
-                                    }
 
-                                    setRenameGroupType(type);
-                                    setRenameGroupManufacturer(mfg);
-                                    setRenameGroupCategory(cat);
-                                    
-                                    if (type === 'D') {
-                                        const config = depositoConfig[aisle] || { rows: 5, cols: 10 };
-                                        setRenameGroupRows(config.rows);
-                                        setRenameGroupCols(config.cols);
-                                    }
-                                    
-                                    setIsRenameGroupModalOpen(true);
-                                }}
-                                style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
-                            />
+                                        setRenameGroupType(type);
+                                        setRenameGroupManufacturer(mfg);
+                                        setRenameGroupCategory(cat);
+                                        
+                                        if (type === 'D') {
+                                            const config = depositoConfig[aisle] || { rows: 5, cols: 10 };
+                                            setRenameGroupRows(config.rows);
+                                            setRenameGroupCols(config.cols);
+                                        }
+                                        
+                                        setIsRenameGroupModalOpen(true);
+                                    }}
+                                    style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5 }}
+                                />
+                                <Button 
+                                    variant="ghost" 
+                                    size="xs" 
+                                    icon={Trash2} 
+                                    onClick={(e) => handleDeleteGroup(aisle, e)}
+                                    title="Eliminar Repisa"
+                                    style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5, color: '#ef4444' }}
+                                />
+                            </div>
                         )}
                         {!groupByBrand && totalAislesCount > 1 && (
                             <div style={{ display: 'flex', gap: '1px', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '4px', padding: '1px' }} onClick={e => e.stopPropagation()}>
