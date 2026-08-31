@@ -201,6 +201,35 @@ export default function WarehousePage() {
     const [modelFilter, setModelFilter] = useState('ALL');   // MBA | MBP | ALL
     const [sizeFilter, setSizeFilter] = useState('ALL');     // 13 | 14 | 15 | 16 | ALL
 
+    // Extract unique CPUs from assets dynamically
+    const uniqueCpus = useMemo(() => {
+        const cpuPatterns = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'ULTRA', 'CORE', 'I3', 'I5', 'I7', 'I9'];
+        const cpus = new Set();
+        assets.forEach(a => {
+            const combined = `${a.name || ''} ${a.hardwareSpec || ''}`.toUpperCase();
+            cpuPatterns.forEach(pattern => {
+                const regex = new RegExp(`\\b${pattern}\\b`);
+                if (regex.test(combined)) cpus.add(pattern);
+            });
+        });
+        return Array.from(cpus).sort((a, b) => {
+            if (a.startsWith('M') && !b.startsWith('M')) return -1;
+            if (!a.startsWith('M') && b.startsWith('M')) return 1;
+            return a.localeCompare(b);
+        });
+    }, [assets]);
+
+    // Extract unique RAM sizes dynamically
+    const uniqueRams = useMemo(() => {
+        const rams = new Set();
+        assets.forEach(a => {
+            const combined = `${a.name || ''} ${a.hardwareSpec || ''}`.toUpperCase();
+            const match = combined.match(/\b(\d+GB)\b/);
+            if (match) rams.add(match[1]);
+        });
+        return Array.from(rams).sort((a, b) => parseInt(a) - parseInt(b));
+    }, [assets]);
+
     // Helper to normalize IDs for comparison
     const normalizeId = (id) => {
         if (!id) return '';
@@ -1678,8 +1707,8 @@ export default function WarehousePage() {
                                                         width: '100%',
                                                         aspectRatio: '1/1',
                                                         borderRadius: '50%',
-                                                        background: bgColor,
-                                                        border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#047857'}` : isHighlighted ? `2px solid #facc15` : `1px solid ${borderColor}`,
+                                                        background: isHighlighted ? '#facc15' : bgColor,
+                                                        border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#047857'}` : isHighlighted ? `2px solid #eab308` : `1px solid ${borderColor}`,
                                                         cursor: 'pointer',
                                                         transition: 'all 0.15s ease',
                                                         boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : isSelected ? '0 0 8px rgba(16,185,129,0.3)' : 'none',
@@ -1757,10 +1786,10 @@ export default function WarehousePage() {
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        background: bgColor,
-                                        color: textColor,
+                                        background: isHighlighted ? '#facc15' : bgColor,
+                                        color: isHighlighted ? '#713f12' : textColor,
                                         borderRadius: '6px',
-                                        border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : isHighlighted ? `2px solid #facc15` : `1px ${borderStyle} ${borderColor}`,
+                                        border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : isHighlighted ? `2px solid #eab308` : `1px ${borderStyle} ${borderColor}`,
                                         cursor: 'pointer',
                                         transition: 'all 0.15s ease',
                                         boxShadow: isHighlighted ? '0 0 12px 3px rgba(250,204,21,0.65)' : isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
@@ -2602,14 +2631,11 @@ export default function WarehousePage() {
                                     style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${cpuFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
                                 >
                                     <option value="ALL">Cualquier CPU</option>
-                                    <option value="M4">Apple M4</option>
-                                    <option value="M3">Apple M3</option>
-                                    <option value="M2">Apple M2</option>
-                                    <option value="M1">Apple M1</option>
-                                    <option value="Ultra">Intel Ultra</option>
-                                    <option value="Core">Intel Core</option>
-                                    <option value="i7">Core i7</option>
-                                    <option value="i5">Core i5</option>
+                                    {uniqueCpus.map(cpu => (
+                                        <option key={cpu} value={cpu}>
+                                            {cpu.startsWith('M') ? `Apple ${cpu}` : (['ULTRA', 'CORE', 'I3', 'I5', 'I7', 'I9'].includes(cpu) ? `Intel ${cpu}` : cpu)}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
 
@@ -2621,13 +2647,9 @@ export default function WarehousePage() {
                                     style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${ramFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
                                 >
                                     <option value="ALL">Cualquier RAM</option>
-                                    <option value="64GB">64 GB</option>
-                                    <option value="48GB">48 GB</option>
-                                    <option value="36GB">36 GB</option>
-                                    <option value="32GB">32 GB</option>
-                                    <option value="24GB">24 GB</option>
-                                    <option value="16GB">16 GB</option>
-                                    <option value="8GB">8 GB</option>
+                                    {uniqueRams.map(ram => (
+                                        <option key={ram} value={ram}>{ram}</option>
+                                    ))}
                                 </select>
                             </div>
 
