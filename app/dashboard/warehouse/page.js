@@ -123,7 +123,8 @@ export default function WarehousePage() {
         countryFilter,
         depositoConfig,
         updateDepositoConfig,
-        updateAsset
+        updateAsset,
+        entities = []
     } = useStore();
 
     // Mapping and Audit States
@@ -3616,7 +3617,9 @@ export default function WarehousePage() {
                                 className="form-input"
                                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
                             >
-                                {entities.map(ent => <option key={ent.id} value={ent.name}>{ent.name}</option>)}
+                                {(entities && entities.length > 0 ? entities : [{ id: '1', name: 'SFDC-Argentina' }, { id: '2', name: 'Argentina' }]).map(ent => (
+                                    <option key={ent.id || ent.name} value={ent.name}>{ent.name}</option>
+                                ))}
                             </select>
                         </div>
 

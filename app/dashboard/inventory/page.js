@@ -483,8 +483,33 @@ export default function InventoryPage() {
     };
 
     const handleEdit = (asset) => {
+        if (!asset) return;
         setEditingAsset(asset);
-        setNewAsset(asset);
+        setNewAsset({
+            id: asset.id,
+            name: asset.name || asset.model || '',
+            type: asset.type || 'Laptop',
+            serial: asset.serial || '',
+            assignee: asset.assignee ?? 'Almacén',
+            status: asset.status || 'Disponible',
+            date: asset.date ? String(asset.date).substring(0, 10) : new Date().toISOString().split('T')[0],
+            vendor: asset.vendor || 'Other',
+            purchaseOrder: asset.purchaseOrder || asset.po || '',
+            modelNumber: asset.modelNumber || asset.model_number || '',
+            partNumber: asset.partNumber || asset.part_number || '',
+            hardwareSpec: asset.hardwareSpec || '',
+            imei: asset.imei || '-',
+            imei2: asset.imei2 || '',
+            eolDate: asset.eolDate || '',
+            notes: asset.notes || '',
+            sfdcCase: asset.sfdcCase || asset.case || '',
+            oem: asset.oem || '',
+            country: asset.country || 'Argentina',
+            cod: asset.cod || '',
+            boxNumber: asset.boxNumber || '',
+            locationId: asset.locationId || '',
+            photoUrl: asset.photoUrl || null
+        });
         setHwChecklist({ serial: false, cleaning: false, wipe: false, reinstall: false });
         setIsModalOpen(true);
     };
@@ -497,7 +522,6 @@ export default function InventoryPage() {
             const found = assets.find(a => String(a.id) === String(editId) || String(a.serial).toLowerCase() === String(editId).toLowerCase());
             if (found) {
                 handleEdit(found);
-                window.history.replaceState({}, '', window.location.pathname);
             }
         }
     }, [assets]);
@@ -3019,7 +3043,7 @@ export default function InventoryPage() {
                                 value={newAsset.country || 'Argentina'}
                                 onChange={e => setNewAsset({ ...newAsset, country: e.target.value })}
                             >
-                                {entities.map(e => <option key={e.id} value={e.name}>{e.name}</option>)}
+                                {(entities && entities.length > 0 ? entities : [{ id: '1', name: 'SFDC-Argentina' }, { id: '2', name: 'Argentina' }]).map(e => <option key={e.id || e.name} value={e.name}>{e.name}</option>)}
                             </select>
                         </div>
                     </div>
