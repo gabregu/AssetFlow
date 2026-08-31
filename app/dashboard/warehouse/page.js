@@ -456,7 +456,7 @@ export default function WarehousePage() {
                 const locAssets = assets.filter(a => a.locationId === loc.id);
                 if (locationSearch) {
                     const searchLower = locationSearch.toLowerCase();
-                    const locIdMatch = loc.id.toLowerCase().includes(searchLower);
+                    const locIdMatch = String(loc.id || '').toLowerCase().includes(searchLower);
                     const hasMatchingAsset = locAssets.some(a => filteredAssets.some(fa => fa.id === a.id));
                     return locIdMatch || hasMatchingAsset;
                 }

@@ -281,13 +281,19 @@ export default function InventoryPage() {
         // Lenovo Fix: permitimos buscar por el serial sin la 'S' inicial si se escanea la caja
         const searchWithoutS = (lowerSearch.startsWith('s') && lowerSearch.length > 7) ? lowerSearch.substring(1) : lowerSearch;
 
-        let result = assets.filter(a => {
+        let result = (assets || []).filter(a => {
+            if (!a) return false;
+            const nameStr = String(a.name || '').toLowerCase();
+            const serialStr = String(a.serial || '').toLowerCase();
+            const assigneeStr = String(a.assignee || '').toLowerCase();
+            const codStr = String(a.cod || '').toLowerCase();
+
             const matchesSearch = !lowerSearch ||
-                a.name.toLowerCase().includes(lowerSearch) ||
-                a.serial.toLowerCase().includes(lowerSearch) ||
-                a.serial.toLowerCase().includes(searchWithoutS) ||
-                a.assignee.toLowerCase().includes(lowerSearch) ||
-                (a.cod && a.cod.toLowerCase().includes(lowerSearch));
+                nameStr.includes(lowerSearch) ||
+                serialStr.includes(lowerSearch) ||
+                serialStr.includes(searchWithoutS) ||
+                assigneeStr.includes(lowerSearch) ||
+                (a.cod && codStr.includes(lowerSearch));
 
             if (!matchesSearch) return false;
 
@@ -311,8 +317,8 @@ export default function InventoryPage() {
                 } else if (statusFilter === 'Dañado') {
                     matchesStatus = matchesStatus && ['Dañado', 'Rota', 'De Baja', 'EOL'].includes(a.status);
                 } else if (statusFilter === 'Baja de Equipos') {
-                    const lStatus = (a.status || '').toLowerCase();
-                    const lAssignee = (a.assignee || '').toLowerCase();
+                    const lStatus = String(a.status || '').toLowerCase();
+                    const lAssignee = String(a.assignee || '').toLowerCase();
                     matchesStatus = matchesStatus && (lStatus.includes('baja de equipo') || lAssignee.includes('baja de equipo'));
                 } else {
                     matchesStatus = matchesStatus && a.status === statusFilter;
@@ -320,18 +326,18 @@ export default function InventoryPage() {
             }
 
             if (codFilter) {
-                matchesStatus = matchesStatus && a.cod && a.cod.trim() !== '';
+                matchesStatus = matchesStatus && a.cod && String(a.cod).trim() !== '';
             }
 
             const matchesType = columnFilters.type === 'All' || a.type === columnFilters.type;
-            const matchesAssignee = !columnFilters.assignee || a.assignee.toLowerCase().includes(columnFilters.assignee.toLowerCase());
+            const matchesAssignee = !columnFilters.assignee || assigneeStr.includes(String(columnFilters.assignee || '').toLowerCase());
 
             // Filter by Country
             let matchesCountry = true;
             if (countryFilter !== 'Todos') {
                 if (a.country) {
-                    matchesCountry = a.country.toLowerCase().includes(countryFilter.toLowerCase());
-                } else if (a.notes && a.notes.includes(countryFilter)) {
+                    matchesCountry = String(a.country).toLowerCase().includes(String(countryFilter || '').toLowerCase());
+                } else if (a.notes && String(a.notes).includes(countryFilter)) {
                     matchesCountry = true;
                 } else {
                     matchesCountry = false;
@@ -342,7 +348,7 @@ export default function InventoryPage() {
             const matchesSelectedType = !selectedDeviceType || a.type === selectedDeviceType;
 
             // --- FILTRO POR CAJA ---
-            const matchesBoxFilter = !boxFilter || (a.boxNumber && a.boxNumber.trim() === boxFilter);
+            const matchesBoxFilter = !boxFilter || (a.boxNumber && String(a.boxNumber).trim() === boxFilter);
 
             // --- DEFAULT VISIBILITY ---
             let matchesDefaultVisibility = true;
@@ -1495,17 +1501,18 @@ export default function InventoryPage() {
 
     // Helper: Apply country filter to assets (same logic as filteredAssets)
     const applyCountryFilter = (assetList) => {
-        if (!assetList) return [];
+        if (!assetList || !Array.isArray(assetList)) return [];
         if (countryFilter === 'Todos') return assetList;
         return assetList.filter(a => {
+            if (!a) return false;
             if (a.country) {
-                const c1 = a.country.toLowerCase();
-                const c2 = countryFilter.toLowerCase();
+                const c1 = String(a.country).toLowerCase();
+                const c2 = String(countryFilter || '').toLowerCase();
                 return c1.includes(c2) || c2.includes(c1);
-            } else if (a.notes && a.notes.includes(countryFilter)) {
-                return true; // Fallback: check notes if country was imported there
+            } else if (a.notes && String(a.notes).includes(countryFilter)) {
+                return true;
             } else {
-                return false; // Unknown country -> hide
+                return false;
             }
         });
     };
