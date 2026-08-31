@@ -431,11 +431,14 @@ export default function WarehousePage() {
             if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
             return !!a.locationId;
         });
-        const enStock = filtered.filter(a => ['Disponible', 'Nuevo', 'En Stock', 'Recuperado'].includes(a.status)).length;
-        const asignado = filtered.filter(a => a.status === 'Asignado').length;
-        const mantenimiento = filtered.filter(a => ['Mantenimiento', 'Dañado'].includes(a.status)).length;
+        const nuevos = filtered.filter(a => (a.status || '').toUpperCase() === 'NUEVO').length;
+        const eol = filtered.filter(a => {
+            const s = (a.status || '').toUpperCase();
+            return s.includes('DAÑADO') || s.includes('MANTENIMIENTO') || s.includes('REPARACION') || s.includes('EOL');
+        }).length;
         const actualTotal = filtered.length;
-        return { enStock, asignado, mantenimiento, total: actualTotal || 1, actualTotal };
+        const reutilizados = actualTotal - nuevos - eol;
+        return { nuevos, reutilizados, eol, total: actualTotal || 1, actualTotal };
     }, [assets, countryFilter]);
 
     const targetLocationsGrouped = useMemo(() => {
@@ -1855,8 +1858,8 @@ export default function WarehousePage() {
 
     // Donut chart angles calculation
     const total = statusCounts.total;
-    const percentEnStock = (statusCounts.enStock / total) * 100;
-    const percentAsignado = (statusCounts.asignado / total) * 100;
+    const percentNuevos = (statusCounts.nuevos / total) * 100;
+    const percentReutilizados = (statusCounts.reutilizados / total) * 100;
 
     // Helper to render customized text lines in grid cells
     const renderCellContent = (loc, assetCount, locationAssets) => {
@@ -2010,13 +2013,13 @@ export default function WarehousePage() {
                         <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--background-secondary)', borderRadius: '8px', padding: '0.5rem 0.75rem', alignItems: 'center' }}>
                             <div style={{
                                 width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
-                                background: `conic-gradient(#2563eb 0% ${percentEnStock}%, #84cc16 ${percentEnStock}% ${percentEnStock + percentAsignado}%, #f97316 ${percentEnStock + percentAsignado}% 100%)`,
+                                background: `conic-gradient(#10b981 0% ${percentNuevos}%, #3b82f6 ${percentNuevos}% ${percentNuevos + percentReutilizados}%, #f97316 ${percentNuevos + percentReutilizados}% 100%)`,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 8px var(--background-secondary)'
                             }} />
                             <div style={{ display: 'flex', gap: '0.6rem', flex: 1, flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#2563eb' }}>● {statusCounts.enStock} Stock</span>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#84cc16' }}>● {statusCounts.asignado} Asig.</span>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f97316' }}>● {statusCounts.mantenimiento} Mant.</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#10b981' }}>● {statusCounts.nuevos} Nuevos</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#3b82f6' }}>● {statusCounts.reutilizados} Reutilizados</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f97316' }}>● {statusCounts.eol} EOL/Dañados</span>
                             </div>
                             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{statusCounts.actualTotal}</span>
                         </div>
