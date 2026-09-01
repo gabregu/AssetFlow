@@ -2385,8 +2385,8 @@ export default function WarehousePage() {
 
                         if (locationAssets.length > 0 && !asset) {
                             return (
-                                <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
-                                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', position: 'sticky', top: '-1.25rem', backgroundColor: 'var(--surface)', zIndex: 10 }}>
+                                <Card style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: 'calc(100vh - 160px)', minHeight: '400px' }}>
+                                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div>
                                                 <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Equipos en Ubicación</span>
@@ -2424,19 +2424,29 @@ export default function WarehousePage() {
                                         </div>
                                     </div>
                                     
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingRight: '4px', maxHeight: 'calc(100vh - 310px)' }}>
                                         {locationAssets.map(a => (
                                             <div 
                                                 key={a.id} 
                                                 onClick={() => setSelectedAssetId(a.id)}
-                                                style={{ fontSize: '0.8rem', padding: '0.6rem', background: 'var(--background-secondary)', borderRadius: '6px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                                                style={{ 
+                                                    fontSize: '0.8rem', 
+                                                    padding: '0.45rem 0.65rem', 
+                                                    background: 'var(--background-secondary)', 
+                                                    borderRadius: '6px', 
+                                                    border: '1px solid var(--border)', 
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s ease'
+                                                }}
                                             >
-                                                <div style={{ fontWeight: 700, marginBottom: '2px' }}>{a.name}</div>
-                                                {a.hardwareSpec && <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{a.hardwareSpec}</div>}
+                                                <div style={{ fontWeight: 700, marginBottom: '1px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span>{a.name}</span>
+                                                </div>
+                                                {a.hardwareSpec && <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginBottom: '3px' }}>{a.hardwareSpec}</div>}
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)' }}>{a.serial || 'N/A'}</span>
+                                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)', fontSize: '0.75rem' }}>{a.serial || 'N/A'}</span>
                                                     <span style={{ 
-                                                        padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
+                                                        padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
                                                         backgroundColor: ['Mantenimiento', 'Dañado'].includes(a.status) ? '#fff7ed' : (a.status === 'Asignado' ? '#f0fdf4' : '#eff6ff'),
                                                         color: ['Mantenimiento', 'Dañado'].includes(a.status) ? '#ea580c' : (a.status === 'Asignado' ? '#16a34a' : '#2563eb'),
                                                         border: '1px solid currentColor'
@@ -2448,44 +2458,46 @@ export default function WarehousePage() {
                                         ))}
                                     </div>
                                     
-                                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: 'auto' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                icon={Edit3} 
+                                                onClick={() => {
+                                                    setEditLoc({
+                                                        aisle: selectedLocation.aisle,
+                                                        section: selectedLocation.section,
+                                                        level: selectedLocation.level
+                                                    });
+                                                    setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
+                                                    setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
+                                                    setIsEditLocationModalOpen(true);
+                                                }}
+                                                style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
+                                            >Editar Ubicación</Button>
+                                            <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                icon={Printer} 
+                                                onClick={() => handlePrintLocationLabel(selectedLocation)}
+                                                style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
+                                            >
+                                                {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta'}
+                                            </Button>
+                                        </div>
                                         <Button 
-                                            variant="outline" 
+                                            variant="primary" 
                                             size="sm" 
-                                            icon={Edit3} 
+                                            icon={Navigation} 
                                             onClick={() => {
-                                                setEditLoc({
-                                                    aisle: selectedLocation.aisle,
-                                                    section: selectedLocation.section,
-                                                    level: selectedLocation.level
-                                                });
-                                                setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
-                                                setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
-                                                setIsEditLocationModalOpen(true);
+                                                setMovingAllSourceLocation(selectedLocation);
+                                                setTargetAllLocationId('');
+                                                setIsMoveAllModalOpen(true);
                                             }}
-                                            style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
-                                        >Editar</Button>
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            icon={Printer} 
-                                            onClick={() => handlePrintLocationLabel(selectedLocation)}
-                                            style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
-                                        >
-                                            {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta'}
-                                        </Button>
+                                            style={{ height: '32px', fontSize: '0.75rem', width: '100%' }}
+                                        >Mover Todos los Activos ({locationAssets.length})</Button>
                                     </div>
-                                    <Button 
-                                        variant="primary" 
-                                        size="sm" 
-                                        icon={Navigation} 
-                                        onClick={() => {
-                                            setMovingAllSourceLocation(selectedLocation);
-                                            setTargetAllLocationId('');
-                                            setIsMoveAllModalOpen(true);
-                                        }}
-                                        style={{ height: '32px', fontSize: '0.75rem', marginTop: '0.25rem', width: '100%' }}
-                                    >Mover Todos los Activos ({locationAssets.length})</Button>
                                 </Card>
                             );
                         }
