@@ -625,7 +625,8 @@ export default function MyTicketsPage() {
                 email: parentTicket.logistics?.email || '',
                 address: ticket.displayAddress || parentTicket.logistics?.address || '',
                 deliveryPerson: caseData.deliveryPerson || parentTicket.logistics?.deliveryPerson || '',
-                type: (caseData.method || parentTicket.logistics?.method) === 'Recupero' ? 'Recupero' : 'Entrega'
+                type: (caseData.method || parentTicket.logistics?.method) === 'Recupero' ? 'Recupero' : 'Entrega',
+                trackingNumber: caseData.tracking_number || caseData.trackingNumber || parentTicket.logistics?.trackingNumber || parentTicket.logistics?.tracking_number || ''
             }
         };
 

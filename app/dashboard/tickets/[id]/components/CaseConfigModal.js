@@ -166,7 +166,8 @@ export default function CaseConfigModal({
                 address: currentTask.address || ticket.logistics?.address || '',
                 deliveryPerson: currentTask.deliveryPerson || currentTask.delivery_person || '',
                 type: currentTask.method === 'Recupero' ? 'Recupero' : 'Entrega',
-                deliveryInfo: currentTask.deliveryInfo || currentTask.delivery_info || null
+                deliveryInfo: currentTask.deliveryInfo || currentTask.delivery_info || null,
+                trackingNumber: currentTask.tracking_number || currentTask.trackingNumber || ticket.logistics?.trackingNumber || ticket.logistics?.tracking_number || ''
             },
             caseNumber: currentTask.caseNumber
         };

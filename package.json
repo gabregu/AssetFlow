@@ -13,7 +13,7 @@
     "@react-google-maps/api": "^2.20.8",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/supabase-js": "^2.91.0",
-    "dotenv": "^17.2.4",
+    "dotenv": "^17.4.2",
     "html5-qrcode": "^2.3.8",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.0.0",

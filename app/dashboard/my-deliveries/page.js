@@ -1614,7 +1614,11 @@ export default function MyDeliveriesPage() {
                                         caseNumber: delivery.caseNumber || delivery.case_number || (delivery.taskId ? delivery.displayId : ''),
                                         associatedAssets,
                                         accessories: mappedAccessories,
-                                        yubikeys: mappedYubikeys
+                                        yubikeys: mappedYubikeys,
+                                        logistics: {
+                                            ...(delivery.logistics || {}),
+                                            trackingNumber: delivery.trackingNumber || delivery.tracking_number || delivery.logistics?.trackingNumber || delivery.logistics?.tracking_number || ''
+                                        }
                                     };
 
                                     const deliveredAtTime = (() => {
@@ -1707,7 +1711,11 @@ export default function MyDeliveriesPage() {
                                         caseNumber: delivery.caseNumber || delivery.case_number || (delivery.taskId ? delivery.displayId : ''),
                                         associatedAssets,
                                         accessories: mappedAccessories,
-                                        yubikeys: mappedYubikeys
+                                        yubikeys: mappedYubikeys,
+                                        logistics: {
+                                            ...(delivery.logistics || {}),
+                                            trackingNumber: delivery.trackingNumber || delivery.tracking_number || delivery.logistics?.trackingNumber || delivery.logistics?.tracking_number || ''
+                                        }
                                     };
 
                                     const deliveredAtTime = (() => {
