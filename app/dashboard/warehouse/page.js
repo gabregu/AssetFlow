@@ -1678,7 +1678,10 @@ export default function WarehousePage() {
     };
 
     const handlePrintRepisaLabel = (aisleName) => {
-        const displayName = getDisplayAisle(aisleName); // e.g. "Repisa L"
+        // displayName = "Repisa L", letter = "L"
+        const displayName = getDisplayAisle(aisleName);
+        const parts = displayName.split(' ');
+        const letter = parts.slice(1).join(' ') || displayName; // everything after "Repisa"
         try {
             let iframe = document.getElementById('print-iframe');
             if (!iframe) {
@@ -1698,39 +1701,68 @@ export default function WarehousePage() {
                             @page { size: 50mm 25mm; margin: 0; }
                             * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
                             html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
-                            .label-container {
+                            .label-outer {
                                 width: 50mm;
                                 height: 25mm;
+                                padding: 2mm;
+                                display: flex;
+                                align-items: stretch;
+                            }
+                            .label-inner {
+                                flex: 1;
+                                background: #c7d2fe;
+                                border-radius: 3mm;
+                                display: flex;
+                                flex-direction: row;
+                                align-items: center;
+                                justify-content: space-between;
+                                padding: 2mm 3mm 2mm 3.5mm;
+                                font-family: Arial, sans-serif;
+                            }
+                            .left-block {
                                 display: flex;
                                 flex-direction: column;
-                                align-items: center;
                                 justify-content: center;
-                                font-family: sans-serif;
-                                gap: 1mm;
+                                gap: 0.8mm;
                             }
-                            .repisa-name {
-                                font-size: 28pt;
+                            .repisa-word {
+                                font-size: 15pt;
                                 font-weight: 900;
-                                color: #000;
+                                color: #0f172a;
                                 text-transform: uppercase;
-                                letter-spacing: 0.02em;
                                 line-height: 1;
-                                text-align: center;
+                                letter-spacing: 0.01em;
                             }
-                            .repisa-sub {
-                                font-size: 6pt;
+                            .sub-line {
+                                font-size: 5pt;
                                 font-weight: 700;
-                                color: #64748b;
+                                color: #1e3a8a;
                                 text-transform: uppercase;
-                                letter-spacing: 0.15em;
-                                text-align: center;
+                                letter-spacing: 0.04em;
+                                line-height: 1.4;
+                            }
+                            .letter-block {
+                                font-size: 38pt;
+                                font-weight: 900;
+                                color: #0f172a;
+                                line-height: 1;
+                                letter-spacing: -0.02em;
+                                display: flex;
+                                align-items: center;
+                                justify-content: flex-end;
+                                padding-right: 1mm;
                             }
                         </style>
                     </head>
                     <body>
-                        <div class="label-container">
-                            <div class="repisa-name">${displayName}</div>
-                            <div class="repisa-sub">AssetFlow &mdash; Depósito</div>
+                        <div class="label-outer">
+                            <div class="label-inner">
+                                <div class="left-block">
+                                    <div class="repisa-word">REPISA</div>
+                                    <div class="sub-line">Asset Flow<br>Mapeo Deposito</div>
+                                </div>
+                                <div class="letter-block">${letter}</div>
+                            </div>
                         </div>
                     </body>
                 </html>
