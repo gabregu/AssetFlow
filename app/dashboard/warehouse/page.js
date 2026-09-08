@@ -1591,6 +1591,92 @@ export default function WarehousePage() {
         }
     }, [isCameraScannerOpen]);
 
+    const handlePrintAssetLabel = async (asset) => {
+        if (!asset) return;
+        try {
+            const qrDataUrl = await QRCode.toDataURL(asset.serial, {
+                margin: 0,
+                width: 200,
+                color: { dark: '#000000', light: '#ffffff' }
+            });
+
+            const canvas = document.createElement('canvas');
+            JsBarcode(canvas, asset.serial, {
+                format: "CODE128",
+                width: 3.0,
+                height: 60,
+                displayValue: false,
+                margin: 10
+            });
+            const barcodeDataUrl = canvas.toDataURL("image/png");
+
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            const content = `
+                <html>
+                    <head>
+                        <style>
+                            @page { size: 50mm 25mm; margin: 0; }
+                            * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+                            html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
+                            .label-container { width: 50mm; height: 25mm; padding: 1.5mm 2mm; display: flex; flex-direction: column; font-family: sans-serif; }
+                            .top-section { display: flex; justify-content: space-between; margin-bottom: 0.5mm; }
+                            .top-left { flex: 1; padding-right: 1mm; }
+                            .top-right { text-align: right; }
+                            .type-label { font-size: 8pt; font-weight: 900; text-transform: uppercase; line-height: 1; margin-bottom: 0.5mm; }
+                            .asset-name { font-size: 5.5pt; line-height: 1.1; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 0.5mm; }
+                            .status-badge { font-size: 5pt; font-weight: 800; text-transform: uppercase; background: #000; color: #fff; padding: 0.2mm 0.8mm; border-radius: 0.4mm; display: inline-block; }
+                            .loc-region { font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5mm; }
+                            .footer-id { font-size: 5pt; font-weight: 700; line-height: 1.2; }
+                            .footer-val { font-size: 6pt; font-weight: 900; }
+                            .barcode-section { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+                            .barcode-img { width: 100%; height: 9mm; object-fit: fill; }
+                            .serial-text { font-size: 8pt; font-weight: 900; margin: 0; margin-top: 0.5mm; letter-spacing: 0.5mm; text-align: center; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="label-container">
+                            <div class="top-section">
+                                <div class="top-left">
+                                    <div class="type-label">${asset.type || 'Laptop'}</div>
+                                    <div class="asset-name">${asset.name || ''}</div>
+                                    <span class="status-badge">${asset.status || ''}</span>
+                                </div>
+                                <div class="top-right">
+                                    <div class="loc-region">${asset.country || 'ARGENTINA'}</div>
+                                    <div class="footer-id">${asset.locationId || '-'}</div>
+                                    <div class="footer-val">AST-${asset.id?.toString().slice(-4) || 'XXXX'}</div>
+                                </div>
+                            </div>
+                            <div class="barcode-section">
+                                <img class="barcode-img" src="${barcodeDataUrl}" />
+                                <p class="serial-text">${asset.serial}</p>
+                            </div>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+            setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 500);
+        } catch (err) {
+            console.error('Error printing asset label:', err);
+            alert('Error al imprimir la etiqueta del equipo');
+        }
+    };
+
     const handlePrintLocationLabel = async (location) => {
         try {
             if (isLocCaja(location.aisle) || (location.id && location.id.toUpperCase().startsWith('CAJA-'))) {
@@ -2503,7 +2589,7 @@ export default function WarehousePage() {
                                                 onClick={() => handlePrintLocationLabel(selectedLocation)}
                                                 style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
                                             >
-                                                {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta'}
+                                                {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta de posición'}
                                             </Button>
                                         </div>
                                         <Button 
@@ -2590,8 +2676,19 @@ export default function WarehousePage() {
                                         onClick={() => handlePrintLocationLabel(selectedLocation)}
                                         style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem' }}
                                     >
-                                        {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta'}
+                                        {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta de posición'}
                                     </Button>
+                                    {asset && (
+                                        <Button 
+                                            variant="outline" 
+                                            size="sm" 
+                                            icon={Printer} 
+                                            onClick={() => handlePrintAssetLabel(asset)}
+                                            style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem' }}
+                                        >
+                                            Etiqueta del laptop
+                                        </Button>
+                                    )}
                                 </div>
                                 {asset && (
                                     <Button 
