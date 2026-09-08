@@ -61,6 +61,19 @@ const isLocH = (aisleName) => {
 
 const isLocCaja = (aisle) => aisle?.toUpperCase().startsWith('CAJA');
 
+// Map countryFilter values like 'SFDC-Argentina' to the real country name used in warehouse_locations
+const sanitizeCountryForLocation = (countryFilter) => {
+    const SFDC_TO_COUNTRY = {
+        'SFDC-Argentina': 'Argentina',
+        'SFDC-Chile': 'Chile',
+        'SFDC-Colombia': 'Colombia',
+        'SFDC-Costa Rica': 'Costa Rica',
+        'SFDC-Uruguay': 'Uruguay',
+    };
+    if (!countryFilter || countryFilter === 'Todos') return 'Argentina';
+    return SFDC_TO_COUNTRY[countryFilter] || countryFilter;
+};
+
 const getDisplayAisle = (aisleName) => {
     if (isLocDep(aisleName)) {
         // DEP-A → Repisa A
@@ -767,14 +780,15 @@ export default function WarehousePage() {
         if (!loc) {
             // Auto-mock DEP location if it matches format DEP-X-Y-Z
             const parts = locationId.split('-');
+            const mockCountry = sanitizeCountryForLocation(countryFilter);
             if (locationId.startsWith('DEP-') && parts.length === 4) {
-                loc = { id: locationId, aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], country: countryFilter === 'Todos' ? 'AR' : countryFilter };
+                loc = { id: locationId, aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], country: mockCountry };
             } else if (locationId.toUpperCase().startsWith('CAJA-')) {
                 const cajaNum = locationId.toUpperCase().replace(/^CAJA-/, '');
-                loc = { id: locationId.toUpperCase(), aisle: 'CAJA', section: '-', level: cajaNum, country: countryFilter === 'Todos' ? 'AR' : countryFilter };
+                loc = { id: locationId.toUpperCase(), aisle: 'CAJA', section: '-', level: cajaNum, country: mockCountry };
             } else if (locationId.toUpperCase().startsWith('REV-')) {
                 const revNum = locationId.toUpperCase().replace(/^REV-/, '');
-                loc = { id: locationId.toUpperCase(), aisle: 'REV', section: '-', level: revNum, country: countryFilter === 'Todos' ? 'AR' : countryFilter };
+                loc = { id: locationId.toUpperCase(), aisle: 'REV', section: '-', level: revNum, country: mockCountry };
             } else {
                 alert("Ubicación no encontrada: " + locationId);
                 return;
@@ -877,6 +891,7 @@ export default function WarehousePage() {
     const confirmMapping = async (assetId, locationId) => {
         let finalLocationId = locationId;
         const isDep = locationId.startsWith('DEP-');
+        const locationCountry = sanitizeCountryForLocation(countryFilter);
 
         if (isDep) {
             const targetAssets = assets.filter(a => a.locationId === locationId);
@@ -905,7 +920,8 @@ export default function WarehousePage() {
                             if (doMove) {
                                 finalLocationId = candidateId;
                                 if (!warehouseLocations.some(l => l.id === candidateId)) {
-                                    await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: candidateId, country: countryFilter });
+                                    const { error: addErr } = await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: candidateId, country: locationCountry });
+                                    if (addErr) { alert('Error al crear ubicación: ' + addErr.message); return; }
                                 }
                             } else {
                                 return; // Cancel mapping completely
@@ -921,7 +937,8 @@ export default function WarehousePage() {
         if (finalLocationId.startsWith('DEP-') && !warehouseLocations.some(l => l.id === finalLocationId)) {
             const parts = finalLocationId.split('-');
             if (parts.length === 4) {
-                await addWarehouseLocation({ aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], id: finalLocationId, country: countryFilter });
+                const { error: addErr } = await addWarehouseLocation({ aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], id: finalLocationId, country: locationCountry });
+                if (addErr) { alert('Error al crear ubicación en depósito: ' + addErr.message); return; }
             }
         }
 
@@ -942,6 +959,7 @@ export default function WarehousePage() {
 
         let finalTargetId = targetLocationId;
         const targetAssets = assets.filter(a => a.locationId === targetLocationId);
+        const locationCountry = sanitizeCountryForLocation(countryFilter);
         
         try {
             if (targetAssets.length > 0) {
@@ -971,7 +989,8 @@ export default function WarehousePage() {
                                 if (doMove) {
                                     finalTargetId = candidateId;
                                     if (!warehouseLocations.some(l => l.id === candidateId)) {
-                                        await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: candidateId, country: countryFilter });
+                                        const { error: addErr } = await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: candidateId, country: locationCountry });
+                                        if (addErr) { alert('Error al crear ubicación: ' + addErr.message); return; }
                                     }
                                 } else {
                                     return; // Cancel mapping completely
@@ -995,7 +1014,8 @@ export default function WarehousePage() {
             if (finalTargetId.startsWith('DEP-') && !warehouseLocations.some(l => l.id === finalTargetId)) {
                 const parts = finalTargetId.split('-');
                 if (parts.length === 4) {
-                    await addWarehouseLocation({ aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], id: finalTargetId, country: countryFilter });
+                    const { error: addErr } = await addWarehouseLocation({ aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], id: finalTargetId, country: locationCountry });
+                    if (addErr) { alert('Error al crear ubicación en depósito: ' + addErr.message); return; }
                 }
             }
 
