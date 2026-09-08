@@ -1677,6 +1677,76 @@ export default function WarehousePage() {
         }
     };
 
+    const handlePrintRepisaLabel = (aisleName) => {
+        const displayName = getDisplayAisle(aisleName); // e.g. "Repisa L"
+        try {
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            const content = `
+                <html>
+                    <head>
+                        <style>
+                            @page { size: 50mm 25mm; margin: 0; }
+                            * { box-sizing: border-box; -webkit-print-color-adjust: exact; }
+                            html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
+                            .label-container {
+                                width: 50mm;
+                                height: 25mm;
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                font-family: sans-serif;
+                                gap: 1mm;
+                            }
+                            .repisa-name {
+                                font-size: 28pt;
+                                font-weight: 900;
+                                color: #000;
+                                text-transform: uppercase;
+                                letter-spacing: 0.02em;
+                                line-height: 1;
+                                text-align: center;
+                            }
+                            .repisa-sub {
+                                font-size: 6pt;
+                                font-weight: 700;
+                                color: #64748b;
+                                text-transform: uppercase;
+                                letter-spacing: 0.15em;
+                                text-align: center;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="label-container">
+                            <div class="repisa-name">${displayName}</div>
+                            <div class="repisa-sub">AssetFlow &mdash; Depósito</div>
+                        </div>
+                    </body>
+                </html>
+            `;
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+            setTimeout(() => { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 300);
+        } catch (err) {
+            console.error('Error printing repisa label:', err);
+            alert('Error al imprimir etiqueta de repisa');
+        }
+    };
+
     const handlePrintLocationLabel = async (location) => {
         try {
             if (isLocCaja(location.aisle) || (location.id && location.id.toUpperCase().startsWith('CAJA-'))) {
@@ -1850,6 +1920,17 @@ export default function WarehousePage() {
                                     style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.5, color: '#ef4444' }}
                                 />
                             </div>
+                        )}
+                        {/* Botón imprimir nombre de repisa - visible para admin y Administrativo */}
+                        {(currentUser?.role === 'admin' || currentUser?.role === 'Administrativo' || currentUser?.role === 'Gerencial') && isDepZone && (
+                            <Button
+                                variant="ghost"
+                                size="xs"
+                                icon={Printer}
+                                onClick={(e) => { e.stopPropagation(); handlePrintRepisaLabel(aisle); }}
+                                title={`Imprimir etiqueta: ${getDisplayAisle(aisle)}`}
+                                style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.6, color: '#0d9488' }}
+                            />
                         )}
                         {!groupByBrand && totalAislesCount > 1 && (
                             <div style={{ display: 'flex', gap: '1px', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '4px', padding: '1px' }} onClick={e => e.stopPropagation()}>
