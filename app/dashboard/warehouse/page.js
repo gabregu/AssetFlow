@@ -2587,7 +2587,7 @@ export default function WarehousePage() {
                                                 size="sm" 
                                                 icon={Printer} 
                                                 onClick={() => handlePrintLocationLabel(selectedLocation)}
-                                                style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
+                                                style={{ flex: 1, height: '32px', fontSize: '0.75rem', color: '#0d9488', borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,0.07)' }}
                                             >
                                                 {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta de posición'}
                                             </Button>
@@ -2674,7 +2674,7 @@ export default function WarehousePage() {
                                         size="sm" 
                                         icon={Printer} 
                                         onClick={() => handlePrintLocationLabel(selectedLocation)}
-                                        style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem' }}
+                                        style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem', color: '#0d9488', borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,0.07)' }}
                                     >
                                         {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta de posición'}
                                     </Button>
@@ -2684,7 +2684,7 @@ export default function WarehousePage() {
                                             size="sm" 
                                             icon={Printer} 
                                             onClick={() => handlePrintAssetLabel(asset)}
-                                            style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem' }}
+                                            style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem', color: '#7c3aed', borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.07)' }}
                                         >
                                             Etiqueta del laptop
                                         </Button>
