@@ -18,12 +18,12 @@ export function Sidebar({ isOpen, onClose }) {
     const isSfdcClient = countryFilter && countryFilter.toLowerCase().includes('sfdc');
 
     const menuItems = [
-        { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'Administrativo', 'Gerencial'] },
-        { name: 'Servicios', icon: Ticket, path: '/dashboard/tickets', roles: ['admin', 'Administrativo', 'Gerencial'] },
+        { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'Administrativo', 'Gerencial', 'user'] },
+        { name: 'Servicios', icon: Ticket, path: '/dashboard/tickets', roles: ['admin', 'Administrativo', 'Gerencial', 'user'] },
         { name: 'Tráfico Logística', icon: Activity, path: '/dashboard/logistics', roles: ['admin', 'Administrativo', 'Gerencial'] },
         { name: 'Envíos', icon: Truck, path: '/dashboard/deliveries', roles: ['admin', 'Administrativo', 'Gerencial'] },
-        { name: 'Histórico', icon: History, path: '/dashboard/history', roles: ['admin', 'Administrativo', 'Gerencial'] },
-        { name: 'Inventario', icon: Package, path: '/dashboard/inventory', roles: ['admin', 'Administrativo', 'Gerencial'] },
+        { name: 'Histórico', icon: History, path: '/dashboard/history', roles: ['admin', 'Administrativo', 'Gerencial', 'user'] },
+        { name: 'Inventario', icon: Package, path: '/dashboard/inventory', roles: ['admin', 'Administrativo', 'Gerencial', 'user'] },
         { name: 'Mapeo Depósito', icon: Map, path: '/dashboard/warehouse', roles: ['admin', 'Administrativo', 'Gerencial'] },
     ];
 
@@ -34,13 +34,14 @@ export function Sidebar({ isOpen, onClose }) {
     ];
 
     const reportItems = [
-        { name: 'Vista General', icon: FileText, path: '/dashboard/reports', roles: ['admin', 'Administrativo', 'Gerencial'] },
+        { name: 'Vista General', icon: FileText, path: '/dashboard/reports', roles: ['admin', 'Administrativo', 'Gerencial', 'user'] },
     ];
 
     const financialItems = [
         { name: 'Facturación', icon: DollarSign, path: '/dashboard/billing', roles: ['admin', 'Gerencial'] },
         { name: 'Pago a Conductores', icon: Banknote, path: '/dashboard/driver-payments', roles: ['admin', 'Gerencial'] },
     ];
+
 
     const filterByRole = (items) => items.filter(item =>
         !item.roles || (currentUser && item.roles.includes(currentUser.role))
