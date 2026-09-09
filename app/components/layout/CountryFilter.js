@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStore } from '../../../lib/store';
 import { Globe, ChevronDown, Building2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -16,6 +16,15 @@ export const CountryFilter = () => {
     const countries = hasRestriction
         ? entities.filter(e => allowedClients.includes(e.name)).map(e => e.name)
         : entities.map(e => e.name);
+
+    // Auto-correct countryFilter if it's not in the allowed list
+    // e.g. Juan has countryFilter='SFDC-Argentina' but only has access to 'PRUEBAS'
+    useEffect(() => {
+        if (countries.length > 0 && !countries.includes(countryFilter)) {
+            setCountryFilter(countries[0]);
+        }
+    }, [countries, countryFilter, setCountryFilter]);
+
 
     return (
         <div style={{ padding: '0 0.5rem', marginBottom: '1.5rem' }}>
