@@ -9,7 +9,8 @@ export default function TicketInfoGrid({
     editedData, 
     setEditedData, 
     editMode, 
-    setEditMode 
+    setEditMode,
+    currentUser
 }) {
     return (
         <div className="grid-mobile-single" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.5rem' }}>
@@ -28,14 +29,16 @@ export default function TicketInfoGrid({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <p style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>{ticket.requester}</p>
                             {ticket.requester && <CopyButton text={ticket.requester} />}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                style={{ padding: '0 4px', height: 'auto', opacity: 0.5 }}
-                                onClick={() => setEditMode(true)}
-                            >
-                                <small style={{ fontSize: '0.7rem' }}>Editar</small>
-                            </Button>
+                            {currentUser?.role !== 'user' && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    style={{ padding: '0 4px', height: 'auto', opacity: 0.5 }}
+                                    onClick={() => setEditMode(true)}
+                                >
+                                    <small style={{ fontSize: '0.7rem' }}>Editar</small>
+                                </Button>
+                            )}
                         </div>
                     )}
                 </div>

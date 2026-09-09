@@ -461,8 +461,12 @@ export function useTicketDetail() {
         const errSpan = document.getElementById('save-error-msg');
         try {
             let statusUpdate = editedData.status;
-            if (editedData.status === 'Pendiente' || editedData.status === 'Pendiente') {
-                statusUpdate = 'En Progreso';
+            if (currentUser?.role !== 'user') {
+                if (editedData.status === 'Pendiente') {
+                    statusUpdate = 'En Progreso';
+                }
+            } else {
+                statusUpdate = ticket.status;
             }
             const dataToUpdate = { ...editedData, status: statusUpdate };
             

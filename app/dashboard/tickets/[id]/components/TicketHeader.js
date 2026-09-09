@@ -24,7 +24,8 @@ export default function TicketHeader({
     validateAddress,
     isLoaded,
     unifiedTasks,
-    handleUnlinkCase
+    handleUnlinkCase,
+    currentUser
 }) {
     const [isSaving, setIsSaving] = React.useState(false);
 
@@ -34,7 +35,7 @@ export default function TicketHeader({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Badge variant="outline">{ticket.id}</Badge>
                     <CopyButton text={ticket.id} />
-                    {editMode || editContact ? (
+                    {editMode ? (
                         <select 
                             className="form-select"
                             style={{ height: '24px', fontSize: '0.75rem', padding: '0 4px' }}
@@ -58,21 +59,24 @@ export default function TicketHeader({
                     {!editMode && !editContact ? (
                         <Button variant="ghost" size="sm" onClick={() => setEditContact(true)}>Editar Información</Button>
                     ) : editContact ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                                setEditedData(ticket);
+                                setEditContact(false);
+                            }}>
+                                Cancelar
+                            </Button>
                             <Button size="sm" icon={Save} disabled={isSaving} onClick={async () => {
                                 setIsSaving(true);
                                 const errSpan = document.getElementById('save-error-msg');
                                 if (errSpan) {
-                                    errSpan.textContent = "1. Iniciando...";
+                                    errSpan.textContent = "Guardando...";
                                     errSpan.style.display = 'block';
                                     errSpan.style.color = 'var(--text-secondary)';
                                 }
                                 
                                 try {
-                                    if (errSpan) errSpan.textContent = "2. Ejecutando handleUpdate...";
                                     const result = await handleUpdate();
-                                    
-                                    if (errSpan) errSpan.textContent = "3. Finalizado handleUpdate.";
                                     setIsSaving(false);
                                     
                                     if (result && result.success) {
@@ -109,7 +113,7 @@ export default function TicketHeader({
                 const casePrefix = caseMatch ? caseMatch[1] : '';
                 const cleanSubject = caseMatch ? (editedData.subject || '').replace(caseMatch[0], '').trim() : (editedData.subject || '');
 
-                return editMode || editContact ? (
+                return editMode ? (
                     <input
                         style={{
                             fontSize: '1.75rem',
@@ -157,8 +161,9 @@ export default function TicketHeader({
                 ticket={ticket}
                 editedData={editedData}
                 setEditedData={setEditedData}
-                editMode={editMode || editContact}
+                editMode={editMode}
                 setEditMode={setEditMode}
+                currentUser={currentUser}
             />
 
             <ContactInfoSection 
@@ -173,6 +178,7 @@ export default function TicketHeader({
                 isLoaded={isLoaded}
                 unifiedTasks={unifiedTasks}
                 handleUnlinkCase={handleUnlinkCase}
+                currentUser={currentUser}
             />
         </Card>
     );

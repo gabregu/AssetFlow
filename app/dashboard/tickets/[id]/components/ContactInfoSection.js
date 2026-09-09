@@ -22,7 +22,8 @@ export default function ContactInfoSection({
     validateAddress,
     isLoaded,
     unifiedTasks,
-    handleUnlinkCase
+    handleUnlinkCase,
+    currentUser
 }) {
     const isEditing = editMode || editContact;
 
@@ -52,7 +53,7 @@ export default function ContactInfoSection({
                                         {ac.subject}
                                     </span>
                                     <CopyButton text={ac.subject} iconSize={11} />
-                                    {ticket.subject && !ticket.subject.includes(`[SFDC-${ac.caseNumber}]`) && handleUnlinkCase && (
+                                    {currentUser?.role !== 'user' && ticket.subject && !ticket.subject.includes(`[SFDC-${ac.caseNumber}]`) && handleUnlinkCase && (
                                         <button 
                                             onClick={() => handleUnlinkCase(ac)}
                                             style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center' }}

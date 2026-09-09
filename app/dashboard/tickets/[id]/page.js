@@ -1,6 +1,9 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/app/components/ui/Button';
 import TicketActionButtons from './components/TicketActionButtons';
 import TicketHeader from './components/TicketHeader';
 import AssociatedCasesCard from './components/AssociatedCasesCard';
@@ -18,6 +21,7 @@ import { getStatusVariant } from '../constants';
 import { FinancialsSummary } from '../../components/billing/FinancialsSummary';
 
 export default function TicketDetailPage() {
+    const router = useRouter();
     const {
         ticket, editedData, setEditedData,
         editMode, setEditMode,
@@ -90,6 +94,43 @@ export default function TicketDetailPage() {
                     updateLogisticsTask={updateLogisticsTask}
                     addLogisticsTask={addLogisticsTask}
                 />
+            ) : currentUser?.role === 'user' ? (
+                /* VISTA CLIENTE (Solo datos de contacto editables + instrucciones y notas) */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+                        <Button variant="secondary" icon={ArrowLeft} onClick={() => router.push('/dashboard/tickets')}>
+                            Volver a la lista
+                        </Button>
+                    </div>
+
+                    {/* Header del ticket — solo contacto editable */}
+                    <TicketHeader 
+                        ticket={ticket}
+                        editedData={editedData}
+                        setEditedData={setEditedData}
+                        editMode={false}
+                        setEditMode={() => {}}
+                        editContact={editContact}
+                        setEditContact={setEditContact}
+                        handleUpdate={handleUpdate}
+                        addressStatus={addressStatus}
+                        setAddressStatus={setAddressStatus}
+                        validateAddress={validateAddress}
+                        isLoaded={isLoaded}
+                        unifiedTasks={unifiedTasks}
+                        handleUnlinkCase={() => {}}
+                        currentUser={currentUser}
+                    />
+
+                    {/* Instrucciones y Notas Especiales — chat interactivo */}
+                    <InstructionsCard
+                        ticket={ticket}
+                        editedData={editedData}
+                        setEditedData={setEditedData}
+                        updateTicket={updateTicket}
+                        currentUser={currentUser}
+                    />
+                </div>
             ) : (
                 /* VISTA ADMINISTRADOR (Completa) */
                 <>
@@ -185,8 +226,8 @@ export default function TicketDetailPage() {
                 </>
             )}
 
-            {/* MODALS (Solo para Administradores — no renderizar para Conductores) */}
-            {currentUser?.role !== 'Conductor' && <CaseConfigModal 
+            {/* MODALS (Solo para Administradores — no renderizar para Conductores ni USER) */}
+            {currentUser?.role !== 'Conductor' && currentUser?.role !== 'user' && <CaseConfigModal 
                 ticket={ticket}
                 editedData={editedData}
                 setEditedData={setEditedData}
@@ -220,7 +261,7 @@ export default function TicketDetailPage() {
                 currentUser={currentUser}
             />}
             
-            {currentUser?.role !== 'Conductor' && <InventorySelectorModal
+            {currentUser?.role !== 'Conductor' && currentUser?.role !== 'user' && <InventorySelectorModal
                 isOpen={isInventorySelectorOpen}
                 onClose={() => {
                     setIsInventorySelectorOpen(false);
