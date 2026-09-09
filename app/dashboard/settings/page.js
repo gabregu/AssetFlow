@@ -97,7 +97,8 @@ export default function SettingsPage() {
         const updates = {
             name: userToEdit.name,
             username: userToEdit.username,
-            allowed_clients: userToEdit.allowed_clients?.length > 0 ? userToEdit.allowed_clients : null
+            // Always save the exact array. [] = no access, null = full access (only for admin/Gerencial set manually)
+            allowed_clients: userToEdit.allowed_clients ?? []
         };
         updateUser(userToEdit.id, updates);
         setIsEditModalOpen(false);
@@ -506,7 +507,7 @@ export default function SettingsPage() {
                                 <div className="form-group">
                                     <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         🔒 Acceso a Clientes
-                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 400 }}>(vacío = acceso total)</span>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 400 }}>(sin tildar = sin acceso)</span>
                                     </label>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.6rem' }}>
                                         {entities.map(entity => (
@@ -596,7 +597,7 @@ export default function SettingsPage() {
                                 <div className="form-group">
                                     <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         🔒 Acceso a Clientes
-                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 400 }}>(vacío = acceso total)</span>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 400 }}>(sin tildar = sin acceso)</span>
                                     </label>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.6rem' }}>
                                         {entities.map(entity => (
@@ -616,7 +617,7 @@ export default function SettingsPage() {
                                             </label>
                                         ))}
                                     </div>
-                                    <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>Si no seleccionás ninguno, el usuario verá todos los clientes.</p>
+                                    <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>Tildá los clientes a los que este usuario puede acceder. Sin ninguno tildado, no verá ningún cliente.</p>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
                                     <Button type="button" variant="secondary" onClick={() => setIsAddUserModalOpen(false)}>Cancelar</Button>

@@ -8,10 +8,11 @@ export const CountryFilter = () => {
     const router = useRouter();
     
     // Filter entities based on user's allowed_clients
-    // null/empty = see all (admin, Gerencial, Administrativo)
-    // array with values = restricted view (role 'user')
+    // null = see all (admin, Gerencial - no restriction assigned)
+    // [] empty array = no access to any client
+    // ['Cliente A', ...] = see only those clients
     const allowedClients = currentUser?.allowed_clients;
-    const hasRestriction = Array.isArray(allowedClients) && allowedClients.length > 0;
+    const hasRestriction = Array.isArray(allowedClients); // null = unrestricted, array (even empty) = restricted
     const countries = hasRestriction
         ? entities.filter(e => allowedClients.includes(e.name)).map(e => e.name)
         : entities.map(e => e.name);
