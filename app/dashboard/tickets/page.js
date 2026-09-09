@@ -1666,7 +1666,7 @@ export default function TicketsPage() {
                     {/* 8) Prioridad */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div className="form-group">
-                            <label className="form-label">Caso SYCOMP (Opcional)</label>
+                            <label className="form-label">Caso (Opcional)</label>
                             <input
                                 className="form-input"
                                 placeholder="Ej: SYC-12345"
