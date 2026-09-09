@@ -16,6 +16,7 @@ import CaseConfigModal from './components/CaseConfigModal';
 import InventorySelectorModal from './components/InventorySelectorModal';
 import InstructionsCard from './components/InstructionsCard';
 import DriverDetailView from './components/DriverDetailView';
+import TicketContentSummaryCard from './components/TicketContentSummaryCard';
 import { useTicketDetail } from './hooks/useTicketDetail';
 import { getStatusVariant } from '../constants';
 import { FinancialsSummary } from '../../components/billing/FinancialsSummary';
@@ -120,6 +121,13 @@ export default function TicketDetailPage() {
                         unifiedTasks={unifiedTasks}
                         handleUnlinkCase={() => {}}
                         currentUser={currentUser}
+                    />
+
+                    {/* Resumen de contenido (Activos a entregar / recuperar) */}
+                    <TicketContentSummaryCard 
+                        ticket={ticket}
+                        unifiedTasks={unifiedTasks}
+                        assets={assets}
                     />
 
                     {/* Instrucciones y Notas Especiales — chat interactivo */}
