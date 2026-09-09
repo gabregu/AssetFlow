@@ -4,9 +4,17 @@ import { Globe, ChevronDown, Building2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export const CountryFilter = () => {
-    const { countryFilter, setCountryFilter, entities = [] } = useStore();
+    const { countryFilter, setCountryFilter, entities = [], currentUser } = useStore();
     const router = useRouter();
-    const countries = entities.map(e => e.name);
+    
+    // Filter entities based on user's allowed_clients
+    // null/empty = see all (admin, Gerencial, Administrativo)
+    // array with values = restricted view (role 'user')
+    const allowedClients = currentUser?.allowed_clients;
+    const hasRestriction = Array.isArray(allowedClients) && allowedClients.length > 0;
+    const countries = hasRestriction
+        ? entities.filter(e => allowedClients.includes(e.name)).map(e => e.name)
+        : entities.map(e => e.name);
 
     return (
         <div style={{ padding: '0 0.5rem', marginBottom: '1.5rem' }}>

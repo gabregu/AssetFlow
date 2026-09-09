@@ -29,7 +29,7 @@ export default function SettingsPage() {
     
     // Add User State
     const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-    const [newUserForm, setNewUserForm] = useState({ name: '', username: '', email: '', password: '', role: 'Administrativo' });
+    const [newUserForm, setNewUserForm] = useState({ name: '', username: '', email: '', password: '', role: 'user', allowed_clients: [] });
     const [isAddingUser, setIsAddingUser] = useState(false);
 
     const [newEntityName, setNewEntityName] = useState('');
@@ -61,18 +61,22 @@ export default function SettingsPage() {
             // 2. Wait for the database trigger to create the row in the users table
             await new Promise(r => setTimeout(r, 1500));
 
-            // 3. Update the role of the newly created user using the admin's primary client
+            // 3. Update the role and allowed_clients of the newly created user
+            const updatePayload = { role: newUserForm.role };
+            if (newUserForm.role === 'user' && newUserForm.allowed_clients.length > 0) {
+                updatePayload.allowed_clients = newUserForm.allowed_clients;
+            }
             const { error: updateError } = await supabase
                 .from('users')
-                .update({ role: newUserForm.role })
+                .update(updatePayload)
                 .eq('email', newUserForm.email.toLowerCase().trim());
 
             if (updateError) throw updateError;
 
             alert('Usuario creado y aprobado exitosamente.');
             setIsAddUserModalOpen(false);
-            setNewUserForm({ name: '', username: '', email: '', password: '', role: 'Administrativo' });
-            refreshData(); // Fetch fresh user list
+            setNewUserForm({ name: '', username: '', email: '', password: '', role: 'user', allowed_clients: [] });
+            refreshData();
         } catch (error) {
             console.error("Error adding user:", error);
             alert("Error al crear usuario: " + error.message);
@@ -82,7 +86,7 @@ export default function SettingsPage() {
     };
 
     const handleEditClick = (user) => {
-        setUserToEdit({ ...user, password: '' });
+        setUserToEdit({ ...user, password: '', allowed_clients: user.allowed_clients || [] });
         setIsEditModalOpen(true);
     };
 
@@ -92,7 +96,8 @@ export default function SettingsPage() {
 
         const updates = {
             name: userToEdit.name,
-            username: userToEdit.username
+            username: userToEdit.username,
+            allowed_clients: userToEdit.allowed_clients?.length > 0 ? userToEdit.allowed_clients : null
         };
         updateUser(userToEdit.id, updates);
         setIsEditModalOpen(false);
@@ -308,7 +313,7 @@ export default function SettingsPage() {
                                     }}>
                                         <div>
                                             <p style={{ fontWeight: 600, margin: 0, fontSize: '0.9rem' }}>{u.name}</p>
-                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '4px' }}>
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
                                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>@{u.username}</span>
                                                 {u.username === 'admin' ? (
                                                     <span style={{
@@ -343,6 +348,12 @@ export default function SettingsPage() {
                                                             <option key={r} value={r} style={{ color: 'black' }}>{r.toUpperCase()}</option>
                                                         ))}
                                                     </select>
+                                                )}
+                                                {/* Clientes permitidos badges */}
+                                                {Array.isArray(u.allowed_clients) && u.allowed_clients.length > 0 && (
+                                                    <span style={{ fontSize: '0.65rem', color: '#7c3aed', background: 'rgba(124,58,237,0.1)', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                                        🔒 {u.allowed_clients.length} cliente{u.allowed_clients.length > 1 ? 's' : ''}
+                                                    </span>
                                                 )}
                                             </div>
                                         </div>
@@ -481,7 +492,7 @@ export default function SettingsPage() {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         zIndex: 1000, backdropFilter: 'blur(4px)'
                     }}>
-                        <Card title="Editar Usuario" style={{ width: '400px', margin: '2rem' }}>
+                        <Card title="Editar Usuario" style={{ width: '440px', margin: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
                             <form onSubmit={handleUpdateUser}>
                                 <div className="form-group">
                                     <label className="form-label">Nombre Completo</label>
@@ -490,6 +501,36 @@ export default function SettingsPage() {
                                 <div className="form-group">
                                     <label className="form-label">Usuario</label>
                                     <input className="form-input" required value={userToEdit.username} onChange={e => setUserToEdit({ ...userToEdit, username: e.target.value })} />
+                                </div>
+                                {/* Clientes permitidos */}
+                                <div className="form-group">
+                                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        🔒 Acceso a Clientes
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 400 }}>(vacío = acceso total)</span>
+                                    </label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '160px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.6rem' }}>
+                                        {entities.map(entity => (
+                                            <label key={entity.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={(userToEdit.allowed_clients || []).includes(entity.name)}
+                                                    onChange={(e) => {
+                                                        const current = userToEdit.allowed_clients || [];
+                                                        const updated = e.target.checked
+                                                            ? [...current, entity.name]
+                                                            : current.filter(c => c !== entity.name);
+                                                        setUserToEdit({ ...userToEdit, allowed_clients: updated });
+                                                    }}
+                                                />
+                                                {entity.name}
+                                            </label>
+                                        ))}
+                                    </div>
+                                    {(userToEdit.allowed_clients || []).length > 0 && (
+                                        <button type="button" onClick={() => setUserToEdit({ ...userToEdit, allowed_clients: [] })} style={{ marginTop: '4px', fontSize: '0.75rem', color: '#7c3aed', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                            Quitar restricciones (acceso total)
+                                        </button>
+                                    )}
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginTop: '2rem' }}>
                                     <Button
@@ -525,7 +566,7 @@ export default function SettingsPage() {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         zIndex: 1000, backdropFilter: 'blur(4px)'
                     }}>
-                        <Card title="Agregar Nuevo Usuario" style={{ width: '400px', margin: '2rem' }}>
+                        <Card title="Agregar Nuevo Usuario" style={{ width: '440px', margin: '2rem', maxHeight: '90vh', overflowY: 'auto' }}>
                             <form onSubmit={handleAddUser}>
                                 <div className="form-group">
                                     <label className="form-label">Nombre Completo</label>
@@ -545,11 +586,37 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Rol Inicial</label>
-                                    <select className="form-input" value={newUserForm.role} onChange={e => setNewUserForm({ ...newUserForm, role: e.target.value })}>
+                                    <select className="form-input" value={newUserForm.role} onChange={e => setNewUserForm({ ...newUserForm, role: e.target.value, allowed_clients: [] })}>
                                         {roles.filter(r => r !== 'pending').map(r => (
                                             <option key={r} value={r}>{r}</option>
                                         ))}
                                     </select>
+                                </div>
+                                {/* Clientes permitidos - solo relevante para rol 'user' */}
+                                <div className="form-group">
+                                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        🔒 Acceso a Clientes
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 400 }}>(vacío = acceso total)</span>
+                                    </label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px', padding: '0.6rem' }}>
+                                        {entities.map(entity => (
+                                            <label key={entity.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={(newUserForm.allowed_clients || []).includes(entity.name)}
+                                                    onChange={(e) => {
+                                                        const current = newUserForm.allowed_clients || [];
+                                                        const updated = e.target.checked
+                                                            ? [...current, entity.name]
+                                                            : current.filter(c => c !== entity.name);
+                                                        setNewUserForm({ ...newUserForm, allowed_clients: updated });
+                                                    }}
+                                                />
+                                                {entity.name}
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>Si no seleccionás ninguno, el usuario verá todos los clientes.</p>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
                                     <Button type="button" variant="secondary" onClick={() => setIsAddUserModalOpen(false)}>Cancelar</Button>
