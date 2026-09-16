@@ -994,7 +994,7 @@ export default function MyDeliveriesPage() {
                                                 <div style={{ flex: 1, width: '100%' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                                                         <span style={{ fontWeight: 800, color: dayColor, fontSize: '1.1rem' }}>#{delivery.displayId}</span>
-                                                        {!delivery.isMainTicket && <span style={{ fontSize: '0.66rem', background: 'var(--background)', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Caso SFDC</span>}
+                                                        {!delivery.isMainTicket && <span style={{ fontSize: '0.66rem', background: 'var(--background)', color: 'var(--text-secondary)', border: '1px solid var(--border)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>{delivery.client || 'Caso SFDC'}</span>}
                                                         {(delivery.instructions || delivery.hasNewNotes) && (
                                                             <div 
                                                                 className={delivery.hasUnreadChat ? "unread-badge-v2" : ""}

@@ -763,7 +763,7 @@ export default function MyTicketsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isConductor ? '0.4rem' : '0.75rem' }}>
                 <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                     <span style={{ fontWeight: 800, color: 'var(--primary-color)', fontSize: isConductor ? '0.8rem' : '1rem' }}>#{ticket.displayId}</span>
-                    {!ticket.isMainTicket && <span style={{ fontSize: '0.55rem', background: '#f1f5f9', padding: '1px 3px', borderRadius: '3px' }}>Caso SFDC</span>}
+                    {!ticket.isMainTicket && <span style={{ fontSize: '0.55rem', background: '#f1f5f9', padding: '1px 3px', borderRadius: '3px' }}>{ticket.client || 'Caso SFDC'}</span>}
                     {(ticket.instructions || ticket.hasNewNotes) && (
                         <Link href={`/dashboard/tickets/${ticket.id}?scrollTo=chat`} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
                             <div 
