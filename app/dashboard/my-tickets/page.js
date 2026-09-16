@@ -79,6 +79,7 @@ export default function MyTicketsPage() {
                     taskId: task.id,
                     isMainTicket: false,
                     isCompleted,
+                    client: task.client || pTicket?.client || '',
                     displaySubject: task.subject || task.items || pTicket?.subject || 'Gestión de Activos',
                     displayId: task.case_number || task.caseNumber || (pTicket?.id ? String(pTicket.id).substring(0, 8) : 'SUB-CASE'),
                     displayAddress: task.address || pTicket?.logistics?.address || 'Dirección no especificada',
