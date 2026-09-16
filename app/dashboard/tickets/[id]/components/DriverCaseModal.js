@@ -22,7 +22,9 @@ export default function DriverCaseModal({
     updateLogisticsTask,
     addLogisticsTask,
     updateTicket,
-    currentUser
+    currentUser,
+    updateAsset,
+    assets
 }) {
     const [isSaving, setIsSaving] = useState(false);
     const [statusOverride, setStatusOverride] = useState(null);
@@ -228,6 +230,35 @@ export default function DriverCaseModal({
                     floorDept: editFloorDept || ticket.logistics?.floorDept
                 };
                 await updateTicket(ticket.id, { logistics: updatedLogistics });
+            }
+
+            // ✅ AUTOMAÇÃO: mover assets de Recupero a ZONA REVISIÓN / TRANSICIÓN
+            const taskAssets = Array.isArray(task?.assets) ? task.assets : [];
+            const recuperoAssets = taskAssets.filter(a => (a.type || '').toLowerCase() === 'recupero');
+
+            if (recuperoAssets.length > 0 && updateAsset && assets) {
+                const REV_LOCATION_ID = 'REV-TRANSICION';
+                const now = new Date().toLocaleDateString();
+
+                for (const recoveredItem of recuperoAssets) {
+                    const serial = typeof recoveredItem === 'string' ? recoveredItem : recoveredItem.serial;
+                    if (!serial) continue;
+
+                    const fullAsset = assets.find(a =>
+                        a.serial && a.serial.toLowerCase() === serial.toLowerCase()
+                    );
+
+                    if (fullAsset) {
+                        await updateAsset(fullAsset.id, {
+                            status: 'Por Recuperar',
+                            assignee: 'En Revisión',
+                            location_id: REV_LOCATION_ID,
+                            locationId: REV_LOCATION_ID,
+                            notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') +
+                                `[${now}] Recuperado por ${currentUser?.name || 'Conductor'} - Movido a ZONA REVISIÓN/TRANSICIÓN para verificación.`
+                        });
+                    }
+                }
             }
 
             setStatusOverride('Entregado');

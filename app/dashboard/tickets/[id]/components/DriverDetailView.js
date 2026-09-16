@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useStore } from '@/lib/store';
 import { Card } from '@/app/components/ui/Card';
 import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
@@ -29,8 +30,10 @@ export default function DriverDetailView({
     currentUser,
     unifiedTasks,
     updateLogisticsTask,
-    addLogisticsTask
+    addLogisticsTask,
+    updateAsset
 }) {
+    const { assets } = useStore();
     // Estado LOCAL para el modal del conductor — no toca el CaseConfigModal de admin
     const [selectedTaskIndex, setSelectedTaskIndex] = useState(null);
     const selectedTask = selectedTaskIndex !== null ? (unifiedTasks || [])[selectedTaskIndex] : null;
@@ -73,6 +76,8 @@ export default function DriverDetailView({
                 addLogisticsTask={addLogisticsTask}
                 updateTicket={updateTicket}
                 currentUser={currentUser}
+                updateAsset={updateAsset}
+                assets={assets}
             />
 
             {/* Header / Botón Volver */}

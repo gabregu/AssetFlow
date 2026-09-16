@@ -94,6 +94,7 @@ export default function TicketDetailPage() {
                     unifiedTasks={unifiedTasks}
                     updateLogisticsTask={updateLogisticsTask}
                     addLogisticsTask={addLogisticsTask}
+                    updateAsset={updateAsset}
                 />
             ) : currentUser?.role === 'user' ? (
                 /* VISTA CLIENTE (Solo datos de contacto editables + instrucciones y notas) */
