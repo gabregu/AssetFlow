@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm } from '../../../lib/useForm';
 import { useSafeSubmit } from '../../../lib/useSafeSubmit';
-import { useJsApiLoader } from '@react-google-maps/api';
 import { 
     Truck, CheckCircle, Package, Send, Calendar, Clock, MapPin, Search, ChevronRight, Navigation, CheckCircle2, ChevronDown, ListFilter, LayoutGrid, List, MessageSquare, StickyNote,
     Filter,
@@ -32,8 +31,6 @@ import { useStore } from '../../../lib/store';
 import { generateTicketPDF } from '../../../lib/pdf-generator';
 import { uploadDevicePhoto } from '../../../lib/upload';
 import { supabase } from '../../../lib/supabase';
-
-const GOOGLE_MAPS_LIBRARIES = ['places', 'geometry'];
 
 // Helper to format WhatsApp links
 const getWhatsAppLink = (phone) => {
@@ -67,12 +64,26 @@ export default function MyDeliveriesPage() {
 
     const router = useRouter();
 
-    // Google Maps for route optimization
-    const { isLoaded: isMapsLoaded } = useJsApiLoader({
-        id: 'google-map-script-deliveries',
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
-        libraries: GOOGLE_MAPS_LIBRARIES
-    });
+    // Google Maps for route optimization - check if already loaded (loaded by other pages)
+    const [isMapsLoaded, setIsMapsLoaded] = useState(false);
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.google && window.google.maps) {
+            setIsMapsLoaded(true);
+            return;
+        }
+        // Try loading the script if not already present
+        const existingScript = document.getElementById('google-map-script');
+        if (existingScript) {
+            existingScript.addEventListener('load', () => setIsMapsLoaded(true));
+            return;
+        }
+        const script = document.createElement('script');
+        script.id = 'google-map-script-deliveries';
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places,geometry`;
+        script.async = true;
+        script.onload = () => setIsMapsLoaded(true);
+        document.head.appendChild(script);
+    }, []);
     
     // Identidad del usuario para filtrado (Definida a nivel de componente para evitar ReferenceErrors)
     const uName = (currentUser?.name || '').trim().toLowerCase();
