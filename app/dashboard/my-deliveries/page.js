@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm } from '../../../lib/useForm';
+import { useSafeSubmit } from '../../../lib/useSafeSubmit';
+import { useJsApiLoader } from '@react-google-maps/api';
 import { 
     Truck, CheckCircle, Package, Send, Calendar, Clock, MapPin, Search, ChevronRight, Navigation, CheckCircle2, ChevronDown, ListFilter, LayoutGrid, List, MessageSquare, StickyNote,
     Filter,
@@ -17,7 +19,8 @@ import {
     Camera,
     PackagePlus,
     X as XIcon,
-    Share2
+    Share2,
+    Route
 } from 'lucide-react';
 import { Card } from '@/app/components/ui/Card';
 import { Badge } from '@/app/components/ui/Badge';
@@ -29,6 +32,8 @@ import { useStore } from '../../../lib/store';
 import { generateTicketPDF } from '../../../lib/pdf-generator';
 import { uploadDevicePhoto } from '../../../lib/upload';
 import { supabase } from '../../../lib/supabase';
+
+const GOOGLE_MAPS_LIBRARIES = ['places', 'geometry'];
 
 // Helper to format WhatsApp links
 const getWhatsAppLink = (phone) => {
@@ -61,6 +66,13 @@ export default function MyDeliveriesPage() {
     } = useStore();
 
     const router = useRouter();
+
+    // Google Maps for route optimization
+    const { isLoaded: isMapsLoaded } = useJsApiLoader({
+        id: 'google-map-script-deliveries',
+        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+        libraries: GOOGLE_MAPS_LIBRARIES
+    });
     
     // Identidad del usuario para filtrado (Definida a nivel de componente para evitar ReferenceErrors)
     const uName = (currentUser?.name || '').trim().toLowerCase();
@@ -70,8 +82,6 @@ export default function MyDeliveriesPage() {
     useEffect(() => {
         refreshData();
     }, []);
-
-
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('En Transito'); // Solo activos por defecto
@@ -85,6 +95,11 @@ export default function MyDeliveriesPage() {
     const [completedDeliveryForPdf, setCompletedDeliveryForPdf] = useState(null);
     const cameraInputRef = useRef(null);
     const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+    // Route optimization state
+    const [isOptimizationModalOpen, setIsOptimizationModalOpen] = useState(false);
+    const [optimizationOrigin, setOptimizationOrigin] = useState('oficina');
+    const { isSubmitting: isOptimizing, safeSubmit: safeOptimize } = useSafeSubmit();
 
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -672,10 +687,13 @@ export default function MyDeliveriesPage() {
         // Aplicar orden optimizado si existe
         if (optimizedOrder.length > 0) {
             return [...items].sort((a, b) => {
-                const idxA = optimizedOrder.indexOf(a.displayId);
-                const idxB = optimizedOrder.indexOf(b.displayId);
-                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                return 0;
+                const keyA = a.taskId ? `task-${a.taskId}` : `ticket-${a.id}`;
+                const keyB = b.taskId ? `task-${b.taskId}` : `ticket-${b.id}`;
+                const idxA = optimizedOrder.indexOf(keyA);
+                const idxB = optimizedOrder.indexOf(keyB);
+                const safeA = idxA === -1 ? 9999 : idxA;
+                const safeB = idxB === -1 ? 9999 : idxB;
+                return safeA - safeB;
             });
         }
 
@@ -918,6 +936,106 @@ export default function MyDeliveriesPage() {
         return list.length > 0 ? list : ['Sin items definidos'];
     };
 
+    // Route Optimization Logic
+    const handleOptimizeRoute = async () => {
+        if (!isMapsLoaded) {
+            alert('El mapa aún se está cargando, por favor intenta nuevamente en unos segundos.');
+            return;
+        }
+        const allDeliveries = Object.values(groupedDeliveries).flat();
+        await safeOptimize(async () => {
+            const geocoder = new window.google.maps.Geocoder();
+
+            let originLoc;
+            if (optimizationOrigin === 'gps') {
+                if (!navigator.geolocation) {
+                    alert('La geolocalización no está soportada por tu navegador.');
+                    return;
+                }
+                const pos = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                }).catch(err => {
+                    let errMsg = 'No se pudo obtener la ubicación GPS.';
+                    if (err.code === 1) errMsg += ' Por favor, permite el acceso a la ubicación.';
+                    else if (err.code === 2) errMsg += ' La ubicación no está disponible.';
+                    else if (err.code === 3) errMsg += ' Se agotó el tiempo de espera.';
+                    alert(errMsg);
+                    throw err;
+                });
+                originLoc = new window.google.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
+            } else {
+                const originAddress = optimizationOrigin === 'oficina'
+                    ? 'Padre Castiglia 1638, Boulogne, Buenos Aires, Argentina'
+                    : 'Fraga 1312, CABA, Argentina';
+                const originResult = await new Promise((resolve, reject) => {
+                    geocoder.geocode({ address: originAddress }, (results, status) => {
+                        if (status === 'OK') resolve(results[0]);
+                        else reject(status);
+                    });
+                });
+                originLoc = originResult.geometry.location;
+            }
+
+            const deliveriesToRoute = allDeliveries.filter(d => {
+                const addr = d.displayAddress;
+                return addr && addr.length > 5 && addr !== 'Sin dirección' && addr !== 'Dirección no especificada';
+            });
+
+            const deliveriesWithLoc = [];
+            for (const delivery of deliveriesToRoute) {
+                try {
+                    const res = await new Promise((resolve) => {
+                        geocoder.geocode({ address: delivery.displayAddress }, (results, status) => {
+                            if (status === 'OK') resolve(results[0]);
+                            else resolve(null);
+                        });
+                    });
+                    if (res) {
+                        deliveriesWithLoc.push({
+                            uniqueId: delivery.taskId ? `task-${delivery.taskId}` : `ticket-${delivery.id}`,
+                            loc: res.geometry.location,
+                            delivery
+                        });
+                    }
+                    await new Promise(r => setTimeout(r, 250));
+                } catch (e) { console.error(e); }
+            }
+
+            let currentLoc = originLoc;
+            const orderedUniqueIds = [];
+            const pool = [...deliveriesWithLoc];
+
+            while (pool.length > 0) {
+                let nearestIdx = -1;
+                let minDist = Infinity;
+                for (let i = 0; i < pool.length; i++) {
+                    const d = window.google.maps.geometry.spherical.computeDistanceBetween(currentLoc, pool[i].loc);
+                    if (d < minDist) { minDist = d; nearestIdx = i; }
+                }
+                if (nearestIdx !== -1) {
+                    orderedUniqueIds.push(pool[nearestIdx].uniqueId);
+                    currentLoc = pool[nearestIdx].loc;
+                    pool.splice(nearestIdx, 1);
+                } else { break; }
+            }
+
+            const unmapped = allDeliveries
+                .map(d => d.taskId ? `task-${d.taskId}` : `ticket-${d.id}`)
+                .filter(uid => !orderedUniqueIds.includes(uid));
+
+            setOptimizedOrder([...orderedUniqueIds, ...unmapped]);
+            setIsOptimizationModalOpen(false);
+            alert('¡Ruta optimizada correctamente!');
+        }).catch(error => {
+            console.error(error);
+            alert('Error al optimizar ruta: ' + error.message);
+        });
+    };
+
     return (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem' }}>
             {/* Header Mobile-friendly */}
@@ -930,21 +1048,31 @@ export default function MyDeliveriesPage() {
                         Logística y ruta de entregas asignada
                     </p>
                 </div>
-                <Button 
-                    variant="primary" 
-                    icon={QrCode} 
-                    onClick={() => setIsScannerOpen(true)}
-                    style={{ 
-                        borderRadius: '12px', 
-                        width: '42px', 
-                        height: '42px', 
-                        padding: 0, 
-                        display: 'flex', 
-                        justifyContent: 'center',
-                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
-                    }}
-                    title="Escanear Etiqueta"
-                />
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <Button
+                        variant="secondary"
+                        icon={isOptimizing ? Loader2 : Route}
+                        onClick={() => setIsOptimizationModalOpen(true)}
+                        style={{ padding: '0.45rem 0.75rem', fontSize: '0.78rem', fontWeight: 700, height: '42px', borderRadius: '12px' }}
+                    >
+                        Optimizar
+                    </Button>
+                    <Button 
+                        variant="primary" 
+                        icon={QrCode} 
+                        onClick={() => setIsScannerOpen(true)}
+                        style={{ 
+                            borderRadius: '12px', 
+                            width: '42px', 
+                            height: '42px', 
+                            padding: 0, 
+                            display: 'flex', 
+                            justifyContent: 'center',
+                            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                        }}
+                        title="Escanear Etiqueta"
+                    />
+                </div>
             </div>
 
             {/* Stats Bar movida a /dashboard/my-stats */}
@@ -1989,6 +2117,36 @@ export default function MyDeliveriesPage() {
                         </div>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Optimization Modal */}
+            <Modal isOpen={isOptimizationModalOpen} onClose={() => setIsOptimizationModalOpen(false)} title="Optimizar Recorrido">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <p style={{ color: 'var(--text-secondary)' }}>
+                        Selecciona el punto de partida. El sistema ordenará tus envíos automáticamente calculando la ruta más corta.
+                    </p>
+                    <div>
+                        <select
+                            className="form-select"
+                            value={optimizationOrigin}
+                            onChange={(e) => setOptimizationOrigin(e.target.value)}
+                        >
+                            <option value="oficina">Oficina (Padre Castiglia 1638, Boulogne)</option>
+                            <option value="deposito">Depósito (Fraga 1312, CABA)</option>
+                            <option value="gps">Mi Ubicación Actual (GPS)</option>
+                        </select>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                        <Button variant="secondary" onClick={() => setIsOptimizationModalOpen(false)} disabled={isOptimizing}>Cancelar</Button>
+                        <Button
+                            onClick={handleOptimizeRoute}
+                            disabled={isOptimizing}
+                            icon={isOptimizing ? Loader2 : Route}
+                        >
+                            {isOptimizing ? 'Calculando...' : 'Optimizar Ahora'}
+                        </Button>
+                    </div>
+                </div>
             </Modal>
 
             <style jsx>{`
