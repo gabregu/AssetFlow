@@ -248,8 +248,8 @@ export default function AssetListSection({
                         
                         const isEntrega = item.type === 'Entrega';
                         const isRecupero = item.type === 'Recupero';
-                        const bgStyle = isEntrega ? 'rgba(34, 197, 94, 0.05)' : isRecupero ? 'rgba(239, 68, 68, 0.05)' : 'rgba(0,0,0,0.02)';
-                        const borderStyle = isEntrega ? '1px solid rgba(34, 197, 94, 0.3)' : isRecupero ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border)';
+                        const bgStyle = isEntrega ? 'rgba(34, 197, 94, 0.15)' : isRecupero ? 'rgba(239, 68, 68, 0.15)' : 'rgba(0,0,0,0.02)';
+                        const borderStyle = isEntrega ? '1px solid rgba(34, 197, 94, 0.5)' : isRecupero ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border)';
 
                         return (
                             <div key={`${idxx}-${itemSerial}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', background: bgStyle, borderRadius: '6px', border: borderStyle }}>
