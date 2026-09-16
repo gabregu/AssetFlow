@@ -378,9 +378,7 @@ export default function WarehousePage() {
 
             // Status Filter
             if (statusFilter !== 'ALL') {
-                if (statusFilter === 'Disponible' && !['Disponible', 'Nuevo', 'En Stock'].includes(asset.status)) return false;
-                if (statusFilter === 'Asignado' && asset.status !== 'Asignado') return false;
-                if (statusFilter === 'Mantenimiento' && !['Mantenimiento', 'Dañado'].includes(asset.status)) return false;
+                if (asset.status !== statusFilter) return false;
             }
 
             // Text Search
@@ -2436,9 +2434,15 @@ export default function WarehousePage() {
                                     style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${statusFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none' }}
                                 >
                                     <option value="ALL">Cualquier Estado</option>
-                                    <option value="Disponible">En Stock / Disponible</option>
+                                    <option value="Nuevo">Nuevo</option>
+                                    <option value="Disponible">Disponible</option>
+                                    <option value="Recuperado">Recuperado</option>
                                     <option value="Asignado">Asignado</option>
-                                    <option value="Mantenimiento">Mantenimiento / Dañado</option>
+                                    <option value="Por Recuperar">Por Recuperar</option>
+                                    <option value="Verificacion HW">Verificacion HW</option>
+                                    <option value="En Reparación">En Reparación</option>
+                                    <option value="Dañado">Dañado</option>
+                                    <option value="EOL">EOL</option>
                                 </select>
                             </div>
                         </div>
