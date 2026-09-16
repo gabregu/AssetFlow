@@ -52,7 +52,7 @@ export default function DriverCaseModal({
     if (!task) return null;
 
     const status = statusOverride || task.status || 'Pendiente';
-    const assets = Array.isArray(task.assets) ? task.assets : [];
+    const taskAssetsList = Array.isArray(task.assets) ? task.assets : [];
     const yubikeys = Array.isArray(task.yubikeys) ? task.yubikeys : [];
 
     // Detectar si hubo cambios respecto a la tarea original
@@ -466,13 +466,13 @@ export default function DriverCaseModal({
                 </div>
 
                 {/* Activos del caso */}
-                {(assets.length > 0 || yubikeys.length > 0) && (
+                {(taskAssetsList.length > 0 || yubikeys.length > 0) && (
                     <div>
                         <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
                             <Package size={12} style={{ display: 'inline', marginRight: 4 }} /> Equipos del caso
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                            {assets.map((a, i) => (
+                            {taskAssetsList.map((a, i) => (
                                 <div key={i} style={{ padding: '0.45rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600 }}>
                                     {typeof a === 'object' ? (a.serial || 'Sin serial') : String(a)}
                                     {typeof a === 'object' && a.type && <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> · {a.type}</span>}
