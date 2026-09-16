@@ -236,15 +236,7 @@ export default function AssetListSection({
                         const itemSerial = typeof item === 'string' ? item : item.serial;
                         const assetInfo = assets.find(a => a.serial && itemSerial && a.serial.toLowerCase() === itemSerial.toLowerCase());
                         
-                        let locationInfo = '';
-                        if (assetInfo) {
-                            if (assetInfo.locationId) {
-                                const wh = warehouseLocations?.find(w => String(w.id) === String(assetInfo.locationId));
-                                locationInfo = wh ? wh.id : 'Depósito Desconocido';
-                            } else {
-                                locationInfo = assetInfo.boxNumber || assetInfo.assignee || 'Sin ubicación';
-                            }
-                        }
+                        const displayStatus = assetInfo?.status || 'Desconocido';
                         
                         const isEntrega = item.type === 'Entrega';
                         const isRecupero = item.type === 'Recupero';
@@ -257,7 +249,7 @@ export default function AssetListSection({
                                     <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                                         <span>
                                             {assetInfo?.name || 'Hardware'} (S/N: {itemSerial})
-                                            {locationInfo && (
+                                            {displayStatus && (
                                                 <span style={{ 
                                                     marginLeft: '8px', 
                                                     padding: '2px 6px', 
@@ -267,7 +259,7 @@ export default function AssetListSection({
                                                     fontSize: '0.7rem', 
                                                     fontWeight: 600 
                                                 }}>
-                                                    Ubicación: {locationInfo}
+                                                    Estado: {displayStatus}
                                                 </span>
                                             )}
                                         </span>
