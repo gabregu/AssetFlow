@@ -90,10 +90,27 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
             }).length;
         }
 
+        // Helper para detectar tipo de un ticket (mira tareas primero, luego el ticket)
+        const getTicketType = (t) => {
+            const tasks = (logisticsTasks || []).filter(task => String(task.ticket_id) === String(t.id));
+            if (tasks.length > 0) {
+                const types = tasks.map(task => task.type || task.task_type || '').filter(Boolean);
+                if (types.length > 0) return types[0];
+            }
+            return t.type || t.logistics?.type || '';
+        };
+
         const active = isHistorical ? monthTotal : activeTickets.length;
         const baseTicketsForTypes = isHistorical ? allAssignedTickets : activeTickets;
-        const entregas = baseTicketsForTypes.filter(t => t.type === 'Entrega' || t.logistics?.type === 'Entrega').length;
-        const recolecciones = baseTicketsForTypes.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
+
+        const entregas = baseTicketsForTypes.filter(t => {
+            const tipo = getTicketType(t).toLowerCase();
+            return tipo === 'entrega' || tipo === 'delivery';
+        }).length;
+        const recolecciones = baseTicketsForTypes.filter(t => {
+            const tipo = getTicketType(t).toLowerCase();
+            return tipo === 'recolección' || tipo === 'recoleccion' || tipo === 'recupero' || tipo === 'retiro';
+        }).length;
 
         return { ...u, active, monthTotal, entregas, recolecciones, color: userColors[i % userColors.length] };
     }).filter(u => u.active > 0 || u.monthTotal > 0);
@@ -138,10 +155,19 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
     const maxCount = Math.max(...days.map(d => d.count), 1);
 
     // ── Donut data ─────────────────────────────────────────────────────────
-    const entregas = tickets.filter(t => t.type === 'Entrega' || t.logistics?.type === 'Entrega').length;
-    const recolecciones = tickets.filter(t => t.type === 'Recolección' || t.logistics?.type === 'Recolección' || t.logistics?.type === 'Recoleccion').length;
+    const getTypeForTicket = (t) => {
+        const tasks = (logisticsTasks || []).filter(task => String(task.ticket_id) === String(t.id));
+        if (tasks.length > 0) {
+            const types = tasks.map(task => task.type || task.task_type || '').filter(Boolean);
+            if (types.length > 0) return types[0].toLowerCase();
+        }
+        return (t.type || t.logistics?.type || '').toLowerCase();
+    };
+
+    const entregas = tickets.filter(t => { const tp = getTypeForTicket(t); return tp === 'entrega' || tp === 'delivery'; }).length;
+    const recolecciones = tickets.filter(t => { const tp = getTypeForTicket(t); return tp === 'recolección' || tp === 'recoleccion' || tp === 'recupero' || tp === 'retiro'; }).length;
     const otros = tickets.length - (entregas + recolecciones);
-    const typeTotal = entregas + recolecciones + otros || 1;
+    const typeTotal = entregas + recolecciones + otros;
 
     const donutType = [
         { value: entregas, color: '#3b82f6' },
@@ -150,8 +176,8 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
     ];
     
     const openTickets = tickets.filter(t => t.status === 'Pendiente').length;
-    const inProgress = tickets.filter(t => t.status === 'En Progreso').length;
-    const resolved = tickets.filter(t => ['Resuelto', 'Cerrado'].includes(t.status)).length;
+    const inProgress = tickets.filter(t => t.status === 'En Progreso' || t.status === 'Bloqueado / A la Espera').length;
+    const resolved = tickets.filter(t => ['Resuelto', 'Cerrado', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status)).length;
     
     const donutStatus = [
         { value: openTickets, color: '#3b82f6' },
