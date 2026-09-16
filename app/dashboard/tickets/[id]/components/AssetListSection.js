@@ -29,7 +29,10 @@ export default function AssetListSection({
     associatedCases = []
 }) {
     const { warehouseLocations } = useStore();
-    const [activeAssetType, setActiveAssetType] = useState(''); // 'Laptop' or 'Celular'
+    const [activeAssetType, setActiveAssetType] = useState(''); // 'Laptop', 'Celular', 'Otros'
+    const [otrosSubtype, setOtrosSubtype] = useState(''); // 'Monitor', 'Teclado', 'Tableta', o tipo personalizado
+    const [otrosCustomType, setOtrosCustomType] = useState(''); // Para agregar tipo nuevo
+    const [showAddCustomType, setShowAddCustomType] = useState(false);
     const [selectedModel, setSelectedModel] = useState('');
     const [selectedSerial, setSelectedSerial] = useState('');
 
@@ -86,18 +89,25 @@ export default function AssetListSection({
         });
     }, [assets, ticketCountry]);
 
-    // 2. Filtrar por Tipo de Dispositivo (Laptop o Celular)
+    // Subtipos disponibles para "Otros"
+    const OTROS_SUBTYPES = ['Monitor', 'Teclado', 'Tableta'];
+
+    // 2. Filtrar por Tipo de Dispositivo (Laptop, Celular u Otros)
     const filteredAssets = useMemo(() => {
         if (!activeAssetType) return [];
         return availableAssetsStrict.filter(a => {
             const typeLower = (a.type || '').toLowerCase().trim();
             if (activeAssetType === 'Laptop') {
                 return typeLower === 'laptop';
-            } else {
+            } else if (activeAssetType === 'Celular') {
                 return typeLower === 'smartphone' || typeLower === 'celular' || typeLower === 'phone';
+            } else if (activeAssetType === 'Otros') {
+                if (!otrosSubtype) return false;
+                return typeLower === otrosSubtype.toLowerCase();
             }
+            return false;
         });
-    }, [availableAssetsStrict, activeAssetType]);
+    }, [availableAssetsStrict, activeAssetType, otrosSubtype]);
 
     // Extraer modelos únicos con stock disponible
     const availableModels = useMemo(() => {
@@ -355,10 +365,13 @@ export default function AssetListSection({
                         Paso 1: Seleccione Tipo de Hardware
                     </label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {/* Botón Laptop */}
                         <button
                             type="button"
                             onClick={() => {
                                 setActiveAssetType('Laptop');
+                                setOtrosSubtype('');
+                                setShowAddCustomType(false);
                                 setSelectedModel('');
                                 setSelectedSerial('');
                             }}
@@ -395,10 +408,14 @@ export default function AssetListSection({
                             </div>
                             <span>💻 Laptop</span>
                         </button>
+
+                        {/* Botón Celular */}
                         <button
                             type="button"
                             onClick={() => {
                                 setActiveAssetType('Celular');
+                                setOtrosSubtype('');
+                                setShowAddCustomType(false);
                                 setSelectedModel('');
                                 setSelectedSerial('');
                             }}
@@ -435,14 +452,129 @@ export default function AssetListSection({
                             </div>
                             <span>📱 Celular</span>
                         </button>
+
+                        {/* Botón Otros */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setActiveAssetType('Otros');
+                                setOtrosSubtype('');
+                                setShowAddCustomType(false);
+                                setSelectedModel('');
+                                setSelectedSerial('');
+                            }}
+                            style={{
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '6px',
+                                border: `1px solid ${activeAssetType === 'Otros' ? 'var(--primary-color)' : 'var(--border)'}`,
+                                background: activeAssetType === 'Otros' ? 'rgba(37, 99, 235, 0.08)' : 'white',
+                                color: activeAssetType === 'Otros' ? 'var(--primary-color)' : 'var(--text-main)',
+                                fontWeight: 500,
+                                fontSize: '0.75rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                gap: '0.4rem'
+                            }}
+                        >
+                            <div style={{ 
+                                width: '12px', 
+                                height: '12px', 
+                                border: `1px solid ${activeAssetType === 'Otros' ? 'var(--primary-color)' : 'var(--border)'}`, 
+                                borderRadius: '3px', 
+                                background: activeAssetType === 'Otros' ? 'var(--primary-color)' : 'white',
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center',
+                                marginRight: '2px'
+                            }}>
+                                {activeAssetType === 'Otros' && <Check size={8} style={{ color: 'white' }} />}
+                            </div>
+                            <span>📦 Otros</span>
+                        </button>
                     </div>
+
+                    {/* Subtype dropdown para "Otros" */}
+                    {activeAssetType === 'Otros' && (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                Seleccionar tipo de hardware:
+                            </label>
+                            <select
+                                className="form-select"
+                                style={{ height: '34px', fontSize: '0.85rem' }}
+                                value={otrosSubtype}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    if (val === '__add_new__') {
+                                        setShowAddCustomType(true);
+                                        setOtrosSubtype('');
+                                    } else {
+                                        setOtrosSubtype(val);
+                                        setShowAddCustomType(false);
+                                        setSelectedModel('');
+                                        setSelectedSerial('');
+                                    }
+                                }}
+                            >
+                                <option value="">— Seleccionar tipo —</option>
+                                {OTROS_SUBTYPES.map(t => (
+                                    <option key={t} value={t}>{t}</option>
+                                ))}
+                                <option value="__add_new__">➕ Agregar nuevo tipo...</option>
+                            </select>
+
+                            {/* Input para agregar tipo personalizado */}
+                            {showAddCustomType && (
+                                <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Ej: Auriculares, Webcam..."
+                                        style={{ height: '34px', fontSize: '0.85rem', flex: 1 }}
+                                        value={otrosCustomType}
+                                        onChange={e => setOtrosCustomType(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter' && otrosCustomType.trim()) {
+                                                setOtrosSubtype(otrosCustomType.trim());
+                                                setShowAddCustomType(false);
+                                                setOtrosCustomType('');
+                                                setSelectedModel('');
+                                                setSelectedSerial('');
+                                            }
+                                        }}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        style={{ height: '34px', whiteSpace: 'nowrap' }}
+                                        onClick={() => {
+                                            if (otrosCustomType.trim()) {
+                                                setOtrosSubtype(otrosCustomType.trim());
+                                                setShowAddCustomType(false);
+                                                setOtrosCustomType('');
+                                                setSelectedModel('');
+                                                setSelectedSerial('');
+                                            }
+                                        }}
+                                    >
+                                        Confirmar
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Paso 2: Selección de Modelo (sólo visible si se seleccionó tipo) */}
-                {activeAssetType && (
+                {((activeAssetType && activeAssetType !== 'Otros') || (activeAssetType === 'Otros' && otrosSubtype && !showAddCustomType)) && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.25rem' }}>
                         <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                            Paso 2: Modelo de {activeAssetType}
+                            Paso 2: Modelo de {activeAssetType === 'Otros' ? otrosSubtype : activeAssetType}
                         </label>
                         <select
                             className="form-select"
