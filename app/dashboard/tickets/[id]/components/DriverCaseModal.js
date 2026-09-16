@@ -237,8 +237,25 @@ export default function DriverCaseModal({
             const recuperoAssets = taskAssets.filter(a => (a.type || '').toLowerCase() === 'recupero');
 
             if (recuperoAssets.length > 0 && updateAsset && assets) {
-                const REV_LOCATION_ID = 'REV-TRANSICION';
                 const now = new Date().toLocaleDateString();
+
+                // Encontrar las posiciones REV ocupadas actualmente
+                const occupiedRevs = new Set();
+                assets.forEach(a => {
+                    if (a.locationId && a.locationId.startsWith('REV-')) {
+                        const num = parseInt(a.locationId.replace('REV-', ''), 10);
+                        if (!isNaN(num)) occupiedRevs.add(num);
+                    }
+                });
+
+                let nextRevNumber = 1;
+                const getNextRevLoc = () => {
+                    while (occupiedRevs.has(nextRevNumber)) {
+                        nextRevNumber++;
+                    }
+                    occupiedRevs.add(nextRevNumber);
+                    return `REV-${nextRevNumber}`;
+                };
 
                 for (const recoveredItem of recuperoAssets) {
                     const serial = typeof recoveredItem === 'string' ? recoveredItem : recoveredItem.serial;
@@ -249,13 +266,14 @@ export default function DriverCaseModal({
                     );
 
                     if (fullAsset) {
+                        const assignedLoc = getNextRevLoc();
                         await updateAsset(fullAsset.id, {
                             status: 'Por Recuperar',
                             assignee: 'En Revisión',
-                            location_id: REV_LOCATION_ID,
-                            locationId: REV_LOCATION_ID,
+                            location_id: assignedLoc,
+                            locationId: assignedLoc,
                             notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') +
-                                `[${now}] Recuperado por ${currentUser?.name || 'Conductor'} - Movido a ZONA REVISIÓN/TRANSICIÓN para verificación.`
+                                `[${now}] Recuperado por ${currentUser?.name || 'Conductor'} - Movido a ${assignedLoc} (ZONA REVISIÓN/TRANSICIÓN) para verificación.`
                         });
                     }
                 }
