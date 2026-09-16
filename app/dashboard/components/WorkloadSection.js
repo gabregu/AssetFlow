@@ -76,19 +76,19 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
             return ticketAssigned || taskAssigned;
         });
 
-        let monthTotal = 0;
-        if (isHistorical) {
-            monthTotal = allAssignedTickets.length;
-        } else {
-            const currentMonthString = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-            monthTotal = allAssignedTickets.filter(t => {
+        // Tickets del mes actual asignados a este usuario (para vista no-histórica)
+        const currentMonthString = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+        const currentMonthAssigned = isHistorical
+            ? allAssignedTickets
+            : allAssignedTickets.filter(t => {
                 const dateStr = t.created_at || t.createdAt || t.date || t.dateOpened;
                 if (!dateStr) return false;
                 const td = new Date(dateStr);
                 if (isNaN(td.getTime())) return false;
                 return `${td.getFullYear()}-${String(td.getMonth() + 1).padStart(2, '0')}` === currentMonthString;
-            }).length;
-        }
+            });
+
+        const monthTotal = currentMonthAssigned.length;
 
         // Helper para detectar tipo de un ticket (mira tareas primero, luego el ticket)
         const getTicketType = (t) => {
@@ -100,8 +100,9 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
             return t.type || t.logistics?.type || '';
         };
 
-        const active = isHistorical ? monthTotal : activeTickets.length;
-        const baseTicketsForTypes = isHistorical ? allAssignedTickets : activeTickets;
+        // Usar siempre monthTotal para la barra (tickets del mes), no solo los activos
+        const active = monthTotal;
+        const baseTicketsForTypes = currentMonthAssigned;
 
         const entregas = baseTicketsForTypes.filter(t => {
             const tipo = getTicketType(t).toLowerCase();
@@ -233,12 +234,6 @@ export function WorkloadSection({ title, tickets, users, logisticsTasks, isHisto
                                     <div style={{ display: 'flex', gap: '6px', fontSize: '0.65rem', marginTop: '2px', opacity: 0.8 }}>
                                         <span style={{ color: '#3b82f6', fontWeight: 600 }}>{u.entregas} Entregas</span>
                                         <span style={{ color: '#f59e0b', fontWeight: 600 }}>{u.recolecciones} Recolecciones</span>
-                                        {!isHistorical && (
-                                            <>
-                                                <span style={{ color: '#9ca3af' }}>|</span>
-                                                <span style={{ color: '#10b981', fontWeight: 600 }}>Total mes: {u.monthTotal}</span>
-                                            </>
-                                        )}
                                     </div>
                                 </div>
                                 <MiniBar value={u.active} max={maxActive} color={u.color} />
