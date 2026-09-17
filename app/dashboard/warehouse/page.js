@@ -301,6 +301,7 @@ export default function WarehousePage() {
 
     // Premium Dashboard Filters
     const [selectedBrand, setSelectedBrand] = useState('ALL');
+    const [typeFilter, setTypeFilter] = useState('ALL');
     const [cpuFilter, setCpuFilter] = useState('ALL');
     const [ramFilter, setRamFilter] = useState('ALL');
     const [statusFilter, setStatusFilter] = useState('ALL');
@@ -364,6 +365,21 @@ export default function WarehousePage() {
                 }
             }
 
+            // Type Filter
+            if (typeFilter !== 'ALL') {
+                const assetType = (asset.type || '').toLowerCase();
+                const filterLower = typeFilter.toLowerCase();
+                if (assetType !== filterLower) {
+                    if (filterLower === 'laptop' && (assetType === 'notebook' || assetType === 'macbook')) {
+                        // Accept synonyms
+                    } else if (filterLower === 'smartphone' && (assetType === 'celular' || assetType === 'iphone')) {
+                        // Accept synonyms
+                    } else {
+                        return false;
+                    }
+                }
+            }
+
             // CPU Filter
             if (cpuFilter !== 'ALL') {
                 const searchTxt = (asset.name || '') + ' ' + (asset.hardwareSpec || '');
@@ -407,12 +423,12 @@ export default function WarehousePage() {
 
             return true;
         });
-    }, [assets, countryFilter, selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch, modelFilter, sizeFilter]);
+    }, [assets, countryFilter, selectedBrand, typeFilter, cpuFilter, ramFilter, statusFilter, locationSearch, modelFilter, sizeFilter]);
 
     // Compute set of highlighted locationIds (when any search/filter is active)
     const hasActiveSearch = useMemo(() => {
-        return selectedBrand !== 'ALL' || cpuFilter !== 'ALL' || ramFilter !== 'ALL' || statusFilter !== 'ALL' || locationSearch !== '' || modelFilter !== 'ALL' || sizeFilter !== 'ALL';
-    }, [selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch, modelFilter, sizeFilter]);
+        return selectedBrand !== 'ALL' || typeFilter !== 'ALL' || cpuFilter !== 'ALL' || ramFilter !== 'ALL' || statusFilter !== 'ALL' || locationSearch !== '' || modelFilter !== 'ALL' || sizeFilter !== 'ALL';
+    }, [selectedBrand, typeFilter, cpuFilter, ramFilter, statusFilter, locationSearch, modelFilter, sizeFilter]);
 
     const highlightedLocationIds = useMemo(() => {
         if (!hasActiveSearch) return new Set();
@@ -2311,7 +2327,7 @@ export default function WarehousePage() {
                             <h3 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, flex: 1 }}>Búsqueda Avanzada</h3>
                             {hasActiveSearch && (
                                 <button
-                                    onClick={() => { setLocationSearch(''); setSelectedBrand('ALL'); setCpuFilter('ALL'); setRamFilter('ALL'); setStatusFilter('ALL'); setModelFilter('ALL'); setSizeFilter('ALL'); }}
+                                    onClick={() => { setLocationSearch(''); setSelectedBrand('ALL'); setTypeFilter('ALL'); setCpuFilter('ALL'); setRamFilter('ALL'); setStatusFilter('ALL'); setModelFilter('ALL'); setSizeFilter('ALL'); }}
                                     title="Limpiar filtros"
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: '0.72rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', lineHeight: 1 }}
                                 >
@@ -2349,6 +2365,30 @@ export default function WarehousePage() {
 
                         {/* Filters */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+
+                            {/* Type filter */}
+                            <div>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Tipo de Dispositivo</label>
+                                <select 
+                                    value={typeFilter} 
+                                    onChange={e => setTypeFilter(e.target.value)}
+                                    style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${typeFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none', fontWeight: typeFilter !== 'ALL' ? 700 : 400 }}
+                                >
+                                    <option value="ALL">Cualquier tipo</option>
+                                    <option value="Laptop">Laptop</option>
+                                    <option value="Smartphone">Smartphone</option>
+                                    <option value="Tablet">Tablet</option>
+                                    <option value="Monitor">Monitor</option>
+                                    <option value="Impresora">Impresora</option>
+                                    <option value="Tableta de dibujo">Tableta de dibujo</option>
+                                    <option value="Disco Externo">Disco Externo</option>
+                                    <option value="Proyector">Proyector</option>
+                                    <option value="UPS">UPS</option>
+                                    <option value="Switch / Router">Switch / Router</option>
+                                    <option value="Security keys">Security Keys</option>
+                                    <option value="Otros">Otros</option>
+                                </select>
+                            </div>
 
                             {/* Brand filter */}
                             <div>
