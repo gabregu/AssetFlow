@@ -11,7 +11,7 @@ import {
     HardDrive, Package, Trash2, Edit3, Eye, ArrowRight,
     TrendingUp, AlertTriangle, CheckCircle, Upload, Download, History,
     ChevronDown, ChevronUp, Key, UserPlus, Truck, MapPin, Box, User,
-    Layers, Activity, Server, Printer, Loader2
+    Layers, Activity, Server, Printer, Loader2, Headphones, Camera, Dock, PenLine
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
@@ -964,9 +964,17 @@ export default function InventoryPage() {
             case 'Laptop': return Laptop;
             case 'Smartphone': return Smartphone;
             case 'Tablet': return Smartphone;
+            case 'Monitor': return Monitor;
+            case 'Impresora': return Printer;
+            case 'Tableta Gráfica': return PenLine;
+            case 'Headset': return Headphones;
+            case 'Cámara Web': return Camera;
+            case 'Docking Station': return Dock;
+            case 'Servidor': return Server;
+            case 'Disco Externo': return HardDrive;
             case 'Otros': return Layers;
             case 'Security keys': return Key;
-            default: return Laptop;
+            default: return Package;
         }
     };
 
@@ -1519,7 +1527,7 @@ export default function InventoryPage() {
     const destructionCount = allAssetsNonAssigned.filter(a => a.cod && a.cod.trim() !== '').length;
 
     const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 4 : 0);
-    const deviceTypes = ['Laptop', 'Smartphone', 'Tablet', 'Otros'];
+    const deviceTypes = ['Laptop', 'Smartphone', 'Tablet', 'Monitor', 'Impresora', 'Tableta Gráfica', 'Headset', 'Cámara Web', 'Docking Station', 'Servidor', 'Disco Externo', 'Otros'];
 
     const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'Por Recuperar', 'Verificacion HW', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
 
@@ -1909,7 +1917,7 @@ export default function InventoryPage() {
                                 {(selectedDeviceType || statusFilter || codFilter) && (
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         {statusFilter && <Badge variant="primary" style={{ cursor: 'pointer' }} onClick={() => setStatusFilter(null)}>Filtro: {statusFilter} x</Badge>}
-                                        {selectedDeviceType && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Tipo: {selectedDeviceType}s</span>}
+                                        {selectedDeviceType && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Tipo: {selectedDeviceType === 'Otros' ? 'Otros' : `${selectedDeviceType}s`}</span>}
                                         {codFilter && <Badge variant="warning" style={{ cursor: 'pointer' }} onClick={() => setCodFilter(false)}>Filtro: COD x</Badge>}
                                     </div>
                                 )}
@@ -2964,8 +2972,16 @@ export default function InventoryPage() {
                                 <option value="Laptop">Laptop</option>
                                 <option value="Smartphone">Smartphone</option>
                                 <option value="Tablet">Tablet</option>
+                                <option value="Monitor">Monitor</option>
+                                <option value="Impresora">Impresora</option>
+                                <option value="Tableta Gráfica">Tableta Gráfica</option>
+                                <option value="Headset">Headset / Auricular</option>
+                                <option value="Cámara Web">Cámara Web</option>
+                                <option value="Docking Station">Docking Station</option>
+                                <option value="Servidor">Servidor</option>
+                                <option value="Disco Externo">Disco Externo</option>
                                 <option value="Otros">Otros</option>
-                                <option value="Security keys">Security keys</option>
+                                <option value="Security keys">Security Keys</option>
                             </select>
                         </div>
                         <div className="form-group">
@@ -3772,6 +3788,14 @@ export default function InventoryPage() {
                                     <option value="Laptop">Laptop</option>
                                     <option value="Smartphone">Smartphone</option>
                                     <option value="Tablet">Tablet</option>
+                                    <option value="Monitor">Monitor</option>
+                                    <option value="Impresora">Impresora</option>
+                                    <option value="Tableta Gráfica">Tableta Gráfica</option>
+                                    <option value="Headset">Headset / Auricular</option>
+                                    <option value="Cámara Web">Cámara Web</option>
+                                    <option value="Docking Station">Docking Station</option>
+                                    <option value="Servidor">Servidor</option>
+                                    <option value="Disco Externo">Disco Externo</option>
                                     <option value="Otros">Otros</option>
                                     <option value="Security keys">Security Key</option>
                                 </select>
