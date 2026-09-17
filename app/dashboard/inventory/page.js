@@ -2782,8 +2782,8 @@ export default function InventoryPage() {
                 <>
                     {/* Tarjeta de Resumen */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                        {Object.entries(yubikeys.reduce((acc, curr) => {
-                            const key = `${curr.model} - ${curr.status}`;
+                        {Object.entries(applyCountryFilter(yubikeys).reduce((acc, curr) => {
+                            const key = `${curr.model || curr.type} - ${curr.status}`;
                             if (!acc[key]) acc[key] = { model: curr.model, status: curr.status, count: 0 };
                             acc[key].count += 1;
                             return acc;
@@ -2793,7 +2793,7 @@ export default function InventoryPage() {
                                 border: '1px solid var(--border)', boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                    <span style={{ fontWeight: 600, fontSize: '1rem' }}>{data.model}</span>
+                                    <span style={{ fontWeight: 600, fontSize: '1rem' }}>{data.model || data.type}</span>
                                     <Badge variant={getStatusVariant(data.status)}>{data.status}</Badge>
                                 </div>
                                 <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
@@ -2801,7 +2801,7 @@ export default function InventoryPage() {
                                 </div>
                             </div>
                         ))}
-                        {yubikeys.length === 0 && (
+                        {applyCountryFilter(yubikeys).length === 0 && (
                             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', gridColumn: '1 / -1' }}>
                                 No hay datos de resumen disponibles.
                             </div>
@@ -2839,7 +2839,7 @@ export default function InventoryPage() {
 
                         {isYubikeyInventoryExpanded && (
                             <div className="table-responsive" style={{ transition: 'all 0.3s ease' }}>
-                                {yubikeys.length === 0 && <p style={{ padding: '1rem', color: 'var(--text-secondary)' }}>No hay Security Keys registradas.</p>}
+                                {applyCountryFilter(yubikeys).length === 0 && <p style={{ padding: '1rem', color: 'var(--text-secondary)' }}>No hay Security Keys registradas para este cliente.</p>}
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
                                         <tr style={{ borderBottom: '1px solid var(--border)' }}>
