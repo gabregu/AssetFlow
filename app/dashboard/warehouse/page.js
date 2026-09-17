@@ -3024,7 +3024,16 @@ export default function WarehousePage() {
                                                     <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>{asset.model || asset.name}</span>
                                                     <span style={{ fontSize: '0.7rem', color: '#1e40af' }}>S/N: {asset.serial}</span>
                                                 </div>
-                                                <Badge variant={asset.status === 'Verificacion HW' ? 'warning' : 'primary'}>{asset.status}</Badge>
+                                                <span style={{ 
+                                                    fontSize: '0.7rem', 
+                                                    fontWeight: 700, 
+                                                    padding: '2px 8px', 
+                                                    borderRadius: '12px', 
+                                                    backgroundColor: asset.status === 'Verificacion HW' ? '#fef08a' : '#bfdbfe',
+                                                    color: asset.status === 'Verificacion HW' ? '#854d0e' : '#1e40af'
+                                                }}>
+                                                    {asset.status}
+                                                </span>
                                             </div>
                                         ))}
                                     </div>
