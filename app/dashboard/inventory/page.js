@@ -966,12 +966,11 @@ export default function InventoryPage() {
             case 'Tablet': return Smartphone;
             case 'Monitor': return Monitor;
             case 'Impresora': return Printer;
-            case 'Tableta Gráfica': return PenLine;
-            case 'Headset': return Headphones;
-            case 'Cámara Web': return Camera;
-            case 'Docking Station': return Dock;
-            case 'Servidor': return Server;
+            case 'Tableta de dibujo': return PenLine;
             case 'Disco Externo': return HardDrive;
+            case 'Proyector': return Monitor; // Use monitor for projector
+            case 'UPS': return Activity; // Use activity for UPS
+            case 'Switch / Router': return Server; // Use server for switch
             case 'Otros': return Layers;
             case 'Security keys': return Key;
             default: return Package;
@@ -1527,7 +1526,7 @@ export default function InventoryPage() {
     const destructionCount = allAssetsNonAssigned.filter(a => a.cod && a.cod.trim() !== '').length;
 
     const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 4 : 0);
-    const deviceTypes = ['Laptop', 'Smartphone', 'Tablet', 'Monitor', 'Impresora', 'Tableta Gráfica', 'Headset', 'Cámara Web', 'Docking Station', 'Servidor', 'Disco Externo', 'Otros'];
+    const deviceTypes = ['Laptop', 'Smartphone', 'Tablet', 'Monitor', 'Impresora', 'Tableta de dibujo', 'Disco Externo', 'Proyector', 'UPS', 'Switch / Router', 'Otros'];
 
     const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'Por Recuperar', 'Verificacion HW', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
 
@@ -2974,12 +2973,11 @@ export default function InventoryPage() {
                                 <option value="Tablet">Tablet</option>
                                 <option value="Monitor">Monitor</option>
                                 <option value="Impresora">Impresora</option>
-                                <option value="Tableta Gráfica">Tableta Gráfica</option>
-                                <option value="Headset">Headset / Auricular</option>
-                                <option value="Cámara Web">Cámara Web</option>
-                                <option value="Docking Station">Docking Station</option>
-                                <option value="Servidor">Servidor</option>
+                                <option value="Tableta de dibujo">Tableta de dibujo</option>
                                 <option value="Disco Externo">Disco Externo</option>
+                                <option value="Proyector">Proyector</option>
+                                <option value="UPS">UPS</option>
+                                <option value="Switch / Router">Switch / Router</option>
                                 <option value="Otros">Otros</option>
                                 <option value="Security keys">Security Keys</option>
                             </select>
@@ -3396,8 +3394,14 @@ export default function InventoryPage() {
                             value={selectedConsumable?.category || 'Otro'}
                             onChange={(e) => setSelectedConsumable({ ...selectedConsumable, category: e.target.value })}
                         >
-                            <option value="Filtro">Filtro</option>
+                            <option value="Headset / Auricular">Headset / Auricular</option>
+                            <option value="Cámara Web">Cámara Web</option>
+                            <option value="Docking Station">Docking Station</option>
                             <option value="Mochila">Mochila</option>
+                            <option value="Protector de pantalla">Protector de pantalla</option>
+                            <option value="Mouse">Mouse</option>
+                            <option value="Teclado">Teclado</option>
+                            <option value="Filtro">Filtro</option>
                             <option value="Otro">Otro</option>
                         </select>
                     </div>
@@ -3481,8 +3485,14 @@ export default function InventoryPage() {
                             value={newAccessory.category}
                             onChange={e => setNewAccessory({ ...newAccessory, category: e.target.value })}
                         >
-                            <option value="Filtro">Filtro</option>
+                            <option value="Headset / Auricular">Headset / Auricular</option>
+                            <option value="Cámara Web">Cámara Web</option>
+                            <option value="Docking Station">Docking Station</option>
                             <option value="Mochila">Mochila</option>
+                            <option value="Protector de pantalla">Protector de pantalla</option>
+                            <option value="Mouse">Mouse</option>
+                            <option value="Teclado">Teclado</option>
+                            <option value="Filtro">Filtro</option>
                             <option value="Otro">Otro</option>
                         </select>
                     </div>
@@ -3790,12 +3800,11 @@ export default function InventoryPage() {
                                     <option value="Tablet">Tablet</option>
                                     <option value="Monitor">Monitor</option>
                                     <option value="Impresora">Impresora</option>
-                                    <option value="Tableta Gráfica">Tableta Gráfica</option>
-                                    <option value="Headset">Headset / Auricular</option>
-                                    <option value="Cámara Web">Cámara Web</option>
-                                    <option value="Docking Station">Docking Station</option>
-                                    <option value="Servidor">Servidor</option>
+                                    <option value="Tableta de dibujo">Tableta de dibujo</option>
                                     <option value="Disco Externo">Disco Externo</option>
+                                    <option value="Proyector">Proyector</option>
+                                    <option value="UPS">UPS</option>
+                                    <option value="Switch / Router">Switch / Router</option>
                                     <option value="Otros">Otros</option>
                                     <option value="Security keys">Security Key</option>
                                 </select>
