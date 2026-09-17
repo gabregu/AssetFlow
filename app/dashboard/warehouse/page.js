@@ -2997,6 +2997,39 @@ export default function WarehousePage() {
                                     );
                                 })}
                             </div>
+                            
+                            {/* Pendientes de Revisión */}
+                            {assets.filter(a => 
+                                (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                (a.status === 'Verificacion HW' || a.status === 'Por Recuperar') &&
+                                (!a.locationId || !a.locationId.startsWith('REV-'))
+                            ).length > 0 && (
+                                <div style={{ marginTop: '1rem', borderTop: '1px solid #dbeafe', paddingTop: '1rem' }}>
+                                    <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e40af', marginBottom: '0.5rem' }}>Pendientes de Revisión (Sin ubicación)</h4>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {assets.filter(a => 
+                                            (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                            (a.status === 'Verificacion HW' || a.status === 'Por Recuperar') &&
+                                            (!a.locationId || !a.locationId.startsWith('REV-'))
+                                        ).map(asset => (
+                                            <div 
+                                                key={asset.id} 
+                                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', backgroundColor: '#eff6ff', borderRadius: '6px', cursor: 'pointer', border: '1px solid #bfdbfe' }}
+                                                onClick={() => {
+                                                    setEditAssetForm(asset);
+                                                    setIsEditAssetModalOpen(true);
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>{asset.model || asset.name}</span>
+                                                    <span style={{ fontSize: '0.7rem', color: '#1e40af' }}>S/N: {asset.serial}</span>
+                                                </div>
+                                                <Badge variant={asset.status === 'Verificacion HW' ? 'warning' : 'primary'}>{asset.status}</Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </Card>
                     {/* ZONA CAJAS */}
