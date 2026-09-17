@@ -22,7 +22,7 @@ const secondarySupabase = createClient(
 );
 
 export default function SettingsPage() {
-    const { users, currentUser, deleteUser, updateUser, sendPasswordReset, updatePassword, logout, entities = [], addEntity, deleteEntity, refreshData } = useStore();
+    const { users, currentUser, deleteUser, updateUser, sendPasswordReset, updatePassword, logout, entities = [], addEntity, updateEntity, deleteEntity, refreshData } = useStore();
     const { theme } = useTheme();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [userToEdit, setUserToEdit] = useState(null);
@@ -33,6 +33,8 @@ export default function SettingsPage() {
     const [isAddingUser, setIsAddingUser] = useState(false);
 
     const [newEntityName, setNewEntityName] = useState('');
+    const [editingEntity, setEditingEntity] = useState(null); // { id, name }
+    const [editEntityName, setEditEntityName] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -459,20 +461,73 @@ export default function SettingsPage() {
                                     borderRadius: 'var(--radius-md)',
                                     border: '1px solid var(--border)'
                                 }}>
-                                    <div>
-                                        <p style={{ fontWeight: 600, margin: 0, fontSize: '0.9rem' }}>{entity.name}</p>
-                                    </div>
-                                    <button
-                                        onClick={async () => {
-                                            if (confirm(`¿Estás seguro de eliminar la sede "${entity.name}"? Los equipos no se borrarán pero dejarán de verse agrupados bajo este nombre.`)) {
-                                                await deleteEntity(entity.id);
-                                            }
-                                        }}
-                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.5rem' }}
-                                        title="Eliminar Sede"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    {editingEntity?.id === entity.id ? (
+                                        /* Modo edición inline */
+                                        <div style={{ display: 'flex', gap: '0.5rem', flex: 1, alignItems: 'center' }}>
+                                            <input
+                                                className="form-input"
+                                                value={editEntityName}
+                                                onChange={e => setEditEntityName(e.target.value)}
+                                                onKeyDown={async (e) => {
+                                                    if (e.key === 'Enter') {
+                                                        if (!editEntityName.trim()) return;
+                                                        const result = await updateEntity(entity.id, { name: editEntityName.trim() });
+                                                        if (result.error) alert('Error al renombrar: ' + result.error.message);
+                                                        setEditingEntity(null);
+                                                    } else if (e.key === 'Escape') {
+                                                        setEditingEntity(null);
+                                                    }
+                                                }}
+                                                autoFocus
+                                                style={{ flex: 1, padding: '0.3rem 0.6rem', fontSize: '0.9rem' }}
+                                            />
+                                            <button
+                                                onClick={async () => {
+                                                    if (!editEntityName.trim()) return;
+                                                    const result = await updateEntity(entity.id, { name: editEntityName.trim() });
+                                                    if (result.error) alert('Error al renombrar: ' + result.error.message);
+                                                    setEditingEntity(null);
+                                                }}
+                                                style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', padding: '0.4rem', fontWeight: 700, fontSize: '1rem' }}
+                                                title="Guardar"
+                                            >✓</button>
+                                            <button
+                                                onClick={() => setEditingEntity(null)}
+                                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.4rem', fontSize: '1rem' }}
+                                                title="Cancelar"
+                                            >✕</button>
+                                        </div>
+                                    ) : (
+                                        /* Modo visualización */
+                                        <>
+                                            <div>
+                                                <p style={{ fontWeight: 600, margin: 0, fontSize: '0.9rem' }}>{entity.name}</p>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingEntity(entity);
+                                                        setEditEntityName(entity.name);
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.5rem' }}
+                                                    title="Editar nombre"
+                                                >
+                                                    <Pencil size={15} />
+                                                </button>
+                                                <button
+                                                    onClick={async () => {
+                                                        if (confirm(`¿Estás seguro de eliminar la sede "${entity.name}"? Los equipos no se borrarán pero dejarán de verse agrupados bajo este nombre.`)) {
+                                                            await deleteEntity(entity.id);
+                                                        }
+                                                    }}
+                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.5rem' }}
+                                                    title="Eliminar Sede"
+                                                >
+                                                    <Trash2 size={15} />
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             ))}
                             {entities.length === 0 && (
