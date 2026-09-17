@@ -36,6 +36,9 @@ export default function DriverCaseModal({
     const [editFloorDept, setEditFloorDept] = useState('');
     const [isEditingAddress, setIsEditingAddress] = useState(false);
 
+    // Recuperación parcial: set de seriales marcados como recuperados
+    const [recoveredItems, setRecoveredItems] = useState(new Set());
+
     // Sincronizar estado cuando cambia el task o se abre el modal
     useEffect(() => {
         if (task && isOpen) {
@@ -46,6 +49,13 @@ export default function DriverCaseModal({
             setEditFloorDept(task.floorDept || task.floor_dept || ticket?.logistics?.floorDept || '');
             setStatusOverride(null);
             setIsEditingAddress(false);
+            // Inicializar todos los equipos como recuperados por defecto
+            const allSerials = Array.isArray(task.assets)
+                ? task.assets
+                    .filter(a => typeof a === 'object' && a.serial && (a.type || '').toLowerCase() === 'recupero')
+                    .map(a => a.serial)
+                : [];
+            setRecoveredItems(new Set(allSerials));
         }
     }, [task, ticket, isOpen]);
 
@@ -232,9 +242,9 @@ export default function DriverCaseModal({
                 await updateTicket(ticket.id, { logistics: updatedLogistics });
             }
 
-            // ✅ AUTOMAÇÃO: mover assets de Recupero a ZONA REVISIÓN / TRANSICIÓN
+            // ✅ AUTOMAÇÃO: mover assets de Recupero a ZONA REVISIÓN / TRANSICIÓN (solo los marcados como recuperados)
             const taskAssets = Array.isArray(task?.assets) ? task.assets : [];
-            const recuperoAssets = taskAssets.filter(a => (a.type || '').toLowerCase() === 'recupero');
+            const recuperoAssets = taskAssets.filter(a => (a.type || '').toLowerCase() === 'recupero' && typeof a === 'object' && a.serial);
 
             if (recuperoAssets.length > 0 && updateAsset && assets) {
                 const now = new Date().toLocaleDateString();
@@ -258,22 +268,34 @@ export default function DriverCaseModal({
                 };
 
                 for (const recoveredItem of recuperoAssets) {
-                    const serial = typeof recoveredItem === 'string' ? recoveredItem : recoveredItem.serial;
+                    const serial = recoveredItem.serial;
                     if (!serial) continue;
 
                     const fullAsset = assets.find(a =>
                         a.serial && a.serial.toLowerCase() === serial.toLowerCase()
                     );
 
-                    if (fullAsset) {
+                    if (!fullAsset) continue;
+
+                    const wasRecovered = recoveredItems.has(serial);
+
+                    if (wasRecovered) {
+                        // ✅ Equipo devuelto: mover a ZONA REVISIÓN / TRANSICIÓN
                         const assignedLoc = getNextRevLoc();
                         await updateAsset(fullAsset.id, {
-                            status: 'Por Recuperar',
+                            status: 'Verificacion HW',
                             assignee: 'En Revisión',
                             location_id: assignedLoc,
                             locationId: assignedLoc,
                             notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') +
-                                `[${now}] Recuperado por ${currentUser?.name || 'Conductor'} - Movido a ${assignedLoc} (ZONA REVISIÓN/TRANSICIÓN) para verificación.`
+                                `[${now}] RECUPERADO (Ingresado a Verificación HW) vía Ticket #${ticket?.caseNumber || ticket?.id || ''} por ${currentUser?.name || 'Conductor'} - Asignado a posición ${assignedLoc}.`
+                        });
+                    } else {
+                        // ❌ Equipo NO devuelto: marcar como "No Devuelto" con nota de auditoría
+                        await updateAsset(fullAsset.id, {
+                            status: 'No Devuelto',
+                            notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') +
+                                `[${now}] ⚠️ NO DEVUELTO — El conductor ${currentUser?.name || 'Conductor'} visitó al usuario pero el equipo NO fue entregado (posible robo/pérdida). Ticket #${ticket?.caseNumber || ticket?.id || ''}.`
                         });
                     }
                 }
@@ -471,19 +493,73 @@ export default function DriverCaseModal({
                         <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
                             <Package size={12} style={{ display: 'inline', marginRight: 4 }} /> Equipos del caso
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                            {taskAssetsList.map((a, i) => (
-                                <div key={i} style={{ padding: '0.45rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600 }}>
-                                    {typeof a === 'object' ? (a.serial || 'Sin serial') : String(a)}
-                                    {typeof a === 'object' && a.type && <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> · {a.type}</span>}
+
+                        {/* Equipos de Recupero con checkbox */}
+                        {taskAssetsList.filter(a => typeof a === 'object' && (a.type || '').toLowerCase() === 'recupero' && a.serial).length > 0 && (
+                            <div style={{ marginBottom: '0.5rem' }}>
+                                <p style={{ fontSize: '0.7rem', color: '#b45309', fontWeight: 700, margin: '0 0 0.35rem 0' }}>✔ Marcá los equipos que el usuario SÍ devolvió:</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                    {taskAssetsList.filter(a => typeof a === 'object' && (a.type || '').toLowerCase() === 'recupero' && a.serial).map((a, i) => {
+                                        const serial = a.serial;
+                                        const isChecked = recoveredItems.has(serial);
+                                        return (
+                                            <label key={i} style={{
+                                                display: 'flex', alignItems: 'center', gap: '0.6rem',
+                                                padding: '0.5rem 0.75rem',
+                                                background: isChecked ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.06)',
+                                                border: `1px solid ${isChecked ? '#6ee7b7' : '#fca5a5'}`,
+                                                borderRadius: '8px', cursor: 'pointer',
+                                                fontSize: '0.8rem', fontWeight: 600,
+                                                transition: 'all 0.15s ease'
+                                            }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={() => {
+                                                        setRecoveredItems(prev => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(serial)) next.delete(serial);
+                                                            else next.add(serial);
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#10b981' }}
+                                                />
+                                                <div style={{ flex: 1 }}>
+                                                    <span style={{ color: isChecked ? '#065f46' : '#991b1b' }}>
+                                                        {isChecked ? '✓' : '✕'} {a.serial}
+                                                    </span>
+                                                    {a.deviceType && <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> · {a.deviceType}</span>}
+                                                </div>
+                                                {!isChecked && (
+                                                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#dc2626', background: '#fee2e2', padding: '2px 6px', borderRadius: '4px' }}>NO DEVUELTO</span>
+                                                )}
+                                            </label>
+                                        );
+                                    })}
                                 </div>
-                            ))}
-                            {yubikeys.map((y, i) => (
-                                <div key={`yk-${i}`} style={{ padding: '0.45rem 0.65rem', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, color: '#92400e' }}>
-                                    🔑 Yubikey: {typeof y === 'object' ? (y.serial || 'Sin serial') : String(y)}
-                                </div>
-                            ))}
-                        </div>
+                                {recoveredItems.size < taskAssetsList.filter(a => typeof a === 'object' && (a.type || '').toLowerCase() === 'recupero' && a.serial).length && (
+                                    <p style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 700, marginTop: '0.4rem', padding: '0.4rem 0.6rem', background: '#fee2e2', borderRadius: '6px' }}>
+                                        ⚠️ Los equipos sin marcar quedarán como <strong>"No Devuelto"</strong> y NO ingresarán al depósito.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Otros activos (no recupero) */}
+                        {taskAssetsList.filter(a => typeof a !== 'object' || (a.type || '').toLowerCase() !== 'recupero' || !a.serial).map((a, i) => (
+                            <div key={`other-${i}`} style={{ padding: '0.45rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                                {typeof a === 'object' ? (a.serial || 'Sin serial') : String(a)}
+                                {typeof a === 'object' && a.type && <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> · {a.type}</span>}
+                            </div>
+                        ))}
+
+                        {/* Yubikeys (sin checkbox) */}
+                        {yubikeys.map((y, i) => (
+                            <div key={`yk-${i}`} style={{ padding: '0.45rem 0.65rem', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, color: '#92400e', marginBottom: '0.35rem' }}>
+                                🔑 Yubikey: {typeof y === 'object' ? (y.serial || 'Sin serial') : String(y)}
+                            </div>
+                        ))}
                     </div>
                 )}
 

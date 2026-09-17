@@ -3010,6 +3010,7 @@ export default function InventoryPage() {
                                 <option value="En Reparación">En Reparación</option>
                                 <option value="Dañado">Dañado</option>
                                 <option value="EOL">EOL</option>
+                                <option value="No Devuelto">No Devuelto ⚠️</option>
                             </select>
                         </div>
                         <div className="form-group">

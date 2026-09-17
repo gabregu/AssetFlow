@@ -65,6 +65,7 @@ export default function ManualAssetModal({
                         <option value="Recuperado">Recuperado</option>
                         <option value="En Reparación">En Reparación</option>
                         <option value="EOL">EOL</option>
+                        <option value="No Devuelto">No Devuelto ⚠️</option>
                         <option value="En transito de ingreso">En transito de ingreso</option>
                     </select>
                 </div>

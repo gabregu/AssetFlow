@@ -2483,6 +2483,7 @@ export default function WarehousePage() {
                                     <option value="En Reparación">En Reparación</option>
                                     <option value="Dañado">Dañado</option>
                                     <option value="EOL">EOL</option>
+                                <option value="No Devuelto">No Devuelto ⚠️</option>
                                 </select>
                             </div>
                         </div>
@@ -3906,6 +3907,7 @@ export default function WarehousePage() {
                                 <option value="Mantenimiento">Mantenimiento</option>
                                 <option value="Dañado">Dañado</option>
                                 <option value="EOL">EOL</option>
+                                <option value="No Devuelto">No Devuelto ⚠️</option>
                                 <option value="Baja de Equipo">Baja de Equipo</option>
                             </select>
                         </div>
