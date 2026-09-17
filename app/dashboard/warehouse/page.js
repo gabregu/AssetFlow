@@ -137,6 +137,9 @@ export default function WarehousePage() {
         depositoConfig,
         updateDepositoConfig,
         updateAsset,
+        deleteAsset,
+        tickets = [],
+        updateTicket,
         entities = []
     } = useStore();
 
@@ -204,6 +207,102 @@ export default function WarehousePage() {
     const handleSaveEditAsset = async (e) => {
         e.preventDefault();
         if (!editingAssetObj) return;
+
+        if (editAssetForm.status === 'No Devuelto') {
+            const targetUser = (editingAssetObj.assignee && editingAssetObj.assignee !== 'Almacén')
+                ? editingAssetObj.assignee
+                : (editAssetForm.assignee && editAssetForm.assignee !== 'Almacén' ? editAssetForm.assignee : 'el usuario');
+
+            const confirmDelete = window.confirm(
+                `⚠️ AVISO IMPORTANTE:\n\n` +
+                `Al cambiar el estado a "No Devuelto", este activo será borrado del inventario y solo quedará un registro en el caso asociado indicando que el dispositivo NO fue devuelto por parte del usuario: ${targetUser}.\n\n` +
+                `¿Deseas continuar?`
+            );
+
+            if (!confirmDelete) {
+                return;
+            }
+
+            try {
+                setIsSavingAsset(true);
+                const nowFormatted = new Date().toLocaleString();
+                const updatedBy = currentUser?.name || 'Administrador';
+
+                // Buscar caso / ticket asociado
+                const targetCaseNum = editingAssetObj.sfdcCase || editAssetForm.sfdcCase;
+                const targetSerial = (editingAssetObj.serial || editAssetForm.serial || '').trim().toLowerCase();
+
+                const matchingTicket = (tickets || []).find(t => 
+                    (targetCaseNum && (String(t.caseNumber) === String(targetCaseNum) || String(t.id) === String(targetCaseNum))) ||
+                    (targetSerial && (
+                        (Array.isArray(t.assets) && t.assets.some(a => (a.serial || '').trim().toLowerCase() === targetSerial)) ||
+                        (Array.isArray(t.associatedCases) && t.associatedCases.some(c => Array.isArray(c.assets) && c.assets.some(a => (a.serial || '').trim().toLowerCase() === targetSerial))) ||
+                        (Array.isArray(t.items) && t.items.some(i => (i.serial || '').trim().toLowerCase() === targetSerial))
+                    )) ||
+                    (targetUser !== 'el usuario' && t.employeeName && t.employeeName.toLowerCase() === targetUser.toLowerCase())
+                );
+
+                if (matchingTicket && updateTicket) {
+                    const noteText = `[${nowFormatted}] ⚠️ DISPOSITIVO NO DEVUELTO: El equipo ${editingAssetObj.name || editingAssetObj.model || 'Dispositivo'} (S/N: ${editingAssetObj.serial}) fue marcado como "No Devuelto" y borrado del inventario. El dispositivo NO fue devuelto por parte del usuario: ${targetUser}. (Registrado por: ${updatedBy})`;
+
+                    const currentNotes = Array.isArray(matchingTicket.internalNotes) ? [...matchingTicket.internalNotes] : [];
+                    currentNotes.push(noteText);
+
+                    let updatedAssets = matchingTicket.assets;
+                    if (Array.isArray(updatedAssets)) {
+                        updatedAssets = updatedAssets.map(a => {
+                            if (typeof a === 'object' && a.serial && a.serial.trim().toLowerCase() === targetSerial) {
+                                return { ...a, status: 'No Devuelto', notReturned: true };
+                            }
+                            return a;
+                        });
+                    }
+
+                    let updatedAssociatedCases = matchingTicket.associatedCases;
+                    if (Array.isArray(updatedAssociatedCases)) {
+                        updatedAssociatedCases = updatedAssociatedCases.map(c => {
+                            if (Array.isArray(c.assets)) {
+                                return {
+                                    ...c,
+                                    assets: c.assets.map(a => {
+                                        if (typeof a === 'object' && a.serial && a.serial.trim().toLowerCase() === targetSerial) {
+                                            return { ...a, status: 'No Devuelto', notReturned: true };
+                                        }
+                                        return a;
+                                    })
+                                };
+                            }
+                            return c;
+                        });
+                    }
+
+                    await updateTicket(matchingTicket.id, {
+                        internalNotes: currentNotes,
+                        ...(updatedAssets ? { assets: updatedAssets } : {}),
+                        ...(updatedAssociatedCases ? { associatedCases: updatedAssociatedCases } : {})
+                    });
+                }
+
+                if (deleteAsset) {
+                    await deleteAsset(editingAssetObj.id);
+                }
+
+                setIsEditAssetModalOpen(false);
+                setEditingAssetObj(null);
+                alert(matchingTicket
+                    ? `El activo fue borrado del inventario. Se registró la constancia en el caso #${matchingTicket.caseNumber || matchingTicket.id} indicando que no fue devuelto por ${targetUser}.`
+                    : `El activo fue borrado del inventario.`
+                );
+                return;
+            } catch (err) {
+                console.error('Error al procesar activo no devuelto en almacén:', err);
+                alert('Error al procesar el cambio: ' + (err.message || 'Error desconocido'));
+                return;
+            } finally {
+                setIsSavingAsset(false);
+            }
+        }
+
         try {
             setIsSavingAsset(true);
             const now = new Date().toISOString();

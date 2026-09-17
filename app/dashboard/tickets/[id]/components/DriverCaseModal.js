@@ -6,6 +6,7 @@ import { Button } from '@/app/components/ui/Button';
 import { Badge } from '@/app/components/ui/Badge';
 import { Package, Calendar, Clock, MapPin, CheckCircle, Truck, MessageCircle, Save, Edit3, RotateCcw } from 'lucide-react';
 import { getStatusVariant } from '../../constants';
+import { useStore } from '@/lib/store';
 
 /**
  * DriverCaseModal — Modal interactivo para conductores.
@@ -27,6 +28,7 @@ export default function DriverCaseModal({
     assets
 }) {
     const [isSaving, setIsSaving] = useState(false);
+    const { deleteAsset: storeDeleteAsset } = useStore();
     const [statusOverride, setStatusOverride] = useState(null);
 
     // Campos editables por el conductor
@@ -267,6 +269,8 @@ export default function DriverCaseModal({
                     return `REV-${nextRevNumber}`;
                 };
 
+                const unreturnedNotes = [];
+
                 for (const recoveredItem of recuperoAssets) {
                     const serial = recoveredItem.serial;
                     if (!serial) continue;
@@ -291,13 +295,22 @@ export default function DriverCaseModal({
                                 `[${now}] RECUPERADO (Ingresado a Verificación HW) vía Ticket #${ticket?.caseNumber || ticket?.id || ''} por ${currentUser?.name || 'Conductor'} - Asignado a posición ${assignedLoc}.`
                         });
                     } else {
-                        // ❌ Equipo NO devuelto: marcar como "No Devuelto" con nota de auditoría
-                        await updateAsset(fullAsset.id, {
-                            status: 'No Devuelto',
-                            notes: (fullAsset.notes ? fullAsset.notes + '\n' : '') +
-                                `[${now}] ⚠️ NO DEVUELTO — El conductor ${currentUser?.name || 'Conductor'} visitó al usuario pero el equipo NO fue entregado (posible robo/pérdida). Ticket #${ticket?.caseNumber || ticket?.id || ''}.`
-                        });
+                        // ❌ Equipo NO devuelto: eliminar del inventario y dejar registro en el caso
+                        if (storeDeleteAsset) {
+                            await storeDeleteAsset(fullAsset.id);
+                        }
+                        const targetUser = ticket?.employeeName || ticket?.requester || fullAsset?.assignee || 'el usuario';
+                        unreturnedNotes.push(
+                            `[${now}] ⚠️ NO DEVUELTO — El conductor ${currentUser?.name || 'Conductor'} visitó al usuario (${targetUser}) pero el equipo ${fullAsset?.name || fullAsset?.model || recoveredItem?.deviceType || 'Dispositivo'} (S/N: ${serial}) NO fue entregado (posible robo/pérdida). El equipo fue retirado del inventario. Ticket #${ticket?.caseNumber || ticket?.id || ''}.`
+                        );
                     }
+                }
+
+                if (unreturnedNotes.length > 0 && updateTicket && ticket) {
+                    const currentNotes = Array.isArray(ticket.internalNotes) ? ticket.internalNotes : [];
+                    await updateTicket(ticket.id, {
+                        internalNotes: [...currentNotes, ...unreturnedNotes]
+                    });
                 }
             }
 
