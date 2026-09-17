@@ -177,7 +177,8 @@ export default function WarehousePage() {
         imei2: '',
         modelNumber: '',
         partNumber: '',
-        hardwareSpec: ''
+        hardwareSpec: '',
+        notes: ''
     });
     const [isSavingAsset, setIsSavingAsset] = useState(false);
 
@@ -202,7 +203,8 @@ export default function WarehousePage() {
             imei2: assetToEdit.imei2 || '',
             modelNumber: assetToEdit.modelNumber || assetToEdit.model_number || '',
             partNumber: assetToEdit.partNumber || assetToEdit.part_number || '',
-            hardwareSpec: assetToEdit.hardwareSpec || ''
+            hardwareSpec: assetToEdit.hardwareSpec || '',
+            notes: assetToEdit.notes || ''
         });
         setIsEditAssetModalOpen(true);
     };
@@ -337,6 +339,7 @@ export default function WarehousePage() {
                 partNumber: editAssetForm.partNumber.trim(),
                 part_number: editAssetForm.partNumber.trim(),
                 hardwareSpec: editAssetForm.hardwareSpec.trim(),
+                notes: editAssetForm.notes || '',
                 dateLastUpdate: now,
                 updatedBy: updatedBy,
                 lastAssetCheck: now
@@ -4188,6 +4191,18 @@ export default function WarehousePage() {
                             placeholder="Ej: M1 Pro / 16GB / 512GB"
                             className="form-input"
                             style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none' }}
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Notas del Activo</label>
+                        <textarea 
+                            rows={3}
+                            value={editAssetForm.notes || ''} 
+                            onChange={e => setEditAssetForm({ ...editAssetForm, notes: e.target.value })}
+                            placeholder="Notas o historial del equipo..."
+                            className="form-input"
+                            style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', resize: 'vertical' }}
                         />
                     </div>
 
