@@ -852,7 +852,7 @@ export default function InventoryPage() {
     };
 
     // Yubikey Handlers
-    const [newYubikey, setNewYubikey] = useState({ type: 'YubiKey 5 NFC', serial: '', status: 'Nuevo', country: 'Argentina' });
+    const [newYubikey, setNewYubikey] = useState({ type: 'YubiKey 5 NFC', serial: '', status: 'Nuevo', country: countryFilter !== 'Todos' ? countryFilter : 'Argentina' });
 
     const handleAddYubikey = async (e) => {
         e.preventDefault();
@@ -865,7 +865,7 @@ export default function InventoryPage() {
                 country: newYubikey.country || 'Argentina'
             });
             setIsAddYubikeyModalOpen(false);
-            setNewYubikey({ type: 'YubiKey 5 NFC', serial: '', status: 'Nuevo', country: 'Argentina' });
+            setNewYubikey({ type: 'YubiKey 5 NFC', serial: '', status: 'Nuevo', country: countryFilter !== 'Todos' ? countryFilter : 'Argentina' });
             alert("Security Key creada correctamente");
         } catch (error) {
             alert("Error al crear Security Key: " + error.message);
@@ -1494,9 +1494,9 @@ export default function InventoryPage() {
         return assetList.filter(a => {
             if (!a) return false;
             if (a.country) {
-                const c1 = String(a.country).toLowerCase();
-                const c2 = String(countryFilter || '').toLowerCase();
-                return c1.includes(c2) || c2.includes(c1);
+                // Comparación exacta (case-insensitive) para evitar falsos positivos
+                // ej: "Argentina" no debe matchear "SFDC-Argentina"
+                return String(a.country).toLowerCase().trim() === String(countryFilter || '').toLowerCase().trim();
             } else if (a.notes && String(a.notes).includes(countryFilter)) {
                 return true;
             } else {
