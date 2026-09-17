@@ -182,9 +182,12 @@ export default function WarehousePage() {
     const [isSavingAsset, setIsSavingAsset] = useState(false);
 
     const handleOpenEditAsset = (assetToEdit) => {
+        if (!assetToEdit) return;
         setEditingAssetObj(assetToEdit);
         setEditAssetForm({
-            name: assetToEdit.name || assetToEdit.model || '',
+            id: assetToEdit.id,
+            name: assetToEdit.name || assetToEdit.model || assetToEdit.type || '',
+            model: assetToEdit.model || assetToEdit.name || '',
             type: assetToEdit.type || 'Laptop',
             serial: assetToEdit.serial || '',
             status: assetToEdit.status || 'Disponible',
@@ -206,11 +209,17 @@ export default function WarehousePage() {
 
     const handleSaveEditAsset = async (e) => {
         e.preventDefault();
-        if (!editingAssetObj) return;
+        const targetAssetObj = editingAssetObj || (editAssetForm?.id ? assets.find(a => a.id === editAssetForm.id) : null) || (editAssetForm?.serial ? assets.find(a => (a.serial || '').toLowerCase() === editAssetForm.serial.toLowerCase()) : null);
+        if (!targetAssetObj) {
+            alert('Error: No se pudo identificar el activo a modificar.');
+            return;
+        }
 
-        if (editAssetForm.status === 'No Devuelto') {
-            const targetUser = (editingAssetObj.assignee && editingAssetObj.assignee !== 'Almacén')
-                ? editingAssetObj.assignee
+        const isNoDevuelto = editAssetForm.status === 'No Devuelto' || editAssetForm.status?.startsWith('No Devuelto');
+
+        if (isNoDevuelto) {
+            const targetUser = (targetAssetObj.assignee && targetAssetObj.assignee !== 'Almacén')
+                ? targetAssetObj.assignee
                 : (editAssetForm.assignee && editAssetForm.assignee !== 'Almacén' ? editAssetForm.assignee : 'el usuario');
 
             const confirmDelete = window.confirm(
@@ -229,8 +238,8 @@ export default function WarehousePage() {
                 const updatedBy = currentUser?.name || 'Administrador';
 
                 // Buscar caso / ticket asociado
-                const targetCaseNum = editingAssetObj.sfdcCase || editAssetForm.sfdcCase;
-                const targetSerial = (editingAssetObj.serial || editAssetForm.serial || '').trim().toLowerCase();
+                const targetCaseNum = targetAssetObj.sfdcCase || editAssetForm.sfdcCase;
+                const targetSerial = (targetAssetObj.serial || editAssetForm.serial || '').trim().toLowerCase();
 
                 const matchingTicket = (tickets || []).find(t => 
                     (targetCaseNum && (String(t.caseNumber) === String(targetCaseNum) || String(t.id) === String(targetCaseNum))) ||
@@ -243,7 +252,7 @@ export default function WarehousePage() {
                 );
 
                 if (matchingTicket && updateTicket) {
-                    const noteText = `[${nowFormatted}] ⚠️ DISPOSITIVO NO DEVUELTO: El equipo ${editingAssetObj.name || editingAssetObj.model || 'Dispositivo'} (S/N: ${editingAssetObj.serial}) fue marcado como "No Devuelto" y borrado del inventario. El dispositivo NO fue devuelto por parte del usuario: ${targetUser}. (Registrado por: ${updatedBy})`;
+                    const noteText = `[${nowFormatted}] ⚠️ DISPOSITIVO NO DEVUELTO: El equipo ${targetAssetObj.name || targetAssetObj.model || 'Dispositivo'} (S/N: ${targetAssetObj.serial}) fue marcado como "No Devuelto" y borrado del inventario. El dispositivo NO fue devuelto por parte del usuario: ${targetUser}. (Registrado por: ${updatedBy})`;
 
                     const currentNotes = Array.isArray(matchingTicket.internalNotes) ? [...matchingTicket.internalNotes] : [];
                     currentNotes.push(noteText);
@@ -284,7 +293,7 @@ export default function WarehousePage() {
                 }
 
                 if (deleteAsset) {
-                    await deleteAsset(editingAssetObj.id);
+                    await deleteAsset(targetAssetObj.id);
                 }
 
                 setIsEditAssetModalOpen(false);
@@ -308,9 +317,9 @@ export default function WarehousePage() {
             const now = new Date().toISOString();
             const updatedBy = currentUser?.name || 'Administrador';
 
-            await updateAsset(editingAssetObj.id, {
-                name: editAssetForm.name.trim(),
-                model: editAssetForm.name.trim(),
+            await updateAsset(targetAssetObj.id, {
+                name: (editAssetForm.name || editAssetForm.model || '').trim(),
+                model: (editAssetForm.name || editAssetForm.model || '').trim(),
                 type: editAssetForm.type,
                 serial: editAssetForm.serial.trim(),
                 status: editAssetForm.status,
@@ -338,7 +347,7 @@ export default function WarehousePage() {
             alert('Activo actualizado correctamente.');
         } catch (err) {
             console.error('Error actualizando activo:', err);
-            alert('Error al actualizar el activo.');
+            alert('Error al actualizar el activo: ' + (err.message || 'Error desconocido'));
         } finally {
             setIsSavingAsset(false);
         }
@@ -3155,10 +3164,7 @@ export default function WarehousePage() {
                                             <div 
                                                 key={asset.id} 
                                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', backgroundColor: '#eff6ff', borderRadius: '6px', cursor: 'pointer', border: '1px solid #bfdbfe' }}
-                                                onClick={() => {
-                                                    setEditAssetForm(asset);
-                                                    setIsEditAssetModalOpen(true);
-                                                }}
+                                                onClick={() => handleOpenEditAsset(asset)}
                                             >
                                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                                                     <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>{asset.model || asset.name}</span>

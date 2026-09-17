@@ -421,7 +421,9 @@ export default function InventoryPage() {
             return;
         }
 
-        if (editingAsset && editingAsset.status === 'Verificacion HW' && newAsset.status !== 'Verificacion HW') {
+        const isNoDevuelto = newAsset.status === 'No Devuelto' || newAsset.status?.startsWith('No Devuelto');
+
+        if (editingAsset && editingAsset.status === 'Verificacion HW' && newAsset.status !== 'Verificacion HW' && !isNoDevuelto) {
             if (!hwChecklist.serial || !hwChecklist.cleaning || !hwChecklist.wipe || !hwChecklist.reinstall) {
                 alert('Debe completar todos los pasos del Checklist de Verificación HW antes de cambiar el estado del equipo.');
                 return;
@@ -438,13 +440,13 @@ export default function InventoryPage() {
         }
 
         // No permitir crear activos nuevos como "No Devuelto"
-        if (!editingAsset && newAsset.status === 'No Devuelto') {
+        if (!editingAsset && isNoDevuelto) {
             alert('No se puede dar de alta un activo nuevo con el estado "No Devuelto". Los equipos no devueltos no ingresan al inventario.');
             return;
         }
 
         // Si se edita un activo existente y se pasa a "No Devuelto", avisar, borrar del inventario y registrar en el caso asociado
-        if (editingAsset && newAsset.status === 'No Devuelto') {
+        if (editingAsset && isNoDevuelto) {
             const targetUser = (editingAsset.assignee && editingAsset.assignee !== 'Almacén')
                 ? editingAsset.assignee
                 : (newAsset.assignee && newAsset.assignee !== 'Almacén' ? newAsset.assignee : 'el usuario');
