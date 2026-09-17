@@ -41,8 +41,16 @@ export default function ManualAssetModal({
                     >
                         <option value="Laptop">Laptop</option>
                         <option value="Smartphone">Smartphone</option>
-                        <option value="Security keys">Security keys</option>
                         <option value="Tablet">Tablet</option>
+                        <option value="Monitor">Monitor</option>
+                        <option value="Impresora">Impresora</option>
+                        <option value="Tableta de dibujo">Tableta de dibujo</option>
+                        <option value="Disco Externo">Disco Externo</option>
+                        <option value="Proyector">Proyector</option>
+                        <option value="UPS">UPS</option>
+                        <option value="Switch / Router">Switch / Router</option>
+                        <option value="Otros">Otros</option>
+                        <option value="Security keys">Security Keys</option>
                     </select>
                 </div>
                 <div className="form-group">

@@ -19,7 +19,6 @@ import * as XLSX from 'xlsx';
 import Link from 'next/link';
 
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
-import { Camera } from 'lucide-react';
 import { uploadDevicePhoto } from '../../../lib/upload';
 
 const parseAssetName = (name) => {
