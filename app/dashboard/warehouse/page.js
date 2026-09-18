@@ -30,7 +30,8 @@ import {
     SlidersHorizontal,
     Download,
     Camera,
-    QrCode
+    QrCode,
+    Truck
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
@@ -140,7 +141,10 @@ export default function WarehousePage() {
         deleteAsset,
         tickets = [],
         updateTicket,
-        entities = []
+        entities = [],
+        logisticsTasks = [],
+        deliveries = [],
+        users = []
     } = useStore();
 
     // Mapping and Audit States
@@ -181,6 +185,136 @@ export default function WarehousePage() {
         notes: ''
     });
     const [isSavingAsset, setIsSavingAsset] = useState(false);
+
+    // Identificar qué conductor recogió/entregó el equipo (tareas de logística, tickets, entregas o notas)
+    const getDriverForAsset = useCallback((asset) => {
+        if (!asset) return null;
+
+        const assetSerial = String(asset.serial || '').trim().toLowerCase();
+        const assetId = String(asset.id || '');
+        const assetCase = String(asset.sfdcCase || asset.sfdc_case || '').trim().toLowerCase();
+
+        const resolveName = (val) => {
+            if (!val || typeof val !== 'string') return null;
+            const cleanVal = val.trim();
+            if (!cleanVal) return null;
+            if (users && users.length > 0) {
+                const u = users.find(user => 
+                    String(user.id).toLowerCase() === cleanVal.toLowerCase() || 
+                    (user.username && user.username.toLowerCase() === cleanVal.toLowerCase()) ||
+                    (user.email && user.email.toLowerCase() === cleanVal.toLowerCase())
+                );
+                if (u?.name) return u.name;
+            }
+            return cleanVal;
+        };
+
+        // 1. Campo directo en activo
+        if (asset.delivered_by || asset.deliveredBy || asset.driver) {
+            const d = resolveName(asset.delivered_by || asset.deliveredBy || asset.driver);
+            if (d) return d;
+        }
+
+        // 2. Búsqueda en logisticsTasks
+        if (logisticsTasks && logisticsTasks.length > 0) {
+            const matchingTasks = logisticsTasks.filter(task => {
+                let taskAssets = task.assets;
+                if (typeof taskAssets === 'string') {
+                    try { taskAssets = JSON.parse(taskAssets); } catch (e) { taskAssets = []; }
+                }
+                if (!Array.isArray(taskAssets)) taskAssets = [];
+
+                const hasAsset = taskAssets.some(item => {
+                    if (!item) return false;
+                    const itemSerial = String(item.serial || item.sn || item.s_n || '').trim().toLowerCase();
+                    const itemId = String(item.id || item.asset_id || item.assetId || '');
+                    return (assetSerial && itemSerial && itemSerial === assetSerial) || (assetId && itemId && itemId === assetId);
+                });
+                const matchesTicketCase = assetCase && task.caseNumber && task.caseNumber.toLowerCase() === assetCase;
+                return hasAsset || matchesTicketCase;
+            });
+
+            if (matchingTasks.length > 0) {
+                const bestTask = matchingTasks.find(t => t.method === 'Recupero' || t.status === 'Recuperado' || t.status === 'Recibido') || matchingTasks[0];
+                const driverVal = bestTask.delivery_person || bestTask.deliveryPerson || bestTask.assigned_to || bestTask.assignedTo;
+                const d = resolveName(driverVal);
+                if (d) return d;
+            }
+        }
+
+        // 3. Búsqueda en tickets
+        if (tickets && tickets.length > 0) {
+            const matchingTickets = tickets.filter(ticket => {
+                let assoc = ticket.associatedCases;
+                if (typeof assoc === 'string') {
+                    try { assoc = JSON.parse(assoc); } catch (e) { assoc = []; }
+                }
+                if (!Array.isArray(assoc)) assoc = [];
+                const hasAssoc = assoc.some(c => Array.isArray(c?.assets) && c.assets.some(a => String(a?.serial || '').trim().toLowerCase() === assetSerial));
+
+                let items = Array.isArray(ticket.items) ? ticket.items : (Array.isArray(ticket.assets) ? ticket.assets : []);
+                if (typeof items === 'string') {
+                    try { items = JSON.parse(items); } catch (e) { items = []; }
+                }
+                if (!Array.isArray(items)) items = [];
+                const hasItem = items.some(i => String(i?.serial || '').trim().toLowerCase() === assetSerial);
+
+                const matchesCase = assetCase && (
+                    (ticket.caseNumber && ticket.caseNumber.toLowerCase() === assetCase) || 
+                    String(ticket.id).toLowerCase() === assetCase
+                );
+
+                return hasAssoc || hasItem || matchesCase;
+            });
+
+            if (matchingTickets.length > 0) {
+                for (const t of matchingTickets) {
+                    const driverVal = t.logistics?.deliveryPerson || t.logistics?.delivery_person || t.delivery_person || t.deliveryPerson || t.assignedTo || t.assigned_driver;
+                    const d = resolveName(driverVal);
+                    if (d) return d;
+
+                    if (Array.isArray(t.internalNotes)) {
+                        for (const note of t.internalNotes) {
+                            const noteText = typeof note === 'string' ? note : (note?.text || '');
+                            const m = noteText.match(/(?:recibido por conductor|conductor|chofer)\s+([A-Za-zÀ-ÿ\s]{2,30})/i);
+                            if (m && m[1]) return m[1].trim();
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Búsqueda en deliveries
+        if (deliveries && deliveries.length > 0) {
+            const matchingDel = deliveries.find(d => {
+                const delSerial = String(d.serial || '').trim().toLowerCase();
+                const dAssets = Array.isArray(d.assets) ? d.assets : [];
+                return (assetSerial && delSerial === assetSerial) || dAssets.some(a => String(a?.serial || '').trim().toLowerCase() === assetSerial);
+            });
+            if (matchingDel) {
+                const d = resolveName(matchingDel.driver || matchingDel.delivery_person || matchingDel.deliveryPerson);
+                if (d) return d;
+            }
+        }
+
+        // 5. Búsqueda en notas del activo (ej: "[fecha] RECUPERADO ... por Juan Conductor - Asignado a posición...")
+        if (asset.notes && typeof asset.notes === 'string') {
+            const matchPor = asset.notes.match(/por\s+([A-Za-zÀ-ÿ0-9\s]{2,35}?)(?:\s*-\s*Asignado|\s*-\s*|\s*\.|\s*\(|$|\n)/i);
+            if (matchPor && matchPor[1]) {
+                const candidate = matchPor[1].trim();
+                const lower = candidate.toLowerCase();
+                if (!['el', 'la', 'un', 'una', 'usuario', 'almacén', 'almacen', 'revisión', 'revision', 'verificación hw', 'verificacion hw'].includes(lower)) {
+                    return candidate;
+                }
+            }
+            const matchConductor = asset.notes.match(/(?:conductor|chofer)[:\s]+([A-Za-zÀ-ÿ0-9\s]{2,35}?)(?:\s+el|\s+-|\.|$|\n)/i);
+            if (matchConductor && matchConductor[1]) {
+                return matchConductor[1].trim();
+            }
+        }
+
+        return null;
+    }, [logisticsTasks, tickets, deliveries, users]);
 
     const handleOpenEditAsset = (assetToEdit) => {
         if (!assetToEdit) return;
@@ -2829,6 +2963,12 @@ export default function WarehousePage() {
                                                         {a.status}
                                                     </span>
                                                 </div>
+                                                {getDriverForAsset(a) && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.67rem', color: '#1d4ed8', marginTop: '3px' }}>
+                                                        <Truck size={11} style={{ flexShrink: 0 }} />
+                                                        <span>Conductor: <strong>{getDriverForAsset(a)}</strong></span>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -2905,6 +3045,12 @@ export default function WarehousePage() {
                                             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', background: 'var(--background-secondary)', padding: '0.6rem', borderRadius: '6px', marginTop: '0.25rem' }}>
                                                 <div>Mapeado el: {asset.dateMapped ? new Date(asset.dateMapped).toLocaleDateString() : 'N/A'}</div>
                                                 <div>Por: {asset.updatedBy || 'N/A'}</div>
+                                                {getDriverForAsset(asset) && (
+                                                    <div style={{ marginTop: '3px', color: '#1d4ed8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <Truck size={12} style={{ flexShrink: 0 }} />
+                                                        <span>Conductor: {getDriverForAsset(asset)}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </>
                                     ) : (
@@ -3163,28 +3309,63 @@ export default function WarehousePage() {
                                             (countryFilter === 'Todos' || a.country === countryFilter) &&
                                             (a.status === 'Verificacion HW' || a.status === 'Por Recuperar') &&
                                             (!a.locationId || !a.locationId.startsWith('REV-'))
-                                        ).map(asset => (
-                                            <div 
-                                                key={asset.id} 
-                                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0.75rem', backgroundColor: '#eff6ff', borderRadius: '6px', cursor: 'pointer', border: '1px solid #bfdbfe' }}
-                                                onClick={() => handleOpenEditAsset(asset)}
-                                            >
-                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>{asset.model || asset.name}</span>
-                                                    <span style={{ fontSize: '0.7rem', color: '#1e40af' }}>S/N: {asset.serial}</span>
+                                        ).map(asset => {
+                                            const driverName = getDriverForAsset(asset);
+                                            return (
+                                                <div 
+                                                    key={asset.id} 
+                                                    style={{ 
+                                                        display: 'flex', 
+                                                        justifyContent: 'space-between', 
+                                                        alignItems: 'center', 
+                                                        padding: '0.6rem 0.75rem', 
+                                                        backgroundColor: '#eff6ff', 
+                                                        borderRadius: '8px', 
+                                                        cursor: 'pointer', 
+                                                        border: '1px solid #bfdbfe',
+                                                        transition: 'all 0.15s ease'
+                                                    }}
+                                                    onClick={() => handleOpenEditAsset(asset)}
+                                                    title="Clic para editar o ubicar equipo"
+                                                >
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                                                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e3a8a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            {asset.model || asset.name}
+                                                        </span>
+                                                        <span style={{ fontSize: '0.7rem', color: '#1e40af' }}>
+                                                            S/N: <strong>{asset.serial}</strong>
+                                                        </span>
+                                                        <div style={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            gap: '4px', 
+                                                            marginTop: '2px', 
+                                                            fontSize: '0.68rem', 
+                                                            color: driverName ? '#1e40af' : '#64748b' 
+                                                        }}>
+                                                            <Truck size={12} style={{ flexShrink: 0, color: driverName ? '#2563eb' : '#94a3b8' }} />
+                                                            <span>
+                                                                Conductor: <strong style={{ color: driverName ? '#0f172a' : '#64748b' }}>{driverName || 'Sin registrar'}</strong>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <span style={{ 
+                                                        fontSize: '0.7rem', 
+                                                        fontWeight: 700, 
+                                                        padding: '2px 8px', 
+                                                        borderRadius: '12px', 
+                                                        backgroundColor: asset.status === 'Verificacion HW' ? '#fef08a' : '#bfdbfe',
+                                                        color: asset.status === 'Verificacion HW' ? '#854d0e' : '#1e40af',
+                                                        whiteSpace: 'nowrap',
+                                                        marginLeft: '0.5rem',
+                                                        alignSelf: 'flex-start',
+                                                        marginTop: '2px'
+                                                    }}>
+                                                        {asset.status}
+                                                    </span>
                                                 </div>
-                                                <span style={{ 
-                                                    fontSize: '0.7rem', 
-                                                    fontWeight: 700, 
-                                                    padding: '2px 8px', 
-                                                    borderRadius: '12px', 
-                                                    backgroundColor: asset.status === 'Verificacion HW' ? '#fef08a' : '#bfdbfe',
-                                                    color: asset.status === 'Verificacion HW' ? '#854d0e' : '#1e40af'
-                                                }}>
-                                                    {asset.status}
-                                                </span>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -3946,6 +4127,22 @@ export default function WarehousePage() {
                 title="Editar Activo"
             >
                 <form onSubmit={handleSaveEditAsset} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingTop: '0.5rem', maxHeight: '80vh', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                    {editingAssetObj && getDriverForAsset(editingAssetObj) && (
+                        <div style={{
+                            backgroundColor: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '8px',
+                            padding: '0.6rem 0.8rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            color: '#1e40af',
+                            fontSize: '0.82rem'
+                        }}>
+                            <Truck size={16} color="#2563eb" style={{ flexShrink: 0 }} />
+                            <span>Conductor que lo recogió: <strong style={{ color: '#1e3a8a' }}>{getDriverForAsset(editingAssetObj)}</strong></span>
+                        </div>
+                    )}
                     <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Nombre del Modelo / Descripción</label>
                         <input 
