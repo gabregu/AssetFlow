@@ -386,12 +386,13 @@ export default function ConfirmacionEntregaPage() {
                 <div style={{ maxWidth: '460px', width: '100%', background: '#ffffff', borderRadius: '16px', padding: '2.5rem 2rem', textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', border: '1px solid #d1fae5' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
                         <img 
-                            src="/assetflow-yaw-logo.jpg" 
+                            src="/assetflow-yaw-logo.png" 
                             alt="AssetFlow by YAW Informatica" 
                             style={{ 
-                                height: '40px', 
-                                width: 'auto',
-                                maxWidth: '200px',
+                                width: '100%',
+                                maxWidth: '280px',
+                                height: 'auto',
+                                maxHeight: '80px',
                                 objectFit: 'contain',
                                 mixBlendMode: 'multiply'
                             }} 
@@ -439,21 +440,29 @@ export default function ConfirmacionEntregaPage() {
             <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
                 {/* Brand Header */}
-                <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                    <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center',
+                        marginBottom: '1rem',
+                        padding: '0 0.5rem'
+                    }}>
                         <img 
-                            src="/assetflow-yaw-logo.jpg" 
+                            src="/assetflow-yaw-logo.png" 
                             alt="AssetFlow by YAW Informatica" 
                             style={{ 
-                                height: '48px', 
-                                width: 'auto',
-                                maxWidth: '240px',
+                                width: '100%', 
+                                maxWidth: '380px',
+                                height: 'auto',
+                                maxHeight: '120px',
                                 objectFit: 'contain',
+                                display: 'block',
                                 mixBlendMode: 'multiply'
                             }} 
                         />
                     </div>
-                    <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.35rem 0' }}>
+                    <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.35rem 0' }}>
                         Confirmación de Recepción
                     </h1>
                     <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>
