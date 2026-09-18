@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '../components/layout/Sidebar';
+import { Logo } from '../components/ui/Logo';
 import { MobileBottomNav } from './components/layout/MobileBottomNav';
 import { Menu, Loader2, Shield } from 'lucide-react';
 import { useStore } from '../../lib/store';
@@ -71,14 +72,15 @@ export default function DashboardLayout({ children }) {
 
             <main className="dashboard-main" style={{ flex: 1, padding: '2rem', overflowY: 'auto', position: 'relative' }}>
                 {/* Header Móvil */}
-                <div className="show-mobile" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div className="show-mobile" style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <button
                         onClick={() => setIsSidebarOpen(true)}
-                        style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer' }}
+                        style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                        aria-label="Abrir menú"
                     >
                         <Menu size={24} color="var(--text-main)" />
                     </button>
-                    <span style={{ fontWeight: 700, fontSize: '1.2rem' }}>AssetFlow</span>
+                    <Logo size="small" style={{ width: 'auto', maxWidth: '185px', padding: '0.35rem 0.65rem' }} imgStyle={{ height: '36px' }} />
                 </div>
 
                 <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: currentUser?.role === 'Conductor' ? '6rem' : '1rem' }}>

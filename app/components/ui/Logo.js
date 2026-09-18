@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function Logo({ size = 'large', collapsed = false, style = {}, className = '' }) {
+export function Logo({ size = 'large', collapsed = false, style = {}, imgStyle = {}, className = '' }) {
     if (collapsed) {
         return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -54,7 +54,8 @@ export function Logo({ size = 'large', collapsed = false, style = {}, className 
                     width: 'auto',
                     maxWidth: '100%',
                     objectFit: 'contain',
-                    display: 'block'
+                    display: 'block',
+                    ...imgStyle
                 }} 
             />
         </div>
