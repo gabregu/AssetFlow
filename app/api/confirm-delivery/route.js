@@ -60,6 +60,13 @@ export async function GET(request) {
         }
 
         if (rpcData) {
+            if (Array.isArray(rpcData.items)) {
+                rpcData.items = rpcData.items.filter(it => 
+                    it && 
+                    it.name && 
+                    !['filtersize', 'filter_size', 'screenfiltersize'].includes(String(it.name).toLowerCase().trim())
+                );
+            }
             return NextResponse.json(rpcData);
         }
 

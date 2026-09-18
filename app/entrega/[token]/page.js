@@ -226,8 +226,15 @@ export default function ConfirmacionEntregaPage() {
     // Extraer lista de items para mostrar
     const renderItemsList = () => {
         // 1. Si el backend ya devolvió la lista unificada y limpia de items
-        if (Array.isArray(deliveryInfo?.items) && deliveryInfo.items.length > 0) {
-            return deliveryInfo.items.map((it, idx) => (
+        const rawItems = Array.isArray(deliveryInfo?.items) ? deliveryInfo.items : [];
+        const cleanItems = rawItems.filter(it => 
+            it && 
+            it.name && 
+            !['filtersize', 'filter_size', 'screenfiltersize'].includes(String(it.name).toLowerCase().trim())
+        );
+
+        if (cleanItems.length > 0) {
+            return cleanItems.map((it, idx) => (
                 <div
                     key={`item-${idx}`}
                     style={{
@@ -283,10 +290,10 @@ export default function ConfirmacionEntregaPage() {
         // Accesorios (estándar y personalizados)
         if (deliveryInfo?.accessories && typeof deliveryInfo.accessories === 'object') {
             const acc = deliveryInfo.accessories;
-            const standardKeys = ['mouse', 'keyboard', 'headset', 'charger', 'backpack', 'screenFilter'];
+            const standardKeys = ['mouse', 'keyboard', 'headset', 'charger', 'backpack', 'screenFilter', 'filterSize', 'filter_size'];
 
             if (acc.backpack) items.push({ key: 'acc-backpack', type: 'Accesorio', name: 'Mochila Técnica', serial: '-' });
-            if (acc.screenFilter) items.push({ key: 'acc-filter', type: 'Accesorio', name: 'Filtro de Pantalla', serial: '-' });
+            if (acc.screenFilter) items.push({ key: 'acc-filter', type: 'Accesorio', name: `Filtro de Pantalla ${acc.filterSize || ''}`.trim(), serial: '-' });
             if (acc.mouse) items.push({ key: 'acc-mouse', type: 'Accesorio', name: 'Mouse Óptico', serial: '-' });
             if (acc.keyboard) items.push({ key: 'acc-keyboard', type: 'Accesorio', name: 'Teclado USB', serial: '-' });
             if (acc.headset) items.push({ key: 'acc-headset', type: 'Accesorio', name: 'Auriculares con Micrófono', serial: '-' });
