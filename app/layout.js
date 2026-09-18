@@ -7,7 +7,15 @@ export const metadata = {
     title: 'AssetFlow - IT Case Management',
     description: 'Gestión integral de Casos, Inventario y Entregas',
     icons: {
-        icon: '/favicon.png', // Conectamos el nuevo icono generado
+        icon: [
+            { url: '/favicon.png?v=3', sizes: 'any', type: 'image/png' },
+            { url: '/icon-192x192.png?v=3', sizes: '192x192', type: 'image/png' },
+            { url: '/icon-512x512.png?v=3', sizes: '512x512', type: 'image/png' }
+        ],
+        apple: [
+            { url: '/apple-touch-icon.png?v=3', sizes: '180x180', type: 'image/png' }
+        ],
+        shortcut: ['/favicon.ico?v=3']
     },
 };
 
