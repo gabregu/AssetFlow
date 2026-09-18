@@ -1,10 +1,31 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { verifyDeliveryToken } from '@/lib/delivery-token';
+import { verifyDeliveryToken, generateDeliveryToken } from '@/lib/delivery-token';
 
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
+        const action = searchParams.get('action');
+
+        // Generar token firmado de entrega desde el servidor
+        if (action === 'get-token') {
+            const ticketId = searchParams.get('ticketId');
+            const caseNumber = searchParams.get('caseNumber') || '';
+            const recipient = searchParams.get('recipient') || '';
+
+            if (!ticketId) {
+                return NextResponse.json({ error: 'Falta ticketId' }, { status: 400 });
+            }
+
+            const token = generateDeliveryToken({ ticketId, caseNumber, recipient });
+            const host = request.headers.get('host');
+            const protocol = request.headers.get('x-forwarded-proto') || 'https';
+            const origin = host ? `${protocol}://${host}` : 'https://assetflow-yawi.vercel.app';
+            const url = `${origin}/entrega/${token}`;
+
+            return NextResponse.json({ token, url });
+        }
+
         const token = searchParams.get('token');
 
         if (!token) {

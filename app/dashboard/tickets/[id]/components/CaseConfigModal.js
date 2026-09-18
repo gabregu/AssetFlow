@@ -8,7 +8,7 @@ import CaseLogisticsSection from './CaseLogisticsSection';
 import ManualAssetModal from './ManualAssetModal';
 import DeliveryVerificationModal from './DeliveryVerificationModal';
 import { isDeliveryCase, isCollectionCase } from './AssociatedCasesCard';
-import { FileText, Package, RotateCcw, Boxes, QrCode } from 'lucide-react';
+import { FileText, Package, RotateCcw, Boxes, QrCode, CheckCircle2, Loader2 } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdf-generator';
 import { generateDeliveryToken } from '@/lib/delivery-token';
 import { Button } from '@/app/components/ui/Button';
@@ -61,6 +61,7 @@ export default function CaseConfigModal({
     const [caseTypeInput, setCaseTypeInput] = useState('independiente');
     const [pendingTaskUpdates, setPendingTaskUpdates] = useState({});
     const [localTask, setLocalTask] = useState(null);
+    const [copyState, setCopyState] = useState('idle'); // 'idle' | 'copying' | 'copied'
 
     const pendingUpdatesRef = useRef({});
     useEffect(() => {
@@ -181,19 +182,74 @@ export default function CaseConfigModal({
         }, 0);
     };
 
-    const handleCopySignLink = () => {
-        if (!ticket?.id) return;
-        const caseNum = currentTask?.caseNumber || ticket.caseNumber || '';
-        const recipient = currentTask?.deliveryPerson || ticket.logistics?.contactName || ticket.requester || '';
-        const token = generateDeliveryToken({ ticketId: ticket.id, caseNumber: caseNum, recipient });
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://assetflow-yawi.vercel.app';
-        const url = `${origin}/entrega/${token}`;
+    const handleCopySignLink = async () => {
+        const ticketId = ticket?.id;
+        if (!ticketId) {
+            alert('No se encontró el ID del caso.');
+            return;
+        }
 
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(url);
-            alert('¡Enlace de firma copiado al portapapeles!\n\nPodés enviarlo por WhatsApp o email al receptor para que firme desde su celular.');
-        } else {
-            prompt('Copiá este enlace para enviar al destinatario:', url);
+        setCopyState('copying');
+        try {
+            const caseNum = currentTask?.caseNumber || ticket.caseNumber || ticketId;
+            const recipient = currentTask?.deliveryPerson || ticket.logistics?.contactName || ticket.requester || '';
+
+            let finalUrl = '';
+            try {
+                const res = await fetch(`/api/confirm-delivery?action=get-token&ticketId=${encodeURIComponent(ticketId)}&caseNumber=${encodeURIComponent(caseNum)}&recipient=${encodeURIComponent(recipient)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.url) finalUrl = data.url;
+                }
+            } catch (apiErr) {
+                console.warn('API get-token fallback:', apiErr);
+            }
+
+            if (!finalUrl) {
+                const token = generateDeliveryToken({ ticketId, caseNumber: caseNum, recipient });
+                const origin = typeof window !== 'undefined' ? window.location.origin : 'https://assetflow-yawi.vercel.app';
+                finalUrl = `${origin}/entrega/${token}`;
+            }
+
+            // Copiado robusto con fallback múltiple
+            let copied = false;
+            if (navigator?.clipboard?.writeText) {
+                try {
+                    await navigator.clipboard.writeText(finalUrl);
+                    copied = true;
+                } catch (clipErr) {
+                    console.warn('navigator.clipboard error:', clipErr);
+                }
+            }
+
+            if (!copied) {
+                try {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = finalUrl;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-9999px';
+                    textArea.style.top = '0';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    copied = document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                } catch (cmdErr) {
+                    console.error('execCommand copy error:', cmdErr);
+                }
+            }
+
+            if (copied) {
+                setCopyState('copied');
+                setTimeout(() => setCopyState('idle'), 3000);
+            } else {
+                setCopyState('idle');
+                prompt('Copiá este enlace para enviar al destinatario:', finalUrl);
+            }
+        } catch (err) {
+            console.error('Error al generar enlace de firma:', err);
+            setCopyState('idle');
+            alert('Ocurrió un error al generar el enlace de firma.');
         }
     };
 
@@ -312,12 +368,22 @@ export default function CaseConfigModal({
                                     <Button 
                                         variant="secondary" 
                                         size="sm"
-                                        icon={QrCode}
+                                        icon={copyState === 'copied' ? CheckCircle2 : copyState === 'copying' ? Loader2 : QrCode}
                                         onClick={handleCopySignLink}
+                                        disabled={copyState === 'copying'}
                                         title="Copiar enlace para enviar por WhatsApp o Email"
-                                        style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px', borderColor: '#bfdbfe', background: '#eff6ff', color: '#1d4ed8' }}
+                                        style={{ 
+                                            fontSize: '0.75rem', 
+                                            height: '28px', 
+                                            padding: '0 10px', 
+                                            borderColor: copyState === 'copied' ? '#86efac' : '#bfdbfe', 
+                                            background: copyState === 'copied' ? '#f0fdf4' : '#eff6ff', 
+                                            color: copyState === 'copied' ? '#15803d' : '#1d4ed8',
+                                            transition: 'all 0.2s ease',
+                                            fontWeight: 600
+                                        }}
                                     >
-                                        Link de Firma
+                                        {copyState === 'copying' ? 'Generando...' : copyState === 'copied' ? '¡Link Copiado! ✓' : 'Link de Firma'}
                                     </Button>
                                 </div>
                             </div>
