@@ -225,30 +225,90 @@ export default function ConfirmacionEntregaPage() {
 
     // Extraer lista de items para mostrar
     const renderItemsList = () => {
+        // 1. Si el backend ya devolvió la lista unificada y limpia de items
+        if (Array.isArray(deliveryInfo?.items) && deliveryInfo.items.length > 0) {
+            return deliveryInfo.items.map((it, idx) => (
+                <div 
+                    key={`item-${idx}`}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.75rem 1rem',
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '10px',
+                        marginBottom: '0.5rem'
+                    }}
+                >
+                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {getItemIcon(it.type)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {it.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            {it.type} {it.serial && it.serial !== '-' && <span>· S/N: <strong style={{ color: '#1e293b' }}>{it.serial}</strong></span>}
+                        </div>
+                    </div>
+                </div>
+            ));
+        }
+
+        // 2. Fallback de extracción cliente
         const items = [];
 
-        // Activos asociados
+        // Activos asociados (objetos o strings)
         if (Array.isArray(deliveryInfo?.associatedAssets)) {
             deliveryInfo.associatedAssets.forEach((a, i) => {
-                if (typeof a === 'object') {
+                if (typeof a === 'object' && a !== null) {
                     items.push({
                         key: `asset-${i}`,
-                        type: a.type || 'Equipo',
-                        name: a.model || a.name || 'Dispositivo',
-                        serial: a.serial || '-'
+                        type: a.type || a.deviceType || 'Equipo',
+                        name: a.model || a.name || a.description || 'Dispositivo',
+                        serial: a.serial || a.id || '-'
+                    });
+                } else if (typeof a === 'string' && a.trim()) {
+                    items.push({
+                        key: `asset-${i}`,
+                        type: 'Equipo',
+                        name: 'Dispositivo Registrado',
+                        serial: a.trim()
                     });
                 }
             });
         }
 
-        // Accesorios
+        // Accesorios (estándar y personalizados)
         if (deliveryInfo?.accessories && typeof deliveryInfo.accessories === 'object') {
             const acc = deliveryInfo.accessories;
+            const standardKeys = ['mouse', 'keyboard', 'headset', 'charger', 'backpack', 'screenFilter'];
+            
+            if (acc.backpack) items.push({ key: 'acc-backpack', type: 'Accesorio', name: 'Mochila Técnica', serial: '-' });
+            if (acc.screenFilter) items.push({ key: 'acc-filter', type: 'Accesorio', name: 'Filtro de Pantalla', serial: '-' });
             if (acc.mouse) items.push({ key: 'acc-mouse', type: 'Accesorio', name: 'Mouse Óptico', serial: '-' });
             if (acc.keyboard) items.push({ key: 'acc-keyboard', type: 'Accesorio', name: 'Teclado USB', serial: '-' });
             if (acc.headset) items.push({ key: 'acc-headset', type: 'Accesorio', name: 'Auriculares con Micrófono', serial: '-' });
             if (acc.charger) items.push({ key: 'acc-charger', type: 'Accesorio', name: 'Cargador Original', serial: '-' });
-            if (acc.backpack) items.push({ key: 'acc-backpack', type: 'Accesorio', name: 'Mochila / Bolso', serial: '-' });
+
+            Object.entries(acc).forEach(([key, val]) => {
+                if (!standardKeys.includes(key) && (val === true || val === 'true')) {
+                    items.push({ key: `acc-custom-${key}`, type: 'Accesorio', name: key, serial: '-' });
+                }
+            });
+        }
+
+        // YubiKeys
+        if (Array.isArray(deliveryInfo?.yubikeys)) {
+            deliveryInfo.yubikeys.forEach((yk, i) => {
+                items.push({
+                    key: `yk-${i}`,
+                    type: 'Security Key',
+                    name: 'YubiKey (Hardware Key)',
+                    serial: yk.serial || '-'
+                });
+            });
         }
 
         if (items.length === 0) {

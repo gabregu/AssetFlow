@@ -38,11 +38,28 @@ export async function GET(request) {
         }
 
         // 1. Intentar obtener datos mediante la función RPC segura
-        const { data: rpcData, error: rpcError } = await supabase.rpc('get_delivery_confirmation_info', {
-            p_ticket_id: payload.ticketId
-        });
+        let rpcData = null;
+        try {
+            const res = await supabase.rpc('get_delivery_confirmation_info', {
+                p_ticket_id: payload.ticketId,
+                p_case_number: payload.caseNumber || null
+            });
+            if (!res.error && res.data) {
+                rpcData = res.data;
+            } else {
+                // Fallback a versión de 1 argumento
+                const res1 = await supabase.rpc('get_delivery_confirmation_info', {
+                    p_ticket_id: payload.ticketId
+                });
+                if (!res1.error && res1.data) {
+                    rpcData = res1.data;
+                }
+            }
+        } catch (e) {
+            console.warn('RPC get_delivery_confirmation_info error:', e);
+        }
 
-        if (!rpcError && rpcData) {
+        if (rpcData) {
             return NextResponse.json(rpcData);
         }
 

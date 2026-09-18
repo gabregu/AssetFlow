@@ -365,26 +365,45 @@ export default function CaseConfigModal({
                                     >
                                         Descargar
                                     </Button>
-                                    <Button 
-                                        variant="secondary" 
-                                        size="sm"
-                                        icon={copyState === 'copied' ? CheckCircle2 : copyState === 'copying' ? Loader2 : QrCode}
-                                        onClick={handleCopySignLink}
-                                        disabled={copyState === 'copying'}
-                                        title="Copiar enlace para enviar por WhatsApp o Email"
-                                        style={{ 
-                                            fontSize: '0.75rem', 
-                                            height: '28px', 
-                                            padding: '0 10px', 
-                                            borderColor: copyState === 'copied' ? '#86efac' : '#bfdbfe', 
-                                            background: copyState === 'copied' ? '#f0fdf4' : '#eff6ff', 
-                                            color: copyState === 'copied' ? '#15803d' : '#1d4ed8',
-                                            transition: 'all 0.2s ease',
-                                            fontWeight: 600
-                                        }}
-                                    >
-                                        {copyState === 'copying' ? 'Generando...' : copyState === 'copied' ? '¡Link Copiado! ✓' : 'Link de Firma'}
-                                    </Button>
+                                    {(() => {
+                                        const methodStr = String(currentTask?.method || ticket?.logistics?.method || '').toLowerCase();
+                                        const driverStr = String(currentTask?.deliveryPerson || currentTask?.delivery_person || ticket?.logistics?.deliveryPerson || '').toLowerCase();
+                                        const trackingStr = String(currentTask?.tracking_number || currentTask?.trackingNumber || ticket?.logistics?.trackingNumber || ticket?.logistics?.tracking_number || '').trim();
+                                        const isPostalCase = 
+                                            methodStr.includes('correo') || 
+                                            methodStr.includes('andreani') || 
+                                            methodStr.includes('postal') || 
+                                            methodStr.includes('dhl') || 
+                                            methodStr.includes('fedex') || 
+                                            driverStr.includes('correo') || 
+                                            driverStr.includes('andreani') || 
+                                            (trackingStr.length > 3 && trackingStr !== '-');
+
+                                        if (!isPostalCase) return null;
+
+                                        return (
+                                            <Button 
+                                                variant="secondary" 
+                                                size="sm"
+                                                icon={copyState === 'copied' ? CheckCircle2 : copyState === 'copying' ? Loader2 : QrCode}
+                                                onClick={handleCopySignLink}
+                                                disabled={copyState === 'copying'}
+                                                title="Copiar enlace para enviar por WhatsApp o Email"
+                                                style={{ 
+                                                    fontSize: '0.75rem', 
+                                                    height: '28px', 
+                                                    padding: '0 10px', 
+                                                    borderColor: copyState === 'copied' ? '#86efac' : '#bfdbfe', 
+                                                    background: copyState === 'copied' ? '#f0fdf4' : '#eff6ff', 
+                                                    color: copyState === 'copied' ? '#15803d' : '#1d4ed8',
+                                                    transition: 'all 0.2s ease',
+                                                    fontWeight: 600
+                                                }}
+                                            >
+                                                {copyState === 'copying' ? 'Generando...' : copyState === 'copied' ? '¡Link Copiado! ✓' : 'Link de Firma'}
+                                            </Button>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>
