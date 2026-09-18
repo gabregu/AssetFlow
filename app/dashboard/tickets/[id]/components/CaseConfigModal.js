@@ -8,8 +8,9 @@ import CaseLogisticsSection from './CaseLogisticsSection';
 import ManualAssetModal from './ManualAssetModal';
 import DeliveryVerificationModal from './DeliveryVerificationModal';
 import { isDeliveryCase, isCollectionCase } from './AssociatedCasesCard';
-import { FileText, Package, RotateCcw, Boxes } from 'lucide-react';
+import { FileText, Package, RotateCcw, Boxes, QrCode } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdf-generator';
+import { generateDeliveryToken } from '@/lib/delivery-token';
 import { Button } from '@/app/components/ui/Button';
 import { useSafeSubmit } from '@/lib/useSafeSubmit';
 import { supabase } from '@/lib/supabase';
@@ -180,6 +181,22 @@ export default function CaseConfigModal({
         }, 0);
     };
 
+    const handleCopySignLink = () => {
+        if (!ticket?.id) return;
+        const caseNum = currentTask?.caseNumber || ticket.caseNumber || '';
+        const recipient = currentTask?.deliveryPerson || ticket.logistics?.contactName || ticket.requester || '';
+        const token = generateDeliveryToken({ ticketId: ticket.id, caseNumber: caseNum, recipient });
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://assetflow-yawi.vercel.app';
+        const url = `${origin}/entrega/${token}`;
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url);
+            alert('¡Enlace de firma copiado al portapapeles!\n\nPodés enviarlo por WhatsApp o email al receptor para que firme desde su celular.');
+        } else {
+            prompt('Copiá este enlace para enviar al destinatario:', url);
+        }
+    };
+
     return (
         <>
             {/* Case Config Modal */}
@@ -291,6 +308,16 @@ export default function CaseConfigModal({
                                         style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px' }}
                                     >
                                         Descargar
+                                    </Button>
+                                    <Button 
+                                        variant="secondary" 
+                                        size="sm"
+                                        icon={QrCode}
+                                        onClick={handleCopySignLink}
+                                        title="Copiar enlace para enviar por WhatsApp o Email"
+                                        style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px', borderColor: '#bfdbfe', background: '#eff6ff', color: '#1d4ed8' }}
+                                    >
+                                        Link de Firma
                                     </Button>
                                 </div>
                             </div>
