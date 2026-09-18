@@ -2,19 +2,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { 
-    Package, 
-    ShieldCheck, 
-    CheckCircle2, 
-    Clock, 
-    User, 
-    CreditCard, 
-    PenTool, 
-    RotateCcw, 
-    AlertCircle, 
-    Laptop, 
-    Smartphone, 
-    Key, 
+import {
+    Package,
+    ShieldCheck,
+    CheckCircle2,
+    Clock,
+    User,
+    CreditCard,
+    PenTool,
+    RotateCcw,
+    AlertCircle,
+    Laptop,
+    Smartphone,
+    Key,
     HelpCircle,
     Building2,
     Calendar
@@ -228,7 +228,7 @@ export default function ConfirmacionEntregaPage() {
         // 1. Si el backend ya devolvió la lista unificada y limpia de items
         if (Array.isArray(deliveryInfo?.items) && deliveryInfo.items.length > 0) {
             return deliveryInfo.items.map((it, idx) => (
-                <div 
+                <div
                     key={`item-${idx}`}
                     style={{
                         display: 'flex',
@@ -284,7 +284,7 @@ export default function ConfirmacionEntregaPage() {
         if (deliveryInfo?.accessories && typeof deliveryInfo.accessories === 'object') {
             const acc = deliveryInfo.accessories;
             const standardKeys = ['mouse', 'keyboard', 'headset', 'charger', 'backpack', 'screenFilter'];
-            
+
             if (acc.backpack) items.push({ key: 'acc-backpack', type: 'Accesorio', name: 'Mochila Técnica', serial: '-' });
             if (acc.screenFilter) items.push({ key: 'acc-filter', type: 'Accesorio', name: 'Filtro de Pantalla', serial: '-' });
             if (acc.mouse) items.push({ key: 'acc-mouse', type: 'Accesorio', name: 'Mouse Óptico', serial: '-' });
@@ -320,7 +320,7 @@ export default function ConfirmacionEntregaPage() {
         }
 
         return items.map((it) => (
-            <div 
+            <div
                 key={it.key}
                 style={{
                     display: 'flex',
@@ -424,7 +424,7 @@ export default function ConfirmacionEntregaPage() {
     return (
         <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '1.5rem 1rem 3rem 1rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
             <div style={{ maxWidth: '480px', margin: '0 auto' }}>
-                
+
                 {/* Brand Header */}
                 <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#ffffff', padding: '0.4rem 1rem', borderRadius: '30px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '0.75rem' }}>
@@ -464,7 +464,7 @@ export default function ConfirmacionEntregaPage() {
                         </label>
                         <div style={{ position: 'relative' }}>
                             <User size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                            <input 
+                            <input
                                 type="text"
                                 required
                                 value={recipientName}
@@ -490,7 +490,7 @@ export default function ConfirmacionEntregaPage() {
                         </label>
                         <div style={{ position: 'relative' }}>
                             <CreditCard size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-                            <input 
+                            <input
                                 type="text"
                                 inputMode="numeric"
                                 required
@@ -539,7 +539,7 @@ export default function ConfirmacionEntregaPage() {
                             )}
                         </div>
 
-                        <div 
+                        <div
                             style={{
                                 border: `2px solid ${hasSignature ? '#10b981' : '#cbd5e1'}`,
                                 borderRadius: '12px',
@@ -549,7 +549,7 @@ export default function ConfirmacionEntregaPage() {
                                 position: 'relative'
                             }}
                         >
-                            <canvas 
+                            <canvas
                                 ref={canvasRef}
                                 style={{
                                     width: '100%',
@@ -577,7 +577,7 @@ export default function ConfirmacionEntregaPage() {
                     {/* Conformity Checkbox */}
                     <div style={{ marginBottom: '1.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem' }}>
                         <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', fontSize: '0.8rem', color: '#475569', cursor: 'pointer', lineHeight: 1.4 }}>
-                            <input 
+                            <input
                                 type="checkbox"
                                 checked={termsAccepted}
                                 onChange={e => setTermsAccepted(e.target.checked)}
