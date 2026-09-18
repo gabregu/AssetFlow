@@ -4,16 +4,23 @@ export function Logo({ size = 'large', collapsed = false }) {
     if (collapsed) {
         return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', gap: '1px' }}>
-                    {[1, 0.7, 0.4].map((op, i) => (
-                        <div key={i} style={{
-                            width: '4px',
-                            height: '12px',
-                            backgroundColor: '#0ea5e9',
-                            clipPath: 'polygon(0% 0%, 70% 0%, 100% 50%, 70% 100%, 0% 100%, 30% 50%)',
-                            opacity: op
-                        }} />
-                    ))}
+                <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '3px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                    border: '1px solid rgba(226, 232, 240, 0.8)'
+                }}>
+                    <img 
+                        src="/favicon.png" 
+                        alt="AssetFlow" 
+                        style={{ width: '24px', height: '24px', objectFit: 'contain' }} 
+                    />
                 </div>
             </div>
         );
@@ -22,55 +29,28 @@ export function Logo({ size = 'large', collapsed = false }) {
     const isSmall = size === 'small';
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 0.9 }}>
-                <span style={{
-                    fontSize: isSmall ? '1.5rem' : '2.2rem',
-                    fontWeight: 900,
-                    color: 'var(--text-main)',
-                    letterSpacing: '-0.03em'
-                }}>
-                    AssetFlow
-                </span>
-                <span style={{
-                    fontSize: isSmall ? '0.75rem' : '1rem',
-                    fontWeight: 800,
-                    color: 'var(--text-secondary)',
-                    marginTop: isSmall ? '2px' : '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                }}>
-                    by <span style={{ color: '#0ea5e9' }}>YAWI</span>
-                </span>
-            </div>
-
-            {/* Stylized Arrow Icon matching the image */}
-            <div style={{
-                display: 'flex',
-                gap: '3px',
-                alignItems: 'center',
-                marginLeft: '8px'
-            }}>
-                {[1, 2, 3].map((i) => (
-                    <div key={i} style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '3px'
-                    }}>
-                        {[1, 2, 3].map((j) => (
-                            <div key={j} style={{
-                                width: isSmall ? '5px' : '6px',
-                                height: isSmall ? '5px' : '6px',
-                                backgroundColor: i === 3 && j === 2 ? '#0ea5e9' : '#94a3b8',
-                                opacity: i === 3 ? 1 : 0.3 + (i * 0.2),
-                                borderRadius: '1.5px',
-                                transform: `translateX(${i * 2}px)`
-                            }} />
-                        ))}
-                    </div>
-                ))}
-            </div>
+        <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#ffffff',
+            borderRadius: '10px',
+            padding: isSmall ? '0.35rem 0.65rem' : '0.55rem 1rem',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+            border: '1px solid #e2e8f0',
+            maxWidth: '100%'
+        }}>
+            <img 
+                src="/assetflow-yaw-logo.png" 
+                alt="AssetFlow by YAW Informatica" 
+                style={{ 
+                    height: isSmall ? '34px' : '48px', 
+                    width: 'auto',
+                    maxWidth: isSmall ? '160px' : '220px',
+                    objectFit: 'contain',
+                    display: 'block'
+                }} 
+            />
         </div>
     );
 }
