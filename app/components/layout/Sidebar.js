@@ -103,17 +103,22 @@ export function Sidebar({ isOpen, onClose }) {
             top: 0,
             zIndex: 1000
         }}>
-            <div style={{ padding: '2rem', borderBottom: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Logo size="small" />
-                    <button onClick={onClose} style={{
+            <div style={{ padding: '1.25rem 1.25rem 1rem 1.25rem', borderBottom: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', width: '100%' }}>
+                    <Logo size="small" style={{ width: '100%' }} />
+                    <button onClick={onClose} className="show-mobile" style={{
+                        position: 'absolute',
+                        right: '-0.25rem',
+                        top: '-0.25rem',
                         background: 'none',
                         border: 'none',
                         color: 'var(--text-secondary)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        padding: '0.25rem',
+                        zIndex: 2
                     }}>
                         <X size={20} />
                     </button>
