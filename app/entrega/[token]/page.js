@@ -384,6 +384,19 @@ export default function ConfirmacionEntregaPage() {
         return (
             <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                 <div style={{ maxWidth: '460px', width: '100%', background: '#ffffff', borderRadius: '16px', padding: '2.5rem 2rem', textAlign: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', border: '1px solid #d1fae5' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                        <img 
+                            src="/assetflow-yaw-logo.jpg" 
+                            alt="AssetFlow by YAW Informatica" 
+                            style={{ 
+                                height: '40px', 
+                                width: 'auto',
+                                maxWidth: '200px',
+                                objectFit: 'contain',
+                                mixBlendMode: 'multiply'
+                            }} 
+                        />
+                    </div>
                     <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#d1fae5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem auto' }}>
                         <CheckCircle2 size={36} />
                     </div>
@@ -426,10 +439,19 @@ export default function ConfirmacionEntregaPage() {
             <div style={{ maxWidth: '480px', margin: '0 auto' }}>
 
                 {/* Brand Header */}
-                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#ffffff', padding: '0.4rem 1rem', borderRadius: '30px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '0.75rem' }}>
-                        <ShieldCheck size={18} color="#2563eb" />
-                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', letterSpacing: '0.5px' }}>ASSETFLOW LOGISTICS</span>
+                <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                        <img 
+                            src="/assetflow-yaw-logo.jpg" 
+                            alt="AssetFlow by YAW Informatica" 
+                            style={{ 
+                                height: '48px', 
+                                width: 'auto',
+                                maxWidth: '240px',
+                                objectFit: 'contain',
+                                mixBlendMode: 'multiply'
+                            }} 
+                        />
                     </div>
                     <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.35rem 0' }}>
                         Confirmación de Recepción
