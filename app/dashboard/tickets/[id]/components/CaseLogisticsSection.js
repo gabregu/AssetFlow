@@ -133,7 +133,7 @@ export default function CaseLogisticsSection({
         };
         setLocalValues(initialState);
         localStateRef.current = initialState;
-    }, [task, currentUser]);
+    }, [task?.id, task?.status, task?.updated_at, currentUser]);
 
     // Intentar obtener la dirección del ticket padre (si existe)
     // Esto es para mostrar al usuario de dónde se hereda
@@ -219,6 +219,11 @@ export default function CaseLogisticsSection({
 
         return await safeSaveAll(async () => {
             let currentStatus = state.status || task.status || 'Pendiente';
+
+            // Si el estado en la base de datos ya fue marcado como Entregado, no revertir automáticamente a En Transito
+            if (task.status === 'Entregado' && currentStatus !== 'Entregado' && !['Finalizado', 'Cancelado'].includes(currentStatus)) {
+                currentStatus = 'Entregado';
+            }
 
             // Aplicar lógica de negocio también en el guardado final
             const TERMINAL_STATUSES = ['En Preparación', 'Entregado', 'Finalizado', 'Cancelado', 'Recuperado', 'Caso SFDC Cerrado', 'Servicio Facturado', 'No requiere accion'];

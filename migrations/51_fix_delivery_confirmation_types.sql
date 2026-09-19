@@ -1,7 +1,14 @@
--- Migration 50: Funciones seguras para Confirmación y Firma Digital de Entregas vía QR
--- Permite que receptores externos confirmen la recepción sin acceder al dashboard ni vulnerar RLS.
+-- Migration 51: Corrección de tipos de fecha y sobrecarga de funciones de confirmación de entrega
+-- Corrige el error 42804: "column delivery_completed_date is of type timestamp with time zone but expression is of type text"
+-- Agrega soporte para p_case_number en confirm_delivery_receipt para actualizar correctamente el sub-caso / sub-tarea correspondiente.
 
--- 1. Función para consultar información básica del remito a firmar (Pública y Segura)
+-- 1. Eliminar sobrecargas previas para evitar conflictos PGRST203
+DROP FUNCTION IF EXISTS public.confirm_delivery_receipt(text, text, text, text);
+DROP FUNCTION IF EXISTS public.confirm_delivery_receipt(text, text, text, text, text);
+DROP FUNCTION IF EXISTS public.get_delivery_confirmation_info(text);
+DROP FUNCTION IF EXISTS public.get_delivery_confirmation_info(text, text);
+
+-- 2. Recrear get_delivery_confirmation_info
 CREATE OR REPLACE FUNCTION public.get_delivery_confirmation_info(
     p_ticket_id text,
     p_case_number text DEFAULT NULL
@@ -82,7 +89,6 @@ BEGIN
     IF v_task.id IS NOT NULL AND v_task.yubikeys IS NOT NULL AND jsonb_array_length(v_task.yubikeys) > 0 THEN
         v_yubikeys := v_task.yubikeys;
     ELSE
-        -- Fallback a posible campo yubikeys en logistics o en ticket
         v_yubikeys := COALESCE(v_ticket.logistics->'yubikeys', '[]'::jsonb);
     END IF;
 
@@ -98,7 +104,8 @@ BEGIN
         v_ticket.delivery_details->>'receivedBy',
         v_task.delivery_info->>'receivedBy',
         v_ticket.logistics->>'contactName',
-        v_ticket.logistics->>'name',
+        v_task.delivery_person,
+        v_ticket.requester,
         ''
     );
 
@@ -115,110 +122,99 @@ BEGIN
         ''
     );
 
-    -- 4. Construir la lista consolidada de items (Hardware, Accesorios y YubiKeys)
-    -- A) Activos de Hardware
-    IF v_assets IS NOT NULL AND jsonb_typeof(v_assets) = 'array' THEN
+    -- Procesar activos serializados
+    IF v_assets IS NOT NULL AND jsonb_array_length(v_assets) > 0 THEN
         FOR v_elem IN SELECT * FROM jsonb_array_elements(v_assets) LOOP
-            IF jsonb_typeof(v_elem) = 'object' THEN
-                v_serial := COALESCE(v_elem->>'serial', v_elem->>'id', '');
-                v_asset_name := COALESCE(v_elem->>'model', v_elem->>'name', v_elem->>'description', '');
-                v_asset_type := COALESCE(v_elem->>'type', v_elem->>'deviceType', 'Equipo');
-            ELSE
+            IF jsonb_typeof(v_elem) = 'string' THEN
                 v_serial := trim(both '"' from v_elem::text);
-                v_asset_name := '';
+                v_asset_name := 'Dispositivo';
                 v_asset_type := 'Equipo';
+            ELSE
+                v_serial := COALESCE(v_elem->>'serial', v_elem->>'serialNumber', '');
+                v_asset_name := COALESCE(v_elem->>'model', v_elem->>'name', 'Dispositivo');
+                v_asset_type := COALESCE(v_elem->>'type', 'Equipo');
             END IF;
 
-            -- Si no tenemos el nombre o modelo, consultar la tabla de inventario public.assets
-            IF (v_asset_name = '' OR v_asset_name = 'Dispositivo' OR v_asset_name = 'Hardware') AND v_serial <> '' THEN
-                SELECT 
-                    COALESCE(name, model, type, 'Equipo'),
-                    COALESCE(type, 'Equipo')
-                INTO v_asset_name, v_asset_type
+            IF v_serial <> '' THEN
+                SELECT model, type INTO v_asset_name, v_asset_type
                 FROM public.assets
-                WHERE serial = v_serial OR id::text = v_serial
+                WHERE serial = v_serial
                 LIMIT 1;
-            END IF;
-
-            IF v_asset_name = '' THEN
-                v_asset_name := 'Dispositivo (' || COALESCE(v_asset_type, 'Equipo') || ')';
-            END IF;
-
-            v_items := v_items || jsonb_build_array(jsonb_build_object(
-                'type', COALESCE(v_asset_type, 'Equipo'),
-                'name', v_asset_name,
-                'serial', COALESCE(v_serial, '-')
-            ));
-        END LOOP;
-    END IF;
-
-    -- B) Accesorios
-    IF v_accessories IS NOT NULL AND jsonb_typeof(v_accessories) = 'object' THEN
-        FOR v_key, v_val IN SELECT * FROM jsonb_each(v_accessories) LOOP
-            IF v_val = 'true'::jsonb OR (jsonb_typeof(v_val) = 'string' AND trim(both '"' from v_val::text) <> '' AND trim(both '"' from v_val::text) <> 'false') THEN
-                v_asset_name := CASE v_key
-                    WHEN 'backpack' THEN 'Mochila Técnica'
-                    WHEN 'mouse' THEN 'Mouse Óptico'
-                    WHEN 'keyboard' THEN 'Teclado USB'
-                    WHEN 'headset' THEN 'Auriculares con Micrófono'
-                    WHEN 'charger' THEN 'Cargador Original'
-                    WHEN 'screenFilter' THEN 'Filtro de Pantalla'
-                    ELSE v_key
-                END;
 
                 v_items := v_items || jsonb_build_array(jsonb_build_object(
-                    'type', 'Accesorio',
-                    'name', v_asset_name,
-                    'serial', '-'
+                    'type', COALESCE(v_asset_type, 'Equipo'),
+                    'name', COALESCE(v_asset_name, 'Dispositivo'),
+                    'serial', v_serial,
+                    'isSerialized', true
                 ));
             END IF;
         END LOOP;
     END IF;
 
-    -- C) YubiKeys
-    IF v_yubikeys IS NOT NULL AND jsonb_typeof(v_yubikeys) = 'array' THEN
+    -- Procesar Yubikeys
+    IF v_yubikeys IS NOT NULL AND jsonb_array_length(v_yubikeys) > 0 THEN
         FOR v_elem IN SELECT * FROM jsonb_array_elements(v_yubikeys) LOOP
-            v_serial := COALESCE(v_elem->>'serial', '');
-            v_items := v_items || jsonb_build_array(jsonb_build_object(
-                'type', 'Security Key',
-                'name', 'YubiKey (Hardware Key)',
-                'serial', COALESCE(v_serial, '-')
-            ));
+            IF jsonb_typeof(v_elem) = 'string' THEN
+                v_serial := trim(both '"' from v_elem::text);
+            ELSE
+                v_serial := COALESCE(v_elem->>'serial', v_elem->>'serialNumber', '');
+            END IF;
+
+            IF v_serial <> '' THEN
+                v_items := v_items || jsonb_build_array(jsonb_build_object(
+                    'type', 'Yubikey',
+                    'name', 'Llave de Seguridad Yubikey',
+                    'serial', v_serial,
+                    'isSerialized', true
+                ));
+            END IF;
         END LOOP;
     END IF;
 
-    -- 5. Construir respuesta final segura
-    v_result := jsonb_build_object(
+    -- Procesar accesorios
+    IF v_accessories IS NOT NULL AND v_accessories <> '{}'::jsonb THEN
+        FOR v_key, v_val IN SELECT * FROM jsonb_each(v_accessories) LOOP
+            IF lower(trim(v_key)) NOT IN ('filtersize', 'filter_size', 'screenfiltersize') THEN
+                IF v_val::text = 'true' OR v_val::text = '"true"' THEN
+                    v_items := v_items || jsonb_build_array(jsonb_build_object(
+                        'type', 'Accesorio',
+                        'name', CASE 
+                            WHEN lower(v_key) = 'backpack' THEN 'Mochila Corporativa'
+                            WHEN lower(v_key) IN ('screenfilter', 'filter') THEN 'Filtro de Privacidad'
+                            WHEN lower(v_key) = 'mouse' THEN 'Mouse USB/Inalámbrico'
+                            WHEN lower(v_key) = 'headset' THEN 'Auriculares / Headset'
+                            WHEN lower(v_key) = 'cable' THEN 'Cable de Red / Adaptador'
+                            ELSE v_key
+                        END,
+                        'serial', NULL,
+                        'isSerialized', false
+                    ));
+                END IF;
+            END IF;
+        END LOOP;
+    END IF;
+
+    RETURN jsonb_build_object(
         'id', v_ticket.id,
         'caseNumber', v_case_num,
-        'subject', COALESCE(v_task.subject, v_ticket.subject, ''),
-        'client', COALESCE(v_ticket.client, ''),
-        'status', COALESCE(v_task.status, v_ticket.status, 'Pendiente'),
+        'subject', COALESCE(v_task.subject, v_ticket.subject),
+        'client', v_ticket.client,
+        'status', COALESCE(v_task.status, v_ticket.status),
         'recipientName', v_recipient,
         'address', v_address,
         'trackingNumber', v_tracking,
-        'associatedAssets', v_assets,
-        'accessories', v_accessories,
-        'yubikeys', v_yubikeys,
         'items', v_items,
-        'deliveryDetails', COALESCE(v_ticket.delivery_details, '{}'::jsonb),
         'isConfirmed', (
-            (v_ticket.status = 'Entregado' OR (v_task.status IS NOT NULL AND v_task.status = 'Entregado')) AND 
-            v_ticket.delivery_details IS NOT NULL AND 
-            (v_ticket.delivery_details->>'signatureDataUrl' IS NOT NULL OR v_ticket.delivery_details->>'signature' IS NOT NULL)
-        )
+            (v_task.status = 'Entregado' AND (v_task.delivery_info->>'signatureDataUrl' IS NOT NULL OR v_task.delivery_info->>'signature' IS NOT NULL))
+            OR
+            (v_ticket.status = 'Entregado' AND (v_ticket.delivery_details->>'signatureDataUrl' IS NOT NULL OR v_ticket.delivery_details->>'signature' IS NOT NULL))
+        ),
+        'deliveryDetails', COALESCE(v_task.delivery_info, v_ticket.delivery_details, '{}'::jsonb)
     );
-
-    RETURN v_result;
 END;
 $$;
 
--- Permitir ejecución a usuarios anónimos y autenticados (ambas sobrecargas por retrocompatibilidad)
-GRANT EXECUTE ON FUNCTION public.get_delivery_confirmation_info(text, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_delivery_confirmation_info(text) TO anon, authenticated;
-
-
--- 2. Función para registrar la firma y confirmación digital (Pública y Segura)
+-- 3. Recrear confirm_delivery_receipt con cast correcto de timestamp y soporte p_case_number
 CREATE OR REPLACE FUNCTION public.confirm_delivery_receipt(
     p_ticket_id text,
     p_received_by text,
@@ -257,7 +253,7 @@ BEGIN
     WHERE id = p_ticket_id;
 
     IF NOT FOUND THEN
-        -- Buscar por logistics_tasks si fue pasado un caseNumber o subtask id
+        -- Intentar encontrar por logistics_tasks si fue pasado un caseNumber o subtask id
         SELECT t.* INTO v_ticket
         FROM public.tickets t
         JOIN public.logistics_tasks lt ON lt.ticket_id = t.id
@@ -292,7 +288,7 @@ BEGIN
         )
     );
 
-    -- Agregar nota de auditoría
+    -- Agregar nota de auditoría interna
     v_note_text := format('[%s] ✅ ENTREGA CONFIRMADA DIGITALMENTE: %s (DNI: %s) firmó la recepción desde el celular.', v_now_formatted, trim(p_received_by), trim(p_dni));
     
     v_existing_notes := COALESCE(v_ticket.internal_notes, '[]'::jsonb);
@@ -302,7 +298,7 @@ BEGIN
         v_existing_notes := jsonb_build_array(v_note_text);
     END IF;
 
-    -- 3. Ejecutar UPDATE sobre el ticket (usar now() para timestamptz)
+    -- 3. Ejecutar UPDATE sobre el ticket (usar now() para delivery_completed_date que es timestamptz)
     UPDATE public.tickets
     SET 
         status = 'Entregado',
@@ -335,6 +331,7 @@ BEGIN
             GET DIAGNOSTICS v_tasks_updated = ROW_COUNT;
         END IF;
 
+        -- Si no se pasó case_number o no coincidió ninguna subtarea específica, actualizar todas las del ticket
         IF v_tasks_updated = 0 THEN
             UPDATE public.logistics_tasks
             SET 
@@ -351,12 +348,13 @@ BEGIN
             WHERE ticket_id = v_ticket.id;
         END IF;
     EXCEPTION WHEN OTHERS THEN
-        -- Ignorar si la tabla no existe o tiene otra estructura
+        -- Continuar si logistics_tasks tuviese estructura variable
     END;
 
     RETURN jsonb_build_object('success', true, 'alreadyConfirmed', false);
 END;
 $$;
 
--- Permitir ejecución a usuarios anónimos y autenticados
+-- 4. Permisos de ejecución para usuarios anónimos y autenticados
+GRANT EXECUTE ON FUNCTION public.get_delivery_confirmation_info(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.confirm_delivery_receipt(text, text, text, text, text) TO anon, authenticated;
