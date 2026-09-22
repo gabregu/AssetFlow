@@ -2223,6 +2223,42 @@ export default function WarehousePage() {
                                 style={{ padding: '2px', height: '16px', width: '16px', opacity: 0.6, color: '#0d9488' }}
                             />
                         )}
+                        {(currentUser?.role === 'admin') && isDepZone && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px', background: 'rgba(0,0,0,0.03)', padding: '2px 6px', borderRadius: '4px' }} onClick={e => e.stopPropagation()}>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginRight: '2px' }}>Espacios:</span>
+                                <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const config = depositoConfig[aisle] || { rows: 5, cols: 10 };
+                                        if (config.cols > 1) {
+                                            updateDepositoConfig({ ...depositoConfig, [aisle]: { ...config, cols: config.cols - 1 } });
+                                        }
+                                    }}
+                                    style={{ padding: '0', height: '16px', width: '16px', minHeight: '16px', fontSize: '12px', fontWeight: 'bold' }}
+                                    title="Restar un espacio"
+                                >
+                                    -
+                                </Button>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800 }}>{(depositoConfig[aisle] || {cols: 10}).cols}</span>
+                                <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const config = depositoConfig[aisle] || { rows: 5, cols: 10 };
+                                        if (config.cols < 50) {
+                                            updateDepositoConfig({ ...depositoConfig, [aisle]: { ...config, cols: config.cols + 1 } });
+                                        }
+                                    }}
+                                    style={{ padding: '0', height: '16px', width: '16px', minHeight: '16px', fontSize: '12px', fontWeight: 'bold' }}
+                                    title="Sumar un espacio"
+                                >
+                                    +
+                                </Button>
+                            </div>
+                        )}
                         {!groupByBrand && totalAislesCount > 1 && (
                             <div style={{ display: 'flex', gap: '1px', alignItems: 'center', background: 'rgba(0,0,0,0.03)', borderRadius: '4px', padding: '1px' }} onClick={e => e.stopPropagation()}>
                                 <Button
@@ -3817,7 +3853,7 @@ export default function WarehousePage() {
             </Modal>
 
             {/* Modal Renombrar Grupo */}
-            <Modal isOpen={isRenameGroupModalOpen} onClose={() => setIsRenameGroupModalOpen(false)} title="Renombrar Grupo">
+            <Modal isOpen={isRenameGroupModalOpen} onClose={() => setIsRenameGroupModalOpen(false)} title={renameGroupType === 'D' ? "Editar Estantería" : "Renombrar Grupo"}>
                 <form onSubmit={handleRenameGroup}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
