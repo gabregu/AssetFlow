@@ -2161,17 +2161,38 @@ export default function WarehousePage() {
 
     const renderAisle = (aisle, locations, totalAislesCount, listAislesArray, isHZone = false, isDepZone = false) => {
         let aisleAssetsCount = 0;
+        let aisleAssets = [];
         if (isDepZone) {
             const prefix = `${aisle}-`;
-            aisleAssetsCount = assets.filter(a => 
+            aisleAssets = assets.filter(a => 
                 (countryFilter === 'Todos' || a.country === countryFilter) &&
                 a.locationId && a.locationId.toUpperCase().startsWith(prefix.toUpperCase())
-            ).length;
+            );
         } else {
-            aisleAssetsCount = assets.filter(a => 
+            aisleAssets = assets.filter(a => 
                 (countryFilter === 'Todos' || a.country === countryFilter) &&
                 locations.some(loc => loc.id === a.locationId)
-            ).length;
+            );
+        }
+        aisleAssetsCount = aisleAssets.length;
+        
+        let aisleOldestAssetId = null;
+        let aisleNewestAssetId = null;
+        if (aisleAssets.length > 1) {
+            const validAssets = aisleAssets.filter(a => a.date || a.created_at || a.dateMapped || a.dateLastUpdate);
+            const sortedByDate = [...validAssets].sort((a, b) => {
+                const dateA = new Date(a.dateMapped || a.date || a.created_at || a.dateLastUpdate || 0).getTime();
+                const dateB = new Date(b.dateMapped || b.date || b.created_at || b.dateLastUpdate || 0).getTime();
+                return dateA - dateB;
+            });
+            if (sortedByDate.length > 1) {
+                const oldestDate = new Date(sortedByDate[0].dateMapped || sortedByDate[0].date || sortedByDate[0].created_at || sortedByDate[0].dateLastUpdate).getTime();
+                const newestDate = new Date(sortedByDate[sortedByDate.length - 1].dateMapped || sortedByDate[sortedByDate.length - 1].date || sortedByDate[sortedByDate.length - 1].created_at || sortedByDate[sortedByDate.length - 1].dateLastUpdate).getTime();
+                if (oldestDate !== newestDate) {
+                    aisleOldestAssetId = sortedByDate[0].id;
+                    aisleNewestAssetId = sortedByDate[sortedByDate.length - 1].id;
+                }
+            }
         }
         
         const badgeColor = isDepZone ? '#10b981' : (isHZone ? '#64748b' : '#2563eb');
@@ -2404,11 +2425,15 @@ export default function WarehousePage() {
                                                         opacity: isNotHighlighted ? 0.2 : assetCount > 0 ? 1 : 0.4,
                                                         position: 'relative'
                                                     }}
-                                                    title={`${locId} (${assetCount} equipos)`}
                                                 >
-                                                    {locationAssets.some(a => a.id === oldestAssetId) && (
-                                                        <div style={{ position: 'absolute', top: '-6px', right: '-6px', fontSize: '10px' }} title="Equipo más antiguo (FIFO)">
+                                                    {locationAssets.some(a => a.id === aisleOldestAssetId) && (
+                                                        <div style={{ position: 'absolute', top: '-6px', right: '-6px', fontSize: '10px', zIndex: 10 }} title="Equipo más antiguo en esta ubicación (FIFO)">
                                                             ⏳
+                                                        </div>
+                                                    )}
+                                                    {locationAssets.some(a => a.id === aisleNewestAssetId) && (
+                                                        <div style={{ position: 'absolute', top: '-6px', left: '-6px', fontSize: '10px', zIndex: 10 }} title="Equipo más nuevo en esta ubicación">
+                                                            ✨
                                                         </div>
                                                     )}
                                                 </div>
@@ -2493,11 +2518,15 @@ export default function WarehousePage() {
                                         opacity: isNotHighlighted ? 0.2 : 1,
                                         position: 'relative'
                                     }}
-                                    title={`${loc.id} (${assetCount} equipos)`}
                                 >
-                                    {locationAssets.some(a => a.id === oldestAssetId) && (
-                                        <div style={{ position: 'absolute', top: '-6px', right: '-6px', fontSize: '10px', zIndex: 10 }} title="Equipo más antiguo (FIFO)">
+                                    {locationAssets.some(a => a.id === aisleOldestAssetId) && (
+                                        <div style={{ position: 'absolute', top: '-6px', right: '-6px', fontSize: '10px', zIndex: 10 }} title="Equipo más antiguo en esta ubicación (FIFO)">
                                             ⏳
+                                        </div>
+                                    )}
+                                    {locationAssets.some(a => a.id === aisleNewestAssetId) && (
+                                        <div style={{ position: 'absolute', top: '-6px', left: '-6px', fontSize: '10px', zIndex: 10 }} title="Equipo más nuevo en esta ubicación">
+                                            ✨
                                         </div>
                                     )}
                                     {renderCellContent(loc, assetCount, locationAssets)}
@@ -3396,7 +3425,6 @@ export default function WarehousePage() {
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     position: 'relative'
                                                 }}
-                                                title={locId}
                                             >
                                                 {locationAssets.some(a => a.id === oldestAssetId) && (
                                                     <div style={{ position: 'absolute', top: '-6px', right: '-6px', fontSize: '10px', zIndex: 10 }} title="Equipo más antiguo (FIFO)">
@@ -3580,7 +3608,6 @@ export default function WarehousePage() {
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     position: 'relative'
                                                 }}
-                                                title={locId}
                                             >
                                                 {locationAssets.some(a => a.id === oldestAssetId) && (
                                                     <div style={{ position: 'absolute', top: '-6px', right: '-6px', fontSize: '10px', zIndex: 10 }} title="Equipo más antiguo (FIFO)">
