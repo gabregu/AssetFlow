@@ -2142,7 +2142,7 @@ export default function WarehousePage() {
             const prefix = `${aisle}-`;
             aisleAssetsCount = assets.filter(a => 
                 (countryFilter === 'Todos' || a.country === countryFilter) &&
-                a.locationId && a.locationId.startsWith(prefix)
+                a.locationId && a.locationId.toUpperCase().startsWith(prefix.toUpperCase())
             ).length;
         } else {
             aisleAssetsCount = assets.filter(a => 

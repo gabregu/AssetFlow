@@ -177,8 +177,10 @@ export default function InventoryPage() {
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [isFullInventoryModalOpen, setIsFullInventoryModalOpen] = useState(false);
     const [exportSettings, setExportSettings] = useState({
-        mode: 'all', // 'all', 'type', 'status', 'model'
-        value: ''
+        mode: 'advanced', // 'all', 'advanced'
+        types: [],
+        statuses: [],
+        models: []
     });
 
     const handleSort = (key) => {
@@ -1409,6 +1411,40 @@ export default function InventoryPage() {
         reader.readAsText(file);
     };
 
+    const handleQuickExport = () => {
+        let targetAssets = selectedAssets.length > 0 ? assets.filter(a => selectedAssets.includes(a.id)) : filteredAssets;
+        
+        const hardwareData = targetAssets.map(a => ({
+            "Tipo": "Hardware",
+            "Nombre del Equipo": a.name,
+            "Serial / ID": a.serial,
+            "Estado": a.status,
+            "COD": a.cod || '-',
+            "Vendor": a.vendor || '-',
+            "Modelo": a.hardwareSpec || '-',
+            "Orden de Compra": a.purchaseOrder || '-',
+            "Notas": a.notes || '-',
+            "Ubicación": a.country || 'N/A',
+            "Actualizado Por": a.updatedBy || 'Sistema',
+            "Fecha Actualización": a.dateLastUpdate ? new Date(a.dateLastUpdate).toLocaleDateString() : '-',
+            "Caja": a.boxNumber || '-'
+        }));
+
+        const wb = XLSX.utils.book_new();
+
+        if (hardwareData.length > 0) {
+            const wsHardware = XLSX.utils.json_to_sheet(hardwareData);
+            const wscols = [
+                { wch: 10 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 15 }
+            ];
+            wsHardware['!cols'] = wscols;
+            XLSX.utils.book_append_sheet(wb, wsHardware, "Equipos");
+        }
+
+        let fileName = `Inventario_Filtrado_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    };
+
     const handleExportWarehouse = () => {
         // Obtenemos las listas ya filtradas por el país seleccionado
         let filteredDocs = applyCountryFilter(assets);
@@ -1416,22 +1452,18 @@ export default function InventoryPage() {
         let filteredCons = applyCountryFilter(consumables);
 
         // Apply Advanced Export Filters
-        if (exportSettings.mode === 'type' && exportSettings.value) {
-            filteredDocs = filteredDocs.filter(a => a.type === exportSettings.value);
-            filteredYubis = filteredYubis.filter(y => y.type === exportSettings.value);
-        } else if (exportSettings.mode === 'status' && exportSettings.value) {
-            if (exportSettings.value === 'Baja de Equipos') {
-                filteredDocs = filteredDocs.filter(a => (a.status && a.status.toLowerCase().includes('baja de equipo')) || (a.assignee && a.assignee.toLowerCase().includes('baja de equipo')));
-                filteredYubis = filteredYubis.filter(y => (y.status && y.status.toLowerCase().includes('baja de equipo')) || (y.assignee && y.assignee.toLowerCase().includes('baja de equipo')));
-            } else if (exportSettings.value === 'Almacén') {
-                filteredDocs = filteredDocs.filter(a => a.assignee === 'Almacén' || a.assignee === 'En Almacén');
-                filteredYubis = filteredYubis.filter(y => y.assignee === 'Almacén' || y.assignee === 'En Almacén');
-            } else {
-                filteredDocs = filteredDocs.filter(a => a.status === exportSettings.value);
-                filteredYubis = filteredYubis.filter(y => y.status === exportSettings.value);
-            }
-        } else if (exportSettings.mode === 'model' && exportSettings.value) {
-            filteredDocs = filteredDocs.filter(a => a.name === exportSettings.value);
+        if (exportSettings.mode === 'advanced') {
+            filteredDocs = filteredDocs.filter(a => {
+                if (exportSettings.types.length > 0 && !exportSettings.types.includes(a.type || a.name)) return false;
+                if (exportSettings.statuses.length > 0 && !exportSettings.statuses.includes(a.status)) return false;
+                if (exportSettings.models.length > 0 && !exportSettings.models.includes(a.hardwareSpec || a.name)) return false;
+                return true;
+            });
+            filteredYubis = filteredYubis.filter(y => {
+                if (exportSettings.types.length > 0 && !exportSettings.types.includes(y.type)) return false;
+                if (exportSettings.statuses.length > 0 && !exportSettings.statuses.includes(y.status)) return false;
+                return true;
+            });
         }
 
         // 1. Filtrar Hardware
@@ -1468,24 +1500,22 @@ export default function InventoryPage() {
                 "add_by_user": a.add_by_user || a.addByUser
             }));
         } else {
-            // MODO ESTÁNDAR: Solo lo que está en Almacén (o filtros específicos)
-            hardwareData = filteredDocs
-                .filter(a => (a.assignee === 'Almacén' || a.assignee === 'En Almacén') && a.status !== 'Asignado')
-                .map(a => ({
-                    "Tipo": "Hardware",
-                    "Nombre del Equipo": a.name,
-                    "Serial / ID": a.serial,
-                    "Estado": a.status,
-                    "COD": a.cod || '-',
-                    "Vendor": a.vendor || '-',
-                    "Modelo": a.hardwareSpec || '-',
-                    "Orden de Compra": a.purchaseOrder || '-',
-                    "Notas": a.notes || '-',
-                    "Ubicación": a.country || 'N/A',
-                    "Actualizado Por": a.updatedBy || 'Sistema',
-                    "Fecha Actualización": a.dateLastUpdate ? new Date(a.dateLastUpdate).toLocaleDateString() : '-',
-                    "Caja": a.boxNumber || '-'
-                }));
+            // MODO AVANZADO
+            hardwareData = filteredDocs.map(a => ({
+                "Tipo": "Hardware",
+                "Nombre del Equipo": a.name,
+                "Serial / ID": a.serial,
+                "Estado": a.status,
+                "COD": a.cod || '-',
+                "Vendor": a.vendor || '-',
+                "Modelo": a.hardwareSpec || '-',
+                "Orden de Compra": a.purchaseOrder || '-',
+                "Notas": a.notes || '-',
+                "Ubicación": a.country || 'N/A',
+                "Actualizado Por": a.updatedBy || 'Sistema',
+                "Fecha Actualización": a.dateLastUpdate ? new Date(a.dateLastUpdate).toLocaleDateString() : '-',
+                "Caja": a.boxNumber || '-'
+            }));
         }
 
         // 2. Filtrar Yubikeys
@@ -1505,17 +1535,15 @@ export default function InventoryPage() {
                 "add_by_user": y.add_by_user
             }));
         } else {
-            yubikeyData = filteredYubis
-                .filter(y => y.status === 'Nuevo' || y.status === 'Disponible')
-                .map(y => ({
-                    "Tipo": "Security Key",
-                    "Modelo": y.type,
-                    "Serial": y.serial,
-                    "Estado": y.status,
-                    "Ubicación": y.country || 'N/A',
-                    "Agregado Por": y.add_by_user || '-',
-                    "Fecha de Alta": new Date(y.created_at).toLocaleDateString()
-                }));
+            yubikeyData = filteredYubis.map(y => ({
+                "Tipo": "Security Key",
+                "Modelo": y.type,
+                "Serial": y.serial,
+                "Estado": y.status,
+                "Ubicación": y.country || 'N/A',
+                "Agregado Por": y.add_by_user || '-',
+                "Fecha de Alta": new Date(y.created_at).toLocaleDateString()
+            }));
         }
 
         // 3. Filtrar Accesorios (Stock)
@@ -2530,9 +2558,19 @@ export default function InventoryPage() {
                                             variant="outline"
                                             size="sm"
                                             icon={Download}
-                                            onClick={() => setIsExportModalOpen(true)}
+                                            onClick={handleQuickExport}
+                                            title="Exportar rápidamente lo que ves en esta tabla"
                                         >
                                             Exportar Reporte
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            icon={Filter}
+                                            onClick={() => setIsExportModalOpen(true)}
+                                            title="Exportar usando múltiples filtros combinados"
+                                        >
+                                            Exportación Avanzada
                                         </Button>
                                     </div>
                                 </div>
@@ -3848,14 +3886,12 @@ export default function InventoryPage() {
                         <label className="form-label" style={{ fontWeight: 700 }}>Exportar Por:</label>
                         <div className="grid-responsive-2" style={{ marginTop: '0.5rem' }}>
                             {[
-                                { id: 'all', label: 'TODO el Inventario', icon: Layers },
-                                { id: 'type', label: 'Por Tipo', icon: Laptop },
-                                { id: 'status', label: 'Por Estado', icon: Activity },
-                                { id: 'model', label: 'Por Modelo', icon: Server }
+                                { id: 'all', label: 'Exportación Cruda (Toda la BD)', icon: Layers },
+                                { id: 'advanced', label: 'Exportación Avanzada', icon: Filter }
                             ].map(opt => (
                                 <div
                                     key={opt.id}
-                                    onClick={() => setExportSettings({ mode: opt.id, value: '' })}
+                                    onClick={() => setExportSettings({ mode: opt.id, types: [], statuses: [], models: [] })}
                                     style={{
                                         padding: '1rem',
                                         borderRadius: '12px',
@@ -3874,10 +3910,7 @@ export default function InventoryPage() {
                                         background: exportSettings.mode === opt.id ? 'var(--primary-color)' : 'var(--background)',
                                         color: exportSettings.mode === opt.id ? 'white' : 'var(--text-secondary)'
                                     }}>
-                                        {opt.id === 'all' ? <Layers size={18} /> : 
-                                         opt.id === 'type' ? <Laptop size={18} /> : 
-                                         opt.id === 'status' ? <Activity size={18} /> : 
-                                         <Server size={18} />}
+                                        {opt.icon && React.createElement(opt.icon, { size: 18 })}
                                     </div>
                                     <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{opt.label}</span>
                                 </div>
@@ -3887,51 +3920,60 @@ export default function InventoryPage() {
 
                     {exportSettings.mode !== 'all' && (
                         <div className="form-group" style={{ animation: 'slideDown 0.3s ease-out' }}>
-                            <label className="form-label">Seleccionar Valor:</label>
-                            {exportSettings.mode === 'type' && (
-                                <select 
-                                    className="form-select" 
-                                    value={exportSettings.value} 
-                                    onChange={(e) => setExportSettings({ ...exportSettings, value: e.target.value })}
-                                >
-                                    <option value="">-- Seleccionar Tipo --</option>
-                                    <option value="Laptop">Laptop</option>
-                                    <option value="Smartphone">Smartphone</option>
-                                    <option value="Tablet">Tablet</option>
-                                    <option value="Monitor">Monitor</option>
-                                    <option value="Impresora">Impresora</option>
-                                    <option value="Tableta de dibujo">Tableta de dibujo</option>
-                                    <option value="Disco Externo">Disco Externo</option>
-                                    <option value="Proyector">Proyector</option>
-                                    <option value="UPS">UPS</option>
-                                    <option value="Switch / Router">Switch / Router</option>
-                                    <option value="Otros">Otros</option>
-                                    <option value="Security keys">Security Key</option>
-                                </select>
-                            )}
-                            {exportSettings.mode === 'status' && (
-                                <select 
-                                    className="form-select" 
-                                    value={exportSettings.value} 
-                                    onChange={(e) => setExportSettings({ ...exportSettings, value: e.target.value })}
-                                >
-                                    <option value="">-- Seleccionar Estado --</option>
-                                    {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                                    <option value="Disponible">Disponible (Alternativo)</option>
-                                </select>
-                            )}
-                            {exportSettings.mode === 'model' && (
-                                <select 
-                                    className="form-select" 
-                                    value={exportSettings.value} 
-                                    onChange={(e) => setExportSettings({ ...exportSettings, value: e.target.value })}
-                                >
-                                    <option value="">-- Seleccionar Modelo --</option>
-                                    {[...new Set(assets.map(a => a.name))].sort().map(m => (
-                                        <option key={m} value={m}>{m}</option>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                                Selecciona múltiples opciones. Dejar un bloque vacío significa "Incluir todos".
+                            </p>
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ fontWeight: 700, fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Tipos de Equipo:</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.5rem' }}>
+                                    {['Laptop', 'Smartphone', 'Tablet', 'Monitor', 'Impresora', 'Tableta de dibujo', 'Disco Externo', 'Proyector', 'UPS', 'Switch / Router', 'Otros'].map(t => (
+                                        <label key={t} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                                            <input type="checkbox" checked={exportSettings.types.includes(t)} onChange={(e) => {
+                                                setExportSettings(prev => ({
+                                                    ...prev,
+                                                    types: e.target.checked ? [...prev.types, t] : prev.types.filter(x => x !== t)
+                                                }))
+                                            }} />
+                                            {t}
+                                        </label>
                                     ))}
-                                </select>
-                            )}
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ fontWeight: 700, fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Estados:</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.5rem' }}>
+                                    {statuses.map(s => (
+                                        <label key={s} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                                            <input type="checkbox" checked={exportSettings.statuses.includes(s)} onChange={(e) => {
+                                                setExportSettings(prev => ({
+                                                    ...prev,
+                                                    statuses: e.target.checked ? [...prev.statuses, s] : prev.statuses.filter(x => x !== s)
+                                                }))
+                                            }} />
+                                            {s}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ fontWeight: 700, fontSize: '0.85rem', display: 'block', marginBottom: '0.5rem' }}>Modelos:</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                                    {[...new Set(assets.map(a => a.hardwareSpec || a.name))].filter(Boolean).sort().map(m => (
+                                        <label key={m} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={m}>
+                                            <input type="checkbox" checked={exportSettings.models.includes(m)} onChange={(e) => {
+                                                setExportSettings(prev => ({
+                                                    ...prev,
+                                                    models: e.target.checked ? [...prev.models, m] : prev.models.filter(x => x !== m)
+                                                }))
+                                            }} />
+                                            {m}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -3939,7 +3981,7 @@ export default function InventoryPage() {
                         <Button variant="ghost" onClick={() => setIsExportModalOpen(false)}>Cancelar</Button>
                         <Button 
                             icon={Download} 
-                            disabled={exportSettings.mode !== 'all' && !exportSettings.value}
+                            disabled={false}
                             onClick={handleExportWarehouse}
                         >
                             Generar Excel
