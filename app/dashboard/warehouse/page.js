@@ -2136,6 +2136,29 @@ export default function WarehousePage() {
         }
     };
 
+    const buildAssetTooltip = (assetsInLoc, locId) => {
+        if (!assetsInLoc || assetsInLoc.length === 0) return `Ubicación: ${locId}\n(Vacío)`;
+        const a = assetsInLoc[0];
+        const titleLines = [];
+        titleLines.push(`Ubicación: ${locId}`);
+        if (assetsInLoc.length > 1) {
+            titleLines.push(`(Contiene ${assetsInLoc.length} equipos)`);
+        }
+        titleLines.push(`Modelo: ${a.hardwareSpec || a.name || '-'}`);
+        titleLines.push(`N/P: ${a.partNumber || a.part_number || '-'}`);
+        titleLines.push(`SN: ${a.serial || '-'}`);
+        titleLines.push(`Estado: ${a.status || '-'}`);
+        
+        let dateStr = '-';
+        if (a.dateMapped) dateStr = new Date(a.dateMapped).toLocaleDateString();
+        else if (a.dateLastUpdate) dateStr = new Date(a.dateLastUpdate).toLocaleDateString();
+        else if (a.created_at) dateStr = new Date(a.created_at).toLocaleDateString();
+        else if (a.date) dateStr = new Date(a.date).toLocaleDateString();
+        
+        titleLines.push(`Ingreso: ${dateStr}`);
+        return titleLines.join('\n');
+    };
+
     const renderAisle = (aisle, locations, totalAislesCount, listAislesArray, isHZone = false, isDepZone = false) => {
         let aisleAssetsCount = 0;
         if (isDepZone) {
@@ -2367,6 +2390,7 @@ export default function WarehousePage() {
                                             >
                                                 <div 
                                                     onClick={() => handleScanLocation(locId)}
+                                                    title={buildAssetTooltip(locationAssets, locId)}
                                                     className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                     style={{
                                                         width: '22px',
@@ -2451,6 +2475,7 @@ export default function WarehousePage() {
                                 <div 
                                     key={loc.id}
                                     onClick={() => handleScanLocation(loc.id)}
+                                    title={buildAssetTooltip(locationAssets, loc.id)}
                                     className={isHighlighted ? 'search-pulse' : ''}
                                     style={{
                                         aspectRatio: '1.4/1',
@@ -3359,6 +3384,7 @@ export default function WarehousePage() {
                                         <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                                             <div 
                                                 onClick={() => handleScanLocation(locId)}
+                                                title={buildAssetTooltip(locationAssets, locId)}
                                                 className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                 style={{
                                                     width: '22px', height: '22px', borderRadius: '4px',
@@ -3542,6 +3568,7 @@ export default function WarehousePage() {
                                         <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                                             <div 
                                                 onClick={() => handleScanLocation(locId)}
+                                                title={buildAssetTooltip(locationAssets, locId)}
                                                 className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                 style={{
                                                     width: '22px', height: '22px', borderRadius: '4px',
