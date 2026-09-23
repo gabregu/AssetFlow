@@ -2137,10 +2137,19 @@ export default function WarehousePage() {
     };
 
     const renderAisle = (aisle, locations, totalAislesCount, listAislesArray, isHZone = false, isDepZone = false) => {
-        const aisleAssetsCount = assets.filter(a => 
-            (countryFilter === 'Todos' || a.country === countryFilter) &&
-            locations.some(loc => loc.id === a.locationId)
-        ).length;
+        let aisleAssetsCount = 0;
+        if (isDepZone) {
+            const prefix = `DEP-${aisle}-`;
+            aisleAssetsCount = assets.filter(a => 
+                (countryFilter === 'Todos' || a.country === countryFilter) &&
+                a.locationId && a.locationId.startsWith(prefix)
+            ).length;
+        } else {
+            aisleAssetsCount = assets.filter(a => 
+                (countryFilter === 'Todos' || a.country === countryFilter) &&
+                locations.some(loc => loc.id === a.locationId)
+            ).length;
+        }
         
         const badgeColor = isDepZone ? '#10b981' : (isHZone ? '#64748b' : '#2563eb');
         
