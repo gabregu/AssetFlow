@@ -2351,9 +2351,9 @@ export default function WarehousePage() {
                                     else if (a.date) dateStr = new Date(a.date).toLocaleDateString();
                                     return {
                                         'Ubicación': a.locationId || '-',
-                                        'Modelo': a.model || '-',
-                                        'N/P': a.part_number || '-',
-                                        'SN': a.sn || '-',
+                                        'Modelo': a.hardwareSpec || a.model || a.name || '-',
+                                        'N/P': a.partNumber || a.part_number || '-',
+                                        'SN': a.serial || a.sn || '-',
                                         'Estado': a.status || '-',
                                         'Ingreso (Fecha)': dateStr
                                     };
