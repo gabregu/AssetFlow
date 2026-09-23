@@ -2358,20 +2358,27 @@ export default function WarehousePage() {
                                             >
                                                 <div 
                                                     onClick={() => handleScanLocation(locId)}
-                                                    className={isHighlighted ? 'search-pulse' : ''}
+                                                    className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                     style={{
                                                         width: '22px',
                                                         height: '22px',
                                                         borderRadius: '50%',
-                                                        background: isHighlighted ? '#facc15' : bgColor,
-                                                        border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#047857'}` : isHighlighted ? `2px solid #eab308` : `1px solid ${borderColor}`,
+                                                        background: isSelected ? 'var(--primary-color)' : bgColor,
+                                                        border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#047857'}` : `1px solid ${borderColor}`,
                                                         cursor: 'pointer',
                                                         transition: 'all 0.15s ease',
-                                                        boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : isSelected ? '0 0 8px rgba(16,185,129,0.3)' : 'none',
-                                                        opacity: isNotHighlighted ? 0.2 : assetCount > 0 ? 1 : 0.4
+                                                        boxShadow: isSelected ? '0 0 8px rgba(16,185,129,0.3)' : 'none',
+                                                        opacity: isNotHighlighted ? 0.2 : assetCount > 0 ? 1 : 0.4,
+                                                        position: 'relative'
                                                     }}
                                                     title={`${locId} (${assetCount} equipos)`}
-                                                />
+                                                >
+                                                    {locationAssets.some(a => a.id === oldestAssetId) && (
+                                                        <div style={{ position: 'absolute', top: '-6px', right: '-6px', fontSize: '10px' }} title="Equipo más antiguo (FIFO)">
+                                                            ⏳
+                                                        </div>
+                                                    )}
+                                                </div>
                                                 {estante === 1 && (
                                                     <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '2px' }}>
                                                         {pos}
@@ -2442,18 +2449,23 @@ export default function WarehousePage() {
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        background: isHighlighted ? '#facc15' : bgColor,
+                                        background: isSelected ? 'var(--primary-color)' : bgColor,
                                         color: isHighlighted ? '#713f12' : textColor,
                                         borderRadius: '6px',
-                                        border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : isHighlighted ? `2px solid #eab308` : `1px ${borderStyle} ${borderColor}`,
+                                        border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : `1px ${borderStyle} ${borderColor}`,
                                         cursor: 'pointer',
                                         transition: 'all 0.15s ease',
-                                        boxShadow: isHighlighted ? '0 0 12px 3px rgba(250,204,21,0.65)' : isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
+                                        boxShadow: isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
                                         opacity: isNotHighlighted ? 0.2 : 1,
                                         position: 'relative'
                                     }}
                                     title={`${loc.id} (${assetCount} equipos)`}
                                 >
+                                    {locationAssets.some(a => a.id === oldestAssetId) && (
+                                        <div style={{ position: 'absolute', top: '-6px', right: '-6px', fontSize: '10px', zIndex: 10 }} title="Equipo más antiguo (FIFO)">
+                                            ⏳
+                                        </div>
+                                    )}
                                     {renderCellContent(loc, assetCount, locationAssets)}
                                 </div>
                             );
@@ -2516,8 +2528,34 @@ export default function WarehousePage() {
         }
     };
 
+    // Calcular el activo más antiguo en los resultados de búsqueda/filtro para sugerir rotación FIFO
+    let oldestAssetId = null;
+    if (filteredAssets && filteredAssets.length > 0) {
+        let oldest = filteredAssets[0];
+        for (let i = 1; i < filteredAssets.length; i++) {
+            const a = filteredAssets[i];
+            if (a.date && oldest.date) {
+                if (new Date(a.date) < new Date(oldest.date)) oldest = a;
+            } else if (a.date && !oldest.date) {
+                oldest = a;
+            }
+        }
+        oldestAssetId = oldest.id;
+    }
+
     return (
         <div style={{ padding: '1rem', maxWidth: '1600px', margin: '0 auto' }}>
+            <style jsx global>{`
+                @keyframes blink-yellow-border {
+                    0% { border-color: rgba(250,204,21,1); box-shadow: 0 0 10px 4px rgba(250,204,21,0.8); }
+                    50% { border-color: rgba(250,204,21,0.3); box-shadow: 0 0 4px 1px rgba(250,204,21,0.2); }
+                    100% { border-color: rgba(250,204,21,1); box-shadow: 0 0 10px 4px rgba(250,204,21,0.8); }
+                }
+                .blink-highlight {
+                    animation: blink-yellow-border 1.5s infinite !important;
+                    border: 3px solid #facc15 !important;
+                }
+            `}</style>
             {/* Header / Search Top Bar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
@@ -3312,18 +3350,24 @@ export default function WarehousePage() {
                                         <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                                             <div 
                                                 onClick={() => handleScanLocation(locId)}
-                                                className={isHighlighted ? 'search-pulse' : ''}
+                                                className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                 style={{
                                                     width: '22px', height: '22px', borderRadius: '4px',
-                                                    background: isHighlighted ? '#facc15' : (isSelected ? 'var(--primary-color)' : bgColor),
-                                                    border: isSelected ? '2px solid var(--primary-color)' : (isHighlighted ? '2px solid #eab308' : `1px solid ${borderColor}`),
-                                                    boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : (isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none'),
+                                                    background: isSelected ? 'var(--primary-color)' : bgColor,
+                                                    border: isSelected ? '2px solid var(--primary-color)' : `1px solid ${borderColor}`,
+                                                    boxShadow: isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none',
                                                     opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
                                                     cursor: 'pointer', transition: 'all 0.2s ease',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    position: 'relative'
                                                 }}
                                                 title={locId}
                                             >
+                                                {locationAssets.some(a => a.id === oldestAssetId) && (
+                                                    <div style={{ position: 'absolute', top: '-6px', right: '-6px', fontSize: '10px', zIndex: 10 }} title="Equipo más antiguo (FIFO)">
+                                                        ⏳
+                                                    </div>
+                                                )}
                                                 {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
                                             </div>
                                             <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{revNum}</span>
@@ -3489,18 +3533,24 @@ export default function WarehousePage() {
                                         <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                                             <div 
                                                 onClick={() => handleScanLocation(locId)}
-                                                className={isHighlighted ? 'search-pulse' : ''}
+                                                className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                 style={{
                                                     width: '22px', height: '22px', borderRadius: '4px',
-                                                    background: isHighlighted ? '#facc15' : (isSelected ? 'var(--primary-color)' : bgColor),
-                                                    border: isSelected ? '2px solid var(--primary-color)' : (isHighlighted ? '2px solid #eab308' : `1px solid ${borderColor}`),
-                                                    boxShadow: isHighlighted ? '0 0 10px 2px rgba(250,204,21,0.7)' : (isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none'),
+                                                    background: isSelected ? 'var(--primary-color)' : bgColor,
+                                                    border: isSelected ? '2px solid var(--primary-color)' : `1px solid ${borderColor}`,
+                                                    boxShadow: isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none',
                                                     opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
                                                     cursor: 'pointer', transition: 'all 0.2s ease',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    position: 'relative'
                                                 }}
                                                 title={locId}
                                             >
+                                                {locationAssets.some(a => a.id === oldestAssetId) && (
+                                                    <div style={{ position: 'absolute', top: '-6px', right: '-6px', fontSize: '10px', zIndex: 10 }} title="Equipo más antiguo (FIFO)">
+                                                        ⏳
+                                                    </div>
+                                                )}
                                                 {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
                                             </div>
                                             <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{cajaNum}</span>
