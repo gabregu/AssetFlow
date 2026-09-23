@@ -2363,11 +2363,11 @@ export default function WarehousePage() {
                                                         width: '22px',
                                                         height: '22px',
                                                         borderRadius: '50%',
-                                                        background: isSelected ? 'var(--primary-color)' : bgColor,
-                                                        border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#047857'}` : `1px solid ${borderColor}`,
+                                                        background: isSelected ? '#eab308' : bgColor,
+                                                        border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#ca8a04'}` : `1px solid ${borderColor}`,
                                                         cursor: 'pointer',
                                                         transition: 'all 0.15s ease',
-                                                        boxShadow: isSelected ? '0 0 8px rgba(16,185,129,0.3)' : 'none',
+                                                        boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : 'none',
                                                         opacity: isNotHighlighted ? 0.2 : assetCount > 0 ? 1 : 0.4,
                                                         position: 'relative'
                                                     }}
@@ -2449,13 +2449,13 @@ export default function WarehousePage() {
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        background: isSelected ? 'var(--primary-color)' : bgColor,
+                                        background: isSelected ? '#eab308' : bgColor,
                                         color: isHighlighted ? '#713f12' : textColor,
                                         borderRadius: '6px',
-                                        border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : 'var(--primary-color)'}` : `1px ${borderStyle} ${borderColor}`,
+                                        border: isSelected ? `2px solid ${isAuditMode ? '#8b5cf6' : '#ca8a04'}` : `1px ${borderStyle} ${borderColor}`,
                                         cursor: 'pointer',
                                         transition: 'all 0.15s ease',
-                                        boxShadow: isSelected ? '0 0 8px rgba(37,99,235,0.25)' : 'none',
+                                        boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : 'none',
                                         opacity: isNotHighlighted ? 0.2 : 1,
                                         position: 'relative'
                                     }}
@@ -3353,9 +3353,9 @@ export default function WarehousePage() {
                                                 className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                 style={{
                                                     width: '22px', height: '22px', borderRadius: '4px',
-                                                    background: isSelected ? 'var(--primary-color)' : bgColor,
-                                                    border: isSelected ? '2px solid var(--primary-color)' : `1px solid ${borderColor}`,
-                                                    boxShadow: isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none',
+                                                    background: isSelected ? '#eab308' : bgColor,
+                                                    border: isSelected ? '2px solid #ca8a04' : `1px solid ${borderColor}`,
+                                                    boxShadow: isSelected ? '0 0 0 4px rgba(234,179,8,0.3)' : 'none',
                                                     opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
                                                     cursor: 'pointer', transition: 'all 0.2s ease',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -3536,9 +3536,9 @@ export default function WarehousePage() {
                                                 className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                 style={{
                                                     width: '22px', height: '22px', borderRadius: '4px',
-                                                    background: isSelected ? 'var(--primary-color)' : bgColor,
-                                                    border: isSelected ? '2px solid var(--primary-color)' : `1px solid ${borderColor}`,
-                                                    boxShadow: isSelected ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none',
+                                                    background: isSelected ? '#eab308' : bgColor,
+                                                    border: isSelected ? '2px solid #ca8a04' : `1px solid ${borderColor}`,
+                                                    boxShadow: isSelected ? '0 0 0 4px rgba(234,179,8,0.3)' : 'none',
                                                     opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
                                                     cursor: 'pointer', transition: 'all 0.2s ease',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
