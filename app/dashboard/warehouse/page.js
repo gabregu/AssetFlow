@@ -2335,9 +2335,40 @@ export default function WarehousePage() {
                             </div>
                         )}
                     </h3>
-                    <span style={{ fontSize: '0.7rem', color: badgeColor, fontWeight: 700 }}>
-                        {aisleAssetsCount} EQUIPOS
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <Button
+                            variant="ghost"
+                            size="xs"
+                            icon={Download}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const wb = XLSX.utils.book_new();
+                                const data = aisleAssets.map(a => {
+                                    let dateStr = '-';
+                                    if (a.dateMapped) dateStr = new Date(a.dateMapped).toLocaleDateString();
+                                    else if (a.dateLastUpdate) dateStr = new Date(a.dateLastUpdate).toLocaleDateString();
+                                    else if (a.created_at) dateStr = new Date(a.created_at).toLocaleDateString();
+                                    else if (a.date) dateStr = new Date(a.date).toLocaleDateString();
+                                    return {
+                                        'Ubicación': a.locationId || '-',
+                                        'Modelo': a.model || '-',
+                                        'N/P': a.part_number || '-',
+                                        'SN': a.sn || '-',
+                                        'Estado': a.status || '-',
+                                        'Ingreso (Fecha)': dateStr
+                                    };
+                                });
+                                const ws = XLSX.utils.json_to_sheet(data);
+                                XLSX.utils.book_append_sheet(wb, ws, "Equipos");
+                                XLSX.writeFile(wb, `Export_${aisle}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                            }}
+                            title={`Exportar equipos de ${getDisplayAisle(aisle)}`}
+                            style={{ padding: '2px', height: '18px', width: '18px', opacity: 0.7, color: '#10b981', marginRight: '8px' }}
+                        />
+                        <span style={{ fontSize: '0.7rem', color: badgeColor, fontWeight: 700 }}>
+                            {aisleAssetsCount} EQUIPOS
+                        </span>
+                    </div>
                 </div>
                 
                 {/* Cell grid box */}
