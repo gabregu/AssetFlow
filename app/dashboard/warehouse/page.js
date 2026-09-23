@@ -2139,7 +2139,7 @@ export default function WarehousePage() {
     const renderAisle = (aisle, locations, totalAislesCount, listAislesArray, isHZone = false, isDepZone = false) => {
         let aisleAssetsCount = 0;
         if (isDepZone) {
-            const prefix = `DEP-${aisle}-`;
+            const prefix = `${aisle}-`;
             aisleAssetsCount = assets.filter(a => 
                 (countryFilter === 'Todos' || a.country === countryFilter) &&
                 a.locationId && a.locationId.startsWith(prefix)
