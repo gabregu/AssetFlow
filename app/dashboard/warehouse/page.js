@@ -31,7 +31,9 @@ import {
     Download,
     Camera,
     QrCode,
-    Truck
+    Truck,
+    Smartphone,
+    Package
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
@@ -2159,6 +2161,196 @@ export default function WarehousePage() {
         return titleLines.join('\n');
     };
 
+    const renderArmarioCelulares = () => {
+        const armarioAssets = assets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-'));
+        const armarioCount = armarioAssets.length;
+
+        const org1Assets = armarioAssets.filter(a => a.locationId.startsWith('ARM-O1-'));
+        const org2Assets = armarioAssets.filter(a => a.locationId.startsWith('ARM-O2-'));
+        const org3Assets = armarioAssets.filter(a => a.locationId.startsWith('ARM-O3-'));
+        const iphAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-IPH-'));
+        const samAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-SAM-'));
+        const eolAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-CAJA-'));
+
+        const renderOrganizerCircle = (locId) => {
+            const locationAssets = armarioAssets.filter(a => a.locationId === locId);
+            const assetCount = locationAssets.length;
+            const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
+            const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
+            const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
+
+            let bgColor = 'transparent';
+            let borderColor = 'var(--border)';
+
+            if (assetCount > 0) {
+                const status = locationAssets[0]?.status?.toUpperCase() || '';
+                if (status.includes('NUEVO')) { bgColor = '#10b981'; borderColor = '#10b981'; }
+                else if (status.includes('RECUPERADO')) { bgColor = '#3b82f6'; borderColor = '#3b82f6'; }
+                else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) { bgColor = '#f97316'; borderColor = '#f97316'; }
+                else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) { bgColor = '#ef4444'; borderColor = '#ef4444'; }
+                else { bgColor = '#10b981'; borderColor = '#10b981'; }
+            }
+            if (isAuditMode && auditLocation?.id === locId) { bgColor = '#8b5cf6'; borderColor = '#8b5cf6'; }
+
+            return (
+                <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                    <div 
+                        onClick={() => handleScanLocation(locId)}
+                        title={buildAssetTooltip(locationAssets, locId)}
+                        className={isHighlighted ? 'blink-highlight search-pulse' : ''}
+                        style={{
+                            width: '18px', height: '18px', borderRadius: '50%',
+                            background: isSelected ? '#eab308' : bgColor,
+                            border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#ca8a04'}` : `1px solid ${borderColor}`,
+                            cursor: 'pointer', transition: 'all 0.15s ease',
+                            boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : 'none',
+                            opacity: isNotHighlighted ? 0.2 : assetCount > 0 ? 1 : 0.4,
+                            position: 'relative'
+                        }}
+                    />
+                </div>
+            );
+        };
+
+        const renderBox = (locId, iconType = 'box') => {
+            const locationAssets = armarioAssets.filter(a => a.locationId === locId);
+            const assetCount = locationAssets.length;
+            const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
+            const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
+            const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
+
+            let borderColor = 'var(--border)';
+            let bgColor = 'var(--background-secondary)';
+            if (assetCount > 0) {
+                borderColor = '#3b82f6';
+                bgColor = '#eff6ff';
+            }
+            if (isSelected) {
+                borderColor = '#ca8a04';
+                bgColor = '#fef08a';
+            }
+            if (isAuditMode && auditLocation?.id === locId) {
+                borderColor = '#8b5cf6';
+                bgColor = '#f3e8ff';
+            }
+
+            return (
+                <div 
+                    key={locId}
+                    onClick={() => handleScanLocation(locId)}
+                    title={buildAssetTooltip(locationAssets, locId)}
+                    className={isHighlighted ? 'blink-highlight search-pulse' : ''}
+                    style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        width: '60px', height: '60px', borderRadius: '8px',
+                        background: bgColor, border: `2px solid ${borderColor}`,
+                        cursor: 'pointer', transition: 'all 0.15s ease',
+                        boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : '0 2px 4px rgba(0,0,0,0.05)',
+                        opacity: isNotHighlighted ? 0.2 : 1,
+                        position: 'relative',
+                        gap: '4px'
+                    }}
+                >
+                    {iconType === 'box' ? <Package size={24} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} /> : <Smartphone size={24} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} />}
+                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-main)' }}>{assetCount}</span>
+                </div>
+            );
+        };
+
+        return (
+            <Card style={{ flex: 1, padding: '0', display: 'flex', flexDirection: 'column', border: '2px solid #2563eb', overflow: 'hidden', marginBottom: '1.5rem' }}>
+                <div style={{ background: '#eff6ff', padding: '1.25rem', borderBottom: '1px solid #bfdbfe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <h2 style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#1e3a8a' }}>ARMARIO CELULARES</h2>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563eb', backgroundColor: '#dbeafe', padding: '3px 8px', borderRadius: '12px' }}>
+                            Depósito Centralizado
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <Button
+                            variant="ghost" size="xs" icon={Download}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const wb = XLSX.utils.book_new();
+                                const data = armarioAssets.map(a => {
+                                    let dateStr = '-';
+                                    if (a.dateMapped) dateStr = new Date(a.dateMapped).toLocaleDateString();
+                                    else if (a.dateLastUpdate) dateStr = new Date(a.dateLastUpdate).toLocaleDateString();
+                                    else if (a.created_at) dateStr = new Date(a.created_at).toLocaleDateString();
+                                    else if (a.date) dateStr = new Date(a.date).toLocaleDateString();
+                                    return {
+                                        'Ubicación': a.locationId || '-',
+                                        'Modelo': a.hardwareSpec || a.model || a.name || '-',
+                                        'N/P': a.partNumber || a.part_number || '-',
+                                        'SN': a.serial || a.sn || '-',
+                                        'Estado': a.status || '-',
+                                        'Ingreso (Fecha)': dateStr
+                                    };
+                                });
+                                const ws = XLSX.utils.json_to_sheet(data);
+                                XLSX.utils.book_append_sheet(wb, ws, "Armario");
+                                XLSX.writeFile(wb, `Export_Armario_${new Date().toISOString().split('T')[0]}.xlsx`);
+                            }}
+                            title="Exportar Armario Completo"
+                            style={{ padding: '4px', color: '#2563eb' }}
+                        />
+                        <span style={{ fontSize: '0.9rem', color: '#1e3a8a', fontWeight: 800 }}>{armarioCount} EQUIPOS</span>
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                    <div style={{ padding: '1.25rem', borderBottom: '1px dashed var(--border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>ESTANTE 1 (Superior) - Rotos / Reutilizados</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{org1Assets.length + org2Assets.length + org3Assets.length} Equipos</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {[1, 2, 3].map(orgNum => (
+                                <div key={`org-${orgNum}`} style={{ background: 'var(--background-secondary)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>ORG {orgNum}</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+                                        {Array.from({length: 28}, (_, i) => i + 1).map(pos => renderOrganizerCircle(`ARM-O${orgNum}-${pos}`))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '1.25rem', borderBottom: '1px dashed var(--border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>ESTANTE 2 (Nuevos) - iPhones</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{iphAssets.length} Equipos</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {[1, 2, 3, 4, 5, 6].map(boxNum => renderBox(`ARM-IPH-CAJA${boxNum}`, 'phone'))}
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '1.25rem', borderBottom: '1px dashed var(--border)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>ESTANTE 3 (Nuevos) - Samsungs</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{samAssets.length} Equipos</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {[1, 2, 3, 4, 5, 6].map(boxNum => renderBox(`ARM-SAM-CAJA${boxNum}`, 'phone'))}
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '1.25rem', background: '#fef2f2' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#b91c1c' }}>BASE (Chatarra / EOL)</span>
+                            <span style={{ fontSize: '0.75rem', color: '#b91c1c' }}>{eolAssets.length} Equipos</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {[1, 2, 3, 4].map(boxNum => renderBox(`ARM-CAJA-${boxNum}`, 'box'))}
+                        </div>
+                    </div>
+                </div>
+            </Card>
+        );
+    };
+
+
     const renderAisle = (aisle, locations, totalAislesCount, listAislesArray, isHZone = false, isDepZone = false) => {
         let aisleAssetsCount = 0;
         let aisleAssets = [];
@@ -3310,6 +3502,8 @@ export default function WarehousePage() {
 
                 {/* Right Panel: Mapping Area */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }} className="flex-mobile-column">
+                    {renderArmarioCelulares()}
+
                     {/* LOCACIÓN DEPÓSITO */}
                     <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #d1fae5' }}>
                         <div style={{ borderBottom: '2px solid #a7f3d0', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
