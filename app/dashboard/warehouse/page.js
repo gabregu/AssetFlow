@@ -2237,6 +2237,24 @@ export default function WarehousePage() {
             );
         };
 
+        const handleQuickAdd = (e, locId) => {
+            e.stopPropagation();
+            const scannedId = window.prompt(`Agregar activo a ${locId}.\nEscanee o ingrese el ID/Serial:`);
+            if (scannedId) {
+                const val = scannedId.trim().toUpperCase();
+                const searchNormAsset = normalizeId(val);
+                const asset = assets.find(a => 
+                    normalizeId(a.id) === searchNormAsset || 
+                    (a.serial && normalizeId(a.serial) === searchNormAsset)
+                );
+                if (asset) {
+                    confirmMapping(asset.id, locId);
+                } else {
+                    alert("Activo no encontrado: " + val);
+                }
+            }
+        };
+
         const renderBox = (locId, iconType = 'box') => {
             const locationAssets = armarioAssets.filter(a => a.locationId === locId);
             const assetCount = locationAssets.length;
@@ -2278,6 +2296,15 @@ export default function WarehousePage() {
                 >
                     {iconType === 'box' ? <Package size={24} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} /> : <Smartphone size={24} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} />}
                     <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-main)' }}>{assetCount}</span>
+                    {assetCount > 0 && (
+                        <div 
+                            onClick={(e) => handleQuickAdd(e, locId)}
+                            style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#3b82f6', color: 'white', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 'bold', zIndex: 10, border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                            title="Agregar otro equipo a esta caja"
+                        >
+                            +
+                        </div>
+                    )}
                 </div>
             );
         };
