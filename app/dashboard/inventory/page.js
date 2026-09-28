@@ -11,7 +11,7 @@ import {
     HardDrive, Package, Trash2, Edit3, Eye, ArrowRight,
     TrendingUp, AlertTriangle, CheckCircle, Upload, Download, History,
     ChevronDown, ChevronUp, Key, UserPlus, Truck, MapPin, Box, User,
-    Layers, Activity, Server, Printer, Loader2, Headphones, Camera, Dock, PenLine
+    Layers, Activity, Server, Printer, Loader2, Headphones, Camera, Dock, PenLine, Wifi
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
@@ -1072,6 +1072,7 @@ export default function InventoryPage() {
             case 'Proyector': return Monitor; // Use monitor for projector
             case 'UPS': return Activity; // Use activity for UPS
             case 'Switch / Router': return Server; // Use server for switch
+            case 'Modem 4G': return Wifi;
             case 'Otros': return Layers;
             case 'Security keys': return Key;
             default: return Package;
@@ -1653,7 +1654,7 @@ export default function InventoryPage() {
     const destructionCount = allAssetsNonAssigned.filter(a => a.cod && a.cod.trim() !== '').length;
 
     const categoriesCount = new Set(allAssetsNonAssigned.map(a => a.type)).size || (activeTab === 'hardware' ? 4 : 0);
-    const deviceTypes = ['Laptop', 'Smartphone', 'Tablet', 'Monitor', 'Impresora', 'Tableta de dibujo', 'Disco Externo', 'Proyector', 'UPS', 'Switch / Router', 'Otros'];
+    const deviceTypes = ['Laptop', 'Smartphone', 'Tablet', 'Monitor', 'Impresora', 'Tableta de dibujo', 'Disco Externo', 'Proyector', 'UPS', 'Switch / Router', 'Modem 4G', 'Otros'];
 
     const statuses = ['Almacén', 'Nuevo', 'Recuperado', 'Por Recuperar', 'Verificacion HW', 'En Reparación', 'Dañado', 'EOL', 'Baja de Equipos']; // Removed 'Asignado'
 
