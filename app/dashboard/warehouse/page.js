@@ -2171,6 +2171,7 @@ export default function WarehousePage() {
     };
 
     const renderArmarioCelulares = () => {
+        const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'Administrador' || currentUser?.role === 'Gerencial';
         const armarioAssets = assets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-'));
         const armarioCount = armarioAssets.length;
 
@@ -2437,20 +2438,41 @@ export default function WarehousePage() {
                                         >
                                             {org.name} <span style={{ color: '#3b82f6' }}>({orgTotalAssets})</span> <Edit3 size={12} style={{ opacity: 0.5 }} />
                                         </div>
-                                        <div 
-                                            style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--background)', padding: '2px 4px', borderRadius: '4px', border: '1px solid var(--border)' }}
-                                            onClick={() => {
-                                                const newSlots = window.prompt(`Ingrese cantidad de posiciones (actual: ${org.slots}):`, org.slots);
-                                                const parsed = parseInt(newSlots);
-                                                if (!isNaN(parsed) && parsed > 0) {
-                                                    const newOrgs = [...organizers];
-                                                    newOrgs[index].slots = parsed;
-                                                    updateDepositoConfig({ ...depositoConfig, armarioOrganizers: newOrgs });
-                                                }
-                                            }}
-                                            title="Clic para cambiar cantidad de posiciones"
-                                        >
-                                            {org.slots} pos. <Edit3 size={10} style={{ opacity: 0.5 }} />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <div 
+                                                style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--background)', padding: '2px 4px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                                                onClick={() => {
+                                                    const newSlots = window.prompt(`Ingrese cantidad de posiciones (actual: ${org.slots}):`, org.slots);
+                                                    const parsed = parseInt(newSlots);
+                                                    if (!isNaN(parsed) && parsed > 0) {
+                                                        const newOrgs = [...organizers];
+                                                        newOrgs[index].slots = parsed;
+                                                        updateDepositoConfig({ ...depositoConfig, armarioOrganizers: newOrgs });
+                                                    }
+                                                }}
+                                                title="Clic para cambiar cantidad de posiciones"
+                                            >
+                                                {org.slots} pos. <Edit3 size={10} style={{ opacity: 0.5 }} />
+                                            </div>
+                                            {isAdmin && (
+                                                <div
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (orgTotalAssets > 0) {
+                                                            alert(`No se puede eliminar "${org.name}" porque contiene ${orgTotalAssets} equipo(s). Mueva o retire los equipos primero.`);
+                                                            return;
+                                                        }
+                                                        if (window.confirm(`¿Está seguro de eliminar el organizador "${org.name}"?`)) {
+                                                            const newOrgs = organizers.filter(o => o.id !== org.id);
+                                                            updateDepositoConfig({ ...depositoConfig, armarioOrganizers: newOrgs });
+                                                        }
+                                                    }}
+                                                    title={`Eliminar organizador ${org.name}`}
+                                                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px 4px', borderRadius: '4px', background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444' }}
+                                                >
+                                                    <Trash2 size={12} />
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
