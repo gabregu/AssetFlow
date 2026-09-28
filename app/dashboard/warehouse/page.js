@@ -2174,6 +2174,22 @@ export default function WarehousePage() {
         const samAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-SAM-'));
         const eolAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-CAJA-'));
 
+        const getBoxCount = (prefix) => {
+            let max = 0;
+            armarioAssets.forEach(a => {
+                if (a.locationId && a.locationId.toUpperCase().startsWith(prefix)) {
+                    const numStr = a.locationId.toUpperCase().replace(prefix, '');
+                    const num = parseInt(numStr, 10);
+                    if (!isNaN(num) && num > max) max = num;
+                }
+            });
+            return max;
+        };
+
+        const iphBoxCount = Math.max(6, getBoxCount('ARM-IPH-CAJA') + 1);
+        const samBoxCount = Math.max(6, getBoxCount('ARM-SAM-CAJA') + 1);
+        const eolBoxCount = Math.max(4, getBoxCount('ARM-CAJA-') + 1);
+
         const renderOrganizerCircle = (locId) => {
             const locationAssets = armarioAssets.filter(a => a.locationId === locId);
             const assetCount = locationAssets.length;
@@ -2324,7 +2340,7 @@ export default function WarehousePage() {
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{iphAssets.length} Equipos</span>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {[1, 2, 3, 4, 5, 6].map(boxNum => renderBox(`ARM-IPH-CAJA${boxNum}`, 'phone'))}
+                            {Array.from({length: iphBoxCount}, (_, i) => i + 1).map(boxNum => renderBox(`ARM-IPH-CAJA${boxNum}`, 'phone'))}
                         </div>
                     </div>
 
@@ -2334,7 +2350,7 @@ export default function WarehousePage() {
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{samAssets.length} Equipos</span>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {[1, 2, 3, 4, 5, 6].map(boxNum => renderBox(`ARM-SAM-CAJA${boxNum}`, 'phone'))}
+                            {Array.from({length: samBoxCount}, (_, i) => i + 1).map(boxNum => renderBox(`ARM-SAM-CAJA${boxNum}`, 'phone'))}
                         </div>
                     </div>
 
@@ -2344,7 +2360,7 @@ export default function WarehousePage() {
                             <span style={{ fontSize: '0.75rem', color: '#b91c1c' }}>{eolAssets.length} Equipos</span>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {[1, 2, 3, 4].map(boxNum => renderBox(`ARM-CAJA-${boxNum}`, 'box'))}
+                            {Array.from({length: eolBoxCount}, (_, i) => i + 1).map(boxNum => renderBox(`ARM-CAJA-${boxNum}`, 'box'))}
                         </div>
                     </div>
                 </div>
