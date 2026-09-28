@@ -2174,9 +2174,13 @@ export default function WarehousePage() {
         const armarioAssets = assets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-'));
         const armarioCount = armarioAssets.length;
 
-        const org1Assets = armarioAssets.filter(a => a.locationId.startsWith('ARM-O1-'));
-        const org2Assets = armarioAssets.filter(a => a.locationId.startsWith('ARM-O2-'));
-        const org3Assets = armarioAssets.filter(a => a.locationId.startsWith('ARM-O3-'));
+        const defaultOrganizers = [
+            { id: 1, name: 'ORG 1', slots: 28 },
+            { id: 2, name: 'ORG 2', slots: 28 },
+            { id: 3, name: 'ORG 3', slots: 28 }
+        ];
+        const organizers = depositoConfig?.armarioOrganizers || defaultOrganizers;
+        const orgAssetsCount = armarioAssets.filter(a => organizers.some(org => a.locationId && a.locationId.startsWith(`ARM-O${org.id}-`))).length;
         const iphAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-IPH-'));
         const samAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-SAM-'));
         const eolAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-CAJA-'));
@@ -2352,16 +2356,62 @@ export default function WarehousePage() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
                     <div style={{ padding: '1.25rem', borderBottom: '1px dashed var(--border)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
                             <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>ESTANTE 1 (Superior) - Rotos / Reutilizados</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{org1Assets.length + org2Assets.length + org3Assets.length} Equipos</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <Button
+                                    variant="outline"
+                                    size="xs"
+                                    onClick={() => {
+                                        const newOrgs = [...organizers];
+                                        const nextId = newOrgs.length > 0 ? Math.max(...newOrgs.map(o => o.id)) + 1 : 1;
+                                        newOrgs.push({ id: nextId, name: `ORG ${nextId}`, slots: 28 });
+                                        updateDepositoConfig({ ...depositoConfig, armarioOrganizers: newOrgs });
+                                    }}
+                                    style={{ fontSize: '0.7rem', padding: '2px 8px', height: '24px', borderColor: 'var(--border)' }}
+                                    title="Añadir nuevo organizador"
+                                >
+                                    + Agregar ORG
+                                </Button>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{orgAssetsCount} Equipos</span>
+                            </div>
                         </div>
                         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {[1, 2, 3].map(orgNum => (
-                                <div key={`org-${orgNum}`} style={{ background: 'var(--background-secondary)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '0.5rem', textAlign: 'center' }}>ORG {orgNum}</div>
+                            {organizers.map((org, index) => (
+                                <div key={`org-${org.id}`} style={{ background: 'var(--background-secondary)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                        <div 
+                                            style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                            onClick={() => {
+                                                const newName = window.prompt(`Ingrese nuevo nombre para el organizador (actual: ${org.name}):`, org.name);
+                                                if (newName) {
+                                                    const newOrgs = [...organizers];
+                                                    newOrgs[index].name = newName;
+                                                    updateDepositoConfig({ ...depositoConfig, armarioOrganizers: newOrgs });
+                                                }
+                                            }}
+                                            title="Clic para cambiar nombre"
+                                        >
+                                            {org.name} <Edit3 size={12} style={{ opacity: 0.5 }} />
+                                        </div>
+                                        <div 
+                                            style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--background)', padding: '2px 4px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                                            onClick={() => {
+                                                const newSlots = window.prompt(`Ingrese cantidad de posiciones (actual: ${org.slots}):`, org.slots);
+                                                const parsed = parseInt(newSlots);
+                                                if (!isNaN(parsed) && parsed > 0) {
+                                                    const newOrgs = [...organizers];
+                                                    newOrgs[index].slots = parsed;
+                                                    updateDepositoConfig({ ...depositoConfig, armarioOrganizers: newOrgs });
+                                                }
+                                            }}
+                                            title="Clic para cambiar cantidad de posiciones"
+                                        >
+                                            {org.slots} pos. <Edit3 size={10} style={{ opacity: 0.5 }} />
+                                        </div>
+                                    </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
-                                        {Array.from({length: 28}, (_, i) => i + 1).map(pos => renderOrganizerCircle(`ARM-O${orgNum}-${pos}`))}
+                                        {Array.from({length: org.slots}, (_, i) => i + 1).map(pos => renderOrganizerCircle(`ARM-O${org.id}-${pos}`))}
                                     </div>
                                 </div>
                             ))}
