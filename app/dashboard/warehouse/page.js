@@ -1203,6 +1203,13 @@ export default function WarehousePage() {
                 const { error: addErr } = await addWarehouseLocation({ aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], id: finalLocationId, country: locationCountry });
                 if (addErr) { alert('Error al crear ubicación en depósito: ' + addErr.message); return; }
             }
+        } else if ((finalLocationId.startsWith('CAJA-') || finalLocationId.startsWith('REV-') || finalLocationId.startsWith('ARM-')) && !warehouseLocations.some(l => l.id === finalLocationId)) {
+            let mockAisle = 'CAJA';
+            if (finalLocationId.startsWith('REV-')) mockAisle = 'REV';
+            else if (finalLocationId.startsWith('ARM-')) mockAisle = 'ARM';
+            
+            const { error: addErr } = await addWarehouseLocation({ aisle: mockAisle, section: '-', level: '-', id: finalLocationId, country: locationCountry });
+            if (addErr) { alert('Error al crear ubicación: ' + addErr.message); return; }
         }
 
         const res = await mapAssetToLocation(assetId, finalLocationId);
