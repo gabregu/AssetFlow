@@ -2298,6 +2298,9 @@ export default function WarehousePage() {
                         gap: '4px'
                     }}
                 >
+                    <span style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '0.55rem', fontWeight: 800, color: 'var(--text-secondary)', opacity: 0.7 }}>
+                        #{locId.match(/\d+$/)?.[0]}
+                    </span>
                     {iconType === 'box' ? <Package size={24} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} /> : <Smartphone size={24} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} />}
                     <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-main)' }}>{assetCount}</span>
                     {assetCount > 0 && (
@@ -2377,7 +2380,9 @@ export default function WarehousePage() {
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {organizers.map((org, index) => (
+                            {organizers.map((org, index) => {
+                                const orgTotalAssets = armarioAssets.filter(a => a.locationId && a.locationId.startsWith(`ARM-O${org.id}-`)).length;
+                                return (
                                 <div key={`org-${org.id}`} style={{ background: 'var(--background-secondary)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                         <div 
@@ -2392,7 +2397,7 @@ export default function WarehousePage() {
                                             }}
                                             title="Clic para cambiar nombre"
                                         >
-                                            {org.name} <Edit3 size={12} style={{ opacity: 0.5 }} />
+                                            {org.name} <span style={{ color: '#3b82f6' }}>({orgTotalAssets})</span> <Edit3 size={12} style={{ opacity: 0.5 }} />
                                         </div>
                                         <div 
                                             style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--background)', padding: '2px 4px', borderRadius: '4px', border: '1px solid var(--border)' }}
@@ -2414,7 +2419,7 @@ export default function WarehousePage() {
                                         {Array.from({length: org.slots}, (_, i) => i + 1).map(pos => renderOrganizerCircle(`ARM-O${org.id}-${pos}`))}
                                     </div>
                                 </div>
-                            ))}
+                            );})}
                         </div>
                     </div>
 
