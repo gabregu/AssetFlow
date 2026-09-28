@@ -3680,8 +3680,44 @@ export default function WarehousePage() {
                                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', backgroundColor: '#ecfdf5', padding: '3px 8px', borderRadius: '12px' }}>
                                     {locationsD.length} Repisas
                                 </span>
-                                <span style={{ fontSize: '0.7rem', color: '#6b7280', backgroundColor: 'var(--background-secondary)', padding: '2px 6px', borderRadius: '8px', fontWeight: 600 }}>
-                                    {totalAssetsDep} equipos
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <Button
+                                    variant="ghost" 
+                                    size="xs" 
+                                    icon={Download}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const depositoAssets = assets.filter(a => 
+                                            (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                            a.locationId && 
+                                            locationsD.some(([aisle]) => a.locationId.toUpperCase().startsWith(`${aisle.toUpperCase()}-`))
+                                        );
+                                        const wb = XLSX.utils.book_new();
+                                        const data = depositoAssets.map(a => {
+                                            let dateStr = '-';
+                                            if (a.dateMapped) dateStr = new Date(a.dateMapped).toLocaleDateString();
+                                            else if (a.dateLastUpdate) dateStr = new Date(a.dateLastUpdate).toLocaleDateString();
+                                            else if (a.created_at) dateStr = new Date(a.created_at).toLocaleDateString();
+                                            else if (a.date) dateStr = new Date(a.date).toLocaleDateString();
+                                            return {
+                                                'Ubicación': a.locationId || '-',
+                                                'Modelo': a.hardwareSpec || a.model || a.name || '-',
+                                                'N/P': a.partNumber || a.part_number || '-',
+                                                'SN': a.serial || a.sn || '-',
+                                                'Estado': a.status || '-',
+                                                'Ingreso (Fecha)': dateStr
+                                            };
+                                        });
+                                        const ws = XLSX.utils.json_to_sheet(data);
+                                        XLSX.utils.book_append_sheet(wb, ws, "Deposito");
+                                        XLSX.writeFile(wb, `Export_Deposito_${new Date().toISOString().split('T')[0]}.xlsx`);
+                                    }}
+                                    title="Exportar Depósito Completo (Excel)"
+                                    style={{ padding: '4px', color: '#059669', cursor: 'pointer' }}
+                                />
+                                <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 900, letterSpacing: '0.03em' }}>
+                                    {totalAssetsDep} EQUIPOS
                                 </span>
                             </div>
                         </div>
