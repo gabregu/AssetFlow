@@ -3719,7 +3719,7 @@ export default function WarehousePage() {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 <div style={{ padding: '0.75rem', background: 'var(--background)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: mappingStep >= 1 ? 'var(--primary-color)' : 'var(--border)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>1</div>
+                                    <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: mappingStep >= 1 ? 'var(--primary-color)' : 'var(--border)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800 }}>1</div>
                                     <span style={{ fontSize: '0.8rem', fontWeight: 700, display: 'flex', flexDirection: 'column' }}>
                                         {scannedAsset ? `Activo: ${scannedAsset.id}` : "Escanee el Activo"}
                                         {scannedAsset?.locationId && <span style={{ fontSize: '0.65rem', color: '#f59e0b' }}>En: {scannedAsset.locationId}</span>}
@@ -3824,7 +3824,13 @@ export default function WarehousePage() {
                                                         ⏳
                                                     </div>
                                                 )}
-                                                {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
+                                                {assetCount > 0 ? (
+                                                    <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'white', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
+                                                        {assetCount}
+                                                    </span>
+                                                ) : (
+                                                    (isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />
+                                                )}
                                             </div>
                                             <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{revNum}</span>
                                         </div>
