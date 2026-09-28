@@ -1050,6 +1050,8 @@ export default function WarehousePage() {
             } else if (locationId.toUpperCase().startsWith('REV-')) {
                 const revNum = locationId.toUpperCase().replace(/^REV-/, '');
                 loc = { id: locationId.toUpperCase(), aisle: 'REV', section: '-', level: revNum, country: mockCountry };
+            } else if (locationId.toUpperCase().startsWith('ARM-')) {
+                loc = { id: locationId.toUpperCase(), aisle: 'ARM', section: '-', level: '-', country: mockCountry };
             } else {
                 alert("Ubicación no encontrada: " + locationId);
                 return;
