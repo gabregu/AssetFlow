@@ -286,6 +286,7 @@ export default function AssetListSection({
                                             <option value="Laptop">Laptop</option>
                                             <option value="Smartphone">Smartphone</option>
                                             <option value="Tablet">Tablet</option>
+                                    <option value="Modem 4G">Modem 4G</option>
                                             <option value="Security Key">Security Key</option>
                                         </select>
                                     </div>

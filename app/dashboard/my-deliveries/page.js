@@ -2035,6 +2035,7 @@ export default function MyDeliveriesPage() {
                                 <option value="Laptop">Laptop</option>
                                 <option value="Celular">Celular / Smartphone</option>
                                 <option value="Tablet">Tablet</option>
+                                    <option value="Modem 4G">Modem 4G</option>
                                 <option value="YubiKey">YubiKey</option>
                                 <option value="Accesorio">Accesorio</option>
                                 <option value="Otro">Otro</option>

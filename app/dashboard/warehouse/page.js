@@ -2266,6 +2266,19 @@ export default function WarehousePage() {
             const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
             const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
 
+            const boxNames = depositoConfig?.armarioBoxNames || {};
+            const boxCustomName = boxNames[locId] || '';
+            const boxNum = locId.match(/\d+$/)?.[0] || locId;
+
+            const handleRenameBox = (e) => {
+                e.stopPropagation();
+                const newName = window.prompt(`Nombre / Modelo para la Caja #${boxNum} (${locId}):`, boxCustomName);
+                if (newName !== null) {
+                    const updatedBoxNames = { ...(depositoConfig?.armarioBoxNames || {}), [locId]: newName.trim() };
+                    updateDepositoConfig({ ...depositoConfig, armarioBoxNames: updatedBoxNames });
+                }
+            };
+
             let borderColor = 'var(--border)';
             let bgColor = 'var(--background-secondary)';
             if (assetCount > 0) {
@@ -2285,28 +2298,53 @@ export default function WarehousePage() {
                 <div 
                     key={locId}
                     onClick={() => handleScanLocation(locId)}
-                    title={buildAssetTooltip(locationAssets, locId)}
+                    title={`${boxCustomName ? `${boxCustomName} (${locId})` : locId}\n${buildAssetTooltip(locationAssets, locId)}`}
                     className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                     style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                        width: '60px', height: '60px', borderRadius: '8px',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
+                        width: '76px', minHeight: '76px', borderRadius: '10px', padding: '6px 4px',
                         background: bgColor, border: `2px solid ${borderColor}`,
                         cursor: 'pointer', transition: 'all 0.15s ease',
                         boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : '0 2px 4px rgba(0,0,0,0.05)',
                         opacity: isNotHighlighted ? 0.2 : 1,
-                        position: 'relative',
-                        gap: '4px'
+                        position: 'relative'
                     }}
                 >
-                    <span style={{ position: 'absolute', top: '2px', left: '4px', fontSize: '0.55rem', fontWeight: 800, color: 'var(--text-secondary)', opacity: 0.7 }}>
-                        #{locId.match(/\d+$/)?.[0]}
-                    </span>
-                    {iconType === 'box' ? <Package size={24} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} /> : <Smartphone size={24} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} />}
-                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-main)' }}>{assetCount}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0 2px' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', opacity: 0.8 }}>
+                            #{boxNum}
+                        </span>
+                        <div 
+                            onClick={handleRenameBox}
+                            title="Nombrar / Cambiar modelo de esta caja"
+                            style={{ cursor: 'pointer', color: '#3b82f6', display: 'flex', alignItems: 'center', opacity: 0.7 }}
+                        >
+                            <Edit3 size={10} />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', margin: '2px 0' }}>
+                        {iconType === 'box' ? <Package size={20} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} /> : <Smartphone size={20} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} />}
+                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-main)' }}>{assetCount}</span>
+                    </div>
+
+                    <div 
+                        onClick={handleRenameBox}
+                        title={boxCustomName ? `Modelo: ${boxCustomName} (Clic para cambiar)` : 'Clic para asignar nombre/modelo (Ej: iPhone 13)'}
+                        style={{
+                            fontSize: '0.58rem', fontWeight: 700, color: boxCustomName ? '#1e40af' : 'var(--text-secondary)',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '68px',
+                            textAlign: 'center', background: boxCustomName ? '#dbeafe' : 'rgba(0,0,0,0.04)',
+                            padding: '1px 3px', borderRadius: '4px', width: '100%'
+                        }}
+                    >
+                        {boxCustomName || '+ Nombre'}
+                    </div>
+
                     {assetCount > 0 && (
                         <div 
                             onClick={(e) => handleQuickAdd(e, locId)}
-                            style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#3b82f6', color: 'white', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 'bold', zIndex: 10, border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                            style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#3b82f6', color: 'white', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold', zIndex: 10, border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
                             title="Agregar otro equipo a esta caja"
                         >
                             +
@@ -3097,6 +3135,7 @@ export default function WarehousePage() {
                                     <option value="Proyector">Proyector</option>
                                     <option value="UPS">UPS</option>
                                     <option value="Switch / Router">Switch / Router</option>
+                                    <option value="Modem 4G">Modem 4G</option>
                                     <option value="Security keys">Security Keys</option>
                                     <option value="Otros">Otros</option>
                                 </select>
@@ -4656,6 +4695,7 @@ export default function WarehousePage() {
                                 <option value="Proyector">Proyector</option>
                                 <option value="UPS">UPS</option>
                                 <option value="Switch / Router">Switch / Router</option>
+                                    <option value="Modem 4G">Modem 4G</option>
                                 <option value="Otros">Otros</option>
                                 <option value="Security keys">Security Keys</option>
                             </select>

@@ -473,6 +473,7 @@ export default function AssetDetailPage() {
                                     <option value="Laptop">Laptop</option>
                                     <option value="Smartphone">Smartphone</option>
                                     <option value="Tablet">Tablet</option>
+                                    <option value="Modem 4G">Modem 4G</option>
                                     <option value="Security keys">Security keys</option>
                                 </select>
                             </div>

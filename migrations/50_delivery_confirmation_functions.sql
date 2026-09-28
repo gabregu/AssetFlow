@@ -12,8 +12,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_ticket RECORD;
-    v_task RECORD;
+    v_ticket public.tickets%ROWTYPE;
+    v_task public.logistics_tasks%ROWTYPE;
     v_result jsonb;
     v_assets jsonb := '[]'::jsonb;
     v_accessories jsonb := '{}'::jsonb;
@@ -232,7 +232,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_ticket RECORD;
+    v_ticket public.tickets%ROWTYPE;
     v_now_iso text := to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
     v_now_date text := to_char(now() AT TIME ZONE 'America/Argentina/Buenos_Aires', 'YYYY-MM-DD');
     v_now_time text := to_char(now() AT TIME ZONE 'America/Argentina/Buenos_Aires', 'HH24:MI');

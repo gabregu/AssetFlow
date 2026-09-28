@@ -49,6 +49,7 @@ export default function ManualAssetModal({
                         <option value="Proyector">Proyector</option>
                         <option value="UPS">UPS</option>
                         <option value="Switch / Router">Switch / Router</option>
+                                    <option value="Modem 4G">Modem 4G</option>
                         <option value="Otros">Otros</option>
                         <option value="Security keys">Security Keys</option>
                     </select>
