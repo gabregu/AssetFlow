@@ -2195,7 +2195,7 @@ export default function WarehousePage() {
 
         const iphBoxCount = Math.max(6, getBoxCount('ARM-IPH-CAJA') + 1);
         const samBoxCount = Math.max(6, getBoxCount('ARM-SAM-CAJA') + 1);
-        const eolBoxCount = Math.max(4, getBoxCount('ARM-CAJA-') + 1);
+        const eolBoxCount = Math.max(6, getBoxCount('ARM-CAJA-') + 1);
 
         const renderOrganizerCircle = (locId) => {
             const locationAssets = armarioAssets.filter(a => a.locationId === locId);
