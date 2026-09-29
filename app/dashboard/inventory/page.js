@@ -261,6 +261,7 @@ export default function InventoryPage() {
         // Filter assets for this specific bucket
         const items = assets.filter(a => {
             const matchModel = a.name === model;
+            if (status === '__ALL__') return matchModel;
             let matchStatus = false;
             if (status === 'Nuevo') matchStatus = a.status === 'Nuevo' || a.status === 'Disponible';
             else if (status === 'Dañado') matchStatus = ['Dañado', 'Rota', 'De Baja'].includes(a.status);
@@ -2262,7 +2263,11 @@ export default function InventoryPage() {
                                                                 </span>
                                                             </td>
                                                         ))}
-                                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: 700, color: 'var(--primary-color)' }}>{data.total}</td>
+                                                        <td
+                                                            style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: 700, color: 'var(--primary-color)', cursor: 'pointer', textDecoration: 'underline' }}
+                                                            onClick={() => handleStockClick(model, '__ALL__')}
+                                                            title="Ver todos los dispositivos de este modelo"
+                                                        >{data.total}</td>
                                                     </tr>
                                                 );
                                             })}
@@ -3749,9 +3754,28 @@ export default function InventoryPage() {
                 title={`${stockDetailModal.model} - ${stockDetailModal.status}`}
             >
                 <div>
-                    <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-                        Se encontraron <strong>{stockDetailModal.items.length}</strong> equipos en este estado.
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                            Se encontraron <strong>{stockDetailModal.items.length}</strong> equipos.
+                        </p>
+                        <button
+                            onClick={() => {
+                                const rows = [['Serial', 'Estado', 'Ubicacion/Usuario', 'Caja']];
+                                stockDetailModal.items.forEach(item => {
+                                    rows.push([item.serial || '-', item.status || '-', item.assignee || '-', item.boxNumber || item.locationId || '-']);
+                                });
+                                const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+                                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url; a.download = (stockDetailModal.model + '_' + stockDetailModal.status + '.csv').replace(/\s+/g, '_');
+                                a.click(); URL.revokeObjectURL(url);
+                            }}
+                            style={{ padding: '0.4rem 0.8rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                        >
+                            ⬇ Exportar CSV
+                        </button>
+                    </div>
                     <div style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                             <thead style={{ position: 'sticky', top: 0, background: 'var(--surface)' }}>
@@ -3759,6 +3783,7 @@ export default function InventoryPage() {
                                     <th style={{ padding: '0.75rem', textAlign: 'left' }}>Serial</th>
                                     <th style={{ padding: '0.75rem', textAlign: 'left' }}>Estado Real</th>
                                     <th style={{ padding: '0.75rem', textAlign: 'left' }}>Ubicación/Usuario</th>
+                                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Caja</th>
                                     <th style={{ padding: '0.75rem', textAlign: 'right' }}>Acción</th>
                                 </tr>
                             </thead>
@@ -3770,6 +3795,7 @@ export default function InventoryPage() {
                                             <Badge variant={getStatusVariant(item.status)}>{item.status}</Badge>
                                         </td>
                                         <td style={{ padding: '0.75rem' }}>{item.assignee}</td>
+                                        <td style={{ padding: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{item.boxNumber || item.locationId || '-'}</td>
                                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                                             <Button
                                                 size="sm"
