@@ -768,6 +768,7 @@ export function useTicketDetail() {
                     trackingNumber: taskTrackingNumber,
                     assets: taskAssets,
                     accessories: taskAccessories,
+                    accessories_qty: partialData.accessories_qty !== undefined ? partialData.accessories_qty : (currentTask.accessories_qty || {}),
                     yubikeys: taskYubikeys,
                     deliveryInfo: taskDeliveryInfo,
                     coordinatedBy: taskCoordinatedBy
