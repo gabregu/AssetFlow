@@ -156,6 +156,7 @@ export default function CaseConfigModal({
             subject: `${currentTask.subject || ticket.subject}`,
             associatedAssets: uniqueAssets,
             accessories: allAccessories,
+            accessories_qty: currentTask.accessories_qty || ticket.accessories_qty || {},
             yubikeys: uniqueYubikeys,
             logistics: {
                 ...(ticket.logistics || {}),

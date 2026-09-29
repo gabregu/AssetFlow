@@ -615,6 +615,7 @@ export default function MyTicketsPage() {
             caseNumber: caseData.caseNumber || caseData.case_number || parentTicket.caseNumber || parentTicket.case_number,
             associatedAssets,
             accessories: mappedAccessories,
+            accessories_qty: caseData?.accessories_qty || parentTicket?.accessories_qty || {},
             yubikeys: mappedYubikeys,
             logistics: {
                 ...(parentTicket.logistics || {}),

@@ -299,9 +299,12 @@ export default function ConfirmacionEntregaPage() {
             if (acc.headset) items.push({ key: 'acc-headset', type: 'Accesorio', name: 'Auriculares con Micrófono', serial: '-' });
             if (acc.charger) items.push({ key: 'acc-charger', type: 'Accesorio', name: 'Cargador Original', serial: '-' });
 
+            const qtyMap = deliveryInfo.accessories_qty || {};
             Object.entries(acc).forEach(([key, val]) => {
-                if (!standardKeys.includes(key) && (val === true || val === 'true')) {
-                    items.push({ key: `acc-custom-${key}`, type: 'Accesorio', name: key, serial: '-' });
+                if (!standardKeys.includes(key) && (val === true || val === 'true' || (typeof val === 'number' && val > 0) || (!isNaN(Number(val)) && Number(val) > 0))) {
+                    const qty = typeof val === 'number' && val > 0 ? val : (qtyMap[key] || 1);
+                    const displayName = qty > 1 ? `${key} (x${qty})` : key;
+                    items.push({ key: `acc-custom-${key}`, type: 'Accesorio', name: displayName, serial: '-' });
                 }
             });
         }

@@ -332,8 +332,40 @@ export default function AccessoriesSection({
         setSelectedConsumableId('');
     };
 
+    const handleQuantityChange = (name, newQtyVal) => {
+        const qty = Math.max(1, parseInt(newQtyVal) || 1);
+        const currentVal = accessories[name];
+        const oldQty = typeof currentVal === 'number' && currentVal > 0 
+            ? currentVal 
+            : (task?.accessories_qty?.[name] || 1);
+
+        const diff = qty - oldQty;
+        const matchingConsumable = localConsumables.find(c => c.name === name);
+
+        if (diff > 0 && matchingConsumable && (matchingConsumable.stock || 0) < diff) {
+            showFeedback('error', `Stock insuficiente para "${name}". Stock disponible: ${matchingConsumable.stock || 0}`);
+            return;
+        }
+
+        const newAccessories = { ...accessories, [name]: qty };
+        const newQtyMap = { ...(task?.accessories_qty || {}), [name]: qty };
+
+        onUpdateTask({ 
+            accessories: newAccessories,
+            accessories_qty: newQtyMap
+        });
+
+        if (matchingConsumable && updateConsumableStock && diff !== 0) {
+            updateConsumableStock(matchingConsumable.id, Math.max(0, (matchingConsumable.stock || 0) - diff));
+        }
+    };
+
     const handleRemoveCustomAccessory = (name) => {
         const matchingConsumable = localConsumables.find(c => c.name === name);
+        const currentVal = accessories[name];
+        const qtyToRestore = typeof currentVal === 'number' && currentVal > 0 
+            ? currentVal 
+            : (task?.accessories_qty?.[name] || 1);
 
         const newAccessories = { ...accessories };
         delete newAccessories[name];
@@ -341,13 +373,17 @@ export default function AccessoriesSection({
         const newTypes = { ...(task?.accessories_types || {}) };
         delete newTypes[name];
 
+        const newQtyMap = { ...(task?.accessories_qty || {}) };
+        delete newQtyMap[name];
+
         onUpdateTask({ 
             accessories: newAccessories, 
-            accessories_types: newTypes 
+            accessories_types: newTypes,
+            accessories_qty: newQtyMap
         });
 
         if (matchingConsumable && updateConsumableStock) {
-            updateConsumableStock(matchingConsumable.id, (matchingConsumable.stock || 0) + 1);
+            updateConsumableStock(matchingConsumable.id, (matchingConsumable.stock || 0) + qtyToRestore);
         }
 
         showFeedback('success', `"${name}" removido.`);
@@ -358,7 +394,8 @@ export default function AccessoriesSection({
         key !== 'backpack' && 
         key !== 'screenFilter' && 
         key !== 'filterSize' && 
-        accessories[key] === true
+        key !== 'mouse' && key !== 'keyboard' && key !== 'headset' && key !== 'charger' &&
+        (accessories[key] === true || accessories[key] === 'true' || (typeof accessories[key] === 'number' && accessories[key] > 0) || (!isNaN(Number(accessories[key])) && Number(accessories[key]) > 0))
     );
 
     // YubiKeys disponibles en stock filtradas estrictamente por cliente
@@ -638,17 +675,37 @@ export default function AccessoriesSection({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Accesorios Vinculados</span>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        {activeCustomAccessories.map(name => (
-                            <div key={name} style={{ display: 'flex', alignItems: 'center', justifyStyle: 'space-between', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Package size={14} style={{ color: 'var(--primary-color)' }} />
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{name}</span>
+                        {activeCustomAccessories.map(name => {
+                            const val = accessories[name];
+                            const currentQty = typeof val === 'number' && val > 0 
+                                ? val 
+                                : (task?.accessories_qty?.[name] || 1);
+
+                            return (
+                                <div key={name} style={{ display: 'flex', alignItems: 'center', padding: '0.5rem 0.75rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '8px', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                                        <Package size={14} style={{ color: 'var(--primary-color)', flexShrink: 0 }} />
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-card)', padding: '2px 6px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Cant:</span>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="999"
+                                                value={currentQty}
+                                                onChange={(e) => handleQuantityChange(name, e.target.value)}
+                                                style={{ width: '45px', padding: '2px 4px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '4px', border: '1px solid var(--border)', textAlign: 'center', background: 'var(--background)', color: 'var(--text-main)', outline: 'none' }}
+                                            />
+                                        </div>
+                                        <button type="button" onClick={() => handleRemoveCustomAccessory(name)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px' }} title="Remover accesorio">
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
                                 </div>
-                                <button type="button" onClick={() => handleRemoveCustomAccessory(name)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)', padding: '4px' }}>
-                                    <Trash2 size={14} />
-                                </button>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
