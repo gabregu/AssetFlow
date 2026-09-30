@@ -585,6 +585,25 @@ export default function WarehousePage() {
         return Array.from(rams).sort((a, b) => parseInt(a) - parseInt(b));
     }, [assets]);
 
+    // Extract unique phone models (iPhone X, Galaxy S...) dynamically based on typeFilter
+    const uniquePhoneModels = useMemo(() => {
+        const smartphoneTypes = ['smartphone', 'celular', 'iphone'];
+        const phones = assets.filter(a => smartphoneTypes.includes((a.type || '').toLowerCase()));
+        // Get unique model prefixes - first 2-3 words of the name
+        const modelSet = new Set();
+        phones.forEach(a => {
+            const name = (a.name || '').trim();
+            if (name) {
+                // For iPhones: "iPhone 13", "iPhone 14 Pro", "iPhone 15 Plus" → use first 2 words
+                // For Samsung: "Galaxy S23", "Galaxy A53" → use first 2 words
+                const words = name.split(/\s+/);
+                const modelKey = words.slice(0, 2).join(' ');
+                if (modelKey.length > 2) modelSet.add(modelKey);
+            }
+        });
+        return Array.from(modelSet).sort();
+    }, [assets]);
+
     // Helper to normalize IDs for comparison
     const normalizeId = (id) => {
         if (!id) return '';
@@ -654,10 +673,17 @@ export default function WarehousePage() {
                 if (!nameMatch && !serialMatch && !idMatch && !locMatch) return false;
             }
 
-            // Model Filter (MBA / MBP)
+            // Model Filter (MBA / MBP / iPhone models)
             if (modelFilter !== 'ALL') {
-                const nameLower = (asset.name || '').toUpperCase();
-                if (!nameLower.startsWith(modelFilter)) return false;
+                const nameUpper = (asset.name || '').toUpperCase();
+                const filterUpper = modelFilter.toUpperCase();
+                // For laptop models use startsWith (MBA, MBP), for phones use includes
+                const isLaptopModel = modelFilter === 'MBA' || modelFilter === 'MBP' || modelFilter.startsWith('Dell') || modelFilter.startsWith('HP');
+                if (isLaptopModel) {
+                    if (!nameUpper.startsWith(filterUpper)) return false;
+                } else {
+                    if (!nameUpper.includes(filterUpper)) return false;
+                }
             }
 
             // Size Filter (13 / 14 / 15 / 16 pulgadas)
@@ -3202,9 +3228,16 @@ export default function WarehousePage() {
                                         style={{ width: '100%', padding: '0.4rem 0.5rem', borderRadius: '6px', border: `1px solid ${modelFilter !== 'ALL' ? 'var(--primary-color)' : 'var(--border)'}`, backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.8rem', outline: 'none', fontWeight: modelFilter !== 'ALL' ? 700 : 400 }}
                                     >
                                         <option value="ALL">Todos</option>
-                                        <option value="MBA">✈ MBA (MacBook Air)</option>
-                                        <option value="MBP">💼 MBP (MacBook Pro)</option>
-                                    </select>
+                                         {(typeFilter === 'Smartphone' || typeFilter === 'ALL') && uniquePhoneModels.map(m => (
+                                             <option key={m} value={m}>📱 {m}</option>
+                                         ))}
+                                         {(typeFilter === 'Laptop' || typeFilter === 'ALL') && (
+                                             <>
+                                                 <option value="MBA">✈ MBA (MacBook Air)</option>
+                                                 <option value="MBP">💼 MBP (MacBook Pro)</option>
+                                             </>
+                                         )}
+                                     </select>
                                 </div>
                                 <div>
                                     <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Pulgadas</label>
