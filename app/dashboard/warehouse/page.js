@@ -2302,6 +2302,8 @@ export default function WarehousePage() {
         const renderBox = (locId, iconType = 'box') => {
             const locationAssets = armarioAssets.filter(a => a.locationId === locId);
             const assetCount = locationAssets.length;
+            // Count only filtered assets in this specific box
+            const filteredInBox = hasActiveSearch ? filteredAssets.filter(a => a.locationId === locId).length : 0;
             const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
             const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
             const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
@@ -2363,9 +2365,21 @@ export default function WarehousePage() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', margin: '2px 0' }}>
-                        {iconType === 'box' ? <Package size={20} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} /> : <Smartphone size={20} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} />}
-                        <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-main)' }}>{assetCount}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px', margin: '2px 0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            {iconType === 'box' ? <Package size={16} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} /> : <Smartphone size={16} color={assetCount > 0 ? '#3b82f6' : '#9ca3af'} />}
+                            <span style={{ fontSize: '0.75rem', fontWeight: 900, color: hasActiveSearch && filteredInBox > 0 ? '#9ca3af' : 'var(--text-main)' }}>{assetCount}</span>
+                        </div>
+                        {hasActiveSearch && filteredInBox > 0 && (
+                            <span style={{
+                                fontSize: '0.82rem', fontWeight: 900,
+                                color: 'white', background: '#16a34a',
+                                padding: '1px 6px', borderRadius: '6px',
+                                lineHeight: 1.3, letterSpacing: '-0.02em'
+                            }}>
+                                {filteredInBox}✓
+                            </span>
+                        )}
                     </div>
 
                     <div 
@@ -2460,6 +2474,7 @@ export default function WarehousePage() {
                         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                             {organizers.map((org, index) => {
                                 const orgTotalAssets = armarioAssets.filter(a => a.locationId && a.locationId.startsWith(`ARM-O${org.id}-`)).length;
+                                const orgFilteredAssets = hasActiveSearch ? filteredAssets.filter(a => a.locationId && a.locationId.startsWith(`ARM-O${org.id}-`)).length : 0;
                                 return (
                                 <div key={`org-${org.id}`} style={{ background: 'var(--background-secondary)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -2475,7 +2490,7 @@ export default function WarehousePage() {
                                             }}
                                             title="Clic para cambiar nombre"
                                         >
-                                            {org.name} <span style={{ color: '#3b82f6' }}>({orgTotalAssets})</span> <Edit3 size={12} style={{ opacity: 0.5 }} />
+                                            {org.name} <span style={{ color: '#3b82f6' }}>({orgTotalAssets})</span>{hasActiveSearch && orgFilteredAssets > 0 && (<span style={{ marginLeft: '4px', background: '#16a34a', color: 'white', padding: '1px 5px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800 }}>✓{orgFilteredAssets}</span>)} <Edit3 size={12} style={{ opacity: 0.5 }} />
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             <div 
