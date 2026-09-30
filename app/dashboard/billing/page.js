@@ -179,93 +179,6 @@ export default function BillingPage() {
         return `${monthNames[selectedMonth]} ${selectedYear}`;
     }, [selectedMonth, selectedYear]);
 
-    // Tickets seleccionados o todos los del cliente filtrado para el período
-    const invoiceTickets = useMemo(() => {
-        if (selectedTickets.size > 0) {
-            return (filteredTickets || []).filter(t => selectedTickets.has(t.id));
-        }
-        return filteredTickets || [];
-    }, [selectedTickets, filteredTickets]);
-
-    // Items limpios para el Resumen del Cliente (sin costos internos ni pagos a choferes)
-    const invoiceItems = useMemo(() => {
-        return invoiceTickets.map(ticket => {
-            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
-            if (!financials) return null;
-
-            const isArs = invoiceConfig.currency === 'ARS';
-            const rate = selectedExchangeRate || 1;
-
-            const unitPriceUSD = financials.totalRevenue || 0;
-            const unitPrice = isArs ? (unitPriceUSD * rate) : unitPriceUSD;
-            const subtotal = unitPrice * 1;
-
-            const { moveType, assetType } = financials;
-            const details = [];
-            if (moveType && moveType !== 'Servicio Técnico') details.push(moveType);
-            if (assetType && assetType !== 'Dispositivo') details.push(assetType);
-            if (ticket.requester) details.push(ticket.requester);
-
-            let desc = ticket.subject || 'Servicio Logístico e IT';
-            if (details.length > 0) {
-                desc = `${desc} (${details.join(' • ')})`;
-            }
-
-            return {
-                id: ticket.id,
-                caseNumber: ticket.caseNumber || ticket.id,
-                description: desc,
-                quantity: 1,
-                unitPriceUSD,
-                unitPrice,
-                subtotal
-            };
-        }).filter(Boolean);
-    }, [invoiceTickets, rates, globalAssets, users, logisticsTasks, invoiceConfig.currency, selectedExchangeRate]);
-
-    // Totales calculados para el Resumen
-    const invoiceTotals = useMemo(() => {
-        let subtotal = 0;
-        let serviceRevenueUSD = 0;
-        let logisticRevenueUSD = 0;
-        let totalRevenueUSD = 0;
-
-        invoiceTickets.forEach(ticket => {
-            const f = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
-            if (!f) return;
-            serviceRevenueUSD += f.serviceRevenue || 0;
-            logisticRevenueUSD += f.logisticRevenue || 0;
-            totalRevenueUSD += f.totalRevenue || 0;
-        });
-
-        invoiceItems.forEach(item => {
-            subtotal += item.subtotal;
-        });
-
-        const isArs = invoiceConfig.currency === 'ARS';
-        const rate = selectedExchangeRate || 1;
-        const extraRaw = parseFloat(invoiceConfig.extraConceptAmount) || 0;
-        const extra = isArs ? (extraRaw * rate) : extraRaw;
-        const totalLiquidar = subtotal + extra;
-
-        return {
-            subtotal,
-            extra,
-            totalLiquidar,
-            serviceRevenue: serviceRevenueUSD,
-            logisticRevenue: logisticRevenueUSD,
-            totalRevenue: totalRevenueUSD,
-            currencySymbol: isArs ? 'ARS' : 'USD'
-        };
-    }, [invoiceTickets, invoiceItems, rates, globalAssets, users, logisticsTasks, invoiceConfig.currency, invoiceConfig.extraConceptAmount, selectedExchangeRate]);
-
-    const formatInvoiceMoney = (amount, cur = invoiceConfig.currency) => {
-        if (cur === 'ARS') {
-            return `ARS ${Number(amount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        }
-        return `USD ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    };
-
     // Advanced analysis
     const { metrics, filteredTickets, currency, filteredExpenses, selectedExchangeRate } = useMemo(() => {
         let totalRevenue = 0;
@@ -546,6 +459,95 @@ export default function BillingPage() {
             selectedExchangeRate: exchangeRate  // Cotización histórica del mes seleccionado
         };
     }, [tickets, selectedMonth, selectedYear, rates, globalAssets, expenses, countryFilter]);
+
+    // Tickets seleccionados o todos los del cliente filtrado para el período
+    const invoiceTickets = useMemo(() => {
+        if (selectedTickets.size > 0) {
+            return (filteredTickets || []).filter(t => selectedTickets.has(t.id));
+        }
+        return filteredTickets || [];
+    }, [selectedTickets, filteredTickets]);
+
+    // Items limpios para el Resumen del Cliente (sin costos internos ni pagos a choferes)
+    const invoiceItems = useMemo(() => {
+        return invoiceTickets.map(ticket => {
+            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
+            if (!financials) return null;
+
+            const isArs = invoiceConfig.currency === 'ARS';
+            const rate = selectedExchangeRate || 1;
+
+            const unitPriceUSD = financials.totalRevenue || 0;
+            const unitPrice = isArs ? (unitPriceUSD * rate) : unitPriceUSD;
+            const subtotal = unitPrice * 1;
+
+            const { moveType, assetType } = financials;
+            const details = [];
+            if (moveType && moveType !== 'Servicio Técnico') details.push(moveType);
+            if (assetType && assetType !== 'Dispositivo') details.push(assetType);
+            if (ticket.requester) details.push(ticket.requester);
+
+            let desc = ticket.subject || 'Servicio Logístico e IT';
+            if (details.length > 0) {
+                desc = `${desc} (${details.join(' • ')})`;
+            }
+
+            return {
+                id: ticket.id,
+                caseNumber: ticket.caseNumber || ticket.id,
+                description: desc,
+                quantity: 1,
+                unitPriceUSD,
+                unitPrice,
+                subtotal
+            };
+        }).filter(Boolean);
+    }, [invoiceTickets, rates, globalAssets, users, logisticsTasks, invoiceConfig.currency, selectedExchangeRate]);
+
+    // Totales calculados para el Resumen
+    const invoiceTotals = useMemo(() => {
+        let subtotal = 0;
+        let serviceRevenueUSD = 0;
+        let logisticRevenueUSD = 0;
+        let totalRevenueUSD = 0;
+
+        invoiceTickets.forEach(ticket => {
+            const f = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
+            if (!f) return;
+            serviceRevenueUSD += f.serviceRevenue || 0;
+            logisticRevenueUSD += f.logisticRevenue || 0;
+            totalRevenueUSD += f.totalRevenue || 0;
+        });
+
+        invoiceItems.forEach(item => {
+            subtotal += item.subtotal;
+        });
+
+        const isArs = invoiceConfig.currency === 'ARS';
+        const rate = selectedExchangeRate || 1;
+        const extraRaw = parseFloat(invoiceConfig.extraConceptAmount) || 0;
+        const extra = isArs ? (extraRaw * rate) : extraRaw;
+        const totalLiquidar = subtotal + extra;
+
+        return {
+            subtotal,
+            extra,
+            totalLiquidar,
+            serviceRevenue: serviceRevenueUSD,
+            logisticRevenue: logisticRevenueUSD,
+            totalRevenue: totalRevenueUSD,
+            currencySymbol: isArs ? 'ARS' : 'USD'
+        };
+    }, [invoiceTickets, invoiceItems, rates, globalAssets, users, logisticsTasks, invoiceConfig.currency, invoiceConfig.extraConceptAmount, selectedExchangeRate]);
+
+    const formatInvoiceMoney = (amount, cur = invoiceConfig.currency) => {
+        if (cur === 'ARS') {
+            return `ARS ${Number(amount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+        return `USD ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
+
 
     const handleSaveRates = (e) => {
         e.preventDefault();
