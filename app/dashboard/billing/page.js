@@ -22,7 +22,13 @@ import {
     Info,
     Search,
     FileText,
-    Printer
+    Printer,
+    Edit3,
+    Check,
+    Building,
+    Landmark,
+    RefreshCw,
+    Eye
 } from 'lucide-react';
 
 
@@ -43,6 +49,93 @@ export default function BillingPage() {
     const [expenseForm, setExpenseForm] = useState({ description: '', amount: '' });
     const [searchQuery, setSearchQuery] = useState('');
     const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+    const [isEditingInvoiceConfig, setIsEditingInvoiceConfig] = useState(false);
+
+    const activeClientName = useMemo(() => {
+        return getClientName(countryFilter) || 'EdPuzzle Inc';
+    }, [countryFilter, getClientName]);
+
+    const defaultInvoiceConfig = {
+        companyName: 'YAWI INFORMÁTICA',
+        companyTagline: 'Servicios Integrales de IT y Logística Informática',
+        companyCuit: '30-71829410-4',
+        companyIva: 'IVA Responsable Inscripto',
+        companyAddress: 'Av. del Libertador 602, CABA, Argentina',
+        companyEmail: 'contacto@yawi.ar',
+        docNumber: '0001 - 00000001',
+        emissionDate: '',
+        paymentCondition: 'Transferencia a 30 días',
+        currency: 'USD',
+        clientName: '',
+        clientTaxId: '',
+        clientEmail: '',
+        clientAddress: '',
+        extraConceptDesc: 'Otros Conceptos / Gastos',
+        extraConceptAmount: 0,
+        bankHolder: 'YAWI INFORMÁTICA S.A.',
+        bankName: 'Banco Santander',
+        bankAccountType: 'Cuenta Corriente Especial',
+        bankCbu: '0720194820000001234567',
+        bankAlias: 'YAWI.INFORMATICA',
+        bankSwift: 'BSCHESMMXXX',
+        bankAccountNumber: 'CC-USD-40019284-0'
+    };
+
+    const [invoiceConfig, setInvoiceConfig] = useState(defaultInvoiceConfig);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('yawi_invoice_template_config');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                setInvoiceConfig(prev => ({
+                    ...prev,
+                    ...parsed,
+                    emissionDate: parsed.emissionDate || new Date().toLocaleDateString('es-AR')
+                }));
+            } else {
+                setInvoiceConfig(prev => ({
+                    ...prev,
+                    emissionDate: new Date().toLocaleDateString('es-AR')
+                }));
+            }
+        } catch (e) {
+            console.error('Error cargando configuración de factura:', e);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeClientName) {
+            setInvoiceConfig(prev => {
+                const isEdPuzzle = activeClientName.toLowerCase().includes('edpuzzle');
+                const isSycomp = activeClientName.toLowerCase().includes('sycomp');
+                
+                const defaultTaxId = isEdPuzzle ? 'US-94-3829102' : (isSycomp ? 'US-83-1122334' : '30-00000000-0');
+                const defaultEmail = isEdPuzzle ? 'billing@edpuzzle.com' : (isSycomp ? 'ap@sycomp.com' : 'administracion@cliente.com');
+                const defaultAddress = isEdPuzzle ? 'San Francisco, CA - Estados Unidos' : (isSycomp ? 'Miami, FL - Estados Unidos' : 'Buenos Aires, Argentina');
+
+                return {
+                    ...prev,
+                    clientName: activeClientName,
+                    clientTaxId: prev.clientTaxId || defaultTaxId,
+                    clientEmail: prev.clientEmail || defaultEmail,
+                    clientAddress: prev.clientAddress || defaultAddress
+                };
+            });
+        }
+    }, [activeClientName]);
+
+    const updateInvoiceConfigField = (field, value) => {
+        setInvoiceConfig(prev => {
+            const next = { ...prev, [field]: value };
+            try {
+                localStorage.setItem('yawi_invoice_template_config', JSON.stringify(next));
+            } catch (e) {
+                console.error('Error guardando configuración de factura:', e);
+            }
+            return next;
+        });
+    };
 
     // Estado para edición de cotización histórica
     const currentDate = new Date();
@@ -86,23 +179,92 @@ export default function BillingPage() {
         return `${monthNames[selectedMonth]} ${selectedYear}`;
     }, [selectedMonth, selectedYear]);
 
-    const invoiceTotals = useMemo(() => {
-        let serviceRevenue = 0;
-        let logisticRevenue = 0;
-        let totalRevenue = 0;
-        
-        selectedTickets.forEach(id => {
-            const ticket = tickets.find(t => t.id === id);
-            if (!ticket) return;
+    // Tickets seleccionados o todos los del cliente filtrado para el período
+    const invoiceTickets = useMemo(() => {
+        if (selectedTickets.size > 0) {
+            return (filteredTickets || []).filter(t => selectedTickets.has(t.id));
+        }
+        return filteredTickets || [];
+    }, [selectedTickets, filteredTickets]);
+
+    // Items limpios para el Resumen del Cliente (sin costos internos ni pagos a choferes)
+    const invoiceItems = useMemo(() => {
+        return invoiceTickets.map(ticket => {
             const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
-            if (!financials) return;
-            serviceRevenue += financials.serviceRevenue || 0;
-            logisticRevenue += financials.logisticRevenue || 0;
-            totalRevenue += financials.totalRevenue || 0;
+            if (!financials) return null;
+
+            const isArs = invoiceConfig.currency === 'ARS';
+            const rate = selectedExchangeRate || 1;
+
+            const unitPriceUSD = financials.totalRevenue || 0;
+            const unitPrice = isArs ? (unitPriceUSD * rate) : unitPriceUSD;
+            const subtotal = unitPrice * 1;
+
+            const { moveType, assetType } = financials;
+            const details = [];
+            if (moveType && moveType !== 'Servicio Técnico') details.push(moveType);
+            if (assetType && assetType !== 'Dispositivo') details.push(assetType);
+            if (ticket.requester) details.push(ticket.requester);
+
+            let desc = ticket.subject || 'Servicio Logístico e IT';
+            if (details.length > 0) {
+                desc = `${desc} (${details.join(' • ')})`;
+            }
+
+            return {
+                id: ticket.id,
+                caseNumber: ticket.caseNumber || ticket.id,
+                description: desc,
+                quantity: 1,
+                unitPriceUSD,
+                unitPrice,
+                subtotal
+            };
+        }).filter(Boolean);
+    }, [invoiceTickets, rates, globalAssets, users, logisticsTasks, invoiceConfig.currency, selectedExchangeRate]);
+
+    // Totales calculados para el Resumen
+    const invoiceTotals = useMemo(() => {
+        let subtotal = 0;
+        let serviceRevenueUSD = 0;
+        let logisticRevenueUSD = 0;
+        let totalRevenueUSD = 0;
+
+        invoiceTickets.forEach(ticket => {
+            const f = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
+            if (!f) return;
+            serviceRevenueUSD += f.serviceRevenue || 0;
+            logisticRevenueUSD += f.logisticRevenue || 0;
+            totalRevenueUSD += f.totalRevenue || 0;
         });
 
-        return { serviceRevenue, logisticRevenue, totalRevenue };
-    }, [selectedTickets, tickets, rates, globalAssets, users, logisticsTasks]);
+        invoiceItems.forEach(item => {
+            subtotal += item.subtotal;
+        });
+
+        const isArs = invoiceConfig.currency === 'ARS';
+        const rate = selectedExchangeRate || 1;
+        const extraRaw = parseFloat(invoiceConfig.extraConceptAmount) || 0;
+        const extra = isArs ? (extraRaw * rate) : extraRaw;
+        const totalLiquidar = subtotal + extra;
+
+        return {
+            subtotal,
+            extra,
+            totalLiquidar,
+            serviceRevenue: serviceRevenueUSD,
+            logisticRevenue: logisticRevenueUSD,
+            totalRevenue: totalRevenueUSD,
+            currencySymbol: isArs ? 'ARS' : 'USD'
+        };
+    }, [invoiceTickets, invoiceItems, rates, globalAssets, users, logisticsTasks, invoiceConfig.currency, invoiceConfig.extraConceptAmount, selectedExchangeRate]);
+
+    const formatInvoiceMoney = (amount, cur = invoiceConfig.currency) => {
+        if (cur === 'ARS') {
+            return `ARS ${Number(amount || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+        return `USD ${Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
 
     // Advanced analysis
     const { metrics, filteredTickets, currency, filteredExpenses, selectedExchangeRate } = useMemo(() => {
@@ -415,265 +577,509 @@ export default function BillingPage() {
     };
 
     const handleDownloadExcel = () => {
-        const expectedClient = getClientName(countryFilter) || 'Sycomp';
-        const formattedDate = new Date().toLocaleDateString('es-AR');
-        
-        // Rows mapping
-        const rows = Array.from(selectedTickets).map(id => {
-            const ticket = tickets.find(t => t.id === id);
-            if (!ticket) return null;
-            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
-            if (!financials) return null;
-            
-            return {
-                'Caso': ticket.id,
-                'Descripción / Asunto': ticket.subject || 'Sin Asunto',
-                'Solicitante': ticket.requester || 'Sin Solicitante',
-                'Servicio (USD)': Number(financials.serviceRevenue.toFixed(2)),
-                'Logística (USD)': Number(financials.logisticRevenue.toFixed(2)),
-                'Subtotal (USD)': Number(financials.totalRevenue.toFixed(2))
-            };
-        }).filter(Boolean);
+        const isArs = invoiceConfig.currency === 'ARS';
+        const curSymbol = isArs ? 'ARS' : 'USD';
+        const formattedDate = (invoiceConfig.emissionDate || new Date().toLocaleDateString('es-AR')).replace(/\//g, '-');
+        const clientName = invoiceConfig.clientName || activeClientName || 'Cliente';
 
-        // Add empty row
+        const rows = [
+            { 'TICKET / CASO': 'RESUMEN DE SERVICIO', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': `Nº ${invoiceConfig.docNumber}`, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' },
+            { 'TICKET / CASO': 'Emisor:', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': `${invoiceConfig.companyName} - CUIT: ${invoiceConfig.companyCuit}`, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' },
+            { 'TICKET / CASO': 'Cliente:', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': `${clientName} - ID/CUIT: ${invoiceConfig.clientTaxId || '-'}`, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' },
+            { 'TICKET / CASO': 'Fecha Emisión:', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': invoiceConfig.emissionDate, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' },
+            { 'TICKET / CASO': 'Período:', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': period, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' },
+            { 'TICKET / CASO': 'Moneda:', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': curSymbol, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' },
+            { 'TICKET / CASO': 'Condición de Pago:', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': invoiceConfig.paymentCondition, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' },
+            {},
+        ];
+
+        invoiceItems.forEach(item => {
+            rows.push({
+                'TICKET / CASO': item.caseNumber,
+                'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': item.description,
+                'CANT.': item.quantity,
+                'PRECIO UNIT.': Number(item.unitPrice.toFixed(2)),
+                'SUBTOTAL': Number(item.subtotal.toFixed(2))
+            });
+        });
+
         rows.push({});
-        
-        // Totals
         rows.push({
-            'Caso': 'TOTAL SERVICIOS:',
-            'Descripción / Asunto': `USD ${invoiceTotals.serviceRevenue.toFixed(2)}`
+            'TICKET / CASO': '',
+            'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': 'Subtotal Servicios:',
+            'CANT.': '',
+            'PRECIO UNIT.': '',
+            'SUBTOTAL': Number(invoiceTotals.subtotal.toFixed(2))
         });
+
+        if (invoiceTotals.extra !== 0) {
+            rows.push({
+                'TICKET / CASO': '',
+                'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': invoiceConfig.extraConceptDesc || 'Otros Conceptos / Gastos:',
+                'CANT.': '',
+                'PRECIO UNIT.': '',
+                'SUBTOTAL': Number(invoiceTotals.extra.toFixed(2))
+            });
+        }
+
         rows.push({
-            'Caso': 'TOTAL LOGÍSTICA:',
-            'Descripción / Asunto': `USD ${invoiceTotals.logisticRevenue.toFixed(2)}`
+            'TICKET / CASO': '',
+            'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': 'TOTAL A LIQUIDAR:',
+            'CANT.': '',
+            'PRECIO UNIT.': curSymbol,
+            'SUBTOTAL': Number(invoiceTotals.totalLiquidar.toFixed(2))
         });
-        rows.push({
-            'Caso': 'TOTAL A FACTURAR:',
-            'Descripción / Asunto': `USD ${invoiceTotals.totalRevenue.toFixed(2)}`
-        });
-        rows.push({
-            'Caso': 'TOTAL A FACTURAR (ARS):',
-            'Descripción / Asunto': `ARS ${(invoiceTotals.totalRevenue * (selectedExchangeRate || 1)).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
-        });
-        rows.push({
-            'Caso': 'Tipo de cambio:',
-            'Descripción / Asunto': `1 USD = ${selectedExchangeRate ? selectedExchangeRate.toLocaleString('es-AR') : '-'} ARS`
-        });
+
+        rows.push({});
+        rows.push({ 'TICKET / CASO': 'DATOS BANCARIOS:', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': `${invoiceConfig.bankName} (${invoiceConfig.bankHolder})`, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' });
+        rows.push({ 'TICKET / CASO': 'CBU / Routing:', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': invoiceConfig.bankCbu, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' });
+        rows.push({ 'TICKET / CASO': 'Alias / SWIFT:', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': invoiceConfig.bankAlias, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' });
+        rows.push({ 'TICKET / CASO': 'Nº Cuenta / IBAN:', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': invoiceConfig.bankAccountNumber, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' });
 
         const worksheet = XLSX.utils.json_to_sheet(rows);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Factura");
-        XLSX.writeFile(workbook, `Factura_${expectedClient}_${formattedDate.replace(/\//g, '-')}.xlsx`);
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Resumen");
+        XLSX.writeFile(workbook, `Resumen_Servicio_${clientName.replace(/\s+/g, '_')}_${formattedDate}.xlsx`);
     };
 
     const handlePrintInvoice = () => {
-        const expectedClient = getClientName(countryFilter) || 'Sycomp';
+        const isArs = invoiceConfig.currency === 'ARS';
+        const curSymbol = isArs ? 'ARS' : 'USD';
+        const emissionDate = invoiceConfig.emissionDate || new Date().toLocaleDateString('es-AR');
+        const clientName = invoiceConfig.clientName || activeClientName || 'Cliente';
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+
         const printWindow = window.open('', '_blank');
-        if (!printWindow) return alert('Por favor, permite las ventanas emergentes (pop-ups) en tu navegador.');
-        
+        if (!printWindow) return alert('Por favor, permite las ventanas emergentes (pop-ups) en tu navegador para imprimir.');
+
+        const rowsHtml = invoiceItems.map(item => `
+            <tr>
+                <td style="padding: 7px 10px; border-bottom: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; font-weight: 700; color: #1e3a8a;">${item.caseNumber}</td>
+                <td style="padding: 7px 10px; border-bottom: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; color: #1e293b;">${item.description}</td>
+                <td style="padding: 7px 10px; border-bottom: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; text-align: center; color: #1e293b;">${item.quantity}</td>
+                <td style="padding: 7px 10px; border-bottom: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; text-align: right; color: #1e293b;">${formatInvoiceMoney(item.unitPrice)}</td>
+                <td style="padding: 7px 10px; border-bottom: 1px solid #cbd5e1; text-align: right; font-weight: 700; color: #0f172a;">${formatInvoiceMoney(item.subtotal)}</td>
+            </tr>
+        `).join('');
+
+        const emptyRowsCount = Math.max(0, 6 - invoiceItems.length);
+        let emptyRowsHtml = '';
+        for (let i = 0; i < emptyRowsCount; i++) {
+            emptyRowsHtml += `
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #cbd5e1;">&nbsp;</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #cbd5e1;">&nbsp;</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #cbd5e1;">&nbsp;</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #cbd5e1;">&nbsp;</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">&nbsp;</td>
+                </tr>
+            `;
+        }
+
         printWindow.document.write(`
+            <!DOCTYPE html>
             <html>
-                <head>
-                    <title>Pre-Factura de Servicios - ${expectedClient}</title>
-                    <style>
-                        @page {
-                            size: A4;
-                            margin: 1.5cm;
-                        }
-                        body {
-                            font-family: system-ui, -apple-system, sans-serif;
-                            color: #1e293b;
-                            padding: 0;
-                            margin: 0;
-                            background: #fff;
-                            line-height: 1.5;
-                        }
-                        .invoice-wrapper {
-                            border: 1px solid #334155;
-                            padding: 30px;
-                            box-sizing: border-box;
-                            min-height: 26.2cm;
-                            display: flex;
-                            flex-direction: column;
-                            justify-content: space-between;
-                        }
-                        .header {
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: flex-end;
-                            border-bottom: 2px solid #334155;
-                            padding-bottom: 20px;
-                            margin-bottom: 30px;
-                        }
-                        .title {
-                            font-size: 24px;
-                            font-weight: 800;
-                            color: #1e3a8a;
-                            letter-spacing: -0.025em;
-                        }
-                        .details {
-                            display: flex;
-                            justify-content: space-between;
-                            margin-bottom: 30px;
-                            font-size: 14px;
-                        }
-                        table {
-                            width: 100%;
-                            border-collapse: collapse;
-                            margin-bottom: 35px;
-                        }
-                        th {
-                            background-color: #f8fafc;
-                            font-weight: 700;
-                            text-align: left;
-                            padding: 10px 12px;
-                            border-bottom: 2px solid #e2e8f0;
-                            font-size: 13px;
-                            color: #475569;
-                        }
-                        td {
-                            padding: 10px 12px;
-                            border-bottom: 1px solid #f1f5f9;
-                            font-size: 13px;
-                            color: #334155;
-                        }
-                        .totals-container {
-                            display: flex;
-                            justify-content: flex-end;
-                            margin-top: 20px;
-                        }
-                        .totals-box {
-                            width: 320px;
-                            border: 1px solid #e2e8f0;
-                            background-color: #f8fafc;
-                            padding: 15px;
-                            border-radius: 6px;
-                        }
-                        .totals-row {
-                            display: flex;
-                            justify-content: space-between;
-                            margin-bottom: 8px;
-                            font-size: 13px;
-                            color: #475569;
-                        }
-                        .totals-row.grand-total {
-                            border-top: 2px solid #cbd5e1;
-                            padding-top: 10px;
-                            font-weight: 800;
-                            font-size: 15px;
-                            color: #1e3a8a;
-                        }
-                        .footer {
-                            text-align: center;
-                            font-size: 11px;
-                            color: #94a3b8;
-                            border-top: 1px solid #e2e8f0;
-                            padding-top: 15px;
-                            line-height: 1.5;
-                            margin-top: 40px;
-                        }
-                        @media print {
-                            body {
-                                padding: 0;
-                            }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="invoice-wrapper">
-                        <div>
-                            <div class="header">
-                                <div>
-                                    <div class="title">DETALLE DE SERVICIOS A FACTURAR</div>
-                                    <div style="font-size: 14px; color: #64748b; font-weight: 600; margin-top: 4px;">AssetFlow Logistics</div>
+            <head>
+                <meta charset="utf-8" />
+                <title>Resumen de Servicio - ${clientName} - ${invoiceConfig.docNumber}</title>
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 12mm 15mm 12mm 15mm;
+                    }
+                    * {
+                        box-sizing: border-box;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                        color: #0f172a;
+                        margin: 0;
+                        padding: 0;
+                        background: #ffffff;
+                        font-size: 11px;
+                        line-height: 1.35;
+                    }
+                    .doc-container {
+                        width: 100%;
+                        display: flex;
+                        flex-direction: column;
+                        min-height: 265mm;
+                        justify-content: space-between;
+                    }
+                    .top-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                        margin-bottom: 16px;
+                    }
+                    .company-block {
+                        width: 44%;
+                    }
+                    .logo-row {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        margin-bottom: 5px;
+                    }
+                    .logo-img {
+                        height: 42px;
+                        width: auto;
+                        object-fit: contain;
+                    }
+                    .yawi-badge {
+                        background: #1e3a8a;
+                        color: #ffffff;
+                        padding: 3px 8px;
+                        border-radius: 5px;
+                        font-weight: 800;
+                        font-size: 14px;
+                        letter-spacing: 0.5px;
+                    }
+                    .yawi-title {
+                        font-size: 15px;
+                        font-weight: 800;
+                        color: #1e3a8a;
+                        letter-spacing: 0.5px;
+                    }
+                    .company-tagline {
+                        font-size: 9.5px;
+                        font-weight: 600;
+                        color: #475569;
+                        margin-bottom: 6px;
+                    }
+                    .company-fields {
+                        font-size: 9.5px;
+                        color: #334155;
+                        line-height: 1.45;
+                    }
+                    .company-fields strong {
+                        color: #0f172a;
+                    }
+                    .center-box {
+                        width: 20%;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        text-align: center;
+                    }
+                    .x-square {
+                        width: 42px;
+                        height: 42px;
+                        border: 2px solid #0f172a;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 24px;
+                        font-weight: 900;
+                        margin-bottom: 4px;
+                        background: #ffffff;
+                    }
+                    .center-title {
+                        font-size: 10.5px;
+                        font-weight: 800;
+                        color: #0f172a;
+                        letter-spacing: 0.5px;
+                    }
+                    .center-subtitle {
+                        font-size: 8px;
+                        color: #64748b;
+                        font-style: italic;
+                    }
+                    .meta-block {
+                        width: 33%;
+                        border: 1px solid #94a3b8;
+                        border-radius: 2px;
+                    }
+                    .meta-row {
+                        display: flex;
+                        justify-content: space-between;
+                        padding: 4px 6px;
+                        border-bottom: 1px solid #cbd5e1;
+                        font-size: 9.5px;
+                    }
+                    .meta-row:last-child {
+                        border-bottom: none;
+                    }
+                    .meta-lbl {
+                        font-weight: 700;
+                        color: #334155;
+                    }
+                    .meta-val {
+                        color: #0f172a;
+                        font-weight: 600;
+                        text-align: right;
+                    }
+                    .meta-val.blue {
+                        color: #1e3a8a;
+                        font-weight: 800;
+                    }
+                    .client-card {
+                        border: 1px solid #94a3b8;
+                        border-radius: 2px;
+                        margin-bottom: 16px;
+                        overflow: hidden;
+                    }
+                    .client-header {
+                        background: #1e3a8a;
+                        color: #ffffff;
+                        font-weight: 800;
+                        font-size: 11px;
+                        padding: 4px 8px;
+                        letter-spacing: 0.5px;
+                    }
+                    .client-grid {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        background: #ffffff;
+                    }
+                    .client-cell {
+                        padding: 5px 8px;
+                        border-bottom: 1px solid #e2e8f0;
+                        font-size: 9.5px;
+                    }
+                    .client-cell:nth-child(odd) {
+                        border-right: 1px solid #e2e8f0;
+                    }
+                    .client-cell:nth-last-child(-n+2) {
+                        border-bottom: none;
+                    }
+                    .client-cell strong {
+                        color: #334155;
+                    }
+                    .items-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 12px;
+                        border: 1px solid #94a3b8;
+                    }
+                    .items-table th {
+                        background: #0f172a;
+                        color: #ffffff;
+                        font-weight: 800;
+                        font-size: 9.5px;
+                        padding: 6px 8px;
+                        text-transform: uppercase;
+                        border-right: 1px solid #334155;
+                    }
+                    .items-table th:last-child {
+                        border-right: none;
+                    }
+                    .items-table td {
+                        font-size: 9.5px;
+                    }
+                    .totals-wrapper {
+                        display: flex;
+                        justify-content: flex-end;
+                        margin-bottom: 18px;
+                    }
+                    .totals-card {
+                        width: 48%;
+                        border: 1px solid #94a3b8;
+                        border-collapse: collapse;
+                    }
+                    .totals-card td {
+                        padding: 5px 10px;
+                        font-size: 10px;
+                    }
+                    .totals-lbl {
+                        font-weight: 700;
+                        color: #334155;
+                        border-bottom: 1px solid #cbd5e1;
+                    }
+                    .totals-val {
+                        text-align: right;
+                        font-weight: 700;
+                        color: #0f172a;
+                        border-bottom: 1px solid #cbd5e1;
+                    }
+                    .totals-grand {
+                        background: #eff6ff;
+                    }
+                    .totals-grand .totals-lbl {
+                        color: #1e3a8a;
+                        font-weight: 800;
+                        font-size: 11.5px;
+                        border-bottom: none;
+                    }
+                    .totals-grand .totals-val {
+                        color: #1e3a8a;
+                        font-weight: 800;
+                        font-size: 12.5px;
+                        border-bottom: none;
+                    }
+                    .bank-card {
+                        border: 1px solid #94a3b8;
+                        border-radius: 4px;
+                        padding: 10px 12px;
+                        margin-bottom: 12px;
+                        background: #f8fafc;
+                    }
+                    .bank-title {
+                        font-size: 10.5px;
+                        font-weight: 800;
+                        color: #1e3a8a;
+                        margin-bottom: 6px;
+                        text-transform: uppercase;
+                    }
+                    .bank-lines {
+                        font-size: 9.5px;
+                        color: #1e293b;
+                        line-height: 1.5;
+                    }
+                    .bank-lines strong {
+                        color: #334155;
+                    }
+                    .doc-footer {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-top: 1px solid #e2e8f0;
+                        padding-top: 6px;
+                        font-size: 8.5px;
+                        color: #94a3b8;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="doc-container">
+                    <div>
+                        <!-- Header -->
+                        <div class="top-header">
+                            <div class="company-block">
+                                <div class="logo-row">
+                                    <img src="${origin}/assetflow-yaw-logo.png" alt="YAWI" class="logo-img" />
+                                    <div style="display: flex; align-items: center; gap: 6px;">
+                                        <span class="yawi-badge">YAWI</span>
+                                        <span class="yawi-title">INFORMÁTICA</span>
+                                    </div>
                                 </div>
-                                <div style="text-align: right; font-size: 13px; color: #475569;">
-                                    <strong>Fecha Emisión:</strong> ${new Date().toLocaleDateString('es-ES')}<br/>
-                                    <strong>Período:</strong> ${period}
-                                </div>
-                            </div>
-                            
-                            <div class="details">
-                                <div>
-                                    <div style="color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Cliente</div>
-                                    <div style="font-size: 18px; font-weight: 700; color: #0f172a;">${expectedClient}</div>
-                                </div>
-                                <div style="text-align: right;">
-                                    <div style="color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Resumen de Lote</div>
-                                    <div><strong>Servicios Facturados:</strong> ${selectedTickets.size} caso(s)</div>
+                                <div class="company-tagline">${invoiceConfig.companyTagline}</div>
+                                <div class="company-fields">
+                                    <div><strong>C.U.I.T.:</strong> ${invoiceConfig.companyCuit}</div>
+                                    <div><strong>Condición IVA:</strong> ${invoiceConfig.companyIva}</div>
+                                    <div><strong>Domicilio Comercial:</strong> ${invoiceConfig.companyAddress}</div>
+                                    <div><strong>Contacto / Email:</strong> ${invoiceConfig.companyEmail}</div>
                                 </div>
                             </div>
 
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Caso</th>
-                                        <th>Descripción / Asunto</th>
-                                        <th>Solicitante</th>
-                                        <th style="text-align: right;">Servicio</th>
-                                        <th style="text-align: right;">Logística</th>
-                                        <th style="text-align: right;">Subtotal</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${Array.from(selectedTickets).map(id => {
-                                        const ticket = tickets.find(t => t.id === id);
-                                        if (!ticket) return '';
-                                        const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
-                                        if (!financials) return '';
-                                        return `
-                                            <tr>
-                                                <td><strong style="color: #1e3a8a;">${ticket.id}</strong></td>
-                                                <td>${ticket.subject || 'Sin Asunto'}</td>
-                                                <td>${ticket.requester || 'Sin Solicitante'}</td>
-                                                <td style="text-align: right;">USD ${financials.serviceRevenue.toFixed(2)}</td>
-                                                <td style="text-align: right;">USD ${financials.logisticRevenue.toFixed(2)}</td>
-                                                <td style="text-align: right; font-weight: 700; color: #0f172a;">USD ${financials.totalRevenue.toFixed(2)}</td>
-                                            </tr>
-                                        `;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <div>
-                            <div class="totals-container">
-                                <div class="totals-box">
-                                    <div class="totals-row">
-                                        <span>Total Servicios:</span>
-                                        <span><strong>USD ${invoiceTotals.serviceRevenue.toFixed(2)}</strong></span>
-                                    </div>
-                                    <div class="totals-row">
-                                        <span>Total Logística:</span>
-                                        <span><strong>USD ${invoiceTotals.logisticRevenue.toFixed(2)}</strong></span>
-                                    </div>
-                                    <div class="totals-row grand-total">
-                                        <span>TOTAL A FACTURAR:</span>
-                                        <span>USD ${invoiceTotals.totalRevenue.toFixed(2)}</span>
-                                    </div>
-                                    <div class="totals-row grand-total" style="border-top: none; padding-top: 0; color: #64748b; font-size: 0.95rem;">
-                                        <span>TOTAL A FACTURAR (ARS):</span>
-                                        <span>ARS ${(invoiceTotals.totalRevenue * (selectedExchangeRate || 1)).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                    </div>
-                                    <div style="text-align: right; font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">
-                                        * Tipo de cambio aplicado: 1 USD = ${selectedExchangeRate ? selectedExchangeRate.toLocaleString('es-AR') : '-'} ARS
-                                    </div>
+                            <div class="center-box">
+                                <div class="x-square">X</div>
+                                <div class="center-title">RESUMEN DE SERVICIO</div>
+                                <div class="center-subtitle">Doc. no válido como factura</div>
+                            </div>
+
+                            <div class="meta-block">
+                                <div class="meta-row">
+                                    <span class="meta-lbl">Nº Resumen:</span>
+                                    <span class="meta-val blue">${invoiceConfig.docNumber}</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-lbl">Fecha de Emisión:</span>
+                                    <span class="meta-val">${emissionDate}</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-lbl">Periodo:</span>
+                                    <span class="meta-val">${period}</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-lbl">Moneda:</span>
+                                    <span class="meta-val">[ ${!isArs ? 'X' : '&nbsp;'} ] USD &nbsp;&nbsp; [ ${isArs ? 'X' : '&nbsp;'} ] ARS</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-lbl">Condición Pago:</span>
+                                    <span class="meta-val">${invoiceConfig.paymentCondition}</span>
                                 </div>
                             </div>
-                            
-                            <div class="footer">
-                                Este documento es un resumen proforma emitido por AssetFlow con fines informativos de liquidación.<br/>
-                                No posee validez fiscal ni impositiva formal.
+                        </div>
+
+                        <!-- Datos del Cliente -->
+                        <div class="client-card">
+                            <div class="client-header">DATOS DEL CLIENTE</div>
+                            <div class="client-grid">
+                                <div class="client-cell">
+                                    <strong>Razón Social:</strong> ${invoiceConfig.clientName || clientName}
+                                </div>
+                                <div class="client-cell">
+                                    <strong>ID / CUIT / Tax ID:</strong> ${invoiceConfig.clientTaxId || '—'}
+                                </div>
+                                <div class="client-cell">
+                                    <strong>Contacto / Mail:</strong> ${invoiceConfig.clientEmail || '—'}
+                                </div>
+                                <div class="client-cell">
+                                    <strong>Dirección / País:</strong> ${invoiceConfig.clientAddress || '—'}
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Items Table -->
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 14%; text-align: left;">TICKET / CASO</th>
+                                    <th style="width: 50%; text-align: left;">DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT</th>
+                                    <th style="width: 8%; text-align: center;">CANT.</th>
+                                    <th style="width: 14%; text-align: right;">PRECIO UNIT.</th>
+                                    <th style="width: 14%; text-align: right;">SUBTOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                                ${emptyRowsHtml}
+                            </tbody>
+                        </table>
+
+                        <!-- Totals Box -->
+                        <div class="totals-wrapper">
+                            <table class="totals-card">
+                                <tr>
+                                    <td class="totals-lbl">Subtotal Servicios:</td>
+                                    <td class="totals-val">${formatInvoiceMoney(invoiceTotals.subtotal)}</td>
+                                </tr>
+                                <tr>
+                                    <td class="totals-lbl">${invoiceConfig.extraConceptDesc || 'Otros Conceptos / Gastos'}:</td>
+                                    <td class="totals-val">${formatInvoiceMoney(invoiceTotals.extra)}</td>
+                                </tr>
+                                <tr class="totals-grand">
+                                    <td class="totals-lbl">Total a Liquidar:</td>
+                                    <td class="totals-val">${formatInvoiceMoney(invoiceTotals.totalLiquidar)}</td>
+                                </tr>
+                            </table>
+                        </div>
                     </div>
-                    
-                    <script>
-                        window.onload = function() {
-                            window.print();
-                        }
-                    </script>
-                </body>
+
+                    <div>
+                        <!-- Bank Details -->
+                        <div class="bank-card">
+                            <div class="bank-title">DATOS BANCARIOS PARA LIQUIDACIÓN / TRANSFERENCIA</div>
+                            <div class="bank-lines">
+                                <div><strong>Titular / Beneficiario:</strong> ${invoiceConfig.bankHolder}</div>
+                                <div style="display: flex; justify-content: space-between; max-width: 520px;">
+                                    <span><strong>Banco:</strong> ${invoiceConfig.bankName}</span>
+                                    <span><strong>Moneda:</strong> [ ${!isArs ? 'X' : '&nbsp;'} ] USD / [ ${isArs ? 'X' : '&nbsp;'} ] ARS</span>
+                                </div>
+                                <div><strong>CBU / CVU / Routing (ABA):</strong> <span style="font-family: monospace;">${invoiceConfig.bankCbu}</span></div>
+                                <div><strong>Alias / SWIFT Code:</strong> <span style="font-family: monospace;">${invoiceConfig.bankAlias}</span></div>
+                                <div><strong>Nº de Cuenta / IBAN:</strong> <span style="font-family: monospace;">${invoiceConfig.bankAccountNumber}</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="doc-footer">
+                            <span>Documento emitido con fines informativos de liquidación. No posee validez fiscal ni impositiva formal.</span>
+                            <span>Página 1 de 1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        window.focus();
+                        window.print();
+                    };
+                </script>
+            </body>
             </html>
         `);
         printWindow.document.close();
@@ -726,33 +1132,33 @@ export default function BillingPage() {
                         </select>
                     </div>
                     <div className="flex-mobile-column" style={{ display: 'flex', gap: '0.5rem', width: '100%', flexWrap: 'wrap' }}>
+                        <Button 
+                            icon={FileText} 
+                            onClick={() => setIsInvoiceModalOpen(true)} 
+                            style={{ 
+                                backgroundColor: '#1e3a8a', 
+                                borderColor: '#1e3a8a', 
+                                color: 'white', 
+                                flex: 1 
+                            }}
+                        >
+                            {selectedTickets.size > 0 
+                                ? `Resumen Selección (${selectedTickets.size})` 
+                                : `Resumen de Servicio (${filteredTickets.length})`}
+                        </Button>
                         {selectedTickets.size > 0 && (
-                            <>
-                                <Button 
-                                    icon={FileText} 
-                                    onClick={() => setIsInvoiceModalOpen(true)} 
-                                    style={{ 
-                                        backgroundColor: 'var(--primary-color)', 
-                                        borderColor: 'var(--primary-color)', 
-                                        color: 'white', 
-                                        flex: 1 
-                                    }}
-                                >
-                                    Facturar Selección ({selectedTickets.size})
-                                </Button>
-                                <Button 
-                                    icon={Trash} 
-                                    onClick={handleDeleteSelected} 
-                                    style={{ 
-                                        backgroundColor: '#ef4444', 
-                                        color: 'white', 
-                                        borderColor: '#ef4444', 
-                                        flex: 1 
-                                    }}
-                                >
-                                    Eliminar ({selectedTickets.size})
-                                </Button>
-                            </>
+                            <Button 
+                                icon={Trash} 
+                                onClick={handleDeleteSelected} 
+                                style={{ 
+                                    backgroundColor: '#ef4444', 
+                                    color: 'white', 
+                                    borderColor: '#ef4444', 
+                                    flex: 1 
+                                }}
+                            >
+                                Eliminar ({selectedTickets.size})
+                            </Button>
                         )}
                         <Button icon={Settings} onClick={() => setIsRatesModalOpen(true)} style={{ flex: 1 }}>Tarifas</Button>
                         <Button
@@ -1906,154 +2312,546 @@ export default function BillingPage() {
                 </div>
             </Modal>
 
-            {/* Invoice/Pre-factura Modal */}
+            {/* Invoice/Resumen de Servicio Modal para el Cliente */}
             <Modal 
                 isOpen={isInvoiceModalOpen} 
                 onClose={() => setIsInvoiceModalOpen(false)} 
-                title="Pre-Factura / Detalle de Facturación"
+                title="Resumen de Servicio para Cliente (YAWI Informática)"
+                maxWidth="1020px"
             >
-                <div style={{ padding: '0.5rem', maxHeight: '80vh', overflowY: 'auto' }}>
-                    {/* Toolbar */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                        <Button 
-                            icon={Download} 
-                            onClick={handleDownloadExcel}
-                            style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#10b981' }}
-                        >
-                            Descargar Excel
-                        </Button>
-                        <Button 
-                            icon={Printer} 
-                            onClick={handlePrintInvoice}
-                            style={{ backgroundColor: 'var(--primary-color)', color: 'white', borderColor: 'var(--primary-color)' }}
-                        >
-                            Imprimir / PDF
-                        </Button>
-                        <Button 
-                            variant="secondary" 
-                            onClick={() => setIsInvoiceModalOpen(false)}
-                        >
-                            Cerrar
-                        </Button>
+                <div style={{ padding: '0.25rem', maxHeight: '85vh', overflowY: 'auto' }}>
+                    {/* Control Bar */}
+                    <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        flexWrap: 'wrap', 
+                        gap: '0.75rem', 
+                        marginBottom: '1rem',
+                        background: 'var(--surface-hover)',
+                        padding: '0.75rem 1rem',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Badge variant="info" style={{ fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}>
+                                {invoiceItems.length} servicio(s) incluido(s)
+                            </Badge>
+                            {selectedTickets.size > 0 && (
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                    (Selección manual activa)
+                                </span>
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {/* Currency Switcher */}
+                            <div style={{ display: 'inline-flex', borderRadius: '6px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => updateInvoiceConfigField('currency', 'USD')}
+                                    style={{
+                                        padding: '0.4rem 0.75rem',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: invoiceConfig.currency === 'USD' ? '#1e3a8a' : 'transparent',
+                                        color: invoiceConfig.currency === 'USD' ? '#ffffff' : 'var(--text-main)',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    USD ($)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => updateInvoiceConfigField('currency', 'ARS')}
+                                    style={{
+                                        padding: '0.4rem 0.75rem',
+                                        fontSize: '0.8rem',
+                                        fontWeight: 700,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: invoiceConfig.currency === 'ARS' ? '#1e3a8a' : 'transparent',
+                                        color: invoiceConfig.currency === 'ARS' ? '#ffffff' : 'var(--text-main)',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    ARS ($)
+                                </button>
+                            </div>
+
+                            {/* Toggle Edit Config */}
+                            <Button 
+                                icon={Edit3}
+                                variant={isEditingInvoiceConfig ? 'primary' : 'outline'}
+                                size="sm"
+                                onClick={() => setIsEditingInvoiceConfig(!isEditingInvoiceConfig)}
+                            >
+                                {isEditingInvoiceConfig ? 'Ver Documento' : 'Editar Datos'}
+                            </Button>
+
+                            {/* Excel */}
+                            <Button 
+                                icon={Download} 
+                                size="sm"
+                                onClick={handleDownloadExcel}
+                                style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#10b981' }}
+                            >
+                                Excel
+                            </Button>
+
+                            {/* Print / PDF */}
+                            <Button 
+                                icon={Printer} 
+                                size="sm"
+                                onClick={handlePrintInvoice}
+                                style={{ backgroundColor: '#1e3a8a', color: 'white', borderColor: '#1e3a8a' }}
+                            >
+                                Imprimir / PDF
+                            </Button>
+
+                            <Button 
+                                variant="secondary" 
+                                size="sm"
+                                onClick={() => setIsInvoiceModalOpen(false)}
+                            >
+                                Cerrar
+                            </Button>
+                        </div>
                     </div>
 
-                    {/* Sheet Paper Preview Container */}
+                    {/* Edit Configuration Drawer */}
+                    {isEditingInvoiceConfig && (
+                        <div style={{
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '8px',
+                            padding: '1.25rem',
+                            marginBottom: '1.5rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '1rem'
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+                                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                    ⚙️ Personalización del Resumen (se guarda automáticamente)
+                                </h4>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                    Los cambios se guardan localmente para próximas emisiones
+                                </span>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                                {/* Metadatos */}
+                                <div style={{ background: 'var(--surface-hover)', padding: '0.75rem', borderRadius: '6px' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
+                                        Documento
+                                    </span>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Nº Resumen</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.docNumber} 
+                                        onChange={e => updateInvoiceConfigField('docNumber', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Fecha de Emisión</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.emissionDate} 
+                                        onChange={e => updateInvoiceConfigField('emissionDate', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Condición de Pago</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem' }}
+                                        value={invoiceConfig.paymentCondition} 
+                                        onChange={e => updateInvoiceConfigField('paymentCondition', e.target.value)} 
+                                    />
+                                </div>
+
+                                {/* Cliente */}
+                                <div style={{ background: 'var(--surface-hover)', padding: '0.75rem', borderRadius: '6px' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
+                                        Datos del Cliente
+                                    </span>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Razón Social</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.clientName} 
+                                        onChange={e => updateInvoiceConfigField('clientName', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>ID / CUIT / Tax ID</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.clientTaxId} 
+                                        onChange={e => updateInvoiceConfigField('clientTaxId', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Contacto / Email</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.clientEmail} 
+                                        onChange={e => updateInvoiceConfigField('clientEmail', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Dirección / País</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem' }}
+                                        value={invoiceConfig.clientAddress} 
+                                        onChange={e => updateInvoiceConfigField('clientAddress', e.target.value)} 
+                                    />
+                                </div>
+
+                                {/* YAWI Informática */}
+                                <div style={{ background: 'var(--surface-hover)', padding: '0.75rem', borderRadius: '6px' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
+                                        YAWI Informática
+                                    </span>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>C.U.I.T.</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.companyCuit} 
+                                        onChange={e => updateInvoiceConfigField('companyCuit', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Condición IVA</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.companyIva} 
+                                        onChange={e => updateInvoiceConfigField('companyIva', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Domicilio Comercial</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.companyAddress} 
+                                        onChange={e => updateInvoiceConfigField('companyAddress', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Email</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem' }}
+                                        value={invoiceConfig.companyEmail} 
+                                        onChange={e => updateInvoiceConfigField('companyEmail', e.target.value)} 
+                                    />
+                                </div>
+
+                                {/* Datos Bancarios y Otros Conceptos */}
+                                <div style={{ background: 'var(--surface-hover)', padding: '0.75rem', borderRadius: '6px' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
+                                        Liquidación Bancaria
+                                    </span>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Titular Beneficiario</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.bankHolder} 
+                                        onChange={e => updateInvoiceConfigField('bankHolder', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Banco</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.bankName} 
+                                        onChange={e => updateInvoiceConfigField('bankName', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>CBU / Routing (ABA)</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.bankCbu} 
+                                        onChange={e => updateInvoiceConfigField('bankCbu', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Alias / SWIFT</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.bankAlias} 
+                                        onChange={e => updateInvoiceConfigField('bankAlias', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Nº Cuenta / IBAN</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem', marginBottom: '0.5rem' }}
+                                        value={invoiceConfig.bankAccountNumber} 
+                                        onChange={e => updateInvoiceConfigField('bankAccountNumber', e.target.value)} 
+                                    />
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Otros Conceptos (+/- USD)</label>
+                                    <input 
+                                        type="number"
+                                        className="form-input" 
+                                        style={{ height: '32px', fontSize: '0.8rem' }}
+                                        value={invoiceConfig.extraConceptAmount} 
+                                        onChange={e => updateInvoiceConfigField('extraConceptAmount', e.target.value)} 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Paper Sheet Preview Container (Pixel-perfect exact replica of user mockup) */}
                     <div style={{
                         background: '#ffffff',
-                        color: '#1e293b',
-                        padding: '30px',
-                        borderRadius: '0px',
-                        border: '1px solid #334155',
-                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.02)',
-                        fontFamily: 'system-ui, -apple-system, sans-serif',
-                        minHeight: '26.2cm',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
+                        color: '#0f172a',
+                        padding: '32px 36px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '4px',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                        maxWidth: '920px',
+                        margin: '0 auto',
                         boxSizing: 'border-box'
                     }}>
-                        <div>
-                            {/* Header */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #334155', paddingBottom: '1.25rem', marginBottom: '2rem' }}>
-                                <div>
-                                    <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e3a8a', margin: 0, letterSpacing: '-0.025em' }}>DETALLE DE SERVICIOS A FACTURAR</h1>
-                                    <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>AssetFlow Logistics</span>
+                        {/* Header: YAWI Informática | X Box | Metadata */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                            {/* Left: YAWI Informática Logo & Info */}
+                            <div style={{ width: '45%' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                                    <img 
+                                        src="/assetflow-yaw-logo.png" 
+                                        alt="YAWI" 
+                                        style={{ height: '46px', width: 'auto', objectFit: 'contain' }} 
+                                    />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ 
+                                            background: '#1e3a8a', 
+                                            color: '#ffffff', 
+                                            padding: '4px 9px', 
+                                            borderRadius: '6px', 
+                                            fontWeight: 900, 
+                                            fontSize: '15px',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            YAWI
+                                        </span>
+                                        <span style={{ 
+                                            fontSize: '16px', 
+                                            fontWeight: 800, 
+                                            color: '#1e3a8a',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            INFORMÁTICA
+                                        </span>
+                                    </div>
                                 </div>
-                                <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
-                                    <div><strong>Fecha Emisión:</strong> {new Date().toLocaleDateString('es-ES')}</div>
-                                    <div><strong>Período:</strong> {period}</div>
+                                <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#475569', marginBottom: '8px' }}>
+                                    {invoiceConfig.companyTagline}
+                                </div>
+                                <div style={{ fontSize: '10px', color: '#334155', lineHeight: 1.5 }}>
+                                    <div><strong>C.U.I.T.:</strong> {invoiceConfig.companyCuit}</div>
+                                    <div><strong>Condición IVA:</strong> {invoiceConfig.companyIva}</div>
+                                    <div><strong>Domicilio Comercial:</strong> {invoiceConfig.companyAddress}</div>
+                                    <div><strong>Contacto / Email:</strong> {invoiceConfig.companyEmail}</div>
                                 </div>
                             </div>
 
-                            {/* Customer & Summary Details */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', fontSize: '0.875rem', color: '#334155' }}>
-                                <div>
-                                    <div style={{ color: '#64748b', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '4px' }}>Cliente</div>
-                                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{getClientName(countryFilter) || 'Sycomp'}</div>
+                            {/* Center: Square X Box */}
+                            <div style={{ width: '18%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                                <div style={{ 
+                                    width: '46px', 
+                                    height: '46px', 
+                                    border: '2px solid #0f172a', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    fontSize: '28px',
+                                    fontWeight: 900,
+                                    marginBottom: '4px',
+                                    background: '#ffffff'
+                                }}>
+                                    X
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ color: '#64748b', fontWeight: 600, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '4px' }}>Resumen de Lote</div>
-                                    <div><strong>Servicios seleccionados:</strong> {selectedTickets.size} caso(s)</div>
+                                <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a', letterSpacing: '0.5px' }}>
+                                    RESUMEN DE SERVICIO
+                                </div>
+                                <div style={{ fontSize: '8.5px', color: '#64748b', fontStyle: 'italic' }}>
+                                    Doc. no válido como factura
                                 </div>
                             </div>
 
-                            {/* Table */}
-                            <div style={{ overflowX: 'auto', marginBottom: '2rem' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                                    <thead>
-                                        <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Caso</th>
-                                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Descripción / Asunto</th>
-                                            <th style={{ padding: '8px 10px', textAlign: 'left', color: '#475569', fontWeight: 700 }}>Solicitante</th>
-                                            <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 700 }}>Servicio</th>
-                                            <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 700 }}>Logística</th>
-                                            <th style={{ padding: '8px 10px', textAlign: 'right', color: '#475569', fontWeight: 700 }}>Subtotal</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {Array.from(selectedTickets).map(id => {
-                                            const ticket = tickets.find(t => t.id === id);
-                                            if (!ticket) return null;
-                                            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
-                                            if (!financials) return null;
-                                            return (
-                                                <tr key={ticket.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                                    <td style={{ padding: '10px', fontWeight: 700, color: '#1e3a8a' }}>{ticket.id}</td>
-                                                    <td style={{ padding: '10px', color: '#334155' }}>{ticket.subject || 'Sin Asunto'}</td>
-                                                    <td style={{ padding: '10px', color: '#64748b' }}>{ticket.requester || 'Sin Solicitante'}</td>
-                                                    <td style={{ padding: '10px', textAlign: 'right', color: '#334155' }}>USD {financials.serviceRevenue.toFixed(2)}</td>
-                                                    <td style={{ padding: '10px', textAlign: 'right', color: '#334155' }}>USD {financials.logisticRevenue.toFixed(2)}</td>
-                                                    <td style={{ padding: '10px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>USD {financials.totalRevenue.toFixed(2)}</td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                            {/* Right: Metadata Table */}
+                            <div style={{ width: '34%', border: '1px solid #94a3b8', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderBottom: '1px solid #cbd5e1', fontSize: '10px' }}>
+                                    <span style={{ fontWeight: 700, color: '#334155' }}>Nº Resumen:</span>
+                                    <span style={{ fontWeight: 800, color: '#1e3a8a' }}>{invoiceConfig.docNumber}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderBottom: '1px solid #cbd5e1', fontSize: '10px' }}>
+                                    <span style={{ fontWeight: 700, color: '#334155' }}>Fecha de Emisión:</span>
+                                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{invoiceConfig.emissionDate || new Date().toLocaleDateString('es-AR')}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderBottom: '1px solid #cbd5e1', fontSize: '10px' }}>
+                                    <span style={{ fontWeight: 700, color: '#334155' }}>Periodo:</span>
+                                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{period}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderBottom: '1px solid #cbd5e1', fontSize: '10px' }}>
+                                    <span style={{ fontWeight: 700, color: '#334155' }}>Moneda:</span>
+                                    <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                                        [ {invoiceConfig.currency === 'USD' ? 'X' : ' '} ] USD &nbsp;&nbsp; [ {invoiceConfig.currency === 'ARS' ? 'X' : ' '} ] ARS
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', fontSize: '10px' }}>
+                                    <span style={{ fontWeight: 700, color: '#334155' }}>Condición Pago:</span>
+                                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{invoiceConfig.paymentCondition}</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div>
-                            {/* Totals */}
-                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <div style={{
-                                    width: '320px',
-                                    background: '#f8fafc',
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: '6px',
-                                    padding: '1.25rem',
-                                    fontSize: '0.85rem'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', color: '#475569' }}>
-                                        <span>Total Servicios:</span>
-                                        <span style={{ fontWeight: 600 }}>USD {invoiceTotals.serviceRevenue.toFixed(2)}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', color: '#475569' }}>
-                                        <span>Total Logística:</span>
-                                        <span style={{ fontWeight: 600 }}>USD {invoiceTotals.logisticRevenue.toFixed(2)}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #cbd5e1', paddingTop: '10px', fontWeight: 800, fontSize: '1rem', color: '#1e3a8a' }}>
-                                        <span>TOTAL A FACTURAR:</span>
-                                        <span>USD {invoiceTotals.totalRevenue.toFixed(2)}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px', fontWeight: 700, fontSize: '0.95rem', color: '#64748b' }}>
-                                        <span>TOTAL A FACTURAR (ARS):</span>
-                                        <span>ARS {(invoiceTotals.totalRevenue * (selectedExchangeRate || 1)).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.5rem' }}>
-                                        * Tipo de cambio aplicado: 1 USD = {selectedExchangeRate ? selectedExchangeRate.toLocaleString('es-AR') : '-'} ARS
-                                    </div>
+                        {/* DATOS DEL CLIENTE Banner & Grid */}
+                        <div style={{ border: '1px solid #94a3b8', borderRadius: '3px', marginBottom: '20px', overflow: 'hidden' }}>
+                            <div style={{ background: '#1e3a8a', color: '#ffffff', fontWeight: 800, fontSize: '11px', padding: '6px 10px', letterSpacing: '0.5px' }}>
+                                DATOS DEL CLIENTE
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#ffffff' }}>
+                                <div style={{ padding: '7px 10px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', fontSize: '10px' }}>
+                                    <strong style={{ color: '#475569' }}>Razón Social:</strong> <span style={{ fontWeight: 700, color: '#0f172a' }}>{invoiceConfig.clientName || activeClientName}</span>
+                                </div>
+                                <div style={{ padding: '7px 10px', borderBottom: '1px solid #e2e8f0', fontSize: '10px' }}>
+                                    <strong style={{ color: '#475569' }}>ID / CUIT / Tax ID:</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{invoiceConfig.clientTaxId || '—'}</span>
+                                </div>
+                                <div style={{ padding: '7px 10px', borderRight: '1px solid #e2e8f0', fontSize: '10px' }}>
+                                    <strong style={{ color: '#475569' }}>Contacto / Mail:</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{invoiceConfig.clientEmail || '—'}</span>
+                                </div>
+                                <div style={{ padding: '7px 10px', fontSize: '10px' }}>
+                                    <strong style={{ color: '#475569' }}>Dirección / País:</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{invoiceConfig.clientAddress || '—'}</span>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Note */}
-                            <div style={{ marginTop: '2.5rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem', textAlign: 'center', fontSize: '0.7rem', color: '#94a3b8', lineHeight: 1.5 }}>
-                                Este documento es un resumen proforma emitido por AssetFlow con fines informativos de liquidación.<br/>
-                                No posee validez fiscal ni impositiva formal.
+                        {/* Services Table */}
+                        <div style={{ overflowX: 'auto', marginBottom: '16px' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #94a3b8', fontSize: '10px' }}>
+                                <thead>
+                                    <tr>
+                                        <th style={{ background: '#0f172a', color: '#ffffff', fontWeight: 800, padding: '8px 10px', textAlign: 'left', borderRight: '1px solid #334155', width: '15%' }}>
+                                            TICKET / CASO
+                                        </th>
+                                        <th style={{ background: '#0f172a', color: '#ffffff', fontWeight: 800, padding: '8px 10px', textAlign: 'left', borderRight: '1px solid #334155', width: '49%' }}>
+                                            DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT
+                                        </th>
+                                        <th style={{ background: '#0f172a', color: '#ffffff', fontWeight: 800, padding: '8px 10px', textAlign: 'center', borderRight: '1px solid #334155', width: '8%' }}>
+                                            CANT.
+                                        </th>
+                                        <th style={{ background: '#0f172a', color: '#ffffff', fontWeight: 800, padding: '8px 10px', textAlign: 'right', borderRight: '1px solid #334155', width: '14%' }}>
+                                            PRECIO UNIT.
+                                        </th>
+                                        <th style={{ background: '#0f172a', color: '#ffffff', fontWeight: 800, padding: '8px 10px', textAlign: 'right', width: '14%' }}>
+                                            SUBTOTAL
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {invoiceItems.map((item, idx) => (
+                                        <tr key={item.id || idx} style={{ borderBottom: '1px solid #cbd5e1' }}>
+                                            <td style={{ padding: '8px 10px', fontWeight: 700, color: '#1e3a8a', borderRight: '1px solid #cbd5e1' }}>
+                                                {item.caseNumber}
+                                            </td>
+                                            <td style={{ padding: '8px 10px', color: '#1e293b', borderRight: '1px solid #cbd5e1' }}>
+                                                {item.description}
+                                            </td>
+                                            <td style={{ padding: '8px 10px', textAlign: 'center', color: '#1e293b', borderRight: '1px solid #cbd5e1' }}>
+                                                {item.quantity}
+                                            </td>
+                                            <td style={{ padding: '8px 10px', textAlign: 'right', color: '#1e293b', borderRight: '1px solid #cbd5e1' }}>
+                                                {formatInvoiceMoney(item.unitPrice)}
+                                            </td>
+                                            <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
+                                                {formatInvoiceMoney(item.subtotal)}
+                                            </td>
+                                        </tr>
+                                    ))}
+
+                                    {/* Empty lines if few items to keep the sheet proportion */}
+                                    {Array.from({ length: Math.max(0, 4 - invoiceItems.length) }).map((_, i) => (
+                                        <tr key={'empty-' + i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                            <td style={{ padding: '10px', borderRight: '1px solid #cbd5e1' }}>&nbsp;</td>
+                                            <td style={{ padding: '10px', borderRight: '1px solid #cbd5e1' }}>&nbsp;</td>
+                                            <td style={{ padding: '10px', borderRight: '1px solid #cbd5e1' }}>&nbsp;</td>
+                                            <td style={{ padding: '10px', borderRight: '1px solid #cbd5e1' }}>&nbsp;</td>
+                                            <td style={{ padding: '10px' }}>&nbsp;</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Subtotals Box (Right-aligned) */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                            <table style={{ width: '48%', border: '1px solid #94a3b8', borderCollapse: 'collapse', fontSize: '10.5px' }}>
+                                <tbody>
+                                    <tr>
+                                        <td style={{ padding: '6px 12px', fontWeight: 700, color: '#334155', borderBottom: '1px solid #cbd5e1' }}>
+                                            Subtotal Servicios:
+                                        </td>
+                                        <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 700, color: '#0f172a', borderBottom: '1px solid #cbd5e1' }}>
+                                            {formatInvoiceMoney(invoiceTotals.subtotal)}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{ padding: '6px 12px', fontWeight: 700, color: '#334155', borderBottom: '1px solid #cbd5e1' }}>
+                                            {invoiceConfig.extraConceptDesc || 'Otros Conceptos / Gastos'}:
+                                        </td>
+                                        <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: 700, color: '#0f172a', borderBottom: '1px solid #cbd5e1' }}>
+                                            {formatInvoiceMoney(invoiceTotals.extra)}
+                                        </td>
+                                    </tr>
+                                    <tr style={{ background: '#eff6ff' }}>
+                                        <td style={{ padding: '8px 12px', fontWeight: 800, color: '#1e3a8a', fontSize: '12px' }}>
+                                            Total a Liquidar:
+                                        </td>
+                                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 900, color: '#1e3a8a', fontSize: '13px' }}>
+                                            {formatInvoiceMoney(invoiceTotals.totalLiquidar)}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* DATOS BANCARIOS Section */}
+                        <div style={{
+                            border: '1px solid #94a3b8',
+                            borderRadius: '4px',
+                            padding: '12px 16px',
+                            background: '#f8fafc',
+                            marginBottom: '16px'
+                        }}>
+                            <div style={{ fontSize: '11px', fontWeight: 800, color: '#1e3a8a', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                DATOS BANCARIOS PARA LIQUIDACIÓN / TRANSFERENCIA
                             </div>
+                            <div style={{ fontSize: '10px', color: '#1e293b', lineHeight: 1.6 }}>
+                                <div><strong style={{ color: '#334155' }}>Titular / Beneficiario:</strong> {invoiceConfig.bankHolder}</div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: '540px' }}>
+                                    <span><strong style={{ color: '#334155' }}>Banco:</strong> {invoiceConfig.bankName}</span>
+                                    <span>
+                                        <strong style={{ color: '#334155' }}>Moneda:</strong> [ {invoiceConfig.currency === 'USD' ? 'X' : ' '} ] USD / [ {invoiceConfig.currency === 'ARS' ? 'X' : ' '} ] ARS
+                                    </span>
+                                </div>
+                                <div><strong style={{ color: '#334155' }}>CBU / CVU / Routing (ABA):</strong> <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{invoiceConfig.bankCbu}</span></div>
+                                <div><strong style={{ color: '#334155' }}>Alias / SWIFT Code:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{invoiceConfig.bankAlias}</span></div>
+                                <div><strong style={{ color: '#334155' }}>Nº de Cuenta / IBAN:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{invoiceConfig.bankAccountNumber}</span></div>
+                            </div>
+                        </div>
+
+                        {/* Document Footer */}
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            borderTop: '1px solid #e2e8f0',
+                            paddingTop: '8px',
+                            fontSize: '9px',
+                            color: '#94a3b8'
+                        }}>
+                            <span>Documento emitido con fines informativos de liquidación. No posee validez fiscal ni impositiva formal.</span>
+                            <span>Página 1 de 1</span>
                         </div>
                     </div>
                 </div>
             </Modal>
-        </div >
+        </div>
     );
 }

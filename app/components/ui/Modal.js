@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
-export function Modal({ isOpen, onClose, title, children, disableOutsideClick = true }) {
+export function Modal({ isOpen, onClose, title, children, disableOutsideClick = true, maxWidth, contentStyle = {} }) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -23,7 +23,15 @@ export function Modal({ isOpen, onClose, title, children, disableOutsideClick = 
         <div className="modal-overlay" onClick={(e) => {
             if (!disableOutsideClick && e.target === e.currentTarget) onClose();
         }}>
-            <div className="modal-content" style={{ display: 'flex', flexDirection: 'column' }}>
+            <div 
+                className="modal-content" 
+                style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    ...(maxWidth ? { maxWidth } : {}),
+                    ...contentStyle 
+                }}
+            >
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
