@@ -671,6 +671,19 @@ export default function WarehousePage() {
             return true;
         });
     }, [assets, countryFilter, selectedBrand, typeFilter, cpuFilter, ramFilter, statusFilter, locationSearch, modelFilter, sizeFilter]);
+    // DEBUG: Analyze passing assets for APPLE+Smartphone mismatch
+    const debugFilterInfo = useMemo(() => {
+        if (selectedBrand !== 'APPLE' || typeFilter !== 'Smartphone') return null;
+        const typeGroups = {};
+        filteredAssets.forEach(a => {
+            const t = a.type || '(empty)';
+            typeGroups[t] = (typeGroups[t] || 0) + 1;
+        });
+        console.warn('[WAREHOUSE DEBUG] APPLE+Smartphone filtered assets:', filteredAssets.length, 'by type:', typeGroups);
+        console.warn('[WAREHOUSE DEBUG] Sample names:', filteredAssets.slice(0, 5).map(a => a.name + ' | type:' + a.type + ' | oem:' + a.oem));
+        return typeGroups;
+    }, [filteredAssets, selectedBrand, typeFilter]);
+
 
     // Compute set of highlighted locationIds (when any search/filter is active)
     const hasActiveSearch = useMemo(() => {
