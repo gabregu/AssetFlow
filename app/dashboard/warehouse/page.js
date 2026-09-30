@@ -622,10 +622,15 @@ export default function WarehousePage() {
             // Brand filters
             if (selectedBrand !== 'ALL') {
                 const oem = (asset.oem || '').toUpperCase();
+                const nameUpper = (asset.name || '').toUpperCase();
+                const typeUpper = (asset.type || '').toUpperCase();
                 if (selectedBrand === 'WINDOWS') {
-                    if (oem === 'APPLE') return false;
+                    if (oem === 'APPLE' || nameUpper.includes('IPHONE') || nameUpper.includes('MACBOOK') || nameUpper.startsWith('MBA') || nameUpper.startsWith('MBP')) return false;
                 } else if (selectedBrand === 'MANTENIMIENTO') {
                     if (!['Mantenimiento', 'Dañado'].includes(asset.status)) return false;
+                } else if (selectedBrand === 'APPLE') {
+                    const isApple = oem === 'APPLE' || nameUpper.includes('IPHONE') || nameUpper.includes('MACBOOK') || typeUpper.includes('IPHONE') || nameUpper.startsWith('MBA') || nameUpper.startsWith('MBP');
+                    if (!isApple) return false;
                 } else {
                     if (oem !== selectedBrand.toUpperCase()) return false;
                 }
@@ -676,13 +681,18 @@ export default function WarehousePage() {
             // Model Filter (MBA / MBP / iPhone models)
             if (modelFilter !== 'ALL') {
                 const nameUpper = (asset.name || '').toUpperCase();
+                const specUpper = (asset.hardwareSpec || '').toUpperCase();
+                const modelNumUpper = (asset.modelNumber || '').toUpperCase();
+                const modelUpper = (asset.model || '').toUpperCase();
                 const filterUpper = modelFilter.toUpperCase();
+                const combined = `${nameUpper} ${specUpper} ${modelNumUpper} ${modelUpper}`;
+                
                 // For laptop models use startsWith (MBA, MBP), for phones use includes
                 const isLaptopModel = modelFilter === 'MBA' || modelFilter === 'MBP' || modelFilter.startsWith('Dell') || modelFilter.startsWith('HP');
                 if (isLaptopModel) {
-                    if (!nameUpper.startsWith(filterUpper)) return false;
+                    if (!nameUpper.startsWith(filterUpper) && !combined.includes(filterUpper)) return false;
                 } else {
-                    if (!nameUpper.includes(filterUpper)) return false;
+                    if (!combined.includes(filterUpper)) return false;
                 }
             }
 
@@ -719,9 +729,19 @@ export default function WarehousePage() {
     const highlightedLocationIds = useMemo(() => {
         if (!hasActiveSearch) return new Set();
         const ids = new Set();
-        filteredAssets.forEach(a => { if (a.locationId) ids.add(a.locationId); });
+        filteredAssets.forEach(a => { 
+            if (a.locationId) {
+                ids.add(a.locationId);
+                ids.add(a.locationId.toUpperCase().trim());
+            }
+        });
         return ids;
     }, [filteredAssets, hasActiveSearch]);
+
+    // Assets that match filter AND are physically located in the warehouse
+    const warehouseFilteredAssets = useMemo(() => {
+        return filteredAssets.filter(a => !!a.locationId);
+    }, [filteredAssets]);
 
 
     // Group locations by aisle, filtered by country
@@ -2213,6 +2233,8 @@ export default function WarehousePage() {
         const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'Administrador' || currentUser?.role === 'Gerencial';
         const armarioAssets = assets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-'));
         const armarioCount = armarioAssets.length;
+        const armarioFilteredAssets = hasActiveSearch ? filteredAssets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-')) : [];
+        const armarioFilteredCount = armarioFilteredAssets.length;
 
         const defaultOrganizers = [
             { id: 1, name: 'ORG 1', slots: 28 },
@@ -2220,10 +2242,26 @@ export default function WarehousePage() {
             { id: 3, name: 'ORG 3', slots: 28 }
         ];
         const organizers = depositoConfig?.armarioOrganizers || defaultOrganizers;
-        const orgAssetsCount = armarioAssets.filter(a => organizers.some(org => a.locationId && a.locationId.startsWith(`ARM-O${org.id}-`))).length;
-        const iphAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-IPH-'));
-        const samAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-SAM-'));
-        const eolAssets = armarioAssets.filter(a => a.locationId.startsWith('ARM-CAJA-'));
+
+        // Robust check for organizer location match by id, org-id, or custom name
+        const isOrgLoc = (locId, orgId, orgName) => {
+            if (!locId) return false;
+            const l = locId.toUpperCase().trim();
+            const idPart = `ARM-O${orgId}-`;
+            const orgIdPart = `ARM-ORG${orgId}-`;
+            const namePart = orgName ? `ARM-${orgName.toUpperCase().trim()}-` : '';
+            return l.startsWith(idPart) || l.startsWith(orgIdPart) || (namePart && l.startsWith(namePart));
+        };
+
+        const orgAssets = armarioAssets.filter(a => organizers.some(org => isOrgLoc(a.locationId, org.id, org.name)));
+        const orgAssetsCount = orgAssets.length;
+        const orgFilteredTotal = hasActiveSearch ? filteredAssets.filter(a => organizers.some(org => isOrgLoc(a.locationId, org.id, org.name))).length : 0;
+        const iphAssets = armarioAssets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-IPH-'));
+        const iphFilteredCount = hasActiveSearch ? filteredAssets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-IPH-')).length : 0;
+        const samAssets = armarioAssets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-SAM-'));
+        const samFilteredCount = hasActiveSearch ? filteredAssets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-SAM-')).length : 0;
+        const eolAssets = armarioAssets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-CAJA-'));
+        const eolFilteredCount = hasActiveSearch ? filteredAssets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-CAJA-')).length : 0;
 
         const getBoxCount = (prefix) => {
             let max = 0;
@@ -2242,11 +2280,16 @@ export default function WarehousePage() {
         const eolBoxCount = Math.max(6, getBoxCount('ARM-CAJA-') + 1);
 
         const renderOrganizerCircle = (locId) => {
-            const locationAssets = armarioAssets.filter(a => a.locationId === locId);
+            const normLocId = (locId || '').toUpperCase().trim();
+            const locationAssets = armarioAssets.filter(a => (a.locationId || '').toUpperCase().trim() === normLocId);
             const assetCount = locationAssets.length;
-            const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
-            const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
-            const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
+            const isSelected = (selectedLocation?.id || '').toUpperCase().trim() === normLocId || (auditLocation?.id || '').toUpperCase().trim() === normLocId;
+            const isHighlighted = hasActiveSearch && (
+                highlightedLocationIds.has(locId) || 
+                highlightedLocationIds.has(normLocId)
+            );
+            const isNotHighlighted = hasActiveSearch && !isHighlighted;
+            const filteredInSlot = hasActiveSearch ? filteredAssets.filter(a => (a.locationId || '').toUpperCase().trim() === normLocId).length : 0;
 
             let bgColor = 'transparent';
             let borderColor = 'var(--border)';
@@ -2261,6 +2304,8 @@ export default function WarehousePage() {
             }
             if (isAuditMode && auditLocation?.id === locId) { bgColor = '#8b5cf6'; borderColor = '#8b5cf6'; }
 
+            const isFilteredHit = isHighlighted && filteredInSlot > 0;
+
             return (
                 <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                     <div 
@@ -2268,15 +2313,22 @@ export default function WarehousePage() {
                         title={buildAssetTooltip(locationAssets, locId)}
                         className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                         style={{
-                            width: '18px', height: '18px', borderRadius: '50%',
-                            background: isSelected ? '#eab308' : bgColor,
-                            border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#ca8a04'}` : `1px solid ${borderColor}`,
+                            width: isFilteredHit ? '22px' : '18px',
+                            height: isFilteredHit ? '22px' : '18px',
+                            borderRadius: '50%',
+                            background: isSelected ? '#eab308' : (isFilteredHit ? '#16a34a' : bgColor),
+                            border: isSelected ? `2px solid ${isAuditMode ? '#6d28d9' : '#ca8a04'}` : (isFilteredHit ? '2px solid #14532d' : `1px solid ${borderColor}`),
                             cursor: 'pointer', transition: 'all 0.15s ease',
-                            boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : 'none',
+                            boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : (isFilteredHit ? '0 0 10px rgba(22,163,74,0.9)' : 'none'),
                             opacity: isNotHighlighted ? 0.2 : assetCount > 0 ? 1 : 0.4,
-                            position: 'relative'
+                            position: 'relative',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}
-                    />
+                    >
+                        {isFilteredHit && (
+                            <span style={{ fontSize: '10px', color: 'white', fontWeight: 900, lineHeight: 1 }}>✓</span>
+                        )}
+                    </div>
                 </div>
             );
         };
@@ -2300,13 +2352,14 @@ export default function WarehousePage() {
         };
 
         const renderBox = (locId, iconType = 'box') => {
-            const locationAssets = armarioAssets.filter(a => a.locationId === locId);
+            const normLocId = (locId || '').toUpperCase().trim();
+            const locationAssets = armarioAssets.filter(a => (a.locationId || '').toUpperCase().trim() === normLocId);
             const assetCount = locationAssets.length;
-            // Count only filtered assets in this specific box
-            const filteredInBox = hasActiveSearch ? filteredAssets.filter(a => a.locationId === locId).length : 0;
-            const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
-            const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
-            const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
+            // Count only filtered assets in this specific box (case-insensitive)
+            const filteredInBox = hasActiveSearch ? filteredAssets.filter(a => (a.locationId || '').toUpperCase().trim() === normLocId).length : 0;
+            const isSelected = (selectedLocation?.id || '').toUpperCase().trim() === normLocId || (auditLocation?.id || '').toUpperCase().trim() === normLocId;
+            const isHighlighted = hasActiveSearch && (highlightedLocationIds.has(locId) || highlightedLocationIds.has(normLocId));
+            const isNotHighlighted = hasActiveSearch && !isHighlighted;
 
             const boxNames = depositoConfig?.armarioBoxNames || {};
             const boxCustomName = boxNames[locId] || '';
@@ -2445,14 +2498,38 @@ export default function WarehousePage() {
                             title="Exportar Armario Completo"
                             style={{ padding: '4px', color: '#2563eb' }}
                         />
-                        <span style={{ fontSize: '0.9rem', color: '#1e3a8a', fontWeight: 800 }}>{armarioCount} EQUIPOS</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '0.9rem', color: '#1e3a8a', fontWeight: 800 }}>
+                                {hasActiveSearch ? `${armarioFilteredCount} / ${armarioCount} EQUIPOS` : `${armarioCount} EQUIPOS`}
+                            </span>
+                            {hasActiveSearch && armarioFilteredCount > 0 && (
+                                <span style={{
+                                    background: '#16a34a', color: 'white',
+                                    padding: '2px 8px', borderRadius: '8px',
+                                    fontSize: '0.75rem', fontWeight: 900
+                                }}>
+                                    {armarioFilteredCount} en armario✓
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
                     <div style={{ padding: '1.25rem', borderBottom: '1px dashed var(--border)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>ESTANTE 1 (Superior) - Rotos / Reutilizados</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>ESTANTE 1 (Superior) - Rotos / Reutilizados</span>
+                                {hasActiveSearch && orgFilteredTotal > 0 && (
+                                    <span style={{
+                                        background: '#16a34a', color: 'white',
+                                        padding: '2px 8px', borderRadius: '8px',
+                                        fontSize: '0.75rem', fontWeight: 900
+                                    }}>
+                                        {orgFilteredTotal} en organizadores✓
+                                    </span>
+                                )}
+                            </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                 <Button
                                     variant="outline"
@@ -2468,18 +2545,27 @@ export default function WarehousePage() {
                                 >
                                     + Agregar ORG
                                 </Button>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{orgAssetsCount} Equipos</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                    {hasActiveSearch && orgFilteredTotal > 0 ? `${orgFilteredTotal} de ${orgAssetsCount} Equipos` : `${orgAssetsCount} Equipos`}
+                                </span>
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                             {organizers.map((org, index) => {
-                                const orgTotalAssets = armarioAssets.filter(a => a.locationId && a.locationId.startsWith(`ARM-O${org.id}-`)).length;
-                                const orgFilteredAssets = hasActiveSearch ? filteredAssets.filter(a => a.locationId && a.locationId.startsWith(`ARM-O${org.id}-`)).length : 0;
+                                const orgTotalAssets = armarioAssets.filter(a => isOrgLoc(a.locationId, org.id, org.name)).length;
+                                const orgFilteredAssets = hasActiveSearch ? filteredAssets.filter(a => isOrgLoc(a.locationId, org.id, org.name)).length : 0;
                                 return (
-                                <div key={`org-${org.id}`} style={{ background: 'var(--background-secondary)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                                <div key={`org-${org.id}`} style={{ 
+                                    background: 'var(--background-secondary)', 
+                                    padding: '0.75rem', 
+                                    borderRadius: '8px', 
+                                    border: hasActiveSearch && orgFilteredAssets > 0 ? '2px solid #16a34a' : '1px solid var(--border)',
+                                    boxShadow: hasActiveSearch && orgFilteredAssets > 0 ? '0 0 10px rgba(22,163,74,0.2)' : 'none',
+                                    transition: 'all 0.2s ease'
+                                }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                         <div 
-                                            style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                            style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                                             onClick={() => {
                                                 const newName = window.prompt(`Ingrese nuevo nombre para el organizador (actual: ${org.name}):`, org.name);
                                                 if (newName) {
@@ -2490,7 +2576,19 @@ export default function WarehousePage() {
                                             }}
                                             title="Clic para cambiar nombre"
                                         >
-                                            {org.name} <span style={{ color: '#3b82f6' }}>({orgTotalAssets})</span>{hasActiveSearch && orgFilteredAssets > 0 && (<span style={{ marginLeft: '4px', background: '#16a34a', color: 'white', padding: '1px 5px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800 }}>✓{orgFilteredAssets}</span>)} <Edit3 size={12} style={{ opacity: 0.5 }} />
+                                            <span>{org.name}</span>
+                                            <span style={{ color: '#3b82f6' }}>({orgTotalAssets})</span>
+                                            {hasActiveSearch && orgFilteredAssets > 0 && (
+                                                <span style={{
+                                                    background: '#16a34a', color: 'white',
+                                                    padding: '2px 7px', borderRadius: '6px',
+                                                    fontSize: '0.75rem', fontWeight: 900,
+                                                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                                                }}>
+                                                    {orgFilteredAssets}✓
+                                                </span>
+                                            )}
+                                            <Edit3 size={12} style={{ opacity: 0.5 }} />
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             <div 
@@ -2538,9 +2636,22 @@ export default function WarehousePage() {
                     </div>
 
                     <div style={{ padding: '1.25rem', borderBottom: '1px dashed var(--border)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>ESTANTE 2 (Nuevos) - iPhones</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{iphAssets.length} Equipos</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>ESTANTE 2 (Nuevos) - iPhones</span>
+                                {hasActiveSearch && iphFilteredCount > 0 && (
+                                    <span style={{
+                                        background: '#16a34a', color: 'white',
+                                        padding: '2px 8px', borderRadius: '8px',
+                                        fontSize: '0.75rem', fontWeight: 900
+                                    }}>
+                                        {iphFilteredCount}✓
+                                    </span>
+                                )}
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                {hasActiveSearch && iphFilteredCount > 0 ? `${iphFilteredCount} de ${iphAssets.length} Equipos` : `${iphAssets.length} Equipos`}
+                            </span>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                             {Array.from({length: iphBoxCount}, (_, i) => i + 1).map(boxNum => renderBox(`ARM-IPH-CAJA${boxNum}`, 'phone'))}
@@ -2548,9 +2659,22 @@ export default function WarehousePage() {
                     </div>
 
                     <div style={{ padding: '1.25rem', borderBottom: '1px dashed var(--border)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>ESTANTE 3 (Nuevos) - Samsungs</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{samAssets.length} Equipos</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>ESTANTE 3 (Nuevos) - Samsungs</span>
+                                {hasActiveSearch && samFilteredCount > 0 && (
+                                    <span style={{
+                                        background: '#16a34a', color: 'white',
+                                        padding: '2px 8px', borderRadius: '8px',
+                                        fontSize: '0.75rem', fontWeight: 900
+                                    }}>
+                                        {samFilteredCount}✓
+                                    </span>
+                                )}
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                {hasActiveSearch && samFilteredCount > 0 ? `${samFilteredCount} de ${samAssets.length} Equipos` : `${samAssets.length} Equipos`}
+                            </span>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                             {Array.from({length: samBoxCount}, (_, i) => i + 1).map(boxNum => renderBox(`ARM-SAM-CAJA${boxNum}`, 'phone'))}
@@ -2558,9 +2682,22 @@ export default function WarehousePage() {
                     </div>
 
                     <div style={{ padding: '1.25rem', background: '#fef2f2' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#b91c1c' }}>BASE (Chatarra / EOL)</span>
-                            <span style={{ fontSize: '0.75rem', color: '#b91c1c' }}>{eolAssets.length} Equipos</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#b91c1c' }}>BASE (Chatarra / EOL)</span>
+                                {hasActiveSearch && eolFilteredCount > 0 && (
+                                    <span style={{
+                                        background: '#16a34a', color: 'white',
+                                        padding: '2px 8px', borderRadius: '8px',
+                                        fontSize: '0.75rem', fontWeight: 900
+                                    }}>
+                                        {eolFilteredCount}✓
+                                    </span>
+                                )}
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: '#b91c1c' }}>
+                                {hasActiveSearch && eolFilteredCount > 0 ? `${eolFilteredCount} de ${eolAssets.length} Equipos` : `${eolAssets.length} Equipos`}
+                            </span>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                             {Array.from({length: eolBoxCount}, (_, i) => i + 1).map(boxNum => renderBox(`ARM-CAJA-${boxNum}`, 'box'))}
@@ -3325,20 +3462,25 @@ export default function WarehousePage() {
                         {/* Result count */}
                         {hasActiveSearch && (
                             <div style={{ 
-                                background: highlightedLocationIds.size > 0 ? 'rgba(250,204,21,0.1)' : 'rgba(239,68,68,0.08)',
-                                border: `1px solid ${highlightedLocationIds.size > 0 ? 'rgba(250,204,21,0.4)' : 'rgba(239,68,68,0.3)'}`,
-                                borderRadius: '8px', padding: '0.6rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                background: warehouseFilteredAssets.length > 0 ? 'rgba(22,163,74,0.08)' : (highlightedLocationIds.size > 0 ? 'rgba(250,204,21,0.1)' : 'rgba(239,68,68,0.08)'),
+                                border: `1px solid ${warehouseFilteredAssets.length > 0 ? 'rgba(22,163,74,0.3)' : (highlightedLocationIds.size > 0 ? 'rgba(250,204,21,0.4)' : 'rgba(239,68,68,0.3)')}`,
+                                borderRadius: '8px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'flex-start', gap: '0.6rem'
                             }}>
-                                <span style={{ fontSize: '1rem' }}>{highlightedLocationIds.size > 0 ? '🔍' : '😶'}</span>
-                                <div>
-                                    <div style={{ fontSize: '0.78rem', fontWeight: 800, color: highlightedLocationIds.size > 0 ? '#854d0e' : '#991b1b' }}>
-                                        {highlightedLocationIds.size > 0 
-                                            ? `${filteredAssets.length} equipo${filteredAssets.length !== 1 ? 's' : ''} encontrado${filteredAssets.length !== 1 ? 's' : ''}`
-                                            : 'Sin resultados'}
+                                <span style={{ fontSize: '1.1rem', marginTop: '1px' }}>{warehouseFilteredAssets.length > 0 ? '📦' : (highlightedLocationIds.size > 0 ? '🔍' : '😶')}</span>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 900, color: warehouseFilteredAssets.length > 0 ? '#15803d' : (highlightedLocationIds.size > 0 ? '#854d0e' : '#991b1b') }}>
+                                        {warehouseFilteredAssets.length > 0 
+                                            ? `${warehouseFilteredAssets.length} en depósito`
+                                            : (highlightedLocationIds.size > 0 ? `${filteredAssets.length} encontrados` : 'Sin resultados')}
                                     </div>
                                     {highlightedLocationIds.size > 0 && (
-                                        <div style={{ fontSize: '0.68rem', color: '#92400e' }}>
-                                            en {highlightedLocationIds.size} ubicación{highlightedLocationIds.size !== 1 ? 'es' : ''} — titilan en el mapa
+                                        <div style={{ fontSize: '0.72rem', color: '#166534', fontWeight: 600, marginTop: '2px' }}>
+                                            Ubicados en {highlightedLocationIds.size} {highlightedLocationIds.size === 1 ? 'posición' : 'posiciones'} (titilan en el mapa)
+                                        </div>
+                                    )}
+                                    {filteredAssets.length > warehouseFilteredAssets.length && (
+                                        <div style={{ fontSize: '0.68rem', color: '#6b7280', marginTop: '3px', borderTop: '1px dashed #d1d5db', paddingTop: '3px' }}>
+                                            {filteredAssets.length} en total en el sistema ({filteredAssets.length - warehouseFilteredAssets.length} asignados/fuera de depósito)
                                         </div>
                                     )}
                                 </div>
