@@ -110,8 +110,15 @@ export default function HistoryPage() {
     // "Similar a Servicios" suggests Admin/Adminstrativo/Gerencial
 
     const historicalTickets = useMemo(() => {
-        // Solo casos en estado "Resuelto"
-        return tickets.filter(t => t.status === 'Resuelto' || t.status === 'Cerrado' || t.status === 'Servicio Facturado' || t.status === 'Caso SFDC Cerrado');
+        // Casos completados/cerrados (Resuelto, Cerrado, Entregado, Finalizado, etc.)
+        return tickets.filter(t => 
+            t.status === 'Resuelto' || 
+            t.status === 'Cerrado' || 
+            t.status === 'Servicio Facturado' || 
+            t.status === 'Caso SFDC Cerrado' ||
+            t.status === 'Entregado' ||
+            t.status === 'Finalizado'
+        );
     }, [tickets]);
 
     const handleSort = (key) => {
@@ -191,6 +198,8 @@ export default function HistoryPage() {
             case 'Resuelto': return 'success';
             case 'Cerrado': return 'success';
             case 'Caso SFDC Cerrado': return 'success';
+            case 'Entregado': return 'success';
+            case 'Finalizado': return 'success';
             case 'Servicio Facturado': return 'info';
             default: return 'default';
         }

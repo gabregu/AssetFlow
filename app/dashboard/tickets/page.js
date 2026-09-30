@@ -940,8 +940,8 @@ export default function TicketsPage() {
                     : t.status === columnFilters.status);
             const matchesRequester = !columnFilters.requester || String(t.requester || '').toLowerCase().includes(columnFilters.requester.toLowerCase());
 
-            // Excluir Resueltos de esta vista, a menos que estemos buscando explicitamente ese estado
-            const isNotResolved = columnFilters.status === 'Resuelto' ? true : isTicketActive(t);
+            // Excluir cerrados/resueltos de la vista por defecto, a menos que estemos buscando por texto o filtrando por estado
+            const isNotResolved = (filter.trim().length > 0 || columnFilters.status !== 'All') ? true : isTicketActive(t);
 
             // Filtrado por Cliente (campo explícito)
             // Aislamiento por Cliente
