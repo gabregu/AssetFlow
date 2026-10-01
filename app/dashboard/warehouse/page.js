@@ -665,7 +665,14 @@ export default function WarehousePage() {
 
             // Status Filter
             if (statusFilter !== 'ALL') {
-                if (asset.status !== statusFilter) return false;
+                const normStatus = (asset.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                const normFilter = statusFilter.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                if (normFilter.includes('REPARACION')) {
+                    const normAssignee = (asset.assignee || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                    if (!normStatus.includes('REPARACION') && !normAssignee.includes('REPARACION')) return false;
+                } else if (normStatus !== normFilter && asset.status !== statusFilter) {
+                    return false;
+                }
             }
 
             // Text Search
@@ -859,13 +866,20 @@ export default function WarehousePage() {
             return !!a.locationId;
         });
         const nuevos = filtered.filter(a => (a.status || '').toUpperCase() === 'NUEVO').length;
+        const reparacion = filtered.filter(a => {
+            const s = (a.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const asg = (a.assignee || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return s.includes('REPARACION') || asg.includes('REPARACION');
+        }).length;
         const eol = filtered.filter(a => {
-            const s = (a.status || '').toUpperCase();
-            return s.includes('DAÑADO') || s.includes('MANTENIMIENTO') || s.includes('REPARACION') || s.includes('EOL');
+            const s = (a.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const asg = (a.assignee || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (s.includes('REPARACION') || asg.includes('REPARACION')) return false;
+            return s.includes('DANADO') || s.includes('MANTENIMIENTO') || s.includes('EOL');
         }).length;
         const actualTotal = filtered.length;
-        const reutilizados = actualTotal - nuevos - eol;
-        return { nuevos, reutilizados, eol, total: actualTotal || 1, actualTotal };
+        const reutilizados = Math.max(0, actualTotal - nuevos - reparacion - eol);
+        return { nuevos, reutilizados, reparacion, eol, total: actualTotal || 1, actualTotal };
     }, [assets, countryFilter]);
 
     const targetLocationsGrouped = useMemo(() => {
@@ -2229,6 +2243,66 @@ export default function WarehousePage() {
         return titleLines.join('\n');
     };
 
+    const getLocationStatusColors = (locationAssets) => {
+        if (!locationAssets || locationAssets.length === 0) {
+            return { bgColor: 'transparent', borderColor: 'var(--border)' };
+        }
+
+        // 1. En Reparación (Violeta)
+        const isReparacion = locationAssets.some(a => {
+            const s = (a.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const asg = (a.assignee || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return s.includes('REPARACION') || asg.includes('REPARACION');
+        });
+
+        if (isReparacion) {
+            return { bgColor: '#8b5cf6', borderColor: '#7c3aed' }; // Violeta
+        }
+
+        // 2. Dañado / EOL (Rojo)
+        const isDanado = locationAssets.some(a => {
+            const s = (a.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return s.includes('DANADO') || s.includes('EOL');
+        });
+
+        if (isDanado) {
+            return { bgColor: '#ef4444', borderColor: '#dc2626' }; // Rojo
+        }
+
+        // 3. Mantenimiento (Naranja)
+        const isMantenimiento = locationAssets.some(a => {
+            const s = (a.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return s.includes('MANTENIMIENTO');
+        });
+
+        if (isMantenimiento) {
+            return { bgColor: '#f97316', borderColor: '#ea580c' }; // Naranja
+        }
+
+        // 4. Recuperado (Azul)
+        const isRecuperado = locationAssets.some(a => {
+            const s = (a.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return s.includes('RECUPERADO');
+        });
+
+        if (isRecuperado) {
+            return { bgColor: '#3b82f6', borderColor: '#2563eb' }; // Azul
+        }
+
+        // 5. Nuevo (Verde)
+        const isNuevo = locationAssets.some(a => {
+            const s = (a.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return s.includes('NUEVO');
+        });
+
+        if (isNuevo) {
+            return { bgColor: '#10b981', borderColor: '#059669' }; // Verde
+        }
+
+        // Default Verde
+        return { bgColor: '#10b981', borderColor: '#059669' };
+    };
+
     const renderArmarioCelulares = () => {
         const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'Administrador' || currentUser?.role === 'Gerencial';
         const armarioAssets = assets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-'));
@@ -2295,14 +2369,11 @@ export default function WarehousePage() {
             let borderColor = 'var(--border)';
 
             if (assetCount > 0) {
-                const status = locationAssets[0]?.status?.toUpperCase() || '';
-                if (status.includes('NUEVO')) { bgColor = '#10b981'; borderColor = '#10b981'; }
-                else if (status.includes('RECUPERADO')) { bgColor = '#3b82f6'; borderColor = '#3b82f6'; }
-                else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) { bgColor = '#f97316'; borderColor = '#f97316'; }
-                else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) { bgColor = '#ef4444'; borderColor = '#ef4444'; }
-                else { bgColor = '#10b981'; borderColor = '#10b981'; }
+                const colors = getLocationStatusColors(locationAssets);
+                bgColor = colors.bgColor;
+                borderColor = colors.borderColor;
             }
-            if (isAuditMode && auditLocation?.id === locId) { bgColor = '#8b5cf6'; borderColor = '#8b5cf6'; }
+            if (isAuditMode && auditLocation?.id === locId) { bgColor = '#ec4899'; borderColor = '#db2777'; }
 
             const isFilteredHit = isHighlighted && filteredInSlot > 0;
 
@@ -2959,28 +3030,14 @@ export default function WarehousePage() {
                                         let borderColor = 'var(--border)';
 
                                         if (assetCount > 0) {
-                                            const status = locationAssets[0]?.status?.toUpperCase() || '';
-                                            if (status.includes('NUEVO')) {
-                                                bgColor = '#10b981'; // Green
-                                                borderColor = '#10b981';
-                                            } else if (status.includes('RECUPERADO')) {
-                                                bgColor = '#3b82f6'; // Blue
-                                                borderColor = '#3b82f6';
-                                            } else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) {
-                                                bgColor = '#f97316'; // Orange
-                                                borderColor = '#f97316';
-                                            } else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) {
-                                                bgColor = '#ef4444'; // Red
-                                                borderColor = '#ef4444';
-                                            } else {
-                                                bgColor = '#10b981'; // Default green
-                                                borderColor = '#10b981';
-                                            }
+                                            const colors = getLocationStatusColors(locationAssets);
+                                            bgColor = colors.bgColor;
+                                            borderColor = colors.borderColor;
                                         }
                                         
                                         if (isAuditMode && auditLocation?.id === locId) {
-                                            bgColor = '#8b5cf6';
-                                            borderColor = '#8b5cf6';
+                                            bgColor = '#ec4899';
+                                            borderColor = '#db2777';
                                         }
 
                                         const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
@@ -3057,7 +3114,9 @@ export default function WarehousePage() {
                             if (assetCount > 0) {
                                 textColor = 'white';
                                 const status = locationAssets[0]?.status;
-                                if (['Mantenimiento', 'Dañado'].includes(status)) {
+                                if ((status || '').toLowerCase().includes('reparac')) {
+                                    bgColor = '#8b5cf6';
+                                } else if (['Mantenimiento', 'Dañado'].includes(status)) {
                                     bgColor = '#f97316';
                                 } else if (status === 'Asignado') {
                                     bgColor = '#84cc16';
@@ -3124,6 +3183,7 @@ export default function WarehousePage() {
     const total = statusCounts.total;
     const percentNuevos = (statusCounts.nuevos / total) * 100;
     const percentReutilizados = (statusCounts.reutilizados / total) * 100;
+    const percentReparacion = ((statusCounts.reparacion || 0) / total) * 100;
 
     // Helper to render customized text lines in grid cells
     const renderCellContent = (loc, assetCount, locationAssets) => {
@@ -3303,13 +3363,14 @@ export default function WarehousePage() {
                         <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--background-secondary)', borderRadius: '8px', padding: '0.5rem 0.75rem', alignItems: 'center' }}>
                             <div style={{
                                 width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
-                                background: `conic-gradient(#10b981 0% ${percentNuevos}%, #3b82f6 ${percentNuevos}% ${percentNuevos + percentReutilizados}%, #f97316 ${percentNuevos + percentReutilizados}% 100%)`,
+                                background: `conic-gradient(#10b981 0% ${percentNuevos}%, #3b82f6 ${percentNuevos}% ${percentNuevos + percentReutilizados}%, #8b5cf6 ${percentNuevos + percentReutilizados}% ${percentNuevos + percentReutilizados + percentReparacion}%, #ef4444 ${percentNuevos + percentReutilizados + percentReparacion}% 100%)`,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 8px var(--background-secondary)'
                             }} />
                             <div style={{ display: 'flex', gap: '0.6rem', flex: 1, flexWrap: 'wrap' }}>
                                 <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#10b981' }}>● {statusCounts.nuevos} Nuevos</span>
                                 <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#3b82f6' }}>● {statusCounts.reutilizados} Reutilizados</span>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#f97316' }}>● {statusCounts.eol} EOL/Dañados</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#8b5cf6' }}>● {statusCounts.reparacion || 0} En Reparación</span>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#ef4444' }}>● {statusCounts.eol} EOL/Dañados</span>
                             </div>
                             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-secondary)' }}>{statusCounts.actualTotal}</span>
                         </div>
@@ -3592,8 +3653,8 @@ export default function WarehousePage() {
                                                         <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)' }}>{asset.serial || 'N/A'}</span>
                                                         <span style={{ 
                                                             padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
-                                                            backgroundColor: ['Mantenimiento', 'Dañado'].includes(asset.status) ? '#fff7ed' : (asset.status === 'Asignado' ? '#f0fdf4' : '#eff6ff'),
-                                                            color: ['Mantenimiento', 'Dañado'].includes(asset.status) ? '#ea580c' : (asset.status === 'Asignado' ? '#16a34a' : '#2563eb'),
+                                                            backgroundColor: (asset.status || '').toLowerCase().includes('reparac') ? '#f5f3ff' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#fff7ed' : (asset.status === 'Asignado' ? '#f0fdf4' : '#eff6ff')),
+                                                            color: (asset.status || '').toLowerCase().includes('reparac') ? '#7c3aed' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#ea580c' : (asset.status === 'Asignado' ? '#16a34a' : '#2563eb')),
                                                             border: '1px solid currentColor'
                                                         }}>
                                                             {asset.status}
@@ -3687,8 +3748,8 @@ export default function WarehousePage() {
                                                     <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)', fontSize: '0.75rem' }}>{a.serial || 'N/A'}</span>
                                                     <span style={{ 
                                                         padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
-                                                        backgroundColor: ['Mantenimiento', 'Dañado'].includes(a.status) ? '#fff7ed' : (a.status === 'Asignado' ? '#f0fdf4' : '#eff6ff'),
-                                                        color: ['Mantenimiento', 'Dañado'].includes(a.status) ? '#ea580c' : (a.status === 'Asignado' ? '#16a34a' : '#2563eb'),
+                                                        backgroundColor: (a.status || '').toLowerCase().includes('reparac') ? '#f5f3ff' : (['Mantenimiento', 'Dañado'].includes(a.status) ? '#fff7ed' : (a.status === 'Asignado' ? '#f0fdf4' : '#eff6ff')),
+                                                        color: (a.status || '').toLowerCase().includes('reparac') ? '#7c3aed' : (['Mantenimiento', 'Dañado'].includes(a.status) ? '#ea580c' : (a.status === 'Asignado' ? '#16a34a' : '#2563eb')),
                                                         border: '1px solid currentColor'
                                                     }}>
                                                         {a.status}
@@ -3765,8 +3826,8 @@ export default function WarehousePage() {
                                                 <strong>Estado:</strong> 
                                                 <span style={{ 
                                                     padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800,
-                                                    backgroundColor: ['Mantenimiento', 'Dañado'].includes(asset.status) ? '#fff7ed' : (asset.status === 'Asignado' ? '#f0fdf4' : '#eff6ff'),
-                                                    color: ['Mantenimiento', 'Dañado'].includes(asset.status) ? '#ea580c' : (asset.status === 'Asignado' ? '#16a34a' : '#2563eb'),
+                                                    backgroundColor: (asset.status || '').toLowerCase().includes('reparac') ? '#f5f3ff' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#fff7ed' : (asset.status === 'Asignado' ? '#f0fdf4' : '#eff6ff')),
+                                                    color: (asset.status || '').toLowerCase().includes('reparac') ? '#7c3aed' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#ea580c' : (asset.status === 'Asignado' ? '#16a34a' : '#2563eb')),
                                                     border: `1px solid currentColor`
                                                 }}>
                                                     {asset.status} (Verificado)
@@ -3926,10 +3987,23 @@ export default function WarehousePage() {
                         </div>
 
                         {/* DEP legend */}
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.68rem', color: '#6b7280', fontWeight: 600 }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.68rem', color: '#6b7280', fontWeight: 600, alignItems: 'center' }}>
                             <span style={{ background: '#ecfdf5', color: '#059669', padding: '2px 6px', borderRadius: '4px' }}>Formato: Repisa - Estante - Posición</span>
-                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 6px', borderRadius: '4px' }}>Estante 1 = suelo → 5 = alto</span>
-                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 6px', borderRadius: '4px' }}>Pos. 1 = izq → 5 = der</span>
+                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span> Nuevo
+                            </span>
+                            <span style={{ background: '#eff6ff', color: '#2563eb', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6', display: 'inline-block' }}></span> Reutilizado
+                            </span>
+                            <span style={{ background: '#f5f3ff', color: '#7c3aed', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px', border: '1px solid #ddd6fe' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#8b5cf6', display: 'inline-block' }}></span> En Reparación
+                            </span>
+                            <span style={{ background: '#fff7ed', color: '#ea580c', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f97316', display: 'inline-block' }}></span> Mantenimiento
+                            </span>
+                            <span style={{ background: '#fef2f2', color: '#dc2626', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', display: 'inline-block' }}></span> Dañado / EOL
+                            </span>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -4028,17 +4102,14 @@ export default function WarehousePage() {
                                     let borderColor = 'var(--border)';
 
                                     if (assetCount > 0) {
-                                        const status = locationAssets[0]?.status?.toUpperCase() || '';
-                                        if (status.includes('NUEVO')) { bgColor = '#10b981'; borderColor = '#10b981'; }
-                                        else if (status.includes('RECUPERADO')) { bgColor = '#3b82f6'; borderColor = '#3b82f6'; }
-                                        else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) { bgColor = '#f97316'; borderColor = '#f97316'; }
-                                        else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) { bgColor = '#ef4444'; borderColor = '#ef4444'; }
-                                        else { bgColor = '#10b981'; borderColor = '#10b981'; }
+                                        const colors = getLocationStatusColors(locationAssets);
+                                        bgColor = colors.bgColor;
+                                        borderColor = colors.borderColor;
                                     }
                                     
                                     if (isAuditMode && auditLocation?.id === locId) {
-                                        bgColor = '#8b5cf6';
-                                        borderColor = '#8b5cf6';
+                                        bgColor = '#ec4899';
+                                        borderColor = '#db2777';
                                     }
                                     
                                     return (
@@ -4217,17 +4288,14 @@ export default function WarehousePage() {
                                     let borderColor = 'var(--border)';
 
                                     if (assetCount > 0) {
-                                        const status = locationAssets[0]?.status?.toUpperCase() || '';
-                                        if (status.includes('NUEVO')) { bgColor = '#10b981'; borderColor = '#10b981'; }
-                                        else if (status.includes('RECUPERADO')) { bgColor = '#3b82f6'; borderColor = '#3b82f6'; }
-                                        else if (status.includes('REPARACION') || status.includes('MANTENIMIENTO')) { bgColor = '#f97316'; borderColor = '#f97316'; }
-                                        else if (status.includes('DAÑADO') || status.includes('DANADO') || status.includes('EOL')) { bgColor = '#ef4444'; borderColor = '#ef4444'; }
-                                        else { bgColor = '#10b981'; borderColor = '#10b981'; }
+                                        const colors = getLocationStatusColors(locationAssets);
+                                        bgColor = colors.bgColor;
+                                        borderColor = colors.borderColor;
                                     }
                                     
                                     if (isAuditMode && auditLocation?.id === locId) {
-                                        bgColor = '#8b5cf6';
-                                        borderColor = '#8b5cf6';
+                                        bgColor = '#ec4899';
+                                        borderColor = '#db2777';
                                     }
                                     
                                     return (
