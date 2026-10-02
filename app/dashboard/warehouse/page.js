@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
     Search, 
@@ -3260,11 +3260,11 @@ export default function WarehousePage() {
             gap: '0.75rem'
         };
 
-        const CardWrapper = ({ children }) => isFloating ? <div style={cardStyle}>{children}</div> : <Card style={cardStyle}>{children}</Card>;
+        const CardContainer = isFloating ? 'div' : Card;
 
         if (locationAssets.length > 0 && !asset) {
             return (
-                <CardWrapper>
+                <CardContainer style={cardStyle}>
                     <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
                             <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Equipos en Ubicación</span>
@@ -3391,12 +3391,12 @@ export default function WarehousePage() {
                             style={{ height: '32px', fontSize: '0.75rem', width: '100%' }}
                         >Mover Todos los Activos ({locationAssets.length})</Button>
                     </div>
-                </CardWrapper>
+                </CardContainer>
             );
         }
 
         return (
-            <CardWrapper>
+            <CardContainer style={cardStyle}>
                 <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                         <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Información de Selección</span>
@@ -3530,7 +3530,7 @@ export default function WarehousePage() {
                         style={{ height: '32px', fontSize: '0.75rem', marginTop: '0.25rem' }}
                     >&larr; Ver los otros {locationAssets.length - 1} equipos</Button>
                 )}
-            </CardWrapper>
+            </CardContainer>
         );
     };
 
