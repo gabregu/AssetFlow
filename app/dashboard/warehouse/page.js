@@ -236,45 +236,60 @@ export default function WarehousePage() {
     }, []);
 
     useEffect(() => {
-        if (!floatingPopover) return;
-        const handleOutsideClick = (e) => {
-            if (floatingPopoverRef.current && !floatingPopoverRef.current.contains(e.target)) {
-                const isSlot = e.target.closest('[data-warehouse-slot]');
-                const isModal = e.target.closest('.modal') || e.target.closest('[role="dialog"]');
-                if (!isSlot && !isModal) {
-                    setFloatingPopover(null);
-                }
-            }
-        };
-        const handleKeyDown = (e) => {
-            if (e.key === 'Escape') setFloatingPopover(null);
-        };
-        const handleScrollOrResize = () => {
-            if (floatingPopover?.targetEl) {
-                const r = floatingPopover.targetEl.getBoundingClientRect();
-                // Close if scrolled completely offscreen
-                if (r.bottom < -30 || r.top > window.innerHeight + 30) {
-                    setFloatingPopover(null);
+        if (!selectedLocation) {
+            setFloatingPopover(null);
+            return;
+        }
+
+        const updatePosition = () => {
+            const locId = selectedLocation.id;
+            const escapedId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(locId) : locId.replace(/["\\]/g, '\\$&');
+            const targetEl = document.querySelector(`[data-slot-id="${escapedId}"]`);
+            if (targetEl) {
+                const coords = computePopoverCoords(targetEl);
+                if (coords) {
+                    setFloatingPopover(coords);
                     return;
                 }
-                const updated = computePopoverCoords(floatingPopover.targetEl);
-                if (updated) {
-                    setFloatingPopover(updated);
-                }
+            }
+            // Fallback safe position if element is temporarily not in DOM
+            setFloatingPopover(prev => prev || {
+                top: Math.max(80, Math.round(window.innerHeight / 2 - 110)),
+                left: Math.max(20, Math.round(window.innerWidth / 2 - 155)),
+                cardWidth: 310,
+                cardHeight: 220,
+                placement: null
+            });
+        };
+
+        updatePosition();
+        const animFrame = requestAnimationFrame(updatePosition);
+        const timer = setTimeout(updatePosition, 80);
+
+        const handleScrollOrResize = () => {
+            updatePosition();
+        };
+
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setSelectedLocation(null);
+                setFloatingPopover(null);
             }
         };
 
-        window.addEventListener('mousedown', handleOutsideClick);
-        window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('scroll', handleScrollOrResize, { passive: true });
         window.addEventListener('resize', handleScrollOrResize, { passive: true });
+        window.addEventListener('keydown', handleKeyDown);
+
         return () => {
-            window.removeEventListener('mousedown', handleOutsideClick);
-            window.removeEventListener('keydown', handleKeyDown);
+            cancelAnimationFrame(animFrame);
+            clearTimeout(timer);
             window.removeEventListener('scroll', handleScrollOrResize);
             window.removeEventListener('resize', handleScrollOrResize);
+            window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [floatingPopover, computePopoverCoords]);
+    }, [selectedLocation, computePopoverCoords]);
+
 
     // Move Asset States
     const [isMoveAssetModalOpen, setIsMoveAssetModalOpen] = useState(false);
@@ -1293,13 +1308,14 @@ export default function WarehousePage() {
                     setFloatingPopover(coords);
                 }
             } else if (typeof document !== 'undefined') {
-                const foundEl = document.querySelector(`[data-slot-id="${loc.id}"]`);
+                const escapedId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(loc.id) : loc.id.replace(/["\\]/g, '\\$&');
+                const foundEl = document.querySelector(`[data-slot-id="${escapedId}"]`);
                 if (foundEl) {
                     foundEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     setTimeout(() => {
                         const coords = computePopoverCoords(foundEl);
                         if (coords) setFloatingPopover(coords);
-                    }, 200);
+                    }, 80);
                 }
             }
         }
@@ -5628,63 +5644,67 @@ return renderSelectionInfoContent(false);
             </Modal>
 
             {/* Floating Selection Card / Popover directly alongside selected slot */}
-            {floatingPopover && selectedLocation && (
+            {selectedLocation && (
                 <div
                     ref={floatingPopoverRef}
                     style={{
                         position: 'fixed',
-                        top: floatingPopover.isMobile ? undefined : `${floatingPopover.top}px`,
-                        left: `${floatingPopover.left}px`,
-                        right: floatingPopover.right ? `${floatingPopover.right}px` : undefined,
-                        bottom: floatingPopover.bottom ? `${floatingPopover.bottom}px` : undefined,
-                        width: floatingPopover.isMobile ? 'auto' : `${floatingPopover.cardWidth || 300}px`,
-                        maxHeight: 'min(380px, calc(100vh - 24px))',
+                        top: floatingPopover?.isMobile ? undefined : `${floatingPopover?.top ?? 120}px`,
+                        left: floatingPopover?.left !== undefined ? `${floatingPopover.left}px` : (floatingPopover?.isMobile ? '12px' : '20px'),
+                        right: floatingPopover?.right !== undefined ? `${floatingPopover.right}px` : (floatingPopover?.isMobile ? '12px' : undefined),
+                        bottom: floatingPopover?.bottom !== undefined ? `${floatingPopover.bottom}px` : (floatingPopover?.isMobile ? '12px' : undefined),
+                        width: floatingPopover?.isMobile ? 'auto' : `${floatingPopover?.cardWidth || 310}px`,
+                        maxHeight: 'min(390px, calc(100vh - 24px))',
                         overflowY: 'auto',
-                        background: 'var(--card-bg)',
+                        background: 'var(--surface, #ffffff)',
+                        color: 'var(--text-main)',
                         border: '2px solid var(--primary-color)',
                         borderRadius: '12px',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.28), 0 10px 10px -5px rgba(0, 0, 0, 0.15)',
                         zIndex: 9999,
                         padding: '0.85rem',
                         animation: 'fadeInPop 0.15s ease-out'
                     }}
                 >
                     {/* Visual pointer arrow pointing directly to the clicked slot */}
-                    {floatingPopover.placement && !floatingPopover.isMobile && (
+                    {floatingPopover?.placement && !floatingPopover.isMobile && (
                         <div
                             style={{
                                 position: 'absolute',
                                 width: '12px',
                                 height: '12px',
-                                background: 'var(--card-bg)',
+                                background: 'var(--surface, #ffffff)',
                                 border: '2px solid var(--primary-color)',
                                 transform: 'rotate(45deg)',
                                 zIndex: 10,
                                 ...(floatingPopover.placement === 'right' ? {
                                     left: '-7px',
-                                    top: `${Math.max(12, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardHeight || 220) - 20))}px`,
+                                    top: `${Math.max(14, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardHeight || 220) - 24))}px`,
                                     borderRight: 'none',
                                     borderTop: 'none'
                                 } : floatingPopover.placement === 'left' ? {
                                     right: '-7px',
-                                    top: `${Math.max(12, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardHeight || 220) - 20))}px`,
+                                    top: `${Math.max(14, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardHeight || 220) - 24))}px`,
                                     borderLeft: 'none',
                                     borderBottom: 'none'
                                 } : floatingPopover.placement === 'top' ? {
                                     bottom: '-7px',
-                                    left: `${Math.max(12, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardWidth || 300) - 24))}px`,
+                                    left: `${Math.max(14, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardWidth || 310) - 24))}px`,
                                     borderLeft: 'none',
                                     borderTop: 'none'
                                 } : {
                                     top: '-7px',
-                                    left: `${Math.max(12, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardWidth || 300) - 24))}px`,
+                                    left: `${Math.max(14, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardWidth || 310) - 24))}px`,
                                     borderRight: 'none',
                                     borderBottom: 'none'
                                 })
                             }}
                         />
                     )}
-                    {renderSelectionInfoContent(true, () => setFloatingPopover(null))}
+                    {renderSelectionInfoContent(true, () => {
+                        setSelectedLocation(null);
+                        setFloatingPopover(null);
+                    })}
                 </div>
             )}
 
