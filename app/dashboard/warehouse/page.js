@@ -158,6 +158,30 @@ export default function WarehousePage() {
     const [isAuditMode, setIsAuditMode] = useState(false);
     const [mappingStep, setMappingStep] = useState(1); // 1: Scan Asset, 2: Scan Location
     const [scannedAsset, setScannedAsset] = useState(null);
+    const [floatingPopover, setFloatingPopover] = useState(null);
+    const floatingPopoverRef = useRef(null);
+
+    useEffect(() => {
+        if (!floatingPopover) return;
+        const handleOutsideClick = (e) => {
+            if (floatingPopoverRef.current && !floatingPopoverRef.current.contains(e.target)) {
+                const isSlot = e.target.closest('[data-warehouse-slot]');
+                const isModal = e.target.closest('.modal') || e.target.closest('[role="dialog"]');
+                if (!isSlot && !isModal) {
+                    setFloatingPopover(null);
+                }
+            }
+        };
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') setFloatingPopover(null);
+        };
+        window.addEventListener('mousedown', handleOutsideClick);
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('mousedown', handleOutsideClick);
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [floatingPopover]);
 
     // Move Asset States
     const [isMoveAssetModalOpen, setIsMoveAssetModalOpen] = useState(false);
@@ -1105,7 +1129,7 @@ export default function WarehousePage() {
         }
     };
 
-    const handleScanLocation = (locationId) => {
+    const handleScanLocation = (locationId, event = null) => {
         const searchNorm = normalizeId(locationId);
         let loc = warehouseLocations.find(l => 
             normalizeId(l.id) === searchNorm
@@ -1166,6 +1190,31 @@ export default function WarehousePage() {
                 }, 50);
             } else {
                 setSelectedAssetId(null);
+            }
+
+            // Calculate floating popover position anchored to clicked element
+            if (event && event.currentTarget) {
+                const rect = event.currentTarget.getBoundingClientRect();
+                const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+                if (isMobile) {
+                    setFloatingPopover({ isMobile: true, top: 'auto', left: 16, right: 16, bottom: 16 });
+                } else {
+                    const popoverWidth = 330;
+                    const popoverHeight = 440;
+
+                    let left = rect.right + 14;
+                    if (left + popoverWidth > window.innerWidth - 16) {
+                        left = Math.max(16, rect.left - 14 - popoverWidth);
+                    }
+
+                    let top = rect.top + (rect.height / 2) - 80;
+                    if (top + popoverHeight > window.innerHeight - 16) {
+                        top = Math.max(16, window.innerHeight - popoverHeight - 16);
+                    }
+                    if (top < 16) top = 16;
+
+                    setFloatingPopover({ top, left });
+                }
             }
         }
     };
@@ -2380,7 +2429,7 @@ export default function WarehousePage() {
             return (
                 <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                     <div 
-                        onClick={() => handleScanLocation(locId)}
+                        onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true"
                         title={buildAssetTooltip(locationAssets, locId)}
                         className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                         style={{
@@ -2463,7 +2512,7 @@ export default function WarehousePage() {
             return (
                 <div 
                     key={locId}
-                    onClick={() => handleScanLocation(locId)}
+                    onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true"
                     title={`${boxCustomName ? `${boxCustomName} (${locId})` : locId}\n${buildAssetTooltip(locationAssets, locId)}`}
                     className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                     style={{
@@ -3048,7 +3097,7 @@ export default function WarehousePage() {
                                                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
                                             >
                                                 <div 
-                                                    onClick={() => handleScanLocation(locId)}
+                                                    onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true"
                                                     title={buildAssetTooltip(locationAssets, locId)}
                                                     className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                     style={{
@@ -3139,7 +3188,7 @@ export default function WarehousePage() {
                             return (
                                 <div 
                                     key={loc.id}
-                                    onClick={() => handleScanLocation(loc.id)}
+                                    onClick={(e) => handleScanLocation(loc.id, e)} data-warehouse-slot="true"
                                     title={buildAssetTooltip(locationAssets, loc.id)}
                                     className={isHighlighted ? 'search-pulse' : ''}
                                     style={{
@@ -3186,6 +3235,305 @@ export default function WarehousePage() {
     const percentReparacion = ((statusCounts.reparacion || 0) / total) * 100;
 
     // Helper to render customized text lines in grid cells
+        const renderSelectionInfoContent = (isFloating = false, onClose = null) => {
+        if (!selectedLocation) {
+            if (isFloating) return null;
+            return (
+                <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)', minHeight: '180px' }}>
+                    <History size={32} style={{ opacity: 0.15, marginBottom: '0.75rem' }} />
+                    <p style={{ fontSize: '0.8rem', margin: 0 }}>Seleccione una ubicación en el mapa para ver sus detalles.</p>
+                </Card>
+            );
+        }
+
+        const locationAssets = assets.filter(a => a.locationId === selectedLocation.id);
+        const asset = selectedAssetId ? locationAssets.find(a => a.id === selectedAssetId) : (locationAssets.length === 1 ? locationAssets[0] : null);
+
+        const cardStyle = isFloating ? {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.65rem'
+        } : {
+            padding: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem'
+        };
+
+        const CardWrapper = ({ children }) => isFloating ? <div style={cardStyle}>{children}</div> : <Card style={cardStyle}>{children}</Card>;
+
+        if (locationAssets.length > 0 && !asset) {
+            return (
+                <CardWrapper>
+                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Equipos en Ubicación</span>
+                            <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Ubicación: {selectedLocation.id}</h3>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Total: {locationAssets.length} equipos</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                            {locationAssets.length > 0 && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    icon={Download} 
+                                    onClick={() => {
+                                        const wb = XLSX.utils.book_new();
+                                        const dataToExport = locationAssets.map(a => ({
+                                            'ID': a.id,
+                                            'Nombre': a.name,
+                                            'Modelo': a.modelNumber || a.hardwareSpec || 'N/A',
+                                            'Número de Serie': a.serial || 'N/A',
+                                            'Estado': a.status,
+                                            'Ubicación': a.locationId || 'N/A',
+                                            'Asignado a': a.assignee || 'Almacén',
+                                            'Última Actualización': a.date_last_update ? new Date(a.date_last_update).toLocaleDateString() : 'N/A',
+                                            'Notas': a.notes || ''
+                                        }));
+                                        const ws = XLSX.utils.json_to_sheet(dataToExport);
+                                        XLSX.utils.book_append_sheet(wb, ws, "Equipos");
+                                        XLSX.writeFile(wb, `Equipos_${selectedLocation.id}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                                    }}
+                                    style={{ height: '28px', fontSize: '0.75rem', padding: '0 8px' }}
+                                >
+                                    Exportar
+                                </Button>
+                            )}
+                            {isFloating && onClose && (
+                                <button
+                                    onClick={onClose}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 800, lineHeight: 1 }}
+                                    title="Cerrar"
+                                >✕</button>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingRight: '4px', maxHeight: isFloating ? '220px' : 'calc(100vh - 310px)' }}>
+                        {locationAssets.map(a => (
+                            <div 
+                                key={a.id} 
+                                onClick={() => setSelectedAssetId(a.id)}
+                                style={{ 
+                                    fontSize: '0.8rem', 
+                                    padding: '0.45rem 0.65rem', 
+                                    background: 'var(--background-secondary)', 
+                                    borderRadius: '6px', 
+                                    border: '1px solid var(--border)', 
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                <div style={{ fontWeight: 700, marginBottom: '1px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>{a.name}</span>
+                                </div>
+                                {a.hardwareSpec && <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginBottom: '3px' }}>{a.hardwareSpec}</div>}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)', fontSize: '0.75rem' }}>{a.serial || 'N/A'}</span>
+                                    <span style={{ 
+                                        padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
+                                        backgroundColor: (a.status || '').toLowerCase().includes('reparac') ? '#f5f3ff' : (['Mantenimiento', 'Dañado'].includes(a.status) ? '#fff7ed' : (a.status === 'Asignado' ? '#f0fdf4' : '#eff6ff')),
+                                        color: (a.status || '').toLowerCase().includes('reparac') ? '#7c3aed' : (['Mantenimiento', 'Dañado'].includes(a.status) ? '#ea580c' : (a.status === 'Asignado' ? '#16a34a' : '#2563eb')),
+                                        border: '1px solid currentColor'
+                                    }}>
+                                        {a.status}
+                                    </span>
+                                </div>
+                                {getDriverForAsset(a) && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.67rem', color: '#1d4ed8', marginTop: '3px' }}>
+                                        <Truck size={11} style={{ flexShrink: 0 }} />
+                                        <span>Conductor: <strong>{getDriverForAsset(a)}</strong></span>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: 'auto' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                icon={Edit3} 
+                                onClick={() => {
+                                    setEditLoc({
+                                        aisle: selectedLocation.aisle,
+                                        section: selectedLocation.section,
+                                        level: selectedLocation.level
+                                    });
+                                    setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
+                                    setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
+                                    setIsEditLocationModalOpen(true);
+                                    if (isFloating && onClose) onClose();
+                                }}
+                                style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
+                            >Editar Ubicación</Button>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                icon={Printer} 
+                                onClick={() => handlePrintLocationLabel(selectedLocation)}
+                                style={{ flex: 1, height: '32px', fontSize: '0.75rem', color: '#0d9488', borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,0.07)' }}
+                            >
+                                {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta de posición'}
+                            </Button>
+                        </div>
+                        <Button 
+                            variant="primary" 
+                            size="sm" 
+                            icon={Navigation} 
+                            onClick={() => {
+                                setMovingAllSourceLocation(selectedLocation);
+                                setTargetAllLocationId('');
+                                setIsMoveAllModalOpen(true);
+                                if (isFloating && onClose) onClose();
+                            }}
+                            style={{ height: '32px', fontSize: '0.75rem', width: '100%' }}
+                        >Mover Todos los Activos ({locationAssets.length})</Button>
+                    </div>
+                </CardWrapper>
+            );
+        }
+
+        return (
+            <CardWrapper>
+                <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Información de Selección</span>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Ubicación: {selectedLocation.id}</h3>
+                    </div>
+                    {isFloating && onClose && (
+                        <button
+                            onClick={onClose}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '1rem', fontWeight: 800, lineHeight: 1 }}
+                            title="Cerrar"
+                        >✕</button>
+                    )}
+                </div>
+
+                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {asset ? (
+                        <>
+                            <div><strong>Modelo:</strong> {asset.name}</div>
+                            <div><strong>N/P:</strong> {asset.model_number || asset.part_number || 'N/A'}</div>
+                            <div><strong>SN:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{asset.serial || 'N/A'}</span></div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <strong>Estado:</strong> 
+                                <span style={{ 
+                                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800,
+                                    backgroundColor: (asset.status || '').toLowerCase().includes('reparac') ? '#f5f3ff' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#fff7ed' : (asset.status === 'Asignado' ? '#f0fdf4' : '#eff6ff')),
+                                    color: (asset.status || '').toLowerCase().includes('reparac') ? '#7c3aed' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#ea580c' : (asset.status === 'Asignado' ? '#16a34a' : '#2563eb')),
+                                    border: `1px solid currentColor`
+                                }}>
+                                    {asset.status} (Verificado)
+                                </span>
+                            </div>
+                            {asset.hardwareSpec && <div><strong>Specs:</strong> {asset.hardwareSpec}</div>}
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', background: 'var(--background-secondary)', padding: '0.6rem', borderRadius: '6px', marginTop: '0.25rem' }}>
+                                <div>Mapeado el: {asset.dateMapped ? new Date(asset.dateMapped).toLocaleDateString() : 'N/A'}</div>
+                                <div>Por: {asset.updatedBy || 'N/A'}</div>
+                                {getDriverForAsset(asset) && (
+                                    <div style={{ marginTop: '3px', color: '#1d4ed8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <Truck size={12} style={{ flexShrink: 0 }} />
+                                        <span>Conductor: {getDriverForAsset(asset)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '0.75rem' }}>Esta ubicación está vacía / disponible.</div>
+                    )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                    {asset && (
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            icon={Edit3} 
+                            onClick={() => {
+                                handleOpenEditAsset(asset);
+                                if (isFloating && onClose) onClose();
+                            }}
+                            style={{ flex: '1 1 calc(50% - 0.25rem)', height: '32px', fontSize: '0.75rem' }}
+                        >Editar Equipo</Button>
+                    )}
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        icon={Edit3} 
+                        onClick={() => {
+                            setEditLoc({
+                                aisle: selectedLocation.aisle,
+                                section: selectedLocation.section,
+                                level: selectedLocation.level
+                            });
+                            setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
+                            setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
+                            setIsEditLocationModalOpen(true);
+                            if (isFloating && onClose) onClose();
+                        }}
+                        style={{ flex: asset ? '1 1 calc(50% - 0.25rem)' : '1', height: '32px', fontSize: '0.75rem' }}
+                    >Editar Ubicación</Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        icon={Printer} 
+                        onClick={() => handlePrintLocationLabel(selectedLocation)}
+                        style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem', color: '#0d9488', borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,0.07)' }}
+                    >
+                        {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta de posición'}
+                    </Button>
+                    {asset && (
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            icon={Printer} 
+                            onClick={() => handlePrintAssetLabel(asset)}
+                            style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem', color: '#7c3aed', borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.07)' }}
+                        >
+                            Etiqueta del laptop
+                        </Button>
+                    )}
+                </div>
+                {asset && (
+                    <Button 
+                        variant="primary" 
+                        size="sm" 
+                        icon={Navigation} 
+                        onClick={() => {
+                            setMovingAsset(asset);
+                            setTargetLocationId('');
+                            setIsMoveAssetModalOpen(true);
+                            if (isFloating && onClose) onClose();
+                        }}
+                        style={{ height: '32px', fontSize: '0.75rem', marginTop: '0.25rem', width: '100%' }}
+                    >Mover de Grupo / Ubicación</Button>
+                )}
+                {(!asset && (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial')) && (
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        icon={Trash2} 
+                        onClick={() => {
+                            handleDeleteLocation(selectedLocation.id);
+                            if (isFloating && onClose) onClose();
+                        }}
+                        style={{ color: '#ef4444', height: '32px', fontSize: '0.75rem', marginTop: '0.25rem' }}
+                    >Eliminar Ubicación</Button>
+                )}
+                {locationAssets.length > 1 && (
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setSelectedAssetId(null)}
+                        style={{ height: '32px', fontSize: '0.75rem', marginTop: '0.25rem' }}
+                    >&larr; Ver los otros {locationAssets.length - 1} equipos</Button>
+                )}
+            </CardWrapper>
+        );
+    };
+
     const renderCellContent = (loc, assetCount, locationAssets) => {
         if (assetCount > 0) {
             const words = (loc.section || '').split(' ');
@@ -3340,8 +3688,8 @@ export default function WarehousePage() {
             {/* Dashboard grid structure */}
             <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1.5rem', alignItems: 'start' }} className="flex-mobile-column">
                 
-                {/* Left Panel: Search & Selection Info */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Left Panel: Search & Selection Info (Sticky) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '1rem', zIndex: 10, maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}>
                     {/* Búsqueda Avanzada - Tarjeta Principal */}
                     <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {/* Header */}
@@ -3673,262 +4021,7 @@ export default function WarehousePage() {
                             );
                         }
 
-                        if (!selectedLocation) {
-                            return (
-                                <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'var(--text-secondary)', minHeight: '180px' }}>
-                                    <History size={32} style={{ opacity: 0.15, marginBottom: '0.75rem' }} />
-                                    <p style={{ fontSize: '0.8rem', margin: 0 }}>Seleccione una ubicación en el mapa para ver sus detalles.</p>
-                                </Card>
-                            );
-                        }
-                        const locationAssets = assets.filter(a => a.locationId === selectedLocation.id);
-                        const asset = selectedAssetId ? locationAssets.find(a => a.id === selectedAssetId) : null;
-
-                        if (locationAssets.length > 0 && !asset) {
-                            return (
-                                <Card style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: 'calc(100vh - 160px)', minHeight: '400px' }}>
-                                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <div>
-                                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Equipos en Ubicación</span>
-                                                <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Ubicación: {selectedLocation.id}</h3>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>Total: {locationAssets.length} equipos</div>
-                                            </div>
-                                            {locationAssets.length > 0 && (
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    icon={Download} 
-                                                    onClick={() => {
-                                                        const wb = XLSX.utils.book_new();
-                                                        // Prepare data for export
-                                                        const dataToExport = locationAssets.map(a => ({
-                                                            'ID': a.id,
-                                                            'Nombre': a.name,
-                                                            'Modelo': a.modelNumber || a.hardwareSpec || 'N/A',
-                                                            'Número de Serie': a.serial || 'N/A',
-                                                            'Estado': a.status,
-                                                            'Ubicación': a.locationId || 'N/A',
-                                                            'Asignado a': a.assignee || 'Almacén',
-                                                            'Última Actualización': a.date_last_update ? new Date(a.date_last_update).toLocaleDateString() : 'N/A',
-                                                            'Notas': a.notes || ''
-                                                        }));
-                                                        const ws = XLSX.utils.json_to_sheet(dataToExport);
-                                                        XLSX.utils.book_append_sheet(wb, ws, "Equipos");
-                                                        XLSX.writeFile(wb, `Equipos_${selectedLocation.id}_${new Date().toISOString().split('T')[0]}.xlsx`);
-                                                    }}
-                                                    style={{ height: '28px', fontSize: '0.75rem', padding: '0 8px' }}
-                                                >
-                                                    Exportar
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    
-                                    <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingRight: '4px', maxHeight: 'calc(100vh - 310px)' }}>
-                                        {locationAssets.map(a => (
-                                            <div 
-                                                key={a.id} 
-                                                onClick={() => setSelectedAssetId(a.id)}
-                                                style={{ 
-                                                    fontSize: '0.8rem', 
-                                                    padding: '0.45rem 0.65rem', 
-                                                    background: 'var(--background-secondary)', 
-                                                    borderRadius: '6px', 
-                                                    border: '1px solid var(--border)', 
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.15s ease'
-                                                }}
-                                            >
-                                                <div style={{ fontWeight: 700, marginBottom: '1px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span>{a.name}</span>
-                                                </div>
-                                                {a.hardwareSpec && <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginBottom: '3px' }}>{a.hardwareSpec}</div>}
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)', fontSize: '0.75rem' }}>{a.serial || 'N/A'}</span>
-                                                    <span style={{ 
-                                                        padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
-                                                        backgroundColor: (a.status || '').toLowerCase().includes('reparac') ? '#f5f3ff' : (['Mantenimiento', 'Dañado'].includes(a.status) ? '#fff7ed' : (a.status === 'Asignado' ? '#f0fdf4' : '#eff6ff')),
-                                                        color: (a.status || '').toLowerCase().includes('reparac') ? '#7c3aed' : (['Mantenimiento', 'Dañado'].includes(a.status) ? '#ea580c' : (a.status === 'Asignado' ? '#16a34a' : '#2563eb')),
-                                                        border: '1px solid currentColor'
-                                                    }}>
-                                                        {a.status}
-                                                    </span>
-                                                </div>
-                                                {getDriverForAsset(a) && (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.67rem', color: '#1d4ed8', marginTop: '3px' }}>
-                                                        <Truck size={11} style={{ flexShrink: 0 }} />
-                                                        <span>Conductor: <strong>{getDriverForAsset(a)}</strong></span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    
-                                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: 'auto' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                icon={Edit3} 
-                                                onClick={() => {
-                                                    setEditLoc({
-                                                        aisle: selectedLocation.aisle,
-                                                        section: selectedLocation.section,
-                                                        level: selectedLocation.level
-                                                    });
-                                                    setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
-                                                    setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
-                                                    setIsEditLocationModalOpen(true);
-                                                }}
-                                                style={{ flex: 1, height: '32px', fontSize: '0.75rem' }}
-                                            >Editar Ubicación</Button>
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                icon={Printer} 
-                                                onClick={() => handlePrintLocationLabel(selectedLocation)}
-                                                style={{ flex: 1, height: '32px', fontSize: '0.75rem', color: '#0d9488', borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,0.07)' }}
-                                            >
-                                                {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta de posición'}
-                                            </Button>
-                                        </div>
-                                        <Button 
-                                            variant="primary" 
-                                            size="sm" 
-                                            icon={Navigation} 
-                                            onClick={() => {
-                                                setMovingAllSourceLocation(selectedLocation);
-                                                setTargetAllLocationId('');
-                                                setIsMoveAllModalOpen(true);
-                                            }}
-                                            style={{ height: '32px', fontSize: '0.75rem', width: '100%' }}
-                                        >Mover Todos los Activos ({locationAssets.length})</Button>
-                                    </div>
-                                </Card>
-                            );
-                        }
-
-                        return (
-                            <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Información de Selección</span>
-                                    <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, marginTop: '2px' }}>Ubicación: {selectedLocation.id}</h3>
-                                </div>
-
-                                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    {asset ? (
-                                        <>
-                                            <div><strong>Modelo:</strong> {asset.name}</div>
-                                            <div><strong>N/P:</strong> {asset.model_number || asset.part_number || 'N/A'}</div>
-                                            <div><strong>SN:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{asset.serial || 'N/A'}</span></div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <strong>Estado:</strong> 
-                                                <span style={{ 
-                                                    padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800,
-                                                    backgroundColor: (asset.status || '').toLowerCase().includes('reparac') ? '#f5f3ff' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#fff7ed' : (asset.status === 'Asignado' ? '#f0fdf4' : '#eff6ff')),
-                                                    color: (asset.status || '').toLowerCase().includes('reparac') ? '#7c3aed' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#ea580c' : (asset.status === 'Asignado' ? '#16a34a' : '#2563eb')),
-                                                    border: `1px solid currentColor`
-                                                }}>
-                                                    {asset.status} (Verificado)
-                                                </span>
-                                            </div>
-                                            {asset.hardwareSpec && <div><strong>Specs:</strong> {asset.hardwareSpec}</div>}
-                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', background: 'var(--background-secondary)', padding: '0.6rem', borderRadius: '6px', marginTop: '0.25rem' }}>
-                                                <div>Mapeado el: {asset.dateMapped ? new Date(asset.dateMapped).toLocaleDateString() : 'N/A'}</div>
-                                                <div>Por: {asset.updatedBy || 'N/A'}</div>
-                                                {getDriverForAsset(asset) && (
-                                                    <div style={{ marginTop: '3px', color: '#1d4ed8', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                        <Truck size={12} style={{ flexShrink: 0 }} />
-                                                        <span>Conductor: {getDriverForAsset(asset)}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '0.75rem' }}>Esta ubicación está vacía / disponible.</div>
-                                    )}
-                                </div>
-
-                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                                    {asset && (
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            icon={Edit3} 
-                                            onClick={() => handleOpenEditAsset(asset)}
-                                            style={{ flex: '1 1 calc(50% - 0.25rem)', height: '32px', fontSize: '0.75rem' }}
-                                        >Editar Equipo</Button>
-                                    )}
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        icon={Edit3} 
-                                        onClick={() => {
-                                            setEditLoc({
-                                                aisle: selectedLocation.aisle,
-                                                section: selectedLocation.section,
-                                                level: selectedLocation.level
-                                            });
-                                            setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
-                                            setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
-                                            setIsEditLocationModalOpen(true);
-                                        }}
-                                        style={{ flex: asset ? '1 1 calc(50% - 0.25rem)' : '1', height: '32px', fontSize: '0.75rem' }}
-                                    >Editar Ubicación</Button>
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        icon={Printer} 
-                                        onClick={() => handlePrintLocationLabel(selectedLocation)}
-                                        style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem', color: '#0d9488', borderColor: '#0d9488', backgroundColor: 'rgba(13,148,136,0.07)' }}
-                                    >
-                                        {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'Etiqueta QR' : 'Etiqueta de posición'}
-                                    </Button>
-                                    {asset && (
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            icon={Printer} 
-                                            onClick={() => handlePrintAssetLabel(asset)}
-                                            style={{ flex: '1 1 100%', height: '32px', fontSize: '0.75rem', color: '#7c3aed', borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.07)' }}
-                                        >
-                                            Etiqueta del laptop
-                                        </Button>
-                                    )}
-                                </div>
-                                {asset && (
-                                    <Button 
-                                        variant="primary" 
-                                        size="sm" 
-                                        icon={Navigation} 
-                                        onClick={() => {
-                                            setMovingAsset(asset);
-                                            setTargetLocationId('');
-                                            setIsMoveAssetModalOpen(true);
-                                        }}
-                                        style={{ height: '32px', fontSize: '0.75rem', marginTop: '0.25rem', width: '100%' }}
-                                    >Mover de Grupo / Ubicación</Button>
-                                )}
-                                {(!asset && (currentUser?.role === 'admin' || currentUser?.role === 'Gerencial')) && (
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        icon={Trash2} 
-                                        onClick={() => handleDeleteLocation(selectedLocation.id)}
-                                        style={{ color: '#ef4444', height: '32px', fontSize: '0.75rem', marginTop: '0.25rem' }}
-                                    >Eliminar Ubicación</Button>
-                                )}
-                                {locationAssets.length > 1 && (
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        onClick={() => setSelectedAssetId(null)}
-                                        style={{ height: '32px', fontSize: '0.75rem', marginTop: '0.25rem' }}
-                                    >&larr; Ver los otros {locationAssets.length - 1} equipos</Button>
-                                )}
-                            </Card>
-                        );
+return renderSelectionInfoContent(false);
                     })()}
                 </div>
 
@@ -4115,7 +4208,7 @@ export default function WarehousePage() {
                                     return (
                                         <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                                             <div 
-                                                onClick={() => handleScanLocation(locId)}
+                                                onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true"
                                                 title={buildAssetTooltip(locationAssets, locId)}
                                                 className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                 style={{
@@ -4301,7 +4394,7 @@ export default function WarehousePage() {
                                     return (
                                         <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                                             <div 
-                                                onClick={() => handleScanLocation(locId)}
+                                                onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true"
                                                 title={buildAssetTooltip(locationAssets, locId)}
                                                 className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                 style={{
@@ -5270,7 +5363,43 @@ export default function WarehousePage() {
                 </form>
             </Modal>
 
+            {/* Floating Selection Card / Popover directly alongside selected slot */}
+            {floatingPopover && selectedLocation && (
+                <div
+                    ref={floatingPopoverRef}
+                    style={{
+                        position: 'fixed',
+                        top: floatingPopover.isMobile ? undefined : `${floatingPopover.top}px`,
+                        left: `${floatingPopover.left}px`,
+                        right: floatingPopover.right ? `${floatingPopover.right}px` : undefined,
+                        bottom: floatingPopover.bottom ? `${floatingPopover.bottom}px` : undefined,
+                        width: floatingPopover.isMobile ? 'auto' : '330px',
+                        maxHeight: 'min(520px, calc(100vh - 32px))',
+                        overflowY: 'auto',
+                        background: 'var(--card-bg)',
+                        border: '2px solid var(--primary-color)',
+                        borderRadius: '12px',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
+                        zIndex: 9999,
+                        padding: '1.1rem',
+                        animation: 'fadeInPop 0.15s ease-out'
+                    }}
+                >
+                    {renderSelectionInfoContent(true, () => setFloatingPopover(null))}
+                </div>
+            )}
+
             <style jsx>{`
+                @keyframes fadeInPop {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.96) translateY(-4px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1) translateY(0);
+                    }
+                }
                 .search-box {
                     position: relative;
                     width: 100%;
