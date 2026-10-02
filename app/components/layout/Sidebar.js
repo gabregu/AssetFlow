@@ -58,6 +58,7 @@ export function Sidebar({ isOpen, onClose }) {
             <Link
                 key={item.path}
                 href={item.path}
+                onClick={() => { if (onClose) onClose(); }}
                 style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -91,7 +92,10 @@ export function Sidebar({ isOpen, onClose }) {
     const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
     return (
-        <aside className={`sidebar-container ${isOpen ? 'open' : ''}`} style={{
+        <aside 
+            className={`sidebar-container ${isOpen ? 'open' : ''}`} 
+            onTouchMove={(e) => e.stopPropagation()}
+            style={{
             width: '260px',
             height: '100dvh',
             maxHeight: '100vh',
@@ -101,7 +105,9 @@ export function Sidebar({ isOpen, onClose }) {
             flexDirection: 'column',
             position: 'sticky',
             top: 0,
-            zIndex: 1000
+            zIndex: 1000,
+            overscrollBehavior: 'contain',
+            touchAction: 'pan-y'
         }}>
             <div style={{ padding: '1.25rem 1.25rem 1rem 1.25rem', borderBottom: '1px solid var(--border)', position: 'relative', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', width: '100%' }}>
@@ -148,6 +154,9 @@ export function Sidebar({ isOpen, onClose }) {
                 flexDirection: 'column', 
                 gap: '0.5rem', 
                 overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehavior: 'contain',
+                touchAction: 'pan-y',
                 minHeight: 0 // Crucial for flex nested scrolling
             }}>
                 {filteredMainItems.map(renderMenuItem)}
@@ -336,7 +345,7 @@ export function Sidebar({ isOpen, onClose }) {
                     {isRefreshing ? 'Sincronizando...' : 'Sincronizar'}
                 </button>
 
-                <Link href="/dashboard/settings" style={{
+                <Link href="/dashboard/settings" onClick={() => { if (onClose) onClose(); }} style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.75rem',

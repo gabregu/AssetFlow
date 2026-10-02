@@ -14,6 +14,21 @@ export default function DashboardLayout({ children }) {
     const { currentUser, loading } = useStore();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+    // Lock body and html scroll when mobile sidebar is open to avoid background movement
+    useEffect(() => {
+        if (isSidebarOpen) {
+            const originalBodyOverflow = document.body.style.overflow;
+            const originalHtmlOverflow = document.documentElement.style.overflow;
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+
+            return () => {
+                document.body.style.overflow = originalBodyOverflow;
+                document.documentElement.style.overflow = originalHtmlOverflow;
+            };
+        }
+    }, [isSidebarOpen]);
+
     // Auth Guard
     useEffect(() => {
         if (!loading && !currentUser) {
@@ -66,11 +81,21 @@ export default function DashboardLayout({ children }) {
             <div
                 className={`mobile-sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
                 onClick={() => setIsSidebarOpen(false)}
+                onTouchMove={(e) => e.preventDefault()}
             />
 
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-            <main className="dashboard-main" style={{ flex: 1, padding: '2rem', overflowY: 'auto', position: 'relative' }}>
+            <main 
+                className="dashboard-main" 
+                style={{ 
+                    flex: 1, 
+                    padding: '2rem', 
+                    overflowY: isSidebarOpen ? 'hidden' : 'auto', 
+                    pointerEvents: isSidebarOpen ? 'none' : 'auto',
+                    position: 'relative' 
+                }}
+            >
                 {/* Header Móvil */}
                 <div className="show-mobile" style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <button

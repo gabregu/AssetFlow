@@ -468,9 +468,13 @@ a {
   display: none;
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  animation: modalFadeIn 0.3s ease;
+  background-color: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1040;
+  animation: modalFadeIn 0.25s ease;
+  touch-action: none !important;
+  overscroll-behavior: contain !important;
 }
 
 /* Tablet */
@@ -484,11 +488,18 @@ a {
 @media (max-width: 768px) {
   .sidebar-container {
     position: fixed !important;
-    left: -260px;
+    left: -280px;
+    width: 280px !important;
+    max-width: 85vw !important;
     z-index: 1050 !important; /* Force render on top of mobile bottom nav */
-    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
     overflow-y: auto !important; /* Enable scrolling for small screen heights */
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain !important;
+    touch-action: pan-y !important;
+    background-color: var(--surface) !important;
+    box-shadow: 6px 0 30px rgba(0, 0, 0, 0.35) !important;
+    border-right: 1px solid var(--border) !important;
   }
 
   .sidebar-container.open {
