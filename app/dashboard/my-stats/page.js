@@ -11,6 +11,23 @@ import { Button } from '../../components/ui/Button';
 export default function MyStatsPage() {
     const { tickets, assets: globalAssets, currentUser, rates, users, logisticsTasks } = useStore();
     const [selectedMonthIndex, setSelectedMonthIndex] = useState(0);
+    const isClosedStatus = (statusStr) => {
+        if (!statusStr) return false;
+        const s = String(statusStr).trim().toLowerCase();
+        return [
+            'entregado',
+            'completada',
+            'completado',
+            'finalizado',
+            'recuperado',
+            'resuelto',
+            'cerrado',
+            'cerrada',
+            'servicio facturado',
+            'caso sfdc cerrado'
+        ].includes(s);
+    };
+
 
     // Generamos las opciones del selector de meses (últimos 6 meses)
     const monthOptions = useMemo(() => {
@@ -123,7 +140,7 @@ export default function MyStatsPage() {
             const rawDate = item.deliveryCompletedDate || item.date || item.displayDate;
             const isValidDate = rawDate && !['Pendiente', 'Sin fecha', 'Por definir'].includes(rawDate);
             const ticketDate = isValidDate ? new Date(rawDate.toString().includes('T') ? rawDate : rawDate + 'T00:00:00') : new Date();
-            const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status || '') || item.displayStatus === 'Entregado' || item.displayStatus === 'Finalizado';
+            const isFinished = isClosedStatus(t.status) || isClosedStatus(item.displayStatus) || isClosedStatus(t.logistics?.status);
 
             // Liquidación — usar misma lógica que Pago a Conductores (billing.js)
             let amount = 0;
@@ -211,7 +228,7 @@ export default function MyStatsPage() {
         // Llenar datos reales en la evolución histórica de 6 meses
         myAssignedItems.forEach(item => {
             const t = item.isMainTicket ? item : (item.parentTicket || item); 
-            const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status || '') || item.displayStatus === 'Entregado' || item.displayStatus === 'Finalizado';
+            const isFinished = isClosedStatus(t.status) || isClosedStatus(item.displayStatus) || isClosedStatus(t.logistics?.status);
             
             if (isFinished) {
                 const rawDate = item.deliveryCompletedDate || item.date || item.displayDate;
@@ -232,7 +249,7 @@ export default function MyStatsPage() {
         return {
             total: myAssignedItems.filter(item => {
                 const t = item.isMainTicket ? item : (item.parentTicket || item);
-                const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status || '') || item.displayStatus === 'Entregado' || item.displayStatus === 'Finalizado';
+                const isFinished = isClosedStatus(t.status) || isClosedStatus(item.displayStatus) || isClosedStatus(t.logistics?.status);
                 return !isFinished;
             }).length,
             pendiente: myAssignedItems.filter(t => !t.displayStatus || t.displayStatus === 'Pendiente').length,
@@ -268,7 +285,7 @@ export default function MyStatsPage() {
             const rawDate = item.deliveryCompletedDate || item.date || item.displayDate;
             const isValidDate = rawDate && !['Pendiente', 'Sin fecha', 'Por definir'].includes(rawDate);
             const ticketDate = isValidDate ? new Date(rawDate.toString().includes('T') ? rawDate : rawDate + 'T00:00:00') : new Date();
-            const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status || '') || item.displayStatus === 'Entregado' || item.displayStatus === 'Finalizado';
+            const isFinished = isClosedStatus(t.status) || isClosedStatus(item.displayStatus) || isClosedStatus(t.logistics?.status);
 
             if (isFinished && ticketDate.getMonth() === stats.targetMonth && ticketDate.getFullYear() === stats.targetYear) {
                 // Usar misma lógica que Pago a Conductores (billing.js)
