@@ -161,6 +161,80 @@ export default function WarehousePage() {
     const [floatingPopover, setFloatingPopover] = useState(null);
     const floatingPopoverRef = useRef(null);
 
+    const computePopoverCoords = useCallback((targetEl) => {
+        if (!targetEl || typeof window === 'undefined') return null;
+        const rect = targetEl.getBoundingClientRect();
+        const isMobile = window.innerWidth < 640;
+
+        if (isMobile) {
+            return { isMobile: true, top: 'auto', left: 12, right: 12, bottom: 12, placement: 'mobile', targetEl };
+        }
+
+        const cardWidth = 300;
+        const cardHeight = 220; // compact card height
+        const gap = 12;
+
+        const targetCenterX = rect.left + rect.width / 2;
+        const targetCenterY = rect.top + rect.height / 2;
+
+        const spaceRight = window.innerWidth - rect.right;
+        const spaceLeft = rect.left;
+        const spaceAbove = rect.top;
+        const spaceBelow = window.innerHeight - rect.bottom;
+
+        let placement = 'right';
+        let left = 0;
+        let top = 0;
+        let arrowOffset = 0;
+
+        // Check if fits to the RIGHT (prefer right if >= 320px)
+        if (spaceRight >= cardWidth + gap + 10) {
+            placement = 'right';
+            left = rect.right + gap;
+            const desiredTop = targetCenterY - (cardHeight / 2);
+            const clampedTop = Math.max(12, Math.min(window.innerHeight - cardHeight - 12, desiredTop));
+            top = clampedTop;
+            arrowOffset = Math.max(18, Math.min(cardHeight - 18, targetCenterY - clampedTop));
+        } 
+        // Else check if fits to the LEFT
+        else if (spaceLeft >= cardWidth + gap + 10) {
+            placement = 'left';
+            left = rect.left - cardWidth - gap;
+            const desiredTop = targetCenterY - (cardHeight / 2);
+            const clampedTop = Math.max(12, Math.min(window.innerHeight - cardHeight - 12, desiredTop));
+            top = clampedTop;
+            arrowOffset = Math.max(18, Math.min(cardHeight - 18, targetCenterY - clampedTop));
+        } 
+        // Else check if fits ABOVE
+        else if (spaceAbove >= cardHeight + gap + 10) {
+            placement = 'top';
+            top = rect.top - cardHeight - gap;
+            const desiredLeft = targetCenterX - (cardWidth / 2);
+            const clampedLeft = Math.max(12, Math.min(window.innerWidth - cardWidth - 12, desiredLeft));
+            left = clampedLeft;
+            arrowOffset = Math.max(18, Math.min(cardWidth - 18, targetCenterX - clampedLeft));
+        } 
+        // Else place BELOW
+        else {
+            placement = 'bottom';
+            top = rect.bottom + gap;
+            const desiredLeft = targetCenterX - (cardWidth / 2);
+            const clampedLeft = Math.max(12, Math.min(window.innerWidth - cardWidth - 12, desiredLeft));
+            left = clampedLeft;
+            arrowOffset = Math.max(18, Math.min(cardWidth - 18, targetCenterX - clampedLeft));
+        }
+
+        return {
+            top: Math.round(top),
+            left: Math.round(left),
+            cardWidth,
+            cardHeight,
+            placement,
+            arrowOffset: Math.round(arrowOffset),
+            targetEl
+        };
+    }, []);
+
     useEffect(() => {
         if (!floatingPopover) return;
         const handleOutsideClick = (e) => {
@@ -175,13 +249,32 @@ export default function WarehousePage() {
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') setFloatingPopover(null);
         };
+        const handleScrollOrResize = () => {
+            if (floatingPopover?.targetEl) {
+                const r = floatingPopover.targetEl.getBoundingClientRect();
+                // Close if scrolled completely offscreen
+                if (r.bottom < -30 || r.top > window.innerHeight + 30) {
+                    setFloatingPopover(null);
+                    return;
+                }
+                const updated = computePopoverCoords(floatingPopover.targetEl);
+                if (updated) {
+                    setFloatingPopover(updated);
+                }
+            }
+        };
+
         window.addEventListener('mousedown', handleOutsideClick);
         window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('scroll', handleScrollOrResize, { passive: true });
+        window.addEventListener('resize', handleScrollOrResize, { passive: true });
         return () => {
             window.removeEventListener('mousedown', handleOutsideClick);
             window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('scroll', handleScrollOrResize);
+            window.removeEventListener('resize', handleScrollOrResize);
         };
-    }, [floatingPopover]);
+    }, [floatingPopover, computePopoverCoords]);
 
     // Move Asset States
     const [isMoveAssetModalOpen, setIsMoveAssetModalOpen] = useState(false);
@@ -1192,28 +1285,21 @@ export default function WarehousePage() {
                 setSelectedAssetId(null);
             }
 
-            // Calculate floating popover position anchored to clicked element
+            // Calculate floating popover position anchored directly to clicked element
             if (event && event.currentTarget) {
-                const rect = event.currentTarget.getBoundingClientRect();
-                const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-                if (isMobile) {
-                    setFloatingPopover({ isMobile: true, top: 'auto', left: 16, right: 16, bottom: 16 });
-                } else {
-                    const popoverWidth = 330;
-                    const popoverHeight = 440;
-
-                    let left = rect.right + 14;
-                    if (left + popoverWidth > window.innerWidth - 16) {
-                        left = Math.max(16, rect.left - 14 - popoverWidth);
-                    }
-
-                    let top = rect.top + (rect.height / 2) - 80;
-                    if (top + popoverHeight > window.innerHeight - 16) {
-                        top = Math.max(16, window.innerHeight - popoverHeight - 16);
-                    }
-                    if (top < 16) top = 16;
-
-                    setFloatingPopover({ top, left });
+                const targetEl = event.currentTarget;
+                const coords = computePopoverCoords(targetEl);
+                if (coords) {
+                    setFloatingPopover(coords);
+                }
+            } else if (typeof document !== 'undefined') {
+                const foundEl = document.querySelector(`[data-slot-id="${loc.id}"]`);
+                if (foundEl) {
+                    foundEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    setTimeout(() => {
+                        const coords = computePopoverCoords(foundEl);
+                        if (coords) setFloatingPopover(coords);
+                    }, 200);
                 }
             }
         }
@@ -2429,7 +2515,7 @@ export default function WarehousePage() {
             return (
                 <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                     <div 
-                        onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true"
+                        onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                         title={buildAssetTooltip(locationAssets, locId)}
                         className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                         style={{
@@ -2512,7 +2598,7 @@ export default function WarehousePage() {
             return (
                 <div 
                     key={locId}
-                    onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true"
+                    onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                     title={`${boxCustomName ? `${boxCustomName} (${locId})` : locId}\n${buildAssetTooltip(locationAssets, locId)}`}
                     className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                     style={{
@@ -3097,7 +3183,7 @@ export default function WarehousePage() {
                                                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
                                             >
                                                 <div 
-                                                    onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true"
+                                                    onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                                                     title={buildAssetTooltip(locationAssets, locId)}
                                                     className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                     style={{
@@ -3188,7 +3274,7 @@ export default function WarehousePage() {
                             return (
                                 <div 
                                     key={loc.id}
-                                    onClick={(e) => handleScanLocation(loc.id, e)} data-warehouse-slot="true"
+                                    onClick={(e) => handleScanLocation(loc.id, e)} data-warehouse-slot="true" data-slot-id={loc.id}
                                     title={buildAssetTooltip(locationAssets, loc.id)}
                                     className={isHighlighted ? 'search-pulse' : ''}
                                     style={{
@@ -3249,18 +3335,196 @@ export default function WarehousePage() {
         const locationAssets = assets.filter(a => a.locationId === selectedLocation.id);
         const asset = selectedAssetId ? locationAssets.find(a => a.id === selectedAssetId) : (locationAssets.length === 1 ? locationAssets[0] : null);
 
-        const cardStyle = isFloating ? {
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.65rem'
-        } : {
+        if (isFloating) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', fontSize: '0.78rem' }}>
+                    {/* Header: Location & Close */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.35rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary-color)', whiteSpace: 'nowrap' }}>
+                                {selectedLocation.id}
+                            </span>
+                            {asset && (
+                                <span style={{ 
+                                    padding: '1px 6px', borderRadius: '8px', fontSize: '0.62rem', fontWeight: 800, whiteSpace: 'nowrap',
+                                    backgroundColor: (asset.status || '').toLowerCase().includes('reparac') ? '#f5f3ff' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#fff7ed' : (asset.status === 'Asignado' ? '#f0fdf4' : '#eff6ff')),
+                                    color: (asset.status || '').toLowerCase().includes('reparac') ? '#7c3aed' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#ea580c' : (asset.status === 'Asignado' ? '#16a34a' : '#2563eb')),
+                                    border: '1px solid currentColor'
+                                }}>
+                                    {asset.status}
+                                </span>
+                            )}
+                            {locationAssets.length > 1 && !asset && (
+                                <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                                    ({locationAssets.length} equipos)
+                                </span>
+                            )}
+                        </div>
+                        {onClose && (
+                            <button
+                                onClick={onClose}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '1px 5px', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '0.95rem', fontWeight: 800, lineHeight: 1 }}
+                                title="Cerrar"
+                            >✕</button>
+                        )}
+                    </div>
+
+                    {/* Content */}
+                    {locationAssets.length > 0 && !asset ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <div style={{ maxHeight: '130px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.3rem', paddingRight: '2px' }}>
+                                {locationAssets.map(a => (
+                                    <div 
+                                        key={a.id} 
+                                        onClick={() => setSelectedAssetId(a.id)}
+                                        style={{ 
+                                            padding: '0.35rem 0.5rem', background: 'var(--background-secondary)', 
+                                            borderRadius: '6px', border: '1px solid var(--border)', cursor: 'pointer'
+                                        }}
+                                    >
+                                        <div style={{ fontWeight: 700, fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', marginTop: '1px' }}>
+                                            <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{a.serial || 'N/A'}</span>
+                                            <span style={{ color: (a.status || '').toLowerCase().includes('reparac') ? '#7c3aed' : '#2563eb', fontWeight: 700 }}>{a.status}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginTop: '0.2rem' }}>
+                                <Button 
+                                    variant="outline" size="xs" icon={Edit3}
+                                    onClick={() => {
+                                        setEditLoc({ aisle: selectedLocation.aisle, section: selectedLocation.section, level: selectedLocation.level });
+                                        setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
+                                        setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
+                                        setIsEditLocationModalOpen(true);
+                                        if (onClose) onClose();
+                                    }}
+                                    style={{ height: '26px', fontSize: '0.68rem' }}
+                                >Editar Ubic</Button>
+                                <Button 
+                                    variant="primary" size="xs" icon={Navigation}
+                                    onClick={() => {
+                                        setMovingAllSourceLocation(selectedLocation);
+                                        setTargetAllLocationId('');
+                                        setIsMoveAllModalOpen(true);
+                                        if (onClose) onClose();
+                                    }}
+                                    style={{ height: '26px', fontSize: '0.68rem' }}
+                                >Mover Todos</Button>
+                            </div>
+                        </div>
+                    ) : asset ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <div>
+                                <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: '1.2' }}>{asset.name}</div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.74rem', color: 'var(--text-secondary)' }}>SN: {asset.serial || 'N/A'}</span>
+                                    {asset.model_number && <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>N/P: {asset.model_number}</span>}
+                                </div>
+                                {asset.hardwareSpec && (
+                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginTop: '1px' }}>{asset.hardwareSpec}</div>
+                                )}
+                            </div>
+
+                            {getDriverForAsset(asset) && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#1d4ed8', fontWeight: 700, background: '#eff6ff', padding: '2px 6px', borderRadius: '4px' }}>
+                                    <Truck size={12} style={{ flexShrink: 0 }} />
+                                    <span>Conductor: {getDriverForAsset(asset)}</span>
+                                </div>
+                            )}
+
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', opacity: 0.85 }}>
+                                Mapeado: {asset.dateMapped ? new Date(asset.dateMapped).toLocaleDateString() : 'N/A'} • {asset.updatedBy || 'Almacén'}
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginTop: '0.25rem' }}>
+                                <Button 
+                                    variant="outline" 
+                                    size="xs" 
+                                    icon={Edit3} 
+                                    onClick={() => { handleOpenEditAsset(asset); if (onClose) onClose(); }}
+                                    style={{ height: '26px', fontSize: '0.7rem' }}
+                                >Editar</Button>
+                                <Button 
+                                    variant="primary" 
+                                    size="xs" 
+                                    icon={Navigation} 
+                                    onClick={() => { setMovingAsset(asset); setTargetLocationId(''); setIsMoveAssetModalOpen(true); if (onClose) onClose(); }}
+                                    style={{ height: '26px', fontSize: '0.7rem' }}
+                                >Mover</Button>
+                                <Button 
+                                    variant="outline" 
+                                    size="xs" 
+                                    icon={Printer} 
+                                    onClick={() => handlePrintLocationLabel(selectedLocation)}
+                                    style={{ height: '24px', fontSize: '0.65rem', color: '#0d9488', borderColor: '#0d9488' }}
+                                >
+                                    {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'QR Caja' : 'Etiqueta Pos'}
+                                </Button>
+                                <Button 
+                                    variant="outline" 
+                                    size="xs" 
+                                    icon={Printer} 
+                                    onClick={() => handlePrintAssetLabel(asset)}
+                                    style={{ height: '24px', fontSize: '0.65rem', color: '#7c3aed', borderColor: '#7c3aed' }}
+                                >
+                                    Etiqueta Laptop
+                                </Button>
+                            </div>
+
+                            {locationAssets.length > 1 && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="xs" 
+                                    onClick={() => setSelectedAssetId(null)}
+                                    style={{ height: '22px', fontSize: '0.68rem', marginTop: '1px' }}
+                                >&larr; Ver los otros {locationAssets.length - 1} equipos</Button>
+                            )}
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.25rem 0' }}>
+                            <div style={{ color: 'var(--text-secondary)', textAlign: 'center', fontSize: '0.75rem' }}>
+                                Ubicación vacía / disponible.
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                                <Button 
+                                    variant="outline" 
+                                    size="xs" 
+                                    icon={Edit3} 
+                                    onClick={() => {
+                                        setEditLoc({ aisle: selectedLocation.aisle, section: selectedLocation.section, level: selectedLocation.level });
+                                        setEditLocationType(isLocH(selectedLocation.aisle) ? 'H' : 'W');
+                                        setEditLocManufacturer(detectManufacturer(selectedLocation.aisle, manufacturers));
+                                        setIsEditLocationModalOpen(true);
+                                        if (onClose) onClose();
+                                    }}
+                                    style={{ height: '26px', fontSize: '0.7rem' }}
+                                >Editar Ubic</Button>
+                                <Button 
+                                    variant="outline" 
+                                    size="xs" 
+                                    icon={Printer} 
+                                    onClick={() => handlePrintLocationLabel(selectedLocation)}
+                                    style={{ height: '26px', fontSize: '0.7rem', color: '#0d9488', borderColor: '#0d9488' }}
+                                >
+                                    {isLocCaja(selectedLocation.aisle) || selectedLocation.id.startsWith('CAJA-') ? 'QR Caja' : 'Etiqueta Pos'}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const cardStyle = {
             padding: '1.25rem',
             display: 'flex',
             flexDirection: 'column',
             gap: '0.75rem'
         };
 
-        const CardContainer = isFloating ? 'div' : Card;
+        const CardContainer = Card;
 
         if (locationAssets.length > 0 && !asset) {
             return (
@@ -4208,7 +4472,7 @@ return renderSelectionInfoContent(false);
                                     return (
                                         <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                                             <div 
-                                                onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true"
+                                                onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                                                 title={buildAssetTooltip(locationAssets, locId)}
                                                 className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                 style={{
@@ -4394,7 +4658,7 @@ return renderSelectionInfoContent(false);
                                     return (
                                         <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                                             <div 
-                                                onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true"
+                                                onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                                                 title={buildAssetTooltip(locationAssets, locId)}
                                                 className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                 style={{
@@ -5373,18 +5637,53 @@ return renderSelectionInfoContent(false);
                         left: `${floatingPopover.left}px`,
                         right: floatingPopover.right ? `${floatingPopover.right}px` : undefined,
                         bottom: floatingPopover.bottom ? `${floatingPopover.bottom}px` : undefined,
-                        width: floatingPopover.isMobile ? 'auto' : '330px',
-                        maxHeight: 'min(520px, calc(100vh - 32px))',
+                        width: floatingPopover.isMobile ? 'auto' : `${floatingPopover.cardWidth || 300}px`,
+                        maxHeight: 'min(380px, calc(100vh - 24px))',
                         overflowY: 'auto',
                         background: 'var(--card-bg)',
                         border: '2px solid var(--primary-color)',
                         borderRadius: '12px',
                         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2)',
                         zIndex: 9999,
-                        padding: '1.1rem',
+                        padding: '0.85rem',
                         animation: 'fadeInPop 0.15s ease-out'
                     }}
                 >
+                    {/* Visual pointer arrow pointing directly to the clicked slot */}
+                    {floatingPopover.placement && !floatingPopover.isMobile && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                width: '12px',
+                                height: '12px',
+                                background: 'var(--card-bg)',
+                                border: '2px solid var(--primary-color)',
+                                transform: 'rotate(45deg)',
+                                zIndex: 10,
+                                ...(floatingPopover.placement === 'right' ? {
+                                    left: '-7px',
+                                    top: `${Math.max(12, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardHeight || 220) - 20))}px`,
+                                    borderRight: 'none',
+                                    borderTop: 'none'
+                                } : floatingPopover.placement === 'left' ? {
+                                    right: '-7px',
+                                    top: `${Math.max(12, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardHeight || 220) - 20))}px`,
+                                    borderLeft: 'none',
+                                    borderBottom: 'none'
+                                } : floatingPopover.placement === 'top' ? {
+                                    bottom: '-7px',
+                                    left: `${Math.max(12, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardWidth || 300) - 24))}px`,
+                                    borderLeft: 'none',
+                                    borderTop: 'none'
+                                } : {
+                                    top: '-7px',
+                                    left: `${Math.max(12, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardWidth || 300) - 24))}px`,
+                                    borderRight: 'none',
+                                    borderBottom: 'none'
+                                })
+                            }}
+                        />
+                    )}
                     {renderSelectionInfoContent(true, () => setFloatingPopover(null))}
                 </div>
             )}
