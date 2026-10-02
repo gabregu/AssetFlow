@@ -179,6 +179,21 @@ export default function MyStatsPage() {
             }
         });
 
+        // Sumar items extra (gastos/adicionales)
+        let extraItemsCount = 0;
+        const tempMonthKey = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}`;
+        if (currentUser?.name && rates?.driverExtraItems?.[tempMonthKey]?.[currentUser.name]) {
+            const extraList = rates.driverExtraItems[tempMonthKey][currentUser.name];
+            if (Array.isArray(extraList)) {
+                extraList.forEach(extraItem => {
+                    if (extraItem && Number(extraItem.cost) > 0) {
+                        personalLiquidation += Number(extraItem.cost);
+                        extraItemsCount++;
+                    }
+                });
+            }
+        }
+
         // Generar lista de los últimos 6 meses
         const historyData = [];
         const currentMonth = now.getMonth();
@@ -229,6 +244,7 @@ export default function MyStatsPage() {
             personalLiquidation,
             deliveriesCount,
             recoveriesCount,
+            extraItemsCount,
             historyData,
             targetMonth,
             targetYear
@@ -322,8 +338,29 @@ export default function MyStatsPage() {
             }
         });
         
+        // Añadir items extra (manuales/gastos)
+        if (currentUser?.name && rates?.driverExtraItems?.[monthKey]?.[currentUser.name]) {
+            const extraList = rates.driverExtraItems[monthKey][currentUser.name];
+            if (Array.isArray(extraList)) {
+                extraList.forEach(extraItem => {
+                    if (extraItem && Number(extraItem.cost) > 0) {
+                        items.push({
+                            id: extraItem.id || 'extra',
+                            type: 'Extra',
+                            description: extraItem.description || 'Gasto / Adicional',
+                            requester: null,
+                            cost: Number(extraItem.cost),
+                            date: extraItem.date || new Date().toISOString().substring(0, 10),
+                            client: extraItem.client || 'Extra / Adicional',
+                            isExtra: true
+                        });
+                    }
+                });
+            }
+        }
+        
         return items;
-    }, [myAssignedItems, globalAssets, currentUser, rates, users, stats.targetMonth, stats.targetYear]);
+    }, [myAssignedItems, globalAssets, currentUser, rates, users, stats.targetMonth, stats.targetYear, monthKey]);
 
     const handlePrintDriverCases = (driverName, data, savedPaymentUSD) => {
         const printWindow = window.open('', '_blank');
@@ -643,6 +680,11 @@ export default function MyStatsPage() {
                         <Badge style={{ border: 'none', background: 'rgba(139, 92, 246, 0.05)', color: '#8b5cf6', padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
                             {stats.recoveriesCount} recuperos
                         </Badge>
+                        {stats.extraItemsCount > 0 && (
+                            <Badge style={{ border: 'none', background: 'rgba(139, 92, 246, 0.05)', color: '#8b5cf6', padding: '0.2rem 0.5rem', fontSize: '0.7rem' }}>
+                                {stats.extraItemsCount} extras
+                            </Badge>
+                        )}
                     </div>
                 </Card>
 
