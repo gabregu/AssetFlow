@@ -4,7 +4,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { useStore } from '../../../lib/store';
 import { Archive, AlertCircle, Truck, CheckCircle2, TrendingUp, ArrowUpRight, ClipboardList, BarChart3, User, Printer } from 'lucide-react';
-import { resolveTicketServiceDetails, getRate, getExchangeRateForDate } from '@/lib/billing';
+import { resolveTicketServiceDetails, getRate, getExchangeRateForDate, calculateTaskFinancials, calculateTicketFinancials } from '@/lib/billing';
 import Link from 'next/link';
 import { Button } from '../../components/ui/Button';
 
@@ -125,45 +125,33 @@ export default function MyStatsPage() {
             const ticketDate = isValidDate ? new Date(rawDate.toString().includes('T') ? rawDate : rawDate + 'T00:00:00') : new Date();
             const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status || '') || item.displayStatus === 'Entregado' || item.displayStatus === 'Finalizado';
 
-            // Liquidación detallada
-            const { moveType: finalMoveType, assetType: finalDeviceType } = resolveTicketServiceDetails(t, globalAssets);
+            // Liquidación — usar misma lógica que Pago a Conductores (billing.js)
+            let amount = 0;
+            let finalMoveType = '';
+            let isInternalMethod = false;
+
+            if (!item.isMainTicket && item.caseData) {
+                // Sub-caso: usar calculateTaskFinancials (misma función que driver-payments)
+                const taskFin = calculateTaskFinancials(item.caseData, rates, globalAssets, users);
+                if (taskFin) {
+                    amount = taskFin.logisticCost || 0;
+                    finalMoveType = taskFin.moveType || '';
+                    isInternalMethod = !!taskFin.isInternalDriver;
+                }
+            } else {
+                // Ticket legacy: usar calculateTicketFinancials
+                const ticketFin = calculateTicketFinancials(t, rates, globalAssets, users, logisticsTasks);
+                if (ticketFin) {
+                    amount = ticketFin.logisticCost || 0;
+                    finalMoveType = ticketFin.moveType || '';
+                    const method = ticketFin.method || '';
+                    isInternalMethod = method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local');
+                }
+            }
+
             const moveLower = (finalMoveType || '').toLowerCase();
             const isDelivery = moveLower.includes('entrega') || moveLower.includes('alta');
             const isRecovery = moveLower.includes('recupero') || moveLower.includes('retiro') || moveLower.includes('baja') || moveLower.includes('collection');
-
-            const lowerDevice = (finalDeviceType || '').toLowerCase();
-            const isLaptop = lowerDevice.includes('laptop') || lowerDevice.includes('macbook') || lowerDevice.includes('notebook') || lowerDevice.includes('equipo') || lowerDevice.includes('pc');
-            const isPhone = lowerDevice.includes('smartphone') || lowerDevice.includes('celular') || lowerDevice.includes('iphone') || lowerDevice.includes('samsung');
-            const isKey = lowerDevice.includes('key') || lowerDevice.includes('yubikey') || lowerDevice.includes('llave');
-
-            const baseCommission = getRate(rates?.cost_Driver_Commission, rates?.driverCommission, 15);
-            let extra = 0;
-
-            const driverNameRaw = t.logistics?.deliveryPerson || '';
-            let driverKey = null;
-            const dLower = driverNameRaw.toLowerCase();
-
-            const matchedUser = [...users].find(u => u.name && (dLower.includes(u.name.toLowerCase()) || u.name.toLowerCase().includes(dLower)));
-            if (matchedUser) {
-                driverKey = matchedUser.name;
-            } else {
-                if (dLower.includes('lucas')) driverKey = 'Lucas';
-                else if (dLower.includes('facundo')) driverKey = 'Facundo';
-                else if (dLower.includes('guillermo')) driverKey = 'Guillermo';
-            }
-
-            if (driverKey) {
-                const moveKey = isDelivery ? 'Delivery' : (isRecovery ? 'Recovery' : null);
-                const deviceKey = isLaptop ? 'Laptop' : (isPhone ? 'Smartphone' : (isKey ? 'Key' : null));
-                if (moveKey && deviceKey) {
-                    const rateKey = `driverExtra_${driverKey}_${moveKey}_${deviceKey}`;
-                    const extraVal = rates?.[rateKey];
-                    if (extraVal !== undefined && extraVal !== null && !isNaN(parseFloat(extraVal))) {
-                        extra = parseFloat(extraVal);
-                    }
-                }
-            }
-            const amount = (baseCommission + extra);
 
             // Conteos diarios y semanales (siempre actuales)
             if (isFinished) {
@@ -183,8 +171,8 @@ export default function MyStatsPage() {
                 }
             }
 
-            // Liquidación mensual filtrada por mes seleccionado
-            if (isFinished && ticketDate.getMonth() === targetMonth && ticketDate.getFullYear() === targetYear) {
+            // Liquidación mensual filtrada por mes seleccionado (solo métodos internos)
+            if (isFinished && isInternalMethod && ticketDate.getMonth() === targetMonth && ticketDate.getFullYear() === targetYear) {
                 personalLiquidation += amount;
                 if (isDelivery) deliveriesCount++;
                 if (isRecovery) recoveriesCount++;
@@ -267,44 +255,27 @@ export default function MyStatsPage() {
             const isFinished = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(t.status || '') || item.displayStatus === 'Entregado' || item.displayStatus === 'Finalizado';
 
             if (isFinished && ticketDate.getMonth() === stats.targetMonth && ticketDate.getFullYear() === stats.targetYear) {
-                const { moveType: finalMoveType, assetType: finalDeviceType } = resolveTicketServiceDetails(t, globalAssets);
-                const moveLower = (finalMoveType || '').toLowerCase();
-                const isDelivery = moveLower.includes('entrega') || moveLower.includes('alta');
-                const isRecovery = moveLower.includes('recupero') || moveLower.includes('retiro') || moveLower.includes('baja') || moveLower.includes('collection');
+                // Usar misma lógica que Pago a Conductores (billing.js)
+                let cost = 0;
+                let isInternalMethod = false;
 
-                const lowerDevice = (finalDeviceType || '').toLowerCase();
-                const isLaptop = lowerDevice.includes('laptop') || lowerDevice.includes('macbook') || lowerDevice.includes('notebook') || lowerDevice.includes('equipo') || lowerDevice.includes('pc');
-                const isPhone = lowerDevice.includes('smartphone') || lowerDevice.includes('celular') || lowerDevice.includes('iphone') || lowerDevice.includes('samsung');
-                const isKey = lowerDevice.includes('key') || lowerDevice.includes('yubikey') || lowerDevice.includes('llave');
-
-                const baseCommission = getRate(rates?.cost_Driver_Commission, rates?.driverCommission, 15);
-                let extra = 0;
-
-                const driverNameRaw = t.logistics?.deliveryPerson || '';
-                let driverKey = null;
-                const dLower = driverNameRaw.toLowerCase();
-
-                const matchedUser = [...users].find(u => u.name && (dLower.includes(u.name.toLowerCase()) || u.name.toLowerCase().includes(dLower)));
-                if (matchedUser) {
-                    driverKey = matchedUser.name;
+                if (!item.isMainTicket && item.caseData) {
+                    const taskFin = calculateTaskFinancials(item.caseData, rates, globalAssets, users);
+                    if (taskFin) {
+                        cost = taskFin.logisticCost || 0;
+                        isInternalMethod = !!taskFin.isInternalDriver;
+                    }
                 } else {
-                    if (dLower.includes('lucas')) driverKey = 'Lucas';
-                    else if (dLower.includes('facundo')) driverKey = 'Facundo';
-                    else if (dLower.includes('guillermo')) driverKey = 'Guillermo';
-                }
-
-                if (driverKey) {
-                    const moveKey = isDelivery ? 'Delivery' : (isRecovery ? 'Recovery' : null);
-                    const deviceKey = isLaptop ? 'Laptop' : (isPhone ? 'Smartphone' : (isKey ? 'Key' : null));
-                    if (moveKey && deviceKey) {
-                        const rateKey = `driverExtra_${driverKey}_${moveKey}_${deviceKey}`;
-                        const extraVal = rates?.[rateKey];
-                        if (extraVal !== undefined && extraVal !== null && !isNaN(parseFloat(extraVal))) {
-                            extra = parseFloat(extraVal);
-                        }
+                    const ticketFin = calculateTicketFinancials(t, rates, globalAssets, users, logisticsTasks);
+                    if (ticketFin) {
+                        cost = ticketFin.logisticCost || 0;
+                        const method = ticketFin.method || '';
+                        isInternalMethod = method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local');
                     }
                 }
-                const cost = baseCommission + extra;
+
+                // Solo incluir servicios de reparto interno (misma lógica que driver-payments)
+                if (!isInternalMethod) return;
 
                 let description = item.isMainTicket ? (t.subject || 'Sin Asunto') : (item.caseData?.subject || t.subject || 'Sin Asunto');
                 
