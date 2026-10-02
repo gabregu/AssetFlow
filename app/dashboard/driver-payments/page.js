@@ -1,5 +1,5 @@
 'use client';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useStore } from '../../../lib/store';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -18,6 +18,11 @@ export default function DriverPaymentsPage() {
     const [localChecks, setLocalChecks] = useState({});
     const [selectedDriver, setSelectedDriver] = useState('Todos');
     const [selectedClientFilter, setSelectedClientFilter] = useState('Todos');
+    
+    const ratesRef = useRef(rates);
+    useEffect(() => {
+        ratesRef.current = rates;
+    }, [rates]);
     
     // Extra items state
     const [extraServiceText, setExtraServiceText] = useState({});
@@ -378,6 +383,75 @@ export default function DriverPaymentsPage() {
         });
         
         alert(`Liquidación guardada para ${driverName}`);
+    };
+
+    const handleToggleItemCheck = async (driverName, itemId, currentValue) => {
+        const nextValue = !currentValue;
+        const checkKey = `${driverName}-${itemId}`;
+
+        // 1. Optimistic local update so UI responds instantly
+        setLocalChecks(prev => ({ ...prev, [checkKey]: nextValue }));
+
+        // 2. Build updated driverItemChecks
+        const currentRates = ratesRef.current || {};
+        const currentItemChecks = currentRates.driverItemChecks || {};
+        const monthChecks = currentItemChecks[monthKey] || {};
+        const driverChecks = monthChecks[driverName] || {};
+
+        const newRates = {
+            ...currentRates,
+            driverItemChecks: {
+                ...currentItemChecks,
+                [monthKey]: {
+                    ...monthChecks,
+                    [driverName]: {
+                        ...driverChecks,
+                        [itemId]: nextValue
+                    }
+                }
+            }
+        };
+
+        ratesRef.current = newRates;
+        await updateRates(newRates, true);
+    };
+
+    const handleToggleAllChecks = async (driverName, items, areAllChecked) => {
+        const nextValue = !areAllChecked;
+
+        // 1. Optimistic local update for all items
+        setLocalChecks(prev => {
+            const next = { ...prev };
+            items.forEach(item => {
+                next[`${driverName}-${item.id}`] = nextValue;
+            });
+            return next;
+        });
+
+        // 2. Build updated driverItemChecks for all items
+        const currentRates = ratesRef.current || {};
+        const currentItemChecks = currentRates.driverItemChecks || {};
+        const monthChecks = currentItemChecks[monthKey] || {};
+        const driverChecks = monthChecks[driverName] || {};
+
+        const newDriverChecks = { ...driverChecks };
+        items.forEach(item => {
+            newDriverChecks[item.id] = nextValue;
+        });
+
+        const newRates = {
+            ...currentRates,
+            driverItemChecks: {
+                ...currentItemChecks,
+                [monthKey]: {
+                    ...monthChecks,
+                    [driverName]: newDriverChecks
+                }
+            }
+        };
+
+        ratesRef.current = newRates;
+        await updateRates(newRates, true);
     };
 
     const handleAddExtraItem = async (driverName, customText, customVal) => {
@@ -820,6 +894,13 @@ export default function DriverPaymentsPage() {
                         const filteredItems = data.items.filter(item => selectedClientFilter === 'Todos' || item.client === selectedClientFilter);
                         const filteredTotal = filteredItems.reduce((sum, item) => sum + item.cost, 0);
 
+                        const checkedCount = filteredItems.filter(item => {
+                            const checkKey = `${name}-${item.id}`;
+                            return localChecks[checkKey] ?? (rates?.driverItemChecks?.[monthKey]?.[name]?.[item.id] || false);
+                        }).length;
+                        const areAllChecked = filteredItems.length > 0 && checkedCount === filteredItems.length;
+                        const areSomeChecked = checkedCount > 0 && !areAllChecked;
+
                         return (
                             <Card key={name} style={{ border: isPaid ? (isFullyPaid ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(245, 158, 11, 0.4)') : undefined }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -853,7 +934,14 @@ export default function DriverPaymentsPage() {
 
                                 {/* Formulario Inline Dinero Extra por Conductor */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>SERVICIOS Y GASTOS ({filteredItems.length})</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>SERVICIOS Y GASTOS ({filteredItems.length})</span>
+                                        {checkedCount > 0 && (
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '2px 8px', borderRadius: '12px' }}>
+                                                ✓ {checkedCount} de {filteredItems.length} liquidados
+                                            </span>
+                                        )}
+                                    </div>
                                     <Button 
                                         variant="secondary"
                                         size="xs"
@@ -901,7 +989,18 @@ export default function DriverPaymentsPage() {
                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                                         <thead>
                                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                                <th style={{ padding: '0.75rem 1rem', width: '40px', textAlign: 'center' }}></th>
+                                                <th style={{ padding: '0.75rem 1rem', width: '40px', textAlign: 'center' }}>
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={areAllChecked}
+                                                        ref={el => {
+                                                            if (el) el.indeterminate = areSomeChecked;
+                                                        }}
+                                                        onChange={() => handleToggleAllChecks(name, filteredItems, areAllChecked)}
+                                                        title={areAllChecked ? "Deseleccionar todos" : "Seleccionar todos"}
+                                                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                    />
+                                                </th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>ID</th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>Descripción</th>
                                                 <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600 }}>Cliente</th>
@@ -920,7 +1019,8 @@ export default function DriverPaymentsPage() {
                                                         <input 
                                                             type="checkbox" 
                                                             checked={isChecked}
-                                                            onChange={() => setLocalChecks(prev => ({...prev, [checkKey]: !isChecked}))}
+                                                            onChange={() => handleToggleItemCheck(name, item.id, isChecked)}
+                                                            title={isChecked ? "Marcar como pendiente" : "Marcar como liquidado (guardado automático)"}
                                                             style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                                                         />
                                                     </td>
