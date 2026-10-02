@@ -855,11 +855,15 @@ export default function MyStatsPage() {
                                 <div>
                                     <span style={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Pagado Real</span>
                                     <strong style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                        <span>USD {savedPaymentUSD.toFixed(2)}</span>
-                                        {exchangeRate > 0 && (
-                                            <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
-                                                ARS {(savedPaymentUSD * exchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })} (T/C: {exchangeRate})
-                                            </span>
+                                        {exchangeRate > 0 ? (
+                                            <>
+                                                <span>ARS {(savedPaymentUSD * exchangeRate).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                                                <span style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                                                    USD {savedPaymentUSD.toFixed(2)} (T/C: {exchangeRate})
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <span>USD {savedPaymentUSD.toFixed(2)}</span>
                                         )}
                                     </strong>
                                 </div>
