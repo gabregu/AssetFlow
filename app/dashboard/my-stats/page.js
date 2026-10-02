@@ -858,16 +858,87 @@ export default function MyStatsPage() {
                     </p>
                 ) : (
                     <div>
-                        <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <style>{`
+                                .driver-table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                }
+                                .driver-table th {
+                                    padding: 0.75rem 1rem;
+                                    text-align: left;
+                                    color: var(--text-secondary);
+                                    font-weight: 600;
+                                    font-size: 0.8rem;
+                                    border-bottom: 2px solid var(--border);
+                                }
+                                .driver-table td {
+                                    padding: 0.75rem 1rem;
+                                    border-bottom: 1px solid var(--border);
+                                }
+                                
+                                @media (max-width: 768px) {
+                                    .driver-table thead {
+                                        display: none;
+                                    }
+                                    .driver-table, .driver-table tbody, .driver-table tr, .driver-table td {
+                                        display: block;
+                                        width: 100%;
+                                    }
+                                    .driver-table tr {
+                                        margin-bottom: 1rem;
+                                        border: 1px solid var(--border);
+                                        border-radius: 8px;
+                                        padding: 0.5rem;
+                                        background-color: #fafafa;
+                                    }
+                                    .driver-table td {
+                                        padding: 0.5rem;
+                                        border-bottom: none;
+                                        display: flex;
+                                        justify-content: space-between;
+                                        align-items: center;
+                                        text-align: right;
+                                    }
+                                    .driver-table td::before {
+                                        content: attr(data-label);
+                                        font-weight: 700;
+                                        font-size: 0.7rem;
+                                        text-transform: uppercase;
+                                        color: var(--text-secondary);
+                                        float: left;
+                                        text-align: left;
+                                        margin-right: 1rem;
+                                    }
+                                    .td-desc {
+                                        flex-direction: column;
+                                        align-items: flex-start !important;
+                                        text-align: left !important;
+                                        background: white;
+                                        border-radius: 6px;
+                                        margin-top: 0.5rem;
+                                        border: 1px solid var(--border) !important;
+                                    }
+                                    .td-desc::before {
+                                        margin-bottom: 0.25rem;
+                                    }
+                                    .td-cost {
+                                        font-size: 1.1rem !important;
+                                        border-top: 1px dashed var(--border) !important;
+                                        margin-top: 0.5rem;
+                                        padding-top: 0.75rem !important;
+                                    }
+                                }
+                            `}</style>
+                            <table className="driver-table">
                                 <thead>
-                                    <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                                        <th style={{ padding: '0.75rem 1rem', width: '40px', textAlign: 'center' }}></th>
-                                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.8rem' }}>ID</th>
-                                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.8rem' }}>Descripción</th>
-                                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.8rem' }}>Cliente</th>
-                                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.8rem' }}>Solicitante</th>
-                                        <th style={{ padding: '0.75rem 1rem', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.8rem' }}>Costo Logístico</th>
+                                    <tr>
+                                        <th style={{ width: '40px', textAlign: 'center' }}></th>
+                                        <th>ID</th>
+                                        <th>Descripción</th>
+                                        <th>Cliente</th>
+                                        <th>Solicitante</th>
+                                        <th style={{ textAlign: 'right' }}>Costo Logístico</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -876,8 +947,8 @@ export default function MyStatsPage() {
                                         const isChecked = !!checks[item.id];
                                         
                                         return (
-                                            <tr key={idx} style={{ borderBottom: idx < monthItems.length - 1 ? '1px solid var(--border)' : 'none', background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'transparent' }}>
-                                                <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                            <tr key={idx} style={{ background: isChecked ? 'rgba(16, 185, 129, 0.05)' : 'transparent' }}>
+                                                <td data-label="Estado" style={{ textAlign: 'center' }}>
                                                     <input 
                                                         type="checkbox" 
                                                         checked={isChecked}
@@ -885,13 +956,13 @@ export default function MyStatsPage() {
                                                         style={{ cursor: 'not-allowed', width: '16px', height: '16px' }}
                                                     />
                                                 </td>
-                                                <td style={{ padding: '0.75rem 1rem', fontWeight: 500, color: 'var(--primary-color)', fontSize: '0.85rem' }}>
+                                                <td data-label="ID" style={{ fontWeight: 600, color: 'var(--primary-color)', fontSize: '0.9rem' }}>
                                                     {item.type === 'Ticket' || item.type === 'Sub-caso' ? <Link href={`/dashboard/tickets/${item.id}`}>{item.id}</Link> : item.id}
                                                 </td>
-                                                <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', textDecoration: isChecked ? 'line-through' : 'none', opacity: isChecked ? 0.6 : 1, fontSize: '0.85rem' }}>
+                                                <td data-label="Descripción" className="td-desc" style={{ color: 'var(--text-main)', textDecoration: isChecked ? 'line-through' : 'none', opacity: isChecked ? 0.6 : 1, fontSize: '0.85rem' }}>
                                                     {item.description}
                                                 </td>
-                                                <td style={{ padding: '0.75rem 1rem', opacity: isChecked ? 0.6 : 1 }}>
+                                                <td data-label="Cliente" style={{ opacity: isChecked ? 0.6 : 1 }}>
                                                     <span style={{ 
                                                         padding: '0.2rem 0.5rem', 
                                                         borderRadius: '6px', 
@@ -903,9 +974,9 @@ export default function MyStatsPage() {
                                                         {item.client}
                                                     </span>
                                                 </td>
-                                                <td style={{ padding: '0.75rem 1rem', color: 'var(--text-main)', opacity: isChecked ? 0.6 : 1, fontSize: '0.85rem' }}>
+                                                <td data-label="Solicitante" style={{ color: 'var(--text-main)', opacity: isChecked ? 0.6 : 1, fontSize: '0.85rem' }}>
                                                     {item.requester ? (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }}>
                                                             <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 600, color: '#475569' }}>
                                                                 {String(item.requester).charAt(0).toUpperCase()}
                                                             </div>
@@ -915,7 +986,7 @@ export default function MyStatsPage() {
                                                         <span style={{ color: 'var(--text-secondary)' }}>-</span>
                                                     )}
                                                 </td>
-                                                <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-main)', opacity: isChecked ? 0.6 : 1, fontSize: '0.85rem' }}>
+                                                <td data-label="Monto" className="td-cost" style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-main)', opacity: isChecked ? 0.6 : 1, fontSize: '0.95rem' }}>
                                                     USD {item.cost.toFixed(2)}
                                                 </td>
                                             </tr>
@@ -923,6 +994,7 @@ export default function MyStatsPage() {
                                     })}
                                 </tbody>
                             </table>
+                        </div>
                         </div>
 
                         {/* Footer de información de pago */}
