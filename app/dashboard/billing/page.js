@@ -37,7 +37,7 @@ import Link from 'next/link';
 import * as XLSX from 'xlsx';
 
 export default function BillingPage() {
-    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, countryFilter, getClientName, logisticsTasks, updateTicket } = useStore();
+    const { tickets, assets: globalAssets, users, currentUser, rates, updateRates, deleteTickets, expenses, addExpense, deleteExpense, countryFilter, getClientName, logisticsTasks, updateTicket, entities = [], invoiceProfiles, updateInvoiceProfile } = useStore();
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [isRatesModalOpen, setIsRatesModalOpen] = useState(false);
@@ -52,87 +52,142 @@ export default function BillingPage() {
     const [isEditingInvoiceConfig, setIsEditingInvoiceConfig] = useState(false);
 
     const activeClientName = useMemo(() => {
-        return getClientName(countryFilter) || 'EdPuzzle Inc';
-    }, [countryFilter, getClientName]);
-
-    const defaultInvoiceConfig = {
-        companyName: 'YAWI INFORMÁTICA',
-        companyTagline: 'Servicios Integrales de IT y Logística Informática',
-        companyCuit: '30-71829410-4',
-        companyIva: 'IVA Responsable Inscripto',
-        companyAddress: 'Av. del Libertador 602, CABA, Argentina',
-        companyEmail: 'contacto@yawi.ar',
-        docNumber: '0001 - 00000001',
-        emissionDate: '',
-        paymentCondition: 'Transferencia a 30 días',
-        currency: 'USD',
-        clientName: '',
-        clientTaxId: '',
-        clientEmail: '',
-        clientAddress: '',
-        extraConceptDesc: 'Otros Conceptos / Gastos',
-        extraConceptAmount: 0,
-        bankHolder: 'YAWI INFORMÁTICA S.A.',
-        bankName: 'Banco Santander',
-        bankAccountType: 'Cuenta Corriente Especial',
-        bankCbu: '0720194820000001234567',
-        bankAlias: 'YAWI.INFORMATICA',
-        bankSwift: 'BSCHESMMXXX',
-        bankAccountNumber: 'CC-USD-40019284-0'
-    };
-
-    const [invoiceConfig, setInvoiceConfig] = useState(defaultInvoiceConfig);
-
-    useEffect(() => {
-        try {
-            const saved = localStorage.getItem('yawi_invoice_template_config');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                setInvoiceConfig(prev => ({
-                    ...prev,
-                    ...parsed,
-                    emissionDate: parsed.emissionDate || new Date().toLocaleDateString('es-AR')
-                }));
-            } else {
-                setInvoiceConfig(prev => ({
-                    ...prev,
-                    emissionDate: new Date().toLocaleDateString('es-AR')
-                }));
-            }
-        } catch (e) {
-            console.error('Error cargando configuración de factura:', e);
+        if (countryFilter && countryFilter !== 'Todos') {
+            return (getClientName(countryFilter) || countryFilter).trim();
         }
-    }, []);
+        if (entities && entities.length > 0) {
+            return entities[0].name.trim();
+        }
+        return 'SFDC-Argentina';
+    }, [countryFilter, getClientName, entities]);
 
+    const [selectedClientKey, setSelectedClientKey] = useState(activeClientName);
+    const [saveStatus, setSaveStatus] = useState('Guardado'); // 'Guardado' | 'Guardando...'
+
+    // Sincronizar cliente seleccionado cuando cambia el filtro global en la barra lateral
     useEffect(() => {
         if (activeClientName) {
-            setInvoiceConfig(prev => {
-                const isEdPuzzle = activeClientName.toLowerCase().includes('edpuzzle');
-                const isSycomp = activeClientName.toLowerCase().includes('sycomp');
-                
-                const defaultTaxId = isEdPuzzle ? 'US-94-3829102' : (isSycomp ? 'US-83-1122334' : '30-00000000-0');
-                const defaultEmail = isEdPuzzle ? 'billing@edpuzzle.com' : (isSycomp ? 'ap@sycomp.com' : 'administracion@cliente.com');
-                const defaultAddress = isEdPuzzle ? 'San Francisco, CA - Estados Unidos' : (isSycomp ? 'Miami, FL - Estados Unidos' : 'Buenos Aires, Argentina');
-
-                return {
-                    ...prev,
-                    clientName: activeClientName,
-                    clientTaxId: prev.clientTaxId || defaultTaxId,
-                    clientEmail: prev.clientEmail || defaultEmail,
-                    clientAddress: prev.clientAddress || defaultAddress
-                };
-            });
+            setSelectedClientKey(activeClientName);
         }
     }, [activeClientName]);
+
+    // Lista consolidada de clientes/entornos disponibles para personalización y emisión
+    const availableClients = useMemo(() => {
+        const set = new Set();
+        if (entities && entities.length > 0) {
+            entities.forEach(e => {
+                if (e.name) set.add(e.name.trim());
+            });
+        }
+        ['SFDC-Argentina', 'EdPuzzle Inc', 'Sycomp-SRV', 'Commvault', 'SFDC-Chile', 'SFDC-Colombia', 'SFDC-Costa Rica', 'SFDC-Uruguay'].forEach(c => set.add(c));
+        if (invoiceProfiles && typeof invoiceProfiles === 'object') {
+            Object.keys(invoiceProfiles).forEach(k => {
+                if (k && k !== 'Todos') set.add(k.trim());
+            });
+        }
+        if (countryFilter && countryFilter !== 'Todos') {
+            set.add(getClientName(countryFilter));
+        }
+        return Array.from(set);
+    }, [entities, invoiceProfiles, countryFilter, getClientName]);
+
+    // Generador de plantilla por defecto adaptada a cada cliente/entorno
+    const getDefaultInvoiceConfigForClient = (clientKey = 'SFDC-Argentina') => {
+        const key = (clientKey || '').trim();
+        const isEdPuzzle = key.toLowerCase().includes('edpuzzle');
+        const isSycomp = key.toLowerCase().includes('sycomp');
+        const isArgentina = key.toLowerCase().includes('argentina') || key.toLowerCase().includes('sfdc');
+
+        return {
+            companyName: 'YAWI INFORMÁTICA',
+            companyTagline: 'Servicios Integrales de IT y Logística Informática',
+            companyCuit: '',
+            companyIva: 'Consumidor Final',
+            companyAddress: '',
+            companyEmail: 'info@yawi.ar',
+            docNumber: '0001 - 00000001',
+            emissionDate: new Date().toLocaleDateString('es-AR'),
+            paymentCondition: 'Transferencia',
+            currency: 'USD',
+            clientName: key,
+            clientTaxId: isEdPuzzle ? 'US-94-3829102' : (isSycomp ? 'US-83-1122334' : ''),
+            clientEmail: isEdPuzzle ? 'billing@edpuzzle.com' : (isSycomp ? 'ap@sycomp.com' : (isArgentina ? 'beltran.pablo@thelabit.com' : '')),
+            clientAddress: isEdPuzzle ? 'San Francisco, CA - Estados Unidos' : (isSycomp ? 'Miami, FL - Estados Unidos' : (isArgentina ? 'San Francisco, CA - Estados Unidos' : '')),
+            extraConceptDesc: 'Otros Conceptos / Gastos',
+            extraConceptAmount: 0,
+            bankHolder: 'Guillermo Abregu',
+            bankName: 'BNA',
+            bankAccountType: 'Cuenta Corriente Especial',
+            bankCbu: 'abreguceser.bna',
+            bankAlias: '',
+            bankSwift: '',
+            bankAccountNumber: ''
+        };
+    };
+
+    const [invoiceConfig, setInvoiceConfig] = useState(() => getDefaultInvoiceConfigForClient(activeClientName));
+
+    // Cargar perfil específico para el cliente seleccionado (Nube -> Local -> Default)
+    useEffect(() => {
+        if (!selectedClientKey) return;
+
+        // 1. Perfil sincronizado en la nube (app_config)
+        const cloudProfile = invoiceProfiles?.[selectedClientKey];
+
+        // 2. Perfil guardado localmente en este navegador
+        let localClientProfile = null;
+        try {
+            const savedLocal = localStorage.getItem(`yawi_invoice_config_${selectedClientKey}`);
+            if (savedLocal) localClientProfile = JSON.parse(savedLocal);
+        } catch (e) {
+            console.error('Error leyendo config local:', e);
+        }
+
+        // 3. Fallback: Configuración heredada antigua para migración sin pérdida de datos
+        let legacyProfile = null;
+        try {
+            const savedLegacy = localStorage.getItem('yawi_invoice_template_config');
+            if (savedLegacy) {
+                const parsed = JSON.parse(savedLegacy);
+                if (!cloudProfile && !localClientProfile) {
+                    legacyProfile = parsed;
+                }
+            }
+        } catch (e) {}
+
+        const defaults = getDefaultInvoiceConfigForClient(selectedClientKey);
+
+        const merged = {
+            ...defaults,
+            ...(legacyProfile || {}),
+            ...(localClientProfile || {}),
+            ...(cloudProfile || {}),
+            clientName: (cloudProfile?.clientName || localClientProfile?.clientName || legacyProfile?.clientName || selectedClientKey),
+            emissionDate: cloudProfile?.emissionDate || localClientProfile?.emissionDate || legacyProfile?.emissionDate || new Date().toLocaleDateString('es-AR')
+        };
+
+        setInvoiceConfig(merged);
+    }, [selectedClientKey, invoiceProfiles]);
 
     const updateInvoiceConfigField = (field, value) => {
         setInvoiceConfig(prev => {
             const next = { ...prev, [field]: value };
+            setSaveStatus('Guardando...');
+
+            // 1. Guardar en almacenamiento local para este cliente específico
             try {
+                localStorage.setItem(`yawi_invoice_config_${selectedClientKey}`, JSON.stringify(next));
                 localStorage.setItem('yawi_invoice_template_config', JSON.stringify(next));
             } catch (e) {
-                console.error('Error guardando configuración de factura:', e);
+                console.error('Error guardando en localStorage:', e);
             }
+
+            // 2. Sincronizar en la nube en Supabase (app_config)
+            if (updateInvoiceProfile) {
+                updateInvoiceProfile(selectedClientKey, next);
+            }
+
+            setTimeout(() => setSaveStatus('Guardado'), 600);
             return next;
         });
     };
@@ -465,8 +520,31 @@ export default function BillingPage() {
         if (selectedTickets.size > 0) {
             return (filteredTickets || []).filter(t => selectedTickets.has(t.id));
         }
-        return filteredTickets || [];
-    }, [selectedTickets, filteredTickets]);
+        if (selectedClientKey === activeClientName && filteredTickets) {
+            return filteredTickets;
+        }
+        return (tickets || []).filter(ticket => {
+            let ticketDate;
+            if (ticket.deliveryDetails?.customBillingDate) {
+                const [yyyy, mm, dd] = ticket.deliveryDetails.customBillingDate.split('-');
+                ticketDate = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+            } else if (ticket.deliveryCompletedDate) {
+                const dateStr = typeof ticket.deliveryCompletedDate === 'string' ? ticket.deliveryCompletedDate.substring(0, 10) : '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                    const [yyyy, mm, dd] = dateStr.split('-');
+                    ticketDate = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+                } else {
+                    ticketDate = new Date(ticket.deliveryCompletedDate);
+                }
+            } else {
+                return false;
+            }
+            const isDateMatch = ticketDate.getMonth() === selectedMonth && ticketDate.getFullYear() === selectedYear;
+            const isStatusMatch = ['Resuelto', 'Caso SFDC Cerrado', 'Servicio Facturado'].includes(ticket.status);
+            const isClientMatch = ticket.client === selectedClientKey;
+            return isDateMatch && isStatusMatch && isClientMatch;
+        });
+    }, [selectedTickets, filteredTickets, tickets, selectedClientKey, activeClientName, selectedMonth, selectedYear]);
 
     // Items limpios para el Resumen del Cliente (sin costos internos ni pagos a choferes)
     const invoiceItems = useMemo(() => {
@@ -582,7 +660,7 @@ export default function BillingPage() {
         const isArs = invoiceConfig.currency === 'ARS';
         const curSymbol = isArs ? 'ARS' : 'USD';
         const formattedDate = (invoiceConfig.emissionDate || new Date().toLocaleDateString('es-AR')).replace(/\//g, '-');
-        const clientName = invoiceConfig.clientName || activeClientName || 'Cliente';
+        const clientName = invoiceConfig.clientName || selectedClientKey || activeClientName || 'Cliente';
 
         const rows = [
             { 'TICKET / CASO': 'RESUMEN DE SERVICIO', 'DESCRIPCIÓN DEL SERVICIO LOGÍSTICO / IT': `Nº ${invoiceConfig.docNumber}`, 'CANT.': '', 'PRECIO UNIT.': '', 'SUBTOTAL': '' },
@@ -648,7 +726,7 @@ export default function BillingPage() {
         const isArs = invoiceConfig.currency === 'ARS';
         const curSymbol = isArs ? 'ARS' : 'USD';
         const emissionDate = invoiceConfig.emissionDate || new Date().toLocaleDateString('es-AR');
-        const clientName = invoiceConfig.clientName || activeClientName || 'Cliente';
+        const clientName = invoiceConfig.clientName || selectedClientKey || activeClientName || 'Cliente';
         const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
         const printWindow = window.open('', '_blank');
@@ -2318,7 +2396,7 @@ export default function BillingPage() {
             <Modal 
                 isOpen={isInvoiceModalOpen} 
                 onClose={() => setIsInvoiceModalOpen(false)} 
-                title="Resumen de Servicio para Cliente (YAWI Informática)"
+                title={`Resumen de Servicio para Cliente: ${selectedClientKey} (YAWI Informática)`}
                 maxWidth="1020px"
             >
                 <div style={{ padding: '0.25rem', maxHeight: '85vh', overflowY: 'auto' }}>
@@ -2335,7 +2413,39 @@ export default function BillingPage() {
                         borderRadius: '8px',
                         border: '1px solid var(--border)'
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            {/* Selector dinámico de Cliente / Entorno */}
+                            <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                background: 'var(--surface)',
+                                padding: '0.3rem 0.65rem',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border)'
+                            }}>
+                                <Building size={14} style={{ color: '#1e3a8a' }} />
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Entorno:</span>
+                                <select
+                                    value={selectedClientKey}
+                                    onChange={e => setSelectedClientKey(e.target.value)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        fontWeight: 800,
+                                        fontSize: '0.85rem',
+                                        color: '#1e3a8a',
+                                        cursor: 'pointer',
+                                        outline: 'none',
+                                        padding: '0.1rem 0.25rem'
+                                    }}
+                                >
+                                    {availableClients.map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
+
                             <Badge variant="info" style={{ fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}>
                                 {invoiceItems.length} servicio(s) incluido(s)
                             </Badge>
@@ -2435,13 +2545,42 @@ export default function BillingPage() {
                             flexDirection: 'column',
                             gap: '1rem'
                         }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                                    ⚙️ Personalización del Resumen (se guarda automáticamente)
-                                </h4>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                    Los cambios se guardan localmente para próximas emisiones
-                                </span>
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                borderBottom: '1px solid var(--border)', 
+                                paddingBottom: '0.6rem',
+                                flexWrap: 'wrap',
+                                gap: '0.5rem'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                        ⚙️ Personalización del Resumen
+                                    </h4>
+                                    <span style={{
+                                        background: '#dbeafe',
+                                        color: '#1e40af',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 800,
+                                        padding: '0.2rem 0.6rem',
+                                        borderRadius: '9999px',
+                                        border: '1px solid #bfdbfe'
+                                    }}>
+                                        {selectedClientKey}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                                    {saveStatus === 'Guardado' ? (
+                                        <span style={{ color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
+                                            <Check size={14} /> Guardado para <strong>{selectedClientKey}</strong> (nube y local)
+                                        </span>
+                                    ) : (
+                                        <span style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
+                                            <RefreshCw size={14} className="spin-fast" /> Guardando cambios...
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
@@ -2710,7 +2849,7 @@ export default function BillingPage() {
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#ffffff' }}>
                                 <div style={{ padding: '7px 10px', borderBottom: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', fontSize: '10px' }}>
-                                    <strong style={{ color: '#475569' }}>Razón Social:</strong> <span style={{ fontWeight: 700, color: '#0f172a' }}>{invoiceConfig.clientName || activeClientName}</span>
+                                    <strong style={{ color: '#475569' }}>Razón Social:</strong> <span style={{ fontWeight: 700, color: '#0f172a' }}>{invoiceConfig.clientName || selectedClientKey || activeClientName}</span>
                                 </div>
                                 <div style={{ padding: '7px 10px', borderBottom: '1px solid #e2e8f0', fontSize: '10px' }}>
                                     <strong style={{ color: '#475569' }}>ID / CUIT / Tax ID:</strong> <span style={{ fontWeight: 600, color: '#0f172a' }}>{invoiceConfig.clientTaxId || '—'}</span>
