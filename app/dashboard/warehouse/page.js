@@ -158,138 +158,39 @@ export default function WarehousePage() {
     const [isAuditMode, setIsAuditMode] = useState(false);
     const [mappingStep, setMappingStep] = useState(1); // 1: Scan Asset, 2: Scan Location
     const [scannedAsset, setScannedAsset] = useState(null);
-    const [floatingPopover, setFloatingPopover] = useState(null);
-    const floatingPopoverRef = useRef(null);
-
-    const computePopoverCoords = useCallback((targetEl) => {
-        if (!targetEl || typeof window === 'undefined') return null;
-        const rect = targetEl.getBoundingClientRect();
-        const isMobile = window.innerWidth < 640;
-
-        if (isMobile) {
-            return { isMobile: true, top: 'auto', left: 12, right: 12, bottom: 12, placement: 'mobile', targetEl };
-        }
-
-        const cardWidth = 300;
-        const cardHeight = 220; // compact card height
-        const gap = 12;
-
-        const targetCenterX = rect.left + rect.width / 2;
-        const targetCenterY = rect.top + rect.height / 2;
-
-        const spaceRight = window.innerWidth - rect.right;
-        const spaceLeft = rect.left;
-        const spaceAbove = rect.top;
-        const spaceBelow = window.innerHeight - rect.bottom;
-
-        let placement = 'right';
-        let left = 0;
-        let top = 0;
-        let arrowOffset = 0;
-
-        // Check if fits to the RIGHT (prefer right if >= 320px)
-        if (spaceRight >= cardWidth + gap + 10) {
-            placement = 'right';
-            left = rect.right + gap;
-            const desiredTop = targetCenterY - (cardHeight / 2);
-            const clampedTop = Math.max(12, Math.min(window.innerHeight - cardHeight - 12, desiredTop));
-            top = clampedTop;
-            arrowOffset = Math.max(18, Math.min(cardHeight - 18, targetCenterY - clampedTop));
-        } 
-        // Else check if fits to the LEFT
-        else if (spaceLeft >= cardWidth + gap + 10) {
-            placement = 'left';
-            left = rect.left - cardWidth - gap;
-            const desiredTop = targetCenterY - (cardHeight / 2);
-            const clampedTop = Math.max(12, Math.min(window.innerHeight - cardHeight - 12, desiredTop));
-            top = clampedTop;
-            arrowOffset = Math.max(18, Math.min(cardHeight - 18, targetCenterY - clampedTop));
-        } 
-        // Else check if fits ABOVE
-        else if (spaceAbove >= cardHeight + gap + 10) {
-            placement = 'top';
-            top = rect.top - cardHeight - gap;
-            const desiredLeft = targetCenterX - (cardWidth / 2);
-            const clampedLeft = Math.max(12, Math.min(window.innerWidth - cardWidth - 12, desiredLeft));
-            left = clampedLeft;
-            arrowOffset = Math.max(18, Math.min(cardWidth - 18, targetCenterX - clampedLeft));
-        } 
-        // Else place BELOW
-        else {
-            placement = 'bottom';
-            top = rect.bottom + gap;
-            const desiredLeft = targetCenterX - (cardWidth / 2);
-            const clampedLeft = Math.max(12, Math.min(window.innerWidth - cardWidth - 12, desiredLeft));
-            left = clampedLeft;
-            arrowOffset = Math.max(18, Math.min(cardWidth - 18, targetCenterX - clampedLeft));
-        }
-
-        return {
-            top: Math.round(top),
-            left: Math.round(left),
-            cardWidth,
-            cardHeight,
-            placement,
-            arrowOffset: Math.round(arrowOffset),
-            targetEl
-        };
-    }, []);
-
     useEffect(() => {
-        if (!selectedLocation) {
-            setFloatingPopover(null);
-            return;
-        }
-
-        const updatePosition = () => {
-            const locId = selectedLocation.id;
-            const escapedId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(locId) : locId.replace(/["\\]/g, '\\$&');
-            const targetEl = document.querySelector(`[data-slot-id="${escapedId}"]`);
-            if (targetEl) {
-                const coords = computePopoverCoords(targetEl);
-                if (coords) {
-                    setFloatingPopover(coords);
-                    return;
-                }
-            }
-            // Fallback safe position if element is temporarily not in DOM
-            setFloatingPopover(prev => prev || {
-                top: Math.max(80, Math.round(window.innerHeight / 2 - 110)),
-                left: Math.max(20, Math.round(window.innerWidth / 2 - 155)),
-                cardWidth: 310,
-                cardHeight: 220,
-                placement: null
-            });
-        };
-
-        updatePosition();
-        const animFrame = requestAnimationFrame(updatePosition);
-        const timer = setTimeout(updatePosition, 80);
-
-        const handleScrollOrResize = () => {
-            updatePosition();
-        };
+        if (!selectedLocation) return;
 
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') {
                 setSelectedLocation(null);
-                setFloatingPopover(null);
             }
         };
 
-        window.addEventListener('scroll', handleScrollOrResize, { passive: true });
-        window.addEventListener('resize', handleScrollOrResize, { passive: true });
+        const handleOutsideClick = (e) => {
+            if (
+                e.target.closest('[data-popover-card="true"]') ||
+                e.target.closest('[data-warehouse-slot="true"]') ||
+                e.target.closest('.modal-content') ||
+                e.target.closest('.modal-overlay') ||
+                e.target.closest('button')
+            ) {
+                return;
+            }
+            setSelectedLocation(null);
+        };
+
         window.addEventListener('keydown', handleKeyDown);
+        const timer = setTimeout(() => {
+            window.addEventListener('mousedown', handleOutsideClick);
+        }, 120);
 
         return () => {
-            cancelAnimationFrame(animFrame);
             clearTimeout(timer);
-            window.removeEventListener('scroll', handleScrollOrResize);
-            window.removeEventListener('resize', handleScrollOrResize);
             window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('mousedown', handleOutsideClick);
         };
-    }, [selectedLocation, computePopoverCoords]);
-
+    }, [selectedLocation]);
 
     // Move Asset States
     const [isMoveAssetModalOpen, setIsMoveAssetModalOpen] = useState(false);
@@ -1300,22 +1201,11 @@ export default function WarehousePage() {
                 setSelectedAssetId(null);
             }
 
-            // Calculate floating popover position anchored directly to clicked element
-            if (event && event.currentTarget) {
-                const targetEl = event.currentTarget;
-                const coords = computePopoverCoords(targetEl);
-                if (coords) {
-                    setFloatingPopover(coords);
-                }
-            } else if (typeof document !== 'undefined') {
+            if (typeof document !== 'undefined' && (!event || !event.currentTarget)) {
                 const escapedId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(loc.id) : loc.id.replace(/["\\]/g, '\\$&');
                 const foundEl = document.querySelector(`[data-slot-id="${escapedId}"]`);
                 if (foundEl) {
-                    foundEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    setTimeout(() => {
-                        const coords = computePopoverCoords(foundEl);
-                        if (coords) setFloatingPopover(coords);
-                    }, 80);
+                    foundEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }
         }
@@ -2527,9 +2417,14 @@ export default function WarehousePage() {
             if (isAuditMode && auditLocation?.id === locId) { bgColor = '#ec4899'; borderColor = '#db2777'; }
 
             const isFilteredHit = isHighlighted && filteredInSlot > 0;
+            const numMatch = locId.match(/\d+$/);
+            const num = numMatch ? parseInt(numMatch[0], 10) : 1;
+            const alignLeft = ((num - 1) % 7) >= 3;
+            const alignTop = num <= 14;
+            const alignBottom = num >= 35;
 
             return (
-                <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', position: 'relative', zIndex: isSelected ? 1001 : 1 }}>
                     <div 
                         onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                         title={buildAssetTooltip(locationAssets, locId)}
@@ -2544,12 +2439,14 @@ export default function WarehousePage() {
                             boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : (isFilteredHit ? '0 0 10px rgba(22,163,74,0.9)' : 'none'),
                             opacity: isNotHighlighted ? 0.2 : assetCount > 0 ? 1 : 0.4,
                             position: 'relative',
+                            zIndex: isSelected ? 1002 : 1,
                             display: 'flex', alignItems: 'center', justifyContent: 'center'
                         }}
                     >
                         {isFilteredHit && (
                             <span style={{ fontSize: '10px', color: 'white', fontWeight: 900, lineHeight: 1 }}>✓</span>
                         )}
+                        {renderSlotPopover(normLocId, isSelected, { alignLeft, alignTop, alignBottom })}
                     </div>
                 </div>
             );
@@ -2611,6 +2508,7 @@ export default function WarehousePage() {
                 bgColor = '#f3e8ff';
             }
 
+            const alignLeft = boxNum >= 4;
             return (
                 <div 
                     key={locId}
@@ -2624,9 +2522,11 @@ export default function WarehousePage() {
                         cursor: 'pointer', transition: 'all 0.15s ease',
                         boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : '0 2px 4px rgba(0,0,0,0.05)',
                         opacity: isNotHighlighted ? 0.2 : 1,
-                        position: 'relative'
+                        position: 'relative',
+                        zIndex: isSelected ? 1002 : 1
                     }}
                 >
+                    {renderSlotPopover(locId, isSelected, { alignLeft, offsetX: 10 })}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0 2px' }}>
                         <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', opacity: 0.8 }}>
                             #{boxNum}
@@ -2684,7 +2584,7 @@ export default function WarehousePage() {
         };
 
         return (
-            <Card style={{ flex: 1, padding: '0', display: 'flex', flexDirection: 'column', border: '2px solid #2563eb', overflow: 'hidden', marginBottom: '1.5rem' }}>
+            <Card style={{ flex: 1, padding: '0', display: 'flex', flexDirection: 'column', border: '2px solid #2563eb', overflow: 'visible', position: 'relative', marginBottom: '1.5rem' }}>
                 <div style={{ background: '#eff6ff', padding: '1.25rem', borderBottom: '1px solid #bfdbfe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <h2 style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#1e3a8a' }}>ARMARIO CELULARES</h2>
@@ -3163,12 +3063,14 @@ export default function WarehousePage() {
                             Total dispositivos en {getDisplayAisle(aisle)}: {aisleAssetsCount}
                         </div>
                         
-                        {estantesIndices.map(estante => (
-                            <div key={`estante-${estante}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {estantesIndices.map(estante => {
+                            const isEstanteSelected = selectedLocation?.id && selectedLocation.id.startsWith(`${aisle}-${estante}-`);
+                            return (
+                            <div key={`estante-${estante}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: isEstanteSelected ? 1000 : 1 }}>
                                 <div style={{ width: '16px', textAlign: 'right', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                                     {estante}
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${config.cols}, 1fr)`, gap: '6px', flex: 1 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${config.cols}, 1fr)`, gap: '6px', flex: 1, position: 'relative' }}>
                                     {posIndices.map(pos => {
                                         const locId = `${aisle}-${estante}-${pos}`;
                                         const loc = locations.find(l => l.id === locId) || { id: locId };
@@ -3193,10 +3095,13 @@ export default function WarehousePage() {
 
                                         const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
                                         const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
+                                        const alignLeft = pos > (config.cols / 2);
+                                        const alignTop = estante >= config.rows - 1;
+                                        const alignBottom = estante <= 2;
                                         return (
                                             <div 
                                                 key={`pos-${pos}`}
-                                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+                                                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative', zIndex: isSelected ? 1001 : 1 }}
                                             >
                                                 <div 
                                                     onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
@@ -3212,7 +3117,8 @@ export default function WarehousePage() {
                                                         transition: 'all 0.15s ease',
                                                         boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : 'none',
                                                         opacity: isNotHighlighted ? 0.2 : assetCount > 0 ? 1 : 0.4,
-                                                        position: 'relative'
+                                                        position: 'relative',
+                                                        zIndex: isSelected ? 1002 : 1
                                                     }}
                                                 >
                                                     {locationAssets.some(a => a.id === aisleOldestAssetId) && (
@@ -3225,6 +3131,7 @@ export default function WarehousePage() {
                                                             ✨
                                                         </div>
                                                     )}
+                                                    {renderSlotPopover(locId, isSelected, { alignLeft, alignTop, alignBottom })}
                                                 </div>
                                                 {estante === 1 && (
                                                     <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: '2px' }}>
@@ -3236,7 +3143,8 @@ export default function WarehousePage() {
                                     })}
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 );
                 })() : (
@@ -3249,7 +3157,7 @@ export default function WarehousePage() {
                         borderRadius: '8px',
                         border: '1px dashed var(--border)'
                     }}>
-                        {locations.sort((a,b) => a.id.localeCompare(b.id)).map(loc => {
+                        {locations.sort((a,b) => a.id.localeCompare(b.id)).map((loc, index) => {
                             const locationAssets = assets.filter(a => 
                                 (countryFilter === 'Todos' || a.country === countryFilter) &&
                                 a.locationId === loc.id
@@ -3307,7 +3215,8 @@ export default function WarehousePage() {
                                         transition: 'all 0.15s ease',
                                         boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : 'none',
                                         opacity: isNotHighlighted ? 0.2 : 1,
-                                        position: 'relative'
+                                        position: 'relative',
+                                        zIndex: isSelected ? 1002 : 1
                                     }}
                                 >
                                     {locationAssets.some(a => a.id === aisleOldestAssetId) && (
@@ -3321,6 +3230,7 @@ export default function WarehousePage() {
                                         </div>
                                     )}
                                     {renderCellContent(loc, assetCount, locationAssets)}
+                                    {renderSlotPopover(loc.id, isSelected, { alignLeft: (index % 6) >= 3 })}
                                 </div>
                             );
                         })}
@@ -3858,6 +3768,112 @@ export default function WarehousePage() {
                 </div>
             );
         }
+    };
+
+    const renderSlotPopover = (locId, isSelected, options = {}) => {
+        if (!isSelected || !selectedLocation || selectedLocation.id !== locId) return null;
+
+        const {
+            alignLeft = false,
+            alignTop = false,
+            alignBottom = false,
+            offsetX = 14,
+            offsetY = 0
+        } = options;
+
+        const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 640;
+
+        if (isMobileScreen) {
+            return (
+                <div
+                    data-popover-card="true"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                        position: 'fixed',
+                        left: '12px',
+                        right: '12px',
+                        bottom: '12px',
+                        maxHeight: 'min(380px, calc(100vh - 24px))',
+                        overflowY: 'auto',
+                        background: 'var(--surface, #ffffff)',
+                        color: 'var(--text-main)',
+                        border: '2px solid var(--primary-color)',
+                        borderRadius: '12px',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.35)',
+                        zIndex: 99999,
+                        padding: '0.85rem',
+                        cursor: 'default',
+                        textAlign: 'left',
+                        animation: 'fadeInPop 0.15s ease-out'
+                    }}
+                >
+                    {renderSelectionInfoContent(true, () => setSelectedLocation(null))}
+                </div>
+            );
+        }
+
+        return (
+            <div
+                data-popover-card="true"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    position: 'absolute',
+                    ...(alignLeft 
+                        ? { right: `calc(100% + ${offsetX}px)` } 
+                        : { left: `calc(100% + ${offsetX}px)` }
+                    ),
+                    ...(alignTop 
+                        ? { top: `${offsetY}px` } 
+                        : alignBottom 
+                            ? { bottom: `${offsetY}px` } 
+                            : { top: '50%', transform: `translateY(-50%) translateY(${offsetY}px)` }
+                    ),
+                    width: '315px',
+                    maxWidth: 'min(330px, 90vw)',
+                    maxHeight: 'min(390px, 80vh)',
+                    overflowY: 'auto',
+                    background: 'var(--surface, #ffffff)',
+                    color: 'var(--text-main)',
+                    border: '2px solid var(--primary-color)',
+                    borderRadius: '12px',
+                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.28), 0 10px 10px -5px rgba(0, 0, 0, 0.15)',
+                    zIndex: 99999,
+                    padding: '0.85rem',
+                    cursor: 'default',
+                    textAlign: 'left',
+                    animation: 'fadeInPop 0.15s ease-out'
+                }}
+            >
+                {/* Visual pointer arrow pointing directly to the clicked slot */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        width: '12px',
+                        height: '12px',
+                        background: 'var(--surface, #ffffff)',
+                        border: '2px solid var(--primary-color)',
+                        transform: 'rotate(45deg)',
+                        zIndex: 10,
+                        ...(alignLeft ? {
+                            right: '-7px',
+                            top: alignTop ? '16px' : (alignBottom ? 'auto' : '50%'),
+                            bottom: alignBottom ? '16px' : undefined,
+                            marginTop: alignTop || alignBottom ? 0 : '-6px',
+                            borderLeft: 'none',
+                            borderBottom: 'none'
+                        } : {
+                            left: '-7px',
+                            top: alignTop ? '16px' : (alignBottom ? 'auto' : '50%'),
+                            bottom: alignBottom ? '16px' : undefined,
+                            marginTop: alignTop || alignBottom ? 0 : '-6px',
+                            borderRight: 'none',
+                            borderTop: 'none'
+                        })
+                    }}
+                />
+                {renderSelectionInfoContent(true, () => setSelectedLocation(null))}
+            </div>
+        );
     };
 
     // Calcular el activo más antiguo en los resultados de búsqueda/filtro para sugerir rotación FIFO
@@ -4485,8 +4501,9 @@ return renderSelectionInfoContent(false);
                                         borderColor = '#db2777';
                                     }
                                     
+                                    const alignLeft = revNum > 5;
                                     return (
-                                        <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                        <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative', zIndex: isSelected ? 1001 : 1 }}>
                                             <div 
                                                 onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                                                 title={buildAssetTooltip(locationAssets, locId)}
@@ -4499,7 +4516,8 @@ return renderSelectionInfoContent(false);
                                                     opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
                                                     cursor: 'pointer', transition: 'all 0.2s ease',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    position: 'relative'
+                                                    position: 'relative',
+                                                    zIndex: isSelected ? 1002 : 1
                                                 }}
                                             >
                                                 {locationAssets.some(a => a.id === oldestAssetId) && (
@@ -4514,6 +4532,7 @@ return renderSelectionInfoContent(false);
                                                 ) : (
                                                     (isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />
                                                 )}
+                                                {renderSlotPopover(locId, isSelected, { alignLeft })}
                                             </div>
                                             <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{revNum}</span>
                                         </div>
@@ -4671,8 +4690,9 @@ return renderSelectionInfoContent(false);
                                         borderColor = '#db2777';
                                     }
                                     
+                                    const alignLeft = cajaNum > 5;
                                     return (
-                                        <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                        <div key={locId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative', zIndex: isSelected ? 1001 : 1 }}>
                                             <div 
                                                 onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                                                 title={buildAssetTooltip(locationAssets, locId)}
@@ -4685,7 +4705,8 @@ return renderSelectionInfoContent(false);
                                                     opacity: isNotHighlighted ? 0.2 : (assetCount > 0 ? 1 : 0.4),
                                                     cursor: 'pointer', transition: 'all 0.2s ease',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    position: 'relative'
+                                                    position: 'relative',
+                                                    zIndex: isSelected ? 1002 : 1
                                                 }}
                                             >
                                                 {locationAssets.some(a => a.id === oldestAssetId) && (
@@ -4694,6 +4715,7 @@ return renderSelectionInfoContent(false);
                                                     </div>
                                                 )}
                                                 {(isSelected || isAuditMode) && <CheckCircle2 size={14} color="white" />}
+                                                {renderSlotPopover(locId, isSelected, { alignLeft })}
                                             </div>
                                             <span style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-secondary)' }}>{cajaNum}</span>
                                         </div>
@@ -5642,71 +5664,6 @@ return renderSelectionInfoContent(false);
                     </div>
                 </form>
             </Modal>
-
-            {/* Floating Selection Card / Popover directly alongside selected slot */}
-            {selectedLocation && (
-                <div
-                    ref={floatingPopoverRef}
-                    style={{
-                        position: 'fixed',
-                        top: floatingPopover?.isMobile ? undefined : `${floatingPopover?.top ?? 120}px`,
-                        left: floatingPopover?.left !== undefined ? `${floatingPopover.left}px` : (floatingPopover?.isMobile ? '12px' : '20px'),
-                        right: floatingPopover?.right !== undefined ? `${floatingPopover.right}px` : (floatingPopover?.isMobile ? '12px' : undefined),
-                        bottom: floatingPopover?.bottom !== undefined ? `${floatingPopover.bottom}px` : (floatingPopover?.isMobile ? '12px' : undefined),
-                        width: floatingPopover?.isMobile ? 'auto' : `${floatingPopover?.cardWidth || 310}px`,
-                        maxHeight: 'min(390px, calc(100vh - 24px))',
-                        overflowY: 'auto',
-                        background: 'var(--surface, #ffffff)',
-                        color: 'var(--text-main)',
-                        border: '2px solid var(--primary-color)',
-                        borderRadius: '12px',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.28), 0 10px 10px -5px rgba(0, 0, 0, 0.15)',
-                        zIndex: 9999,
-                        padding: '0.85rem',
-                        animation: 'fadeInPop 0.15s ease-out'
-                    }}
-                >
-                    {/* Visual pointer arrow pointing directly to the clicked slot */}
-                    {floatingPopover?.placement && !floatingPopover.isMobile && (
-                        <div
-                            style={{
-                                position: 'absolute',
-                                width: '12px',
-                                height: '12px',
-                                background: 'var(--surface, #ffffff)',
-                                border: '2px solid var(--primary-color)',
-                                transform: 'rotate(45deg)',
-                                zIndex: 10,
-                                ...(floatingPopover.placement === 'right' ? {
-                                    left: '-7px',
-                                    top: `${Math.max(14, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardHeight || 220) - 24))}px`,
-                                    borderRight: 'none',
-                                    borderTop: 'none'
-                                } : floatingPopover.placement === 'left' ? {
-                                    right: '-7px',
-                                    top: `${Math.max(14, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardHeight || 220) - 24))}px`,
-                                    borderLeft: 'none',
-                                    borderBottom: 'none'
-                                } : floatingPopover.placement === 'top' ? {
-                                    bottom: '-7px',
-                                    left: `${Math.max(14, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardWidth || 310) - 24))}px`,
-                                    borderLeft: 'none',
-                                    borderTop: 'none'
-                                } : {
-                                    top: '-7px',
-                                    left: `${Math.max(14, Math.min(floatingPopover.arrowOffset || 30, (floatingPopover.cardWidth || 310) - 24))}px`,
-                                    borderRight: 'none',
-                                    borderBottom: 'none'
-                                })
-                            }}
-                        />
-                    )}
-                    {renderSelectionInfoContent(true, () => {
-                        setSelectedLocation(null);
-                        setFloatingPopover(null);
-                    })}
-                </div>
-            )}
 
             <style jsx>{`
                 @keyframes fadeInPop {
