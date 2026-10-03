@@ -1031,15 +1031,19 @@ export default function BillingPage() {
                     top: 40%;
                     left: 50%;
                     transform: translate(-50%, -50%) rotate(-45deg);
-                    font-size: 8rem;
-                    font-weight: 900;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
                     color: rgba(16, 185, 129, 0.15);
                     z-index: 9999;
                     pointer-events: none;
                     border: 15px solid rgba(16, 185, 129, 0.15);
                     padding: 1rem 3rem;
                     border-radius: 20px;
-                ">PAGADO</div>` : ''}
+                ">
+                    <span style="font-size: 8rem; font-weight: 900; line-height: 1;">PAGADO</span>
+                    ${invoiceTickets[0]?.paymentMethod ? `<span style="font-size: 2.5rem; font-weight: 800; margin-top: 0.5rem; text-transform: uppercase;">${invoiceTickets[0].paymentMethod}</span>` : ''}
+                </div>` : ''}
                 <div class="doc-container">
                     <div>
                         <!-- Header -->
@@ -2554,10 +2558,12 @@ export default function BillingPage() {
                                         size="sm"
                                         onClick={async () => {
                                             if (!confirm('¿Marcar todos estos servicios como PAGADOS?')) return;
+                                            const paymentMethod = window.prompt('Opcional: ¿A qué banco se transfirió o fue en Efectivo? (Ej: Efectivo, Galicia, Santander)');
+                                            if (paymentMethod === null) return; // Cancelled
                                             const now = new Date().toISOString();
                                             for (const t of invoiceTickets) {
                                                 if (t.paymentStatus !== 'Paid') {
-                                                    await updateTicket(t.id, { ...t, paymentStatus: 'Paid', paymentDate: now });
+                                                    await updateTicket(t.id, { ...t, paymentStatus: 'Paid', paymentDate: now, paymentMethod: paymentMethod.trim() });
                                                 }
                                             }
                                             if (typeof refreshData === 'function') refreshData();
@@ -2799,8 +2805,9 @@ export default function BillingPage() {
                                     top: '40%',
                                     left: '50%',
                                     transform: 'translate(-50%, -50%) rotate(-45deg)',
-                                    fontSize: '8rem',
-                                    fontWeight: 900,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
                                     color: 'rgba(16, 185, 129, 0.15)',
                                     zIndex: 9999,
                                     pointerEvents: 'none',
@@ -2808,7 +2815,12 @@ export default function BillingPage() {
                                     padding: '1rem 3rem',
                                     borderRadius: '20px'
                                 }}>
-                                    PAGADO
+                                    <span style={{ fontSize: '8rem', fontWeight: 900, lineHeight: 1 }}>PAGADO</span>
+                                    {invoiceTickets[0]?.paymentMethod && (
+                                        <span style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: '0.5rem', textTransform: 'uppercase' }}>
+                                            {invoiceTickets[0].paymentMethod}
+                                        </span>
+                                    )}
                                 </div>
                             );
                         })()}
