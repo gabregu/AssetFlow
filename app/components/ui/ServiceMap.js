@@ -237,7 +237,8 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                     disableDefaultUI: false,
                     mapTypeControl: false,
                     streetViewControl: false,
-                    fullscreenControl: true,
+                    fullscreenControl: false,
+                    zoomControl: true,
                     gestureHandling: 'greedy'
                 }}
             >
