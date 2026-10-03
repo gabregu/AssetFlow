@@ -902,13 +902,15 @@ export default function MyDeliveriesPage() {
         
         if (delivery.taskId) {
             // Nueva arquitectura: usar datos detallados de la tarea
-            const assets = Array.isArray(delivery.taskAssets) ? delivery.taskAssets : [];
+            const taskAssetsList = Array.isArray(delivery.taskAssets) ? delivery.taskAssets : [];
             const accessories = Array.isArray(delivery.taskAccessories) ? delivery.taskAccessories : [];
             const yubikeys = Array.isArray(delivery.taskYubikeys) ? delivery.taskYubikeys : [];
 
-            if (assets.length > 0) {
-                assets.forEach(asset => {
-                    list.push(`${asset.model || 'Equipo'}: ${asset.serial || 'Sin Serial'}`);
+            if (taskAssetsList.length > 0) {
+                taskAssetsList.forEach(asset => {
+                    const globalAsset = assets?.find(a => a.serial === asset.serial);
+                    const devType = globalAsset?.type || globalAsset?.deviceType || asset.deviceType || asset.model || 'Equipo';
+                    list.push(`${devType}: ${asset.serial || 'Sin Serial'}`);
                 });
             }
             if (accessories.length > 0) {
@@ -929,7 +931,9 @@ export default function MyDeliveriesPage() {
         } else if (delivery.isMainTicket) {
             // Caso legacy
             if (delivery.assetInfo?.serial) {
-                list.push(`${delivery.assetInfo.model || 'Equipo'}: ${delivery.assetInfo.serial}`);
+                const globalAsset = assets?.find(a => a.serial === delivery.assetInfo.serial);
+                const devType = globalAsset?.type || globalAsset?.deviceType || delivery.assetInfo.deviceType || delivery.assetInfo.model || 'Equipo';
+                list.push(`${devType}: ${delivery.assetInfo.serial}`);
             }
             if (delivery.accessoriesCount) {
                 list.push(`${delivery.accessoriesCount} Accesorios`);
