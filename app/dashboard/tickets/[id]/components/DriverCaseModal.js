@@ -542,7 +542,15 @@ export default function DriverCaseModal({
                                                     <span style={{ color: isChecked ? '#065f46' : '#991b1b' }}>
                                                         {isChecked ? '✓' : '✕'} {a.serial}
                                                     </span>
-                                                    {a.deviceType && <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> · {a.deviceType}</span>}
+                                                    {(() => {
+                                                        const assetInfo = assets?.find(asset => asset.serial === a.serial);
+                                                        const devType = assetInfo?.type || assetInfo?.deviceType || a.deviceType;
+                                                        return devType && devType.toLowerCase() !== 'recupero' && devType.toLowerCase() !== 'entrega' ? (
+                                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.75rem', marginLeft: '4px' }}>
+                                                                ({devType})
+                                                            </span>
+                                                        ) : null;
+                                                    })()}
                                                 </div>
                                                 {!isChecked && (
                                                     <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#dc2626', background: '#fee2e2', padding: '2px 6px', borderRadius: '4px' }}>NO DEVUELTO</span>
@@ -560,12 +568,25 @@ export default function DriverCaseModal({
                         )}
 
                         {/* Otros activos (no recupero) */}
-                        {taskAssetsList.filter(a => typeof a !== 'object' || (a.type || '').toLowerCase() !== 'recupero' || !a.serial).map((a, i) => (
-                            <div key={`other-${i}`} style={{ padding: '0.45rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                                {typeof a === 'object' ? (a.serial || 'Sin serial') : String(a)}
-                                {typeof a === 'object' && a.type && <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> · {a.type}</span>}
-                            </div>
-                        ))}
+                        {taskAssetsList.filter(a => typeof a !== 'object' || (a.type || '').toLowerCase() !== 'recupero' || !a.serial).map((a, i) => {
+                            const isObj = typeof a === 'object';
+                            const serial = isObj ? (a.serial || 'Sin serial') : String(a);
+                            
+                            let devType = null;
+                            if (isObj && a.serial) {
+                                const assetInfo = assets?.find(asset => asset.serial === a.serial);
+                                devType = assetInfo?.type || assetInfo?.deviceType || a.deviceType;
+                            }
+                            const displayType = (devType && devType.toLowerCase() !== 'recupero' && devType.toLowerCase() !== 'entrega') ? devType : null;
+
+                            return (
+                                <div key={`other-${i}`} style={{ padding: '0.45rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                                    {serial}
+                                    {displayType && <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.75rem', marginLeft: '4px' }}>({displayType})</span>}
+                                    {isObj && a.type && <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}> · {a.type}</span>}
+                                </div>
+                            );
+                        })}
 
                         {/* Yubikeys (sin checkbox) */}
                         {yubikeys.map((y, i) => (
