@@ -49,156 +49,260 @@ export default function MyStatsPage() {
     }, []);
 
     // Reutilizamos la lógica de aplanado de items (Tickets/Sub-Casos)
-    const myAssignedItems = useMemo(() => {
-        if (!currentUser) return [];
-        const items = [];
-        const uName = (currentUser.name || '').trim().toLowerCase();
-        const uId = String(currentUser.id || currentUser.uid || currentUser.uuid || '');
-        
-        // --- 1. PROCESAR SUB-CASOS ---
-        logisticsTasks.forEach(task => {
-            if (!task) return;
-            const drvName = (task.delivery_person || task.deliveryPerson || '').trim().toLowerCase();
-            const drvId = String(task.assigned_to || task.assignedTo || '');
-            const isMeByName = drvName && (drvName === uName || uName.includes(drvName) || drvName.includes(uName));
-            const isMeById = drvId && (drvId === uId);
-            
-            if (isMeByName || isMeById) {
-                const pTicket = tickets.find(t => t && String(t.id) === String(task.ticket_id || task.ticketId));
-                items.push({
-                    id: pTicket?.id || task.ticket_id || 'N/A',
-                    taskId: task.id,
-                    isMainTicket: false,
-                    displayDate: task.date || 'Pendiente',
-                    displayStatus: task.status || 'Pendiente',
-                    deliveryCompletedDate: (() => {
-                        if (task.date && task.date !== 'Pendiente' && task.date !== 'Sin fecha') {
-                            return task.date;
-                        }
-                        if (task.delivery_info?.deliveredAt) {
-                            return task.delivery_info.deliveredAt.substring(0, 10);
-                        }
-                        return task.updated_at ? task.updated_at.substring(0, 10) : null;
-                    })(),
-                    parentTicket: pTicket,
-                    caseData: task,
-                });
-            }
-        });
+    // ==== LOGICA UNIFICADA Y EXACTA CON DRIVER-PAYMENTS ====
+    const currentUserFilter = (currentUser?.name || '').trim().toLowerCase();
 
-        // --- 2. PROCESAR TICKETS LEGACY ---
-        tickets.forEach(ticket => {
-            if (!ticket) return;
-            const hasNewTasks = logisticsTasks.some(tk => tk && String(tk.ticket_id) === String(ticket.id));
-            if (hasNewTasks) return;
-
-            const tDriverName = (ticket.logistics?.delivery_person || ticket.logistics?.deliveryPerson || '').trim().toLowerCase();
-            const tDriverUid = String(ticket.logistics?.assigned_to || ticket.logistics?.assignedTo || '');
-            const isMeLegacy = (tDriverName && (tDriverName === uName || uName.includes(tDriverName) || tDriverName.includes(uName))) || 
-                               (tDriverUid && (tDriverUid === uId));
-            
-            if (isMeLegacy) {
-                items.push({
-                    ...ticket,
-                    displayDate: ticket.logistics?.date || 'Sin fecha',
-                    displayStatus: ticket.logistics?.status || 'Pendiente',
-                    deliveryCompletedDate: ticket.logistics?.status === 'Entregado' ? ticket.updatedAt : null,
-                    isMainTicket: true,
-                    taskId: null
-                });
-            }
-        });
-
-        return items;
-    }, [tickets, logisticsTasks, currentUser]);
-
-    // Calcular todas las estadísticas
-    const stats = useMemo(() => {
+    const { monthItems, stats, historyData } = useMemo(() => {
         const today = new Date().toLocaleDateString('en-CA');
         const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const startOfWeek = new Date(now);
         startOfWeek.setDate(now.getDate() - now.getDay());
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(endOfWeek.getDate() + 6);
 
-        // Mes y año seleccionados para liquidación
         const targetDate = new Date(now.getFullYear(), now.getMonth() - selectedMonthIndex, 1);
-        const targetMonth = targetDate.getMonth();
-        const targetYear = targetDate.getFullYear();
-
+        const selectedMonth = targetDate.getMonth();
+        const selectedYear = targetDate.getFullYear();
+        
         let personalLiquidation = 0;
         let deliveriesCount = 0;
         let recoveriesCount = 0;
         let deliveredToday = 0;
         let finishedThisMonthCount = 0;
         let pendingThisWeekCount = 0;
+        
+        const myItems = [];
+        const processedTaskIds = new Set();
+        
+        // Historial array (6 meses)
+        const hist = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            hist.push({ month: d.getMonth(), year: d.getFullYear(), label: d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', ''), total: 0 });
+        }
 
-        myAssignedItems.forEach(item => {
-            const t = item.isMainTicket ? item : (item.parentTicket || item); 
-            
-            const rawDate = item.deliveryCompletedDate || item.date || item.displayDate;
-            const isValidDate = rawDate && !['Pendiente', 'Sin fecha', 'Por definir'].includes(rawDate);
-            const ticketDate = isValidDate ? new Date(rawDate.toString().includes('T') ? rawDate : rawDate + 'T00:00:00') : new Date();
-            const isFinished = isClosedStatus(t.status) || isClosedStatus(item.displayStatus) || isClosedStatus(t.logistics?.status);
+        // 1. Process Tickets
+        tickets.forEach(ticket => {
+            const financials = calculateTicketFinancials(ticket, rates, globalAssets, users, logisticsTasks);
+            if (!financials) return;
+            const ticketDateStr = ticket.deliveryCompletedDate || ticket.createdAt;
 
-            // Liquidación — usar misma lógica que Pago a Conductores (billing.js)
-            let amount = 0;
-            let finalMoveType = '';
-            let isInternalMethod = false;
+            if (financials.taskFinancials && financials.taskFinancials.length > 0) {
+                financials.taskFinancials.forEach(tFin => {
+                    const taskObj = logisticsTasks.find(lt => String(lt.id) === String(tFin.taskId));
+                    
+                    let taskStatus = taskObj?.status;
+                    if (!taskStatus && ticket.associatedCases) {
+                        const assoc = ticket.associatedCases.find(c => String(c.caseNumber || c.id) === String(tFin.taskRef || tFin.taskId));
+                        if (assoc) taskStatus = assoc.status;
+                    }
+                    if (!taskStatus) taskStatus = ticket.logistics?.status || ticket.status;
 
-            if (!item.isMainTicket && item.caseData) {
-                // Sub-caso: usar calculateTaskFinancials (misma función que driver-payments)
-                const taskFin = calculateTaskFinancials(item.caseData, rates, globalAssets, users);
-                if (taskFin) {
-                    amount = taskFin.logisticCost || 0;
-                    finalMoveType = taskFin.moveType || '';
-                    isInternalMethod = !!taskFin.isInternalDriver;
-                }
+                    if (!isClosedStatus(taskStatus)) {
+                        if (taskStatus === 'En Transito' || taskStatus === 'Para Coordinar') {
+                            const pendingDate = taskObj?.date ? new Date(taskObj.date + 'T00:00:00') : null;
+                            if (pendingDate && pendingDate >= startOfWeek && pendingDate <= endOfWeek) {
+                                const driverName = tFin.deliveryPerson;
+                                if (driverName && driverName.trim().toLowerCase() === currentUserFilter) {
+                                    pendingThisWeekCount++;
+                                }
+                            }
+                        }
+                        return;
+                    }
+
+                    let taskDateStr = null;
+                    if (taskObj) {
+                        if (taskObj.date && taskObj.date !== 'Pendiente' && taskObj.date !== 'Sin fecha') taskDateStr = taskObj.date;
+                        else if (taskObj.delivery_info?.deliveredAt) taskDateStr = taskObj.delivery_info.deliveredAt.substring(0, 10);
+                        else taskDateStr = taskObj.created_at ? taskObj.created_at.substring(0, 10) : null;
+                    }
+                    if (!taskDateStr) taskDateStr = tFin.date || ticketDateStr;
+                    if (!taskDateStr) return;
+
+                    const date = new Date(taskDateStr.toString().includes('T') ? taskDateStr : taskDateStr + 'T00:00:00');
+                    if (tFin.taskId) processedTaskIds.add(String(tFin.taskId));
+                    
+                    const method = tFin.method || '';
+                    if (method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local')) {
+                        const driverName = tFin.deliveryPerson;
+                        if (!driverName || driverName.trim().toLowerCase() !== currentUserFilter) return;
+                        
+                        const completedDateStr = taskObj?.delivery_info?.deliveredAt ? new Date(taskObj.delivery_info.deliveredAt).toLocaleDateString('en-CA') : date.toLocaleDateString('en-CA');
+                        if (completedDateStr === today) deliveredToday++;
+                        if (date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) finishedThisMonthCount++;
+
+                        const match = hist.find(h => h.month === date.getMonth() && h.year === date.getFullYear());
+                        if (match) match.total++;
+
+                        if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
+
+                        let effectiveLogisticCost = tFin.logisticCost;
+                        const rawCustom = ticket.deliveryDetails?.customLogisticCost;
+                        if (rawCustom !== null && rawCustom !== undefined && rawCustom !== '') {
+                            const customVal = parseFloat(rawCustom);
+                            if (!isNaN(customVal)) {
+                                const internalTasks = financials.taskFinancials.filter(t => (t.method || '').includes('Propio') || (t.method || '') === 'Envío Interno' || (t.method || '').toLowerCase().includes('local'));
+                                const totalAutoCost = internalTasks.reduce((s, t) => s + t.logisticCost, 0);
+                                effectiveLogisticCost = totalAutoCost > 0 ? customVal * (tFin.logisticCost / totalAutoCost) : customVal / (internalTasks.length || 1);
+                                if (ticket.deliveryDetails?.customLogisticCostCurrency === 'ARS') {
+                                    const r = getExchangeRateForDate(rates, ticket.createdAt || new Date());
+                                    effectiveLogisticCost = effectiveLogisticCost / (r > 0 ? r : 1);
+                                }
+                            }
+                        }
+
+                        if (effectiveLogisticCost > 0) {
+                            personalLiquidation += effectiveLogisticCost;
+                            const moveLower = (tFin.moveType || '').toLowerCase();
+                            if (moveLower.includes('entrega') || moveLower.includes('alta')) deliveriesCount++;
+                            if (moveLower.includes('recupero') || moveLower.includes('retiro') || moveLower.includes('baja') || moveLower.includes('collection')) recoveriesCount++;
+
+                            myItems.push({
+                                id: ticket.id,
+                                type: 'Sub-caso',
+                                description: (() => {
+                                    const assetRefs = Array.from(new Set(tFin.assetCases || []));
+                                    let subject = tFin.taskSubject || ticket.subject || 'Sin Asunto';
+                                    if (assetRefs.length > 0) {
+                                        const prefixes = assetRefs.map(ref => {
+                                            const cleanRef = String(ref).trim();
+                                            return /^\d+$/.test(cleanRef) ? `SFDC-${cleanRef}` : cleanRef;
+                                        });
+                                        const missingPrefixes = prefixes.filter(prefix => !subject.includes(prefix));
+                                        if (missingPrefixes.length > 0) return `${missingPrefixes.map(p => `[${p}]`).join('')} ${subject}`;
+                                    }
+                                    const ref = tFin.taskRef || ticket.salesforceCase;
+                                    if (ref) {
+                                        const cleanRef = String(ref).trim();
+                                        const finalRef = /^\d+$/.test(cleanRef) ? `SFDC-${cleanRef}` : cleanRef;
+                                        if (!subject.includes(finalRef)) return `[${finalRef}] ${subject}`;
+                                    }
+                                    return subject;
+                                })(),
+                                client: ticket.client,
+                                requester: ticket.requester,
+                                cost: effectiveLogisticCost
+                            });
+                        }
+                    }
+                });
             } else {
-                // Ticket legacy: usar calculateTicketFinancials
-                const ticketFin = calculateTicketFinancials(t, rates, globalAssets, users, logisticsTasks);
-                if (ticketFin) {
-                    amount = ticketFin.logisticCost || 0;
-                    finalMoveType = ticketFin.moveType || '';
-                    const method = ticketFin.method || '';
-                    isInternalMethod = method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local');
+                let taskStatus = ticket.logistics?.status || ticket.status;
+                if (!isClosedStatus(taskStatus)) {
+                    if (taskStatus === 'En Transito' || taskStatus === 'Para Coordinar') {
+                        const pendingDate = ticket.logistics?.date ? new Date(ticket.logistics.date + 'T00:00:00') : null;
+                        if (pendingDate && pendingDate >= startOfWeek && pendingDate <= endOfWeek) {
+                            const driverName = ticket.logistics?.delivery_person || ticket.logistics?.deliveryPerson;
+                            if (driverName && driverName.trim().toLowerCase() === currentUserFilter) pendingThisWeekCount++;
+                        }
+                    }
+                    return;
                 }
-            }
-
-            const moveLower = (finalMoveType || '').toLowerCase();
-            const isDelivery = moveLower.includes('entrega') || moveLower.includes('alta');
-            const isRecovery = moveLower.includes('recupero') || moveLower.includes('retiro') || moveLower.includes('baja') || moveLower.includes('collection');
-
-            // Conteos diarios y semanales (siempre actuales)
-            if (isFinished) {
-                const completedDate = item.deliveryCompletedDate ? new Date(item.deliveryCompletedDate).toLocaleDateString('en-CA') : ticketDate.toLocaleDateString('en-CA');
-                if (completedDate === today) deliveredToday++;
                 
-                const updatedAt = item.deliveryCompletedDate ? new Date(item.deliveryCompletedDate) : new Date();
-                const currentMonth = now.getMonth();
-                const currentYear = now.getFullYear();
-                if (updatedAt.getMonth() === currentMonth && updatedAt.getFullYear() === currentYear) {
-                    finishedThisMonthCount++;
+                let taskDateStr = ticket.logistics?.date;
+                if (!taskDateStr || taskDateStr === 'Pendiente' || taskDateStr === 'Sin fecha') {
+                    taskDateStr = ticket.updatedAt ? ticket.updatedAt.substring(0, 10) : ticketDateStr;
                 }
-            } else if (item.displayStatus === 'En Transito' || item.displayStatus === 'Para Coordinar') {
-                const deliveryDate = item.displayDate ? new Date(item.displayDate + 'T00:00:00') : null;
-                if (deliveryDate && deliveryDate >= startOfWeek && deliveryDate <= endOfWeek) {
-                    pendingThisWeekCount++;
-                }
-            }
+                if (!taskDateStr) return;
 
-            // Liquidación mensual filtrada por mes seleccionado (solo métodos internos)
-            if (isFinished && isInternalMethod && ticketDate.getMonth() === targetMonth && ticketDate.getFullYear() === targetYear) {
-                personalLiquidation += amount;
-                if (isDelivery) deliveriesCount++;
-                if (isRecovery) recoveriesCount++;
+                const date = new Date(taskDateStr.toString().includes('T') ? taskDateStr : taskDateStr + 'T00:00:00');
+                const method = financials.method || '';
+                if (method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local')) {
+                    const driverName = ticket.logistics?.delivery_person || ticket.logistics?.deliveryPerson;
+                    if (!driverName || driverName.trim().toLowerCase() !== currentUserFilter) return;
+                    
+                    const completedDateStr = date.toLocaleDateString('en-CA');
+                    if (completedDateStr === today) deliveredToday++;
+                    if (date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) finishedThisMonthCount++;
+                    
+                    const match = hist.find(h => h.month === date.getMonth() && h.year === date.getFullYear());
+                    if (match) match.total++;
+
+                    if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
+
+                    let effectiveLogisticCost = financials.logisticCost || 0;
+                    const rawCustom = ticket.deliveryDetails?.customLogisticCost;
+                    if (rawCustom !== null && rawCustom !== undefined && rawCustom !== '') {
+                        const customVal = parseFloat(rawCustom);
+                        if (!isNaN(customVal)) {
+                            effectiveLogisticCost = customVal;
+                            if (ticket.deliveryDetails?.customLogisticCostCurrency === 'ARS') {
+                                const r = getExchangeRateForDate(rates, ticket.createdAt || new Date());
+                                effectiveLogisticCost = effectiveLogisticCost / (r > 0 ? r : 1);
+                            }
+                        }
+                    }
+
+                    if (effectiveLogisticCost > 0) {
+                        personalLiquidation += effectiveLogisticCost;
+                        const moveLower = (financials.moveType || '').toLowerCase();
+                        if (moveLower.includes('entrega') || moveLower.includes('alta')) deliveriesCount++;
+                        if (moveLower.includes('recupero') || moveLower.includes('retiro') || moveLower.includes('baja') || moveLower.includes('collection')) recoveriesCount++;
+
+                        myItems.push({
+                            id: ticket.id,
+                            type: 'Ticket',
+                            description: ticket.salesforceCase ? `[${ticket.salesforceCase}] ${ticket.subject || 'Sin Asunto'}` : (ticket.subject || 'Sin Asunto'),
+                            client: ticket.client,
+                            requester: ticket.requester,
+                            cost: effectiveLogisticCost
+                        });
+                    }
+                }
             }
         });
 
-        // Sumar items extra (gastos/adicionales)
+        // 2. Process standalone logisticsTasks
+        logisticsTasks.forEach(task => {
+            if (processedTaskIds.has(String(task.id))) return;
+            if (!isClosedStatus(task.status)) return;
+
+            let taskDateStr = task.date;
+            if (!taskDateStr || taskDateStr === 'Pendiente' || taskDateStr === 'Sin fecha') {
+                taskDateStr = task.delivery_info?.deliveredAt ? task.delivery_info.deliveredAt.substring(0, 10) : (task.updated_at ? task.updated_at.substring(0, 10) : null);
+            }
+            if (!taskDateStr) return;
+
+            const date = new Date(taskDateStr.toString().includes('T') ? taskDateStr : taskDateStr + 'T00:00:00');
+            const driverName = task.deliveryPerson || task.delivery_person;
+            if (!driverName || driverName.trim().toLowerCase() !== currentUserFilter) return;
+
+            const completedDateStr = task.delivery_info?.deliveredAt ? new Date(task.delivery_info.deliveredAt).toLocaleDateString('en-CA') : date.toLocaleDateString('en-CA');
+            if (completedDateStr === today) deliveredToday++;
+            if (date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) finishedThisMonthCount++;
+
+            const match = hist.find(h => h.month === date.getMonth() && h.year === date.getFullYear());
+            if (match) match.total++;
+
+            if (date.getMonth() !== selectedMonth || date.getFullYear() !== selectedYear) return;
+
+            const pTicket = tickets.find(t => String(t.id) === String(task.ticket_id || task.ticketId));
+            if (!pTicket) return;
+            
+            const taskFin = calculateTaskFinancials(task, rates, globalAssets, users);
+            if (!taskFin) return;
+
+            if (taskFin.isInternalDriver && taskFin.logisticCost > 0) {
+                personalLiquidation += taskFin.logisticCost;
+                const moveLower = (taskFin.moveType || '').toLowerCase();
+                if (moveLower.includes('entrega') || moveLower.includes('alta')) deliveriesCount++;
+                if (moveLower.includes('recupero') || moveLower.includes('retiro') || moveLower.includes('baja') || moveLower.includes('collection')) recoveriesCount++;
+
+                myItems.push({
+                    id: pTicket.id,
+                    type: 'Sub-caso',
+                    description: taskFin.taskSubject || pTicket.subject || 'Sin Asunto',
+                    client: pTicket.client,
+                    requester: pTicket.requester,
+                    cost: taskFin.logisticCost
+                });
+            }
+        });
+
+        // 3. Extras
         let extraItemsCount = 0;
-        const tempMonthKey = `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}`;
+        const tempMonthKey = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
         if (currentUser?.name && rates?.driverExtraItems?.[tempMonthKey]?.[currentUser.name]) {
             const extraList = rates.driverExtraItems[tempMonthKey][currentUser.name];
             if (Array.isArray(extraList)) {
@@ -206,67 +310,36 @@ export default function MyStatsPage() {
                     if (extraItem && Number(extraItem.cost) > 0) {
                         personalLiquidation += Number(extraItem.cost);
                         extraItemsCount++;
+                        myItems.push({
+                            id: extraItem.id || 'extra',
+                            type: 'Extra',
+                            description: extraItem.description || 'Gasto / Adicional',
+                            requester: currentUser.name,
+                            client: extraItem.client || 'Extra / Adicional',
+                            cost: Number(extraItem.cost)
+                        });
                     }
                 });
             }
         }
 
-        // Generar lista de los últimos 6 meses
-        const historyData = [];
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        for (let i = 5; i >= 0; i--) {
-            const date = new Date(currentYear, currentMonth - i, 1);
-            historyData.push({
-                month: date.getMonth(),
-                year: date.getFullYear(),
-                label: date.toLocaleDateString('es-ES', { month: 'short' }).replace('.', ''),
-                total: 0
-            });
-        }
-
-        // Llenar datos reales en la evolución histórica de 6 meses
-        myAssignedItems.forEach(item => {
-            const t = item.isMainTicket ? item : (item.parentTicket || item); 
-            const isFinished = isClosedStatus(t.status) || isClosedStatus(item.displayStatus) || isClosedStatus(t.logistics?.status);
-            
-            if (isFinished) {
-                const rawDate = item.deliveryCompletedDate || item.date || item.displayDate;
-                const isValidDate = rawDate && !['Pendiente', 'Sin fecha', 'Por definir'].includes(rawDate);
-                if (isValidDate) {
-                    const ticketDate = new Date(rawDate.toString().includes('T') ? rawDate : rawDate + 'T00:00:00');
-                    const tMonth = ticketDate.getMonth();
-                    const tYear = ticketDate.getFullYear();
-                    
-                    const match = historyData.find(h => h.month === tMonth && h.year === tYear);
-                    if (match) {
-                        match.total++;
-                    }
-                }
-            }
-        });
-
-        return {
-            total: myAssignedItems.filter(item => {
-                const t = item.isMainTicket ? item : (item.parentTicket || item);
-                const isFinished = isClosedStatus(t.status) || isClosedStatus(item.displayStatus) || isClosedStatus(t.logistics?.status);
-                return !isFinished;
-            }).length,
-            pendiente: myAssignedItems.filter(t => !t.displayStatus || t.displayStatus === 'Pendiente').length,
-            paraCoordinar: myAssignedItems.filter(t => t.displayStatus === 'Para Coordinar').length,
-            enTransito: myAssignedItems.filter(t => t.displayStatus === 'En Transito').length,
-            entregadosHoy: deliveredToday,
-            finishedThisMonth: finishedThisMonthCount,
-            pendingThisWeek: pendingThisWeekCount,
-            personalLiquidation,
-            deliveriesCount,
-            recoveriesCount,
-            extraItemsCount,
-            historyData,
-            targetMonth,
-            targetYear
+        return { 
+            monthItems: myItems,
+            historyData: hist,
+            stats: {
+                total: myItems.length,
+                personalLiquidation,
+                deliveriesCount,
+                recoveriesCount,
+                deliveredToday,
+                finishedThisMonthCount,
+                pendingThisWeekCount,
+                extraItemsCount,
+                targetMonth: selectedMonth,
+                targetYear: selectedYear
+            } 
         };
-    }, [myAssignedItems, globalAssets, currentUser, rates, users, selectedMonthIndex]);
+    }, [tickets, logisticsTasks, currentUser, selectedMonthIndex, rates, globalAssets, users]);
 
     const monthKey = useMemo(() => {
         return `${stats.targetYear}-${String(stats.targetMonth + 1).padStart(2, '0')}`;
@@ -276,108 +349,6 @@ export default function MyStatsPage() {
         return getExchangeRateForDate(rates, new Date(stats.targetYear, stats.targetMonth, 1));
     }, [rates, stats.targetMonth, stats.targetYear]);
 
-    const monthItems = useMemo(() => {
-        if (!currentUser) return [];
-        const items = [];
-
-        myAssignedItems.forEach(item => {
-            const t = item.isMainTicket ? item : (item.parentTicket || item);
-            const rawDate = item.deliveryCompletedDate || item.date || item.displayDate;
-            const isValidDate = rawDate && !['Pendiente', 'Sin fecha', 'Por definir'].includes(rawDate);
-            const ticketDate = isValidDate ? new Date(rawDate.toString().includes('T') ? rawDate : rawDate + 'T00:00:00') : new Date();
-            const isFinished = isClosedStatus(t.status) || isClosedStatus(item.displayStatus) || isClosedStatus(t.logistics?.status);
-
-            if (isFinished && ticketDate.getMonth() === stats.targetMonth && ticketDate.getFullYear() === stats.targetYear) {
-                // Usar misma lógica que Pago a Conductores (billing.js)
-                let cost = 0;
-                let isInternalMethod = false;
-
-                if (!item.isMainTicket && item.caseData) {
-                    const taskFin = calculateTaskFinancials(item.caseData, rates, globalAssets, users);
-                    if (taskFin) {
-                        cost = taskFin.logisticCost || 0;
-                        isInternalMethod = !!taskFin.isInternalDriver;
-                    }
-                } else {
-                    const ticketFin = calculateTicketFinancials(t, rates, globalAssets, users, logisticsTasks);
-                    if (ticketFin) {
-                        cost = ticketFin.logisticCost || 0;
-                        const method = ticketFin.method || '';
-                        isInternalMethod = method.includes('Propio') || method === 'Envío Interno' || method.toLowerCase().includes('local');
-                    }
-                }
-
-                // Solo incluir servicios de reparto interno (misma lógica que driver-payments)
-                if (!isInternalMethod) return;
-
-                let description = item.isMainTicket ? (t.subject || 'Sin Asunto') : (item.caseData?.subject || t.subject || 'Sin Asunto');
-                
-                const assetRefs = [];
-                if (!item.isMainTicket && item.caseData) {
-                    const task = item.caseData;
-                    const taskAssetRefs = (task.assets || [])
-                        .map(a => typeof a === 'object' && a !== null ? a.related_case : null)
-                        .concat((task.yubikeys || []).map(y => typeof y === 'object' && y !== null ? y.related_case : null))
-                        .filter(Boolean);
-                    assetRefs.push(...Array.from(new Set(taskAssetRefs)));
-                }
-
-                if (assetRefs.length > 0) {
-                    const prefixes = assetRefs.map(ref => {
-                        const cleanRef = String(ref).trim();
-                        return /^\d+$/.test(cleanRef) ? `SFDC-${cleanRef}` : cleanRef;
-                    });
-                    const missingPrefixes = prefixes.filter(prefix => !description.includes(prefix));
-                    if (missingPrefixes.length > 0) {
-                        const prefixHeader = missingPrefixes.map(p => `[${p}]`).join('');
-                        description = `${prefixHeader} ${description}`;
-                    }
-                } else {
-                    const ref = (!item.isMainTicket && item.caseData ? (item.caseData.caseNumber || item.caseData.case_number) : null) || t.salesforceCase;
-                    if (ref) {
-                        const cleanRef = String(ref).trim();
-                        const prefix = /^\d+$/.test(cleanRef) ? `SFDC-${cleanRef}` : cleanRef;
-                        if (!description.includes(prefix)) {
-                            description = `[${prefix}] ${description}`;
-                        }
-                    }
-                }
-
-                items.push({
-                    id: t.id,
-                    type: item.isMainTicket ? 'Ticket' : 'Sub-caso',
-                    description,
-                    requester: t.requester || null,
-                    cost,
-                    date: rawDate,
-                    client: t.client || 'N/A'
-                });
-            }
-        });
-        
-        // Añadir items extra (manuales/gastos)
-        if (currentUser?.name && rates?.driverExtraItems?.[monthKey]?.[currentUser.name]) {
-            const extraList = rates.driverExtraItems[monthKey][currentUser.name];
-            if (Array.isArray(extraList)) {
-                extraList.forEach(extraItem => {
-                    if (extraItem && Number(extraItem.cost) > 0) {
-                        items.push({
-                            id: extraItem.id || 'extra',
-                            type: 'Extra',
-                            description: extraItem.description || 'Gasto / Adicional',
-                            requester: null,
-                            cost: Number(extraItem.cost),
-                            date: extraItem.date || new Date().toISOString().substring(0, 10),
-                            client: extraItem.client || 'Extra / Adicional',
-                            isExtra: true
-                        });
-                    }
-                });
-            }
-        }
-        
-        return items;
-    }, [myAssignedItems, globalAssets, currentUser, rates, users, stats.targetMonth, stats.targetYear, monthKey]);
 
     const handlePrintDriverCases = (driverName, data, savedPaymentUSD) => {
         const printWindow = window.open('', '_blank');
@@ -719,7 +690,7 @@ export default function MyStatsPage() {
                     <div style={{ position: 'relative' }}>
                         {/* Horizontal grid lines */}
                         {(() => {
-                            const maxTotal = Math.max(...stats.historyData.map(item => item.total), 1);
+                            const maxTotal = Math.max(...historyData.map(item => item.total), 1);
                             const gridLines = [0, 0.25, 0.5, 0.75, 1];
                             return gridLines.map((pct, gi) => (
                                 <div key={gi} style={{
@@ -751,8 +722,8 @@ export default function MyStatsPage() {
                             position: 'relative',
                             zIndex: 1
                         }}>
-                            {stats.historyData.map((h, i) => {
-                                const maxTotal = Math.max(...stats.historyData.map(item => item.total), 1);
+                            {historyData.map((h, i) => {
+                                const maxTotal = Math.max(...historyData.map(item => item.total), 1);
                                 const barHeightPx = (h.total / maxTotal) * 140;
                                 const targetDate = new Date(new Date().getFullYear(), new Date().getMonth() - selectedMonthIndex, 1);
                                 const isCurrentSelected = h.month === targetDate.getMonth() && h.year === targetDate.getFullYear();
