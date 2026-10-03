@@ -122,10 +122,13 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
             }
 
             // 2. Geocode Tickets
-            const validTickets = tickets.filter(t => t.logistics?.address && t.logistics.address.length > 5);
+            const validTickets = tickets.filter(t => {
+                const addr = t.logistics?.address || t.displayAddress;
+                return addr && addr.length > 5;
+            });
 
             for (const ticket of validTickets) {
-                const address = ticket.logistics.address;
+                const address = ticket.logistics?.address || ticket.displayAddress;
                 try {
                     let lat, lng;
                     if (geocodeCache.has(address)) {
@@ -146,7 +149,7 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                         await new Promise(r => setTimeout(r, 200));
                     }
 
-                    const status = ticket.logistics?.status || ticket.deliveryStatus || ticket.status || 'Pendiente';
+                    const status = ticket.logistics?.status || ticket.displayStatus || ticket.deliveryStatus || ticket.status || 'Pendiente';
                     let markerColor = "#3b82f6"; // Default Blue
 
                     if (status === 'Para Coordinar') markerColor = "#f97316";
@@ -154,10 +157,10 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                     else if (status === 'Entregado') markerColor = "#22c55e";
 
                     newMarkers.push({
-                        id: ticket.id,
+                        id: ticket.id || ticket.displayId,
                         lat: lat,
                         lng: lng,
-                        title: ticket.subject,
+                        title: ticket.subject || ticket.displaySubject,
                         type: 'ticket',
                         details: ticket,
                         icon: {
@@ -263,10 +266,10 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                             ) : (
                                 <>
                                     <h4 style={{ margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold' }}>
-                                        {selectedMarker.details.requester || `#${selectedMarker.details.id}`}
+                                        {selectedMarker.details.requester || `#${selectedMarker.details.id || selectedMarker.details.displayId}`}
                                     </h4>
                                     {(() => {
-                                        const status = selectedMarker.details.logistics?.status || selectedMarker.details.status || 'Pendiente';
+                                        const status = selectedMarker.details.logistics?.status || selectedMarker.details.displayStatus || selectedMarker.details.status || 'Pendiente';
                                         let bg = '#eff6ff';
                                         let color = '#3b82f6';
                                         let text = status.toUpperCase();
@@ -291,21 +294,21 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                                             </div>
                                         );
                                     })()}
-                                    <p style={{ margin: '0 0 5px 0', fontSize: '12px' }}>{selectedMarker.details.subject}</p>
+                                    <p style={{ margin: '0 0 5px 0', fontSize: '12px' }}>{selectedMarker.details.subject || selectedMarker.details.displaySubject}</p>
                                     <p style={{ margin: '0 0 5px 0', fontSize: '11px', color: '#666' }}>
                                          📍 <a 
-                                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedMarker.details.logistics?.address)}`}
+                                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedMarker.details.logistics?.address || selectedMarker.details.displayAddress)}`}
                                              target="_blank"
                                              rel="noopener noreferrer"
                                              style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}
                                          >
-                                             {selectedMarker.details.logistics?.address}
+                                             {selectedMarker.details.logistics?.address || selectedMarker.details.displayAddress}
                                          </a>
                                      </p>
-                                    {selectedMarker.details.logistics?.deliveryPerson && (
-                                        <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 600 }}>👤 Conductor: {selectedMarker.details.logistics.deliveryPerson}</p>
+                                    {(selectedMarker.details.logistics?.deliveryPerson || selectedMarker.details.deliveryPerson) && (
+                                        <p style={{ margin: '0 0 5px 0', fontSize: '11px', fontWeight: 600 }}>👤 Conductor: {selectedMarker.details.logistics?.deliveryPerson || selectedMarker.details.deliveryPerson}</p>
                                     )}
-                                    <a href={`/dashboard/tickets/${selectedMarker.details.id.replace('task-', '')}`} style={{ display: 'block', marginTop: '8px', fontSize: '12px', color: '#2563eb' }}>Ver Ticket</a>
+                                    <a href={`/dashboard/tickets/${String(selectedMarker.details.id || selectedMarker.details.displayId).replace('task-', '')}`} style={{ display: 'block', marginTop: '8px', fontSize: '12px', color: '#2563eb' }}>Ver Ticket</a>
                                 </>
                             )}
                         </div>
