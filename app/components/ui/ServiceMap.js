@@ -62,8 +62,9 @@ const minimalistStyles = [
 ];
 
 const geocodeCache = new Map();
+const EMPTY_ARRAY = [];
 
-export function ServiceMap({ tickets = [], drivers = [] }) {
+export function ServiceMap({ tickets = EMPTY_ARRAY, drivers = EMPTY_ARRAY }) {
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
