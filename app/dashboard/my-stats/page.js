@@ -28,23 +28,6 @@ export default function MyStatsPage() {
         ].includes(s);
     };
 
-    const isClosedStatus = (statusStr) => {
-        if (!statusStr) return false;
-        const s = String(statusStr).trim().toLowerCase();
-        return [
-            'entregado',
-            'completada',
-            'completado',
-            'finalizado',
-            'recuperado',
-            'resuelto',
-            'cerrado',
-            'cerrada',
-            'servicio facturado',
-            'caso sfdc cerrado'
-        ].includes(s);
-    };
-
 
     // Generamos las opciones del selector de meses (últimos 6 meses)
     const monthOptions = useMemo(() => {
@@ -994,7 +977,6 @@ export default function MyStatsPage() {
                                     })}
                                 </tbody>
                             </table>
-                        </div>
                         </div>
 
                         {/* Footer de información de pago */}
