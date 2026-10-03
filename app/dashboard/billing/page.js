@@ -732,6 +732,8 @@ export default function BillingPage() {
         const printWindow = window.open('', '_blank');
         if (!printWindow) return alert('Por favor, permite las ventanas emergentes (pop-ups) en tu navegador para imprimir.');
 
+        const isAllPaid = invoiceTickets.length > 0 && invoiceTickets.every(t => t.paymentStatus === 'Paid');
+
         const rowsHtml = invoiceItems.map(item => `
             <tr>
                 <td style="padding: 7px 10px; border-bottom: 1px solid #cbd5e1; border-right: 1px solid #cbd5e1; font-weight: 700; color: #1e3a8a;">${item.caseNumber}</td>
@@ -1022,7 +1024,22 @@ export default function BillingPage() {
                     }
                 </style>
             </head>
-            <body>
+            <body style="position: relative;">
+                ${isAllPaid ? `
+                <div style="
+                    position: absolute;
+                    top: 40%;
+                    left: 50%;
+                    transform: translate(-50%, -50%) rotate(-45deg);
+                    font-size: 8rem;
+                    font-weight: 900;
+                    color: rgba(16, 185, 129, 0.15);
+                    z-index: 9999;
+                    pointer-events: none;
+                    border: 15px solid rgba(16, 185, 129, 0.15);
+                    padding: 1rem 3rem;
+                    border-radius: 20px;
+                ">PAGADO</div>` : ''}
                 <div class="doc-container">
                     <div>
                         <!-- Header -->
@@ -2530,6 +2547,29 @@ export default function BillingPage() {
                             >
                                 Cerrar
                             </Button>
+                            {(() => {
+                                const isAllPaid = invoiceTickets.length > 0 && invoiceTickets.every(t => t.paymentStatus === 'Paid');
+                                return !isAllPaid ? (
+                                    <Button 
+                                        size="sm"
+                                        onClick={async () => {
+                                            if (!confirm('¿Marcar todos estos servicios como PAGADOS?')) return;
+                                            const now = new Date().toISOString();
+                                            for (const t of invoiceTickets) {
+                                                if (t.paymentStatus !== 'Paid') {
+                                                    await updateTicket(t.id, { ...t, paymentStatus: 'Paid', paymentDate: now });
+                                                }
+                                            }
+                                            if (typeof refreshData === 'function') refreshData();
+                                        }}
+                                        style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#10b981' }}
+                                    >
+                                        ✔ Marcar Pagado
+                                    </Button>
+                                ) : (
+                                    <Badge style={{ background: '#10b981', color: 'white', fontSize: '0.8rem', padding: '0.35rem 0.8rem' }}>✓ FACTURA PAGADA</Badge>
+                                );
+                            })()}
                         </div>
                     </div>
 
@@ -2746,8 +2786,33 @@ export default function BillingPage() {
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
                         maxWidth: '920px',
                         margin: '0 auto',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        position: 'relative',
+                        overflow: 'hidden'
                     }}>
+                        {/* Marca de agua PAGADO (UI Preview) */}
+                        {(() => {
+                            const isAllPaid = invoiceTickets.length > 0 && invoiceTickets.every(t => t.paymentStatus === 'Paid');
+                            return isAllPaid && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '40%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%) rotate(-45deg)',
+                                    fontSize: '8rem',
+                                    fontWeight: 900,
+                                    color: 'rgba(16, 185, 129, 0.15)',
+                                    zIndex: 9999,
+                                    pointerEvents: 'none',
+                                    border: '15px solid rgba(16, 185, 129, 0.15)',
+                                    padding: '1rem 3rem',
+                                    borderRadius: '20px'
+                                }}>
+                                    PAGADO
+                                </div>
+                            );
+                        })()}
+
                         {/* Header: YAWI Informática | X Box | Metadata */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                             {/* Left: YAWI Informática Logo & Info */}
