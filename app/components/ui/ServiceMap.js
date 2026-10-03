@@ -244,14 +244,7 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                     <Marker
                         key={marker.id}
                         position={{ lat: marker.lat, lng: marker.lng }}
-                        onClick={() => {
-                            setSelectedMarker(marker);
-                            if (map) {
-                                map.panTo({ lat: marker.lat, lng: marker.lng });
-                                // Opcional: zoom para enfocar el servicio (por ejemplo a 14 o 15 si está muy lejos)
-                                // if (map.getZoom() < 14) map.setZoom(14);
-                            }
-                        }}
+                        onClick={() => setSelectedMarker(marker)}
                         title={marker.title}
                         icon={marker.icon}
                     />
@@ -261,9 +254,9 @@ export function ServiceMap({ tickets = [], drivers = [] }) {
                     <InfoWindow
                         position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
                         onCloseClick={() => setSelectedMarker(null)}
-                        options={{ pixelOffset: new window.google.maps.Size(0, -10) }}
+                        options={{ pixelOffset: new window.google.maps.Size(0, -10), disableAutoPan: false }}
                     >
-                        <div style={{ color: '#000', padding: '5px', minWidth: '240px', maxWidth: '280px', overflowWrap: 'break-word' }}>
+                        <div style={{ color: '#000', padding: '4px', maxWidth: '240px', width: 'max-content', wordBreak: 'break-word', whiteSpace: 'normal' }}>
                             {selectedMarker.type === 'driver' ? (
                                 <>
                                     <h4 style={{ margin: '0 0 5px 0', fontSize: '14px', fontWeight: 'bold' }}>🚛 {selectedMarker.details.name}</h4>
