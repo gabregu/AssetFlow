@@ -1050,7 +1050,6 @@ export default function BillingPage() {
                         <div class="top-header">
                             <div class="company-block">
                                 <div class="logo-row">
-                                    <img src="${origin}/assetflow-yaw-logo.png" alt="YAWI" class="logo-img" />
                                     <div style="display: flex; align-items: center; gap: 6px;">
                                         <span class="yawi-badge">YAWI</span>
                                         <span class="yawi-title">INFORMÁTICA</span>
@@ -2830,11 +2829,6 @@ export default function BillingPage() {
                             {/* Left: YAWI Informática Logo & Info */}
                             <div style={{ width: '45%' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                                    <img 
-                                        src="/assetflow-yaw-logo.png" 
-                                        alt="YAWI" 
-                                        style={{ height: '46px', width: 'auto', objectFit: 'contain' }} 
-                                    />
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <span style={{ 
                                             background: '#1e3a8a', 
