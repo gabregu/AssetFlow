@@ -806,9 +806,10 @@ export default function BillingPage() {
                         margin-bottom: 5px;
                     }
                     .logo-img {
-                        height: 42px;
+                        height: 70px;
                         width: auto;
                         object-fit: contain;
+                        margin-bottom: 8px;
                     }
                     .yawi-badge {
                         background: #1e3a8a;
@@ -1049,13 +1050,9 @@ export default function BillingPage() {
                         <!-- Header -->
                         <div class="top-header">
                             <div class="company-block">
-                                <div class="logo-row">
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <span class="yawi-badge">YAWI</span>
-                                        <span class="yawi-title">INFORMÁTICA</span>
-                                    </div>
+                                <div class="logo-row" style="margin-bottom: 12px;">
+                                    <img src="${origin}/yawi-logo-new.png" alt="YAWI Informática" class="logo-img" />
                                 </div>
-                                <div class="company-tagline">${invoiceConfig.companyTagline}</div>
                                 <div class="company-fields">
                                     <div><strong>C.U.I.T.:</strong> ${invoiceConfig.companyCuit}</div>
                                     <div><strong>Condición IVA:</strong> ${invoiceConfig.companyIva}</div>
@@ -2828,31 +2825,12 @@ export default function BillingPage() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                             {/* Left: YAWI Informática Logo & Info */}
                             <div style={{ width: '45%' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span style={{ 
-                                            background: '#1e3a8a', 
-                                            color: '#ffffff', 
-                                            padding: '4px 9px', 
-                                            borderRadius: '6px', 
-                                            fontWeight: 900, 
-                                            fontSize: '15px',
-                                            letterSpacing: '0.5px'
-                                        }}>
-                                            YAWI
-                                        </span>
-                                        <span style={{ 
-                                            fontSize: '16px', 
-                                            fontWeight: 800, 
-                                            color: '#1e3a8a',
-                                            letterSpacing: '0.5px'
-                                        }}>
-                                            INFORMÁTICA
-                                        </span>
-                                    </div>
-                                </div>
-                                <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#475569', marginBottom: '8px' }}>
-                                    {invoiceConfig.companyTagline}
+                                <div style={{ marginBottom: '12px' }}>
+                                    <img 
+                                        src="/yawi-logo-new.png" 
+                                        alt="YAWI Informática" 
+                                        style={{ height: '70px', width: 'auto', objectFit: 'contain' }} 
+                                    />
                                 </div>
                                 <div style={{ fontSize: '10px', color: '#334155', lineHeight: 1.5 }}>
                                     <div><strong>C.U.I.T.:</strong> {invoiceConfig.companyCuit}</div>
