@@ -112,6 +112,13 @@ export default function MyDeliveriesPage() {
     const [optimizationOrigin, setOptimizationOrigin] = useState('oficina');
     const { isSubmitting: isOptimizing, safeSubmit: safeOptimize } = useSafeSubmit();
 
+    // Route export to Google Maps state (>10 paradas)
+    const [routeExportModal, setRouteExportModal] = useState({
+        isOpen: false,
+        deliveries: [],
+        title: ''
+    });
+
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     const showToast = (message, type = 'success') => {
@@ -874,9 +881,80 @@ export default function MyDeliveriesPage() {
         }
     };
 
+    const navigateToAddress = (address, app = 'google') => {
+        if (!address || address === 'Sin dirección' || address === 'Dirección no especificada') {
+            showToast('Dirección no especificada para este envío', 'error');
+            return;
+        }
+        if (app === 'waze') {
+            const url = `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
+            window.open(url, '_blank');
+            return;
+        }
+        // Modo Navegación GPS guiada paso a paso (Turn-by-turn) de Google Maps
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&dir_action=navigate`;
+        window.open(url, '_blank');
+    };
+
     const openGoogleMaps = (address) => {
-        if (!address) return;
-        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
+        navigateToAddress(address, 'google');
+    };
+
+    const openGoogleMapsMultiStop = (stops) => {
+        if (!stops || stops.length === 0) return;
+        if (stops.length === 1) {
+            navigateToAddress(stops[0].displayAddress, 'google');
+            return;
+        }
+        const destination = stops[stops.length - 1].displayAddress;
+        const waypoints = stops.slice(0, stops.length - 1).map(s => s.displayAddress);
+        const waypointsParam = waypoints.map(addr => encodeURIComponent(addr)).join('%7C');
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&waypoints=${waypointsParam}&travelmode=driving`;
+        window.open(url, '_blank');
+    };
+
+    const exportRouteToMaps = (deliveriesList, routeTitle = 'Ruta') => {
+        // Filtrar entregas pendientes y con dirección válida
+        const validDeliveries = (deliveriesList || []).filter(d => {
+            const isFinished = d.displayStatus === 'Entregado' || d.displayStatus === 'Resuelto';
+            if (isFinished) return false;
+            const addr = (d.displayAddress || '').trim();
+            return addr.length > 5 && addr.toLowerCase() !== 'sin dirección' && addr.toLowerCase() !== 'dirección no especificada';
+        });
+
+        if (validDeliveries.length === 0) {
+            showToast('No hay envíos pendientes con dirección válida para armar la ruta', 'warning');
+            return;
+        }
+
+        if (validDeliveries.length === 1) {
+            navigateToAddress(validDeliveries[0].displayAddress, 'google');
+            showToast('Abriendo navegación en Google Maps para el único destino pendiente', 'success');
+            return;
+        }
+
+        // Límite nativo de Google Maps: hasta 10 paradas (9 waypoints + 1 destino)
+        if (validDeliveries.length <= 10) {
+            openGoogleMapsMultiStop(validDeliveries);
+            showToast(`Ruta de ${validDeliveries.length} paradas exportada a Google Maps`, 'success');
+            return;
+        }
+
+        // Más de 10 paradas: abrir modal selector de tramos
+        setRouteExportModal({
+            isOpen: true,
+            deliveries: validDeliveries,
+            title: routeTitle
+        });
+    };
+
+    const handleExportAllRoute = () => {
+        const allDeliveries = Object.values(groupedDeliveries).flat();
+        exportRouteToMaps(allDeliveries, 'General');
+    };
+
+    const handleExportDayRoute = (dayDeliveries, dateLabel) => {
+        exportRouteToMaps(dayDeliveries, `del ${dateLabel}`);
     };
 
     const getColorByDate = (dateStr) => {
@@ -1044,7 +1122,7 @@ export default function MyDeliveriesPage() {
 
             setOptimizedOrder([...orderedUniqueIds, ...unmapped]);
             setIsOptimizationModalOpen(false);
-            alert('¡Ruta optimizada correctamente!');
+            showToast('¡Ruta optimizada correctamente según distancia más corta!', 'success');
         }).catch(error => {
             console.error(error);
             alert('Error al optimizar ruta: ' + error.message);
@@ -1063,7 +1141,16 @@ export default function MyDeliveriesPage() {
                         Logística y ruta de entregas asignada
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Button
+                        variant="secondary"
+                        icon={Navigation}
+                        onClick={handleExportAllRoute}
+                        style={{ padding: '0.45rem 0.75rem', fontSize: '0.78rem', fontWeight: 700, height: '42px', borderRadius: '12px', borderColor: 'var(--border)' }}
+                        title="Exportar todas las paradas pendientes a Google Maps"
+                    >
+                        Ruta Maps
+                    </Button>
                     <Button
                         variant="secondary"
                         icon={isOptimizing ? Loader2 : Route}
@@ -1102,33 +1189,62 @@ export default function MyDeliveriesPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
                     {Object.entries(groupedDeliveries).map(([date, deliveries]) => {
                         const dayColor = getColorByDate(date);
+                        const formattedDateStr = (() => {
+                            const d = (date && date !== 'Sin Fecha') ? new Date(date + 'T00:00:00') : null;
+                            const isInvalid = !d || isNaN(d.getTime());
+                            
+                            if (isInvalid) return 'Fecha no definida';
+                            
+                            const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+                            const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                            return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
+                        })();
+                        const pendingDayDeliveries = deliveries.filter(d => d.displayStatus !== 'Entregado' && d.displayStatus !== 'Resuelto');
                         return (
                             <div key={date} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <div style={{ 
                                     display: 'flex', 
                                     alignItems: 'center', 
-                                    gap: '1rem', 
+                                    gap: '0.75rem', 
                                     padding: '0.5rem 0.75rem',
                                     position: 'sticky',
                                     top: '0',
                                     backgroundColor: 'var(--background)',
                                     zIndex: 10,
-                                    margin: '0 -0.5rem'
+                                    margin: '0 -0.5rem',
+                                    flexWrap: 'wrap'
                                 }}>
                                     <div style={{ backgroundColor: dayColor, width: '10px', height: '10px', borderRadius: '50%' }}></div>
-                                    <h2 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        {(() => {
-                                            const d = (date && date !== 'Sin Fecha') ? new Date(date + 'T00:00:00') : null;
-                                            const isInvalid = !d || isNaN(d.getTime());
-                                            
-                                            if (isInvalid) return 'Fecha no definida';
-                                            
-                                            const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-                                            const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-                                            return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}`;
-                                        })()}
+                                    <h2 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                                        {formattedDateStr}
                                     </h2>
-                                    <div style={{ flex: 1, height: '1px', background: `linear-gradient(to right, ${dayColor}44, transparent)` }}></div>
+                                    <div style={{ flex: 1, minWidth: '10px', height: '1px', background: `linear-gradient(to right, ${dayColor}44, transparent)` }}></div>
+                                    {pendingDayDeliveries.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleExportDayRoute(deliveries, formattedDateStr)}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                fontSize: '0.72rem',
+                                                fontWeight: 700,
+                                                padding: '3px 10px',
+                                                borderRadius: '20px',
+                                                background: `${dayColor}15`,
+                                                color: dayColor,
+                                                border: `1px solid ${dayColor}44`,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                whiteSpace: 'nowrap'
+                                            }}
+                                            className="hover-scale"
+                                            title={`Abrir ruta de ${formattedDateStr} en Google Maps`}
+                                        >
+                                            <Navigation size={12} />
+                                            <span>Ruta Maps ({pendingDayDeliveries.length})</span>
+                                        </button>
+                                    )}
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                                     {deliveries.map(delivery => (
@@ -1171,30 +1287,87 @@ export default function MyDeliveriesPage() {
                                                     </div>
 
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                                                        <div 
-                                                            onClick={() => openGoogleMaps(delivery.displayAddress)}
-                                                            style={{ 
-                                                                display: 'flex', 
-                                                                alignItems: 'flex-start', 
-                                                                gap: '0.5rem', 
-                                                                color: dayColor, 
-                                                                cursor: 'pointer',
-                                                                fontSize: '0.9rem',
-                                                                fontWeight: 500,
-                                                                lineHeight: 1.3
-                                                            }}
-                                                            className="hover-underline"
-                                                        >
-                                                            <MapPin size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
-                                                            <span>
-                                                                {delivery.displayAddress}
-                                                                <Navigation size={12} style={{ opacity: 0.7, marginLeft: '4px', display: 'inline-block', verticalAlign: 'middle' }} />
-                                                                {delivery.displayFloorDept && (
-                                                                    <strong style={{ display: 'block', marginTop: '4px', color: '#1e293b', fontSize: '0.85rem', backgroundColor: '#e2e8f0', padding: '2px 8px', borderRadius: '4px', width: 'fit-content', fontWeight: '700' }}>
-                                                                        Piso y Depto: {delivery.displayFloorDept}
-                                                                    </strong>
-                                                                )}
-                                                            </span>
+                                                        <div>
+                                                            <div 
+                                                                onClick={() => openGoogleMaps(delivery.displayAddress)}
+                                                                style={{ 
+                                                                    display: 'flex', 
+                                                                    alignItems: 'flex-start', 
+                                                                    gap: '0.5rem', 
+                                                                    color: dayColor, 
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '0.9rem',
+                                                                    fontWeight: 500,
+                                                                    lineHeight: 1.3
+                                                                }}
+                                                                className="hover-underline"
+                                                                title="Toca para iniciar navegación GPS en Google Maps"
+                                                            >
+                                                                <MapPin size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                                                                <span>
+                                                                    {delivery.displayAddress}
+                                                                    <Navigation size={12} style={{ opacity: 0.7, marginLeft: '4px', display: 'inline-block', verticalAlign: 'middle' }} />
+                                                                    {delivery.displayFloorDept && (
+                                                                        <strong style={{ display: 'block', marginTop: '4px', color: '#1e293b', fontSize: '0.85rem', backgroundColor: '#e2e8f0', padding: '2px 8px', borderRadius: '4px', width: 'fit-content', fontWeight: '700' }}>
+                                                                            Piso y Depto: {delivery.displayFloorDept}
+                                                                        </strong>
+                                                                    )}
+                                                                </span>
+                                                            </div>
+
+                                                            {delivery.displayAddress && delivery.displayAddress !== 'Sin dirección' && (
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.35rem', marginLeft: '1.6rem' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            navigateToAddress(delivery.displayAddress, 'google');
+                                                                        }}
+                                                                        style={{
+                                                                            display: 'inline-flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '4px',
+                                                                            fontSize: '0.72rem',
+                                                                            fontWeight: 700,
+                                                                            padding: '2px 8px',
+                                                                            borderRadius: '6px',
+                                                                            backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                                                                            color: '#1d4ed8',
+                                                                            border: '1px solid rgba(37, 99, 235, 0.25)',
+                                                                            cursor: 'pointer'
+                                                                        }}
+                                                                        className="hover-scale"
+                                                                        title="Iniciar navegación GPS en Google Maps"
+                                                                    >
+                                                                        <Navigation size={11} />
+                                                                        <span>Navegar GPS</span>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            navigateToAddress(delivery.displayAddress, 'waze');
+                                                                        }}
+                                                                        style={{
+                                                                            display: 'inline-flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '4px',
+                                                                            fontSize: '0.72rem',
+                                                                            fontWeight: 700,
+                                                                            padding: '2px 8px',
+                                                                            borderRadius: '6px',
+                                                                            backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                                                                            color: '#059669',
+                                                                            border: '1px solid rgba(16, 185, 129, 0.25)',
+                                                                            cursor: 'pointer'
+                                                                        }}
+                                                                        className="hover-scale"
+                                                                        title="Navegar en Waze"
+                                                                    >
+                                                                        <span>Waze</span>
+                                                                    </button>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-main)', fontSize: '0.95rem', fontWeight: 600, marginTop: '0.2rem', flexWrap: 'wrap' }}>
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -2135,6 +2308,68 @@ export default function MyDeliveriesPage() {
                 </form>
             </Modal>
 
+            {/* Modal de Tramos de Ruta para Google Maps (>10 paradas) */}
+            <Modal
+                isOpen={routeExportModal.isOpen}
+                onClose={() => setRouteExportModal({ isOpen: false, deliveries: [], title: '' })}
+                title={`Exportar ${routeExportModal.title} a Google Maps`}
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.4', margin: 0 }}>
+                        Tienes <strong>{routeExportModal.deliveries.length} paradas pendientes</strong>. Dado que Google Maps soporta hasta 10 paradas por enlace, la ruta se organizó en los siguientes tramos ordenados:
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {Array.from({ length: Math.ceil(routeExportModal.deliveries.length / 10) }).map((_, idx) => {
+                            const startIdx = idx * 10;
+                            const endIdx = Math.min((idx + 1) * 10, routeExportModal.deliveries.length);
+                            const chunk = routeExportModal.deliveries.slice(startIdx, endIdx);
+                            return (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => {
+                                        openGoogleMapsMultiStop(chunk);
+                                        showToast(`Abriendo Tramo ${idx + 1} (${chunk.length} paradas) en Google Maps`, 'success');
+                                        setRouteExportModal({ isOpen: false, deliveries: [], title: '' });
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '10px',
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--background)',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    className="hover-scale"
+                                >
+                                    <div>
+                                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--primary-color)' }}>
+                                            Tramo {idx + 1}: Paradas {startIdx + 1} a {endIdx} ({chunk.length} paradas)
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                                            Desde #{chunk[0]?.displayId || chunk[0]?.id} ({chunk[0]?.requester || 'Destino'}) hasta #{chunk[chunk.length - 1]?.displayId || chunk[chunk.length - 1]?.id}
+                                        </div>
+                                    </div>
+                                    <Navigation size={18} style={{ color: 'var(--primary-color)', flexShrink: 0 }} />
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                        <Button 
+                            variant="secondary" 
+                            onClick={() => setRouteExportModal({ isOpen: false, deliveries: [], title: '' })}
+                        >
+                            Cerrar
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
             {/* Optimization Modal */}
             <Modal isOpen={isOptimizationModalOpen} onClose={() => setIsOptimizationModalOpen(false)} title="Optimizar Recorrido">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -2168,6 +2403,12 @@ export default function MyDeliveriesPage() {
             <style jsx>{`
                 .hover-underline:hover span {
                     text-decoration: underline;
+                }
+                .hover-scale {
+                    transition: transform 0.2s ease;
+                }
+                .hover-scale:hover {
+                    transform: scale(1.03);
                 }
                 @keyframes fadeIn {
                     from { opacity: 0; transform: translateY(10px); }
