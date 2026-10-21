@@ -78,6 +78,20 @@ const sanitizeCountryForLocation = (countryFilter) => {
     return SFDC_TO_COUNTRY[countryFilter] || countryFilter;
 };
 
+// Normalized country matching: supports SFDC-Argentina vs Argentina, exact, and empty fallbacks
+const isCountryMatch = (itemCountry, filter) => {
+    if (!filter || filter === 'Todos') return true;
+    const sfdcCountry = SFDC_TO_COUNTRY[filter] || filter;
+    const itemCountryStr = String(itemCountry || '').trim();
+    if (!itemCountryStr) {
+        return filter === 'SFDC-Argentina' || filter === 'Argentina';
+    }
+    return itemCountryStr === filter || 
+           itemCountryStr === sfdcCountry || 
+           (filter === 'SFDC-Argentina' && itemCountryStr === 'Argentina') ||
+           (filter === 'Argentina' && itemCountryStr === 'SFDC-Argentina');
+};
+
 const getDisplayAisle = (aisleName) => {
     if (isLocDep(aisleName)) {
         // DEP-A → Repisa A
@@ -140,6 +154,8 @@ export default function WarehousePage() {
         countryFilter,
         depositoConfig,
         updateDepositoConfig,
+        assetRepairs = {},
+        updateAssetRepair,
         updateAsset,
         deleteAsset,
         tickets = [],
@@ -221,6 +237,44 @@ export default function WarehousePage() {
         notes: ''
     });
     const [isSavingAsset, setIsSavingAsset] = useState(false);
+
+    // Repair Modal States (5 requested items)
+    const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
+    const [repairModalAsset, setRepairModalAsset] = useState(null);
+    const [repairForm, setRepairForm] = useState({
+        company: '',
+        repairCost: '',
+        additionalCost: '',
+        isApproved: false,
+        notes: ''
+    });
+
+    const handleOpenRepairModal = (targetAsset) => {
+        if (!targetAsset) return;
+        setRepairModalAsset(targetAsset);
+        const currentRep = assetRepairs[targetAsset.id] || (targetAsset.serial ? assetRepairs[targetAsset.serial] : null) || {};
+        setRepairForm({
+            company: currentRep.company || (targetAsset.vendor && targetAsset.vendor !== 'Other' ? targetAsset.vendor : ''),
+            repairCost: currentRep.repairCost !== undefined ? String(currentRep.repairCost) : '',
+            additionalCost: currentRep.additionalCost !== undefined ? String(currentRep.additionalCost) : '',
+            isApproved: !!currentRep.isApproved,
+            notes: currentRep.notes || ''
+        });
+        setIsRepairModalOpen(true);
+    };
+
+    const handleSaveRepairModal = async (e) => {
+        if (e) e.preventDefault();
+        if (!repairModalAsset) return;
+        const success = await updateAssetRepair(repairModalAsset.id, {
+            ...repairForm,
+            approvedBy: repairForm.isApproved ? (currentUser?.name || 'Administrador') : null,
+            approvedDate: repairForm.isApproved ? new Date().toISOString() : null
+        });
+        if (success) {
+            setIsRepairModalOpen(false);
+        }
+    };
 
     // Identificar qué conductor recogió/entregó el equipo (tareas de logística, tickets, entregas o notas)
     const getDriverForAsset = useCallback((asset) => {
@@ -389,6 +443,16 @@ export default function WarehousePage() {
             hardwareSpec: assetToEdit.hardwareSpec || '',
             notes: assetToEdit.notes || ''
         });
+
+        const currentRep = assetRepairs[assetToEdit.id] || (assetToEdit.serial ? assetRepairs[assetToEdit.serial] : null) || {};
+        setRepairForm({
+            company: currentRep.company || (assetToEdit.vendor && assetToEdit.vendor !== 'Other' ? assetToEdit.vendor : ''),
+            repairCost: currentRep.repairCost !== undefined ? String(currentRep.repairCost) : '',
+            additionalCost: currentRep.additionalCost !== undefined ? String(currentRep.additionalCost) : '',
+            isApproved: !!currentRep.isApproved,
+            notes: currentRep.notes || ''
+        });
+
         setIsEditAssetModalOpen(true);
     };
 
@@ -527,6 +591,14 @@ export default function WarehousePage() {
                 updatedBy: updatedBy,
                 lastAssetCheck: now
             });
+
+            if (updateAssetRepair && (repairForm.company || repairForm.repairCost || repairForm.additionalCost || repairForm.isApproved || (targetAssetObj.locationId || '').toUpperCase().startsWith('DEP-Z') || editAssetForm.status === 'En Reparación')) {
+                await updateAssetRepair(targetAssetObj.id, {
+                    ...repairForm,
+                    approvedBy: repairForm.isApproved ? (currentUser?.name || 'Administrador') : null,
+                    approvedDate: repairForm.isApproved ? new Date().toISOString() : null
+                });
+            }
 
             setIsEditAssetModalOpen(false);
             setEditingAssetObj(null);
@@ -736,12 +808,7 @@ export default function WarehousePage() {
 
             // Country Filter (bypassed if user is searching specifically by a Serial or IMEI)
             if (!isStrongIdentifierMatch && countryFilter !== 'Todos') {
-                const sfdcCountry = SFDC_TO_COUNTRY[countryFilter] || countryFilter;
-                const assetCountry = asset.country || '';
-                const matchesCountry = assetCountry === countryFilter || 
-                                       assetCountry === sfdcCountry ||
-                                       (countryFilter === 'SFDC-Argentina' && (assetCountry === 'Argentina' || !assetCountry));
-                if (!matchesCountry) return false;
+                if (!isCountryMatch(asset.country, countryFilter)) return false;
             }
             
             // Brand filters
@@ -860,6 +927,19 @@ export default function WarehousePage() {
         return ids;
     }, [filteredAssets, hasActiveSearch]);
 
+    // Automatically smooth-scroll to the highlighted slot during search
+    useEffect(() => {
+        if (hasActiveSearch && highlightedLocationIds.size > 0) {
+            const timer = setTimeout(() => {
+                const el = document.querySelector('.blink-highlight') || document.querySelector('[data-highlighted="true"]');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [hasActiveSearch, highlightedLocationIds]);
+
     // Assets that match filter AND are physically located in the warehouse
     const warehouseFilteredAssets = useMemo(() => {
         return filteredAssets.filter(a => !!a.locationId);
@@ -870,7 +950,7 @@ export default function WarehousePage() {
     const groupedLocations = useMemo(() => {
         const groups = {};
         const filtered = warehouseLocations.filter(loc => 
-            countryFilter === 'Todos' || loc.country === countryFilter
+            isCountryMatch(loc.country, countryFilter)
         );
         filtered.forEach(loc => {
             if (!groups[loc.aisle]) groups[loc.aisle] = [];
@@ -950,7 +1030,7 @@ export default function WarehousePage() {
     // Stats calculations
     const totalAssetsW = useMemo(() => {
         return assets.filter(a => {
-            if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
+            if (!isCountryMatch(a.country, countryFilter)) return false;
             if (!a.locationId) return false;
             const loc = warehouseLocations.find(l => l.id === a.locationId);
             return loc && !isLocH(loc.aisle) && !isLocDep(loc.aisle) && !isLocCaja(loc.aisle);
@@ -959,7 +1039,7 @@ export default function WarehousePage() {
 
     const totalAssetsH = useMemo(() => {
         return assets.filter(a => {
-            if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
+            if (!isCountryMatch(a.country, countryFilter)) return false;
             if (!a.locationId) return false;
             const loc = warehouseLocations.find(l => l.id === a.locationId);
             return loc && isLocH(loc.aisle);
@@ -968,7 +1048,7 @@ export default function WarehousePage() {
 
     const totalAssetsDep = useMemo(() => {
         return assets.filter(a => {
-            if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
+            if (!isCountryMatch(a.country, countryFilter)) return false;
             if (!a.locationId) return false;
             const loc = warehouseLocations.find(l => l.id === a.locationId);
             return loc && isLocDep(loc.aisle);
@@ -977,7 +1057,7 @@ export default function WarehousePage() {
 
     const statusCounts = useMemo(() => {
         const filtered = assets.filter(a => {
-            if (countryFilter !== 'Todos' && a.country !== countryFilter) return false;
+            if (!isCountryMatch(a.country, countryFilter)) return false;
             return !!a.locationId;
         });
         const nuevos = filtered.filter(a => (a.status || '').toUpperCase() === 'NUEVO').length;
@@ -1000,7 +1080,7 @@ export default function WarehousePage() {
     const targetLocationsGrouped = useMemo(() => {
         const groups = {};
         const filtered = warehouseLocations.filter(loc => 
-            countryFilter === 'Todos' || loc.country === countryFilter
+            isCountryMatch(loc.country, countryFilter)
         );
         filtered.forEach(loc => {
             if (!groups[loc.aisle]) groups[loc.aisle] = [];
@@ -2373,6 +2453,13 @@ export default function WarehousePage() {
         }
         titleLines.push(`Estado: ${a.status || '-'}`);
         
+        const repair = assetRepairs[a.id] || (a.serial ? assetRepairs[a.serial] : null);
+        if (repair) {
+            if (repair.company) titleLines.push(`Empresa Presupuesto: ${repair.company}`);
+            if (repair.totalCost !== undefined) titleLines.push(`Total Reparación: $${Number(repair.totalCost).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`);
+            titleLines.push(`Aprobación: ${repair.isApproved ? 'Aprobado ✅' : 'Pendiente ⏳'}`);
+        }
+
         let dateStr = '-';
         if (a.dateMapped) dateStr = new Date(a.dateMapped).toLocaleDateString();
         else if (a.dateLastUpdate) dateStr = new Date(a.dateLastUpdate).toLocaleDateString();
@@ -2938,12 +3025,12 @@ export default function WarehousePage() {
         if (isDepZone) {
             const prefix = `${aisle}-`;
             aisleAssets = assets.filter(a => 
-                (countryFilter === 'Todos' || a.country === countryFilter) &&
+                isCountryMatch(a.country, countryFilter) &&
                 a.locationId && a.locationId.toUpperCase().startsWith(prefix.toUpperCase())
             );
         } else {
             aisleAssets = assets.filter(a => 
-                (countryFilter === 'Todos' || a.country === countryFilter) &&
+                isCountryMatch(a.country, countryFilter) &&
                 locations.some(loc => loc.id === a.locationId)
             );
         }
@@ -3122,7 +3209,7 @@ export default function WarehousePage() {
                                     else if (a.dateLastUpdate) dateStr = new Date(a.dateLastUpdate).toLocaleDateString();
                                     else if (a.created_at) dateStr = new Date(a.created_at).toLocaleDateString();
                                     else if (a.date) dateStr = new Date(a.date).toLocaleDateString();
-                                    return {
+                                    const row = {
                                         'Ubicación': a.locationId || '-',
                                         'Modelo': a.hardwareSpec || a.model || a.name || '-',
                                         'N/P': a.partNumber || a.part_number || '-',
@@ -3130,6 +3217,17 @@ export default function WarehousePage() {
                                         'Estado': a.status || '-',
                                         'Ingreso (Fecha)': dateStr
                                     };
+                                    if (aisle === 'DEP-Z') {
+                                        const rep = assetRepairs[a.id] || (a.serial ? assetRepairs[a.serial] : null);
+                                        row['1) Empresa Presupuesto'] = rep?.company || '-';
+                                        row['2) Valor Reparación'] = rep?.repairCost ?? 0;
+                                        row['3) Gasto Adicional'] = rep?.additionalCost ?? 0;
+                                        row['4) Total Presupuestado'] = rep?.totalCost ?? 0;
+                                        row['5) Aprobado'] = rep?.isApproved ? 'SÍ' : 'NO';
+                                        row['Aprobado Por'] = rep?.approvedBy || '-';
+                                        row['Notas'] = rep?.notes || '-';
+                                    }
+                                    return row;
                                 });
                                 const ws = XLSX.utils.json_to_sheet(data);
                                 XLSX.utils.book_append_sheet(wb, ws, "Equipos");
@@ -3163,6 +3261,66 @@ export default function WarehousePage() {
                         <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#065f46', marginBottom: '8px', paddingLeft: '24px' }}>
                             Total dispositivos en {getDisplayAisle(aisle)}: {aisleAssetsCount}
                         </div>
+
+                        {aisle === 'DEP-Z' && (() => {
+                            const zAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId && a.locationId.toUpperCase().startsWith('DEP-Z-'));
+                            let totalBudget = 0;
+                            let approvedCount = 0;
+                            let pendingCount = 0;
+                            zAssets.forEach(a => {
+                                const rep = assetRepairs[a.id] || (a.serial ? assetRepairs[a.serial] : null);
+                                if (rep) {
+                                    totalBudget += (Number(rep.totalCost) || 0);
+                                    if (rep.isApproved) approvedCount++;
+                                    else pendingCount++;
+                                } else {
+                                    pendingCount++;
+                                }
+                            });
+
+                            return (
+                                <div style={{
+                                    background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+                                    border: '1.5px solid #c4b5fd',
+                                    borderRadius: '8px',
+                                    padding: '0.65rem 0.9rem',
+                                    marginBottom: '0.75rem',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                    gap: '0.5rem'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontSize: '1.3rem' }}>🛠️</span>
+                                        <div>
+                                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#5b21b6' }}>
+                                                Control de Presupuestos de Reparación (Repisa Z)
+                                            </div>
+                                            <div style={{ fontSize: '0.7rem', color: '#6d28d9' }}>
+                                                Equipos para reparación: empresa, presupuestos y aprobaciones
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem' }}>
+                                            <span style={{ background: '#dcfce7', color: '#15803d', fontWeight: 800, padding: '3px 8px', borderRadius: '12px', border: '1px solid #86efac' }}>
+                                                ✓ {approvedCount} Aprobados
+                                            </span>
+                                            <span style={{ background: '#fef3c7', color: '#b45309', fontWeight: 800, padding: '3px 8px', borderRadius: '12px', border: '1px solid #fde68a' }}>
+                                                ⏳ {pendingCount} Pendientes
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', padding: '4px 10px', borderRadius: '8px', border: '1px solid #ddd6fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#6d28d9', fontWeight: 700 }}>Total:</span>
+                                            <span style={{ fontSize: '0.95rem', fontWeight: 900, color: '#4c1d95' }}>
+                                                $ {totalBudget.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                         
                         {estantesIndices.map(estante => {
                             const isEstanteSelected = selectedLocation?.id && selectedLocation.id.startsWith(`${aisle}-${estante}-`);
@@ -3175,7 +3333,7 @@ export default function WarehousePage() {
                                     {posIndices.map(pos => {
                                         const locId = `${aisle}-${estante}-${pos}`;
                                         const loc = locations.find(l => l.id === locId) || { id: locId };
-                                        const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                                        const locationAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === locId);
                                         const assetCount = locationAssets.length;
                                         
                                         const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
@@ -3194,8 +3352,12 @@ export default function WarehousePage() {
                                             borderColor = '#db2777';
                                         }
 
-                                        const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
-                                        const isNotHighlighted = hasActiveSearch && !highlightedLocationIds.has(locId);
+                                        const normLocId = (locId || '').toUpperCase().trim();
+                                        const isHighlighted = hasActiveSearch && (
+                                            highlightedLocationIds.has(locId) || 
+                                            highlightedLocationIds.has(normLocId)
+                                        );
+                                        const isNotHighlighted = hasActiveSearch && !isHighlighted;
                                         const alignLeft = pos > (config.cols / 2);
                                         const alignTop = estante >= config.rows - 1;
                                         const alignBottom = estante <= 2;
@@ -3205,7 +3367,10 @@ export default function WarehousePage() {
                                                 style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative', zIndex: isSelected ? 1001 : 1 }}
                                             >
                                                 <div 
-                                                    onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
+                                                    onClick={(e) => handleScanLocation(locId, e)} 
+                                                    data-warehouse-slot="true" 
+                                                    data-slot-id={locId}
+                                                    data-highlighted={isHighlighted ? "true" : undefined}
                                                     title={buildAssetTooltip(locationAssets, locId)}
                                                     className={isHighlighted ? 'blink-highlight search-pulse' : ''}
                                                     style={{
@@ -3219,7 +3384,7 @@ export default function WarehousePage() {
                                                         boxShadow: isSelected ? '0 0 8px rgba(234,179,8,0.4)' : 'none',
                                                         opacity: isNotHighlighted ? 0.2 : assetCount > 0 ? 1 : 0.4,
                                                         position: 'relative',
-                                                        zIndex: isSelected ? 1002 : 1
+                                                        zIndex: isSelected ? 1002 : (isHighlighted ? 99 : 1)
                                                     }}
                                                 >
                                                     {locationAssets.some(a => a.id === aisleOldestAssetId) && (
@@ -3232,6 +3397,36 @@ export default function WarehousePage() {
                                                             ✨
                                                         </div>
                                                     )}
+                                                    {/* In Repisa Z, show mini badge for repair approval status */}
+                                                    {isDepZone && aisle === 'DEP-Z' && assetCount > 0 && (() => {
+                                                        const a = locationAssets[0];
+                                                        const rep = a ? (assetRepairs[a.id] || (a.serial ? assetRepairs[a.serial] : null)) : null;
+                                                        return (
+                                                            <div 
+                                                                style={{ 
+                                                                    position: 'absolute', 
+                                                                    top: '-5px', 
+                                                                    right: '-5px', 
+                                                                    fontSize: '8px', 
+                                                                    zIndex: 10,
+                                                                    background: rep?.isApproved ? '#16a34a' : '#f59e0b',
+                                                                    color: 'white',
+                                                                    borderRadius: '50%',
+                                                                    width: '13px',
+                                                                    height: '13px',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'center',
+                                                                    fontWeight: 900,
+                                                                    border: '1.5px solid white',
+                                                                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                                                                }} 
+                                                                title={rep?.isApproved ? `Reparación Aprobada (${rep.company || 'Taller'}) - $${rep.totalCost || 0}` : `Pendiente de aprobación (${rep?.company || 'Sin presupuesto'})`}
+                                                            >
+                                                                {rep?.isApproved ? '✓' : '⏳'}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                     {renderSlotPopover(locId, isSelected, { alignLeft, alignTop, alignBottom })}
                                                 </div>
                                                 {estante === 1 && (
@@ -3460,6 +3655,105 @@ export default function WarehousePage() {
                                     <span>Conductor: {getDriverForAsset(asset)}</span>
                                 </div>
                             )}
+
+                            {/* Repair Tracking Info (Repisa Z / En Reparación) */}
+                            {(() => {
+                                const isRepairTarget = (selectedLocation?.aisle === 'DEP-Z' || (selectedLocation?.id || '').toUpperCase().startsWith('DEP-Z') || (asset.status || '').toLowerCase().includes('reparac') || !!assetRepairs[asset.id] || (asset.serial && !!assetRepairs[asset.serial]));
+                                if (!isRepairTarget) return null;
+                                const rep = assetRepairs[asset.id] || (asset.serial ? assetRepairs[asset.serial] : null) || {};
+                                const rCost = Number(rep.repairCost || 0);
+                                const aCost = Number(rep.additionalCost || 0);
+                                const tCost = Number(rep.totalCost !== undefined ? rep.totalCost : (rCost + aCost));
+                                const isApproved = !!rep.isApproved;
+
+                                return (
+                                    <div style={{
+                                        background: isApproved ? 'rgba(22,163,74,0.08)' : 'rgba(245,158,11,0.08)',
+                                        border: `1.5px solid ${isApproved ? '#86efac' : '#fde68a'}`,
+                                        borderRadius: '8px',
+                                        padding: '0.5rem 0.65rem',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.3rem',
+                                        marginTop: '0.2rem'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: isApproved ? '#166534' : '#92400e', textTransform: 'uppercase', letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                🔧 Presupuesto Reparación
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleOpenRepairModal(asset);
+                                                    if (onClose) onClose();
+                                                }}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--primary-color)',
+                                                    fontSize: '0.65rem',
+                                                    fontWeight: 700,
+                                                    cursor: 'pointer',
+                                                    textDecoration: 'underline'
+                                                }}
+                                            >
+                                                Editar
+                                            </button>
+                                        </div>
+                                        
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px', fontSize: '0.68rem' }}>
+                                            <div>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Empresa:</span>{' '}
+                                                <strong style={{ color: 'var(--text-main)' }}>{rep.company || 'Sin asignar'}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Valor:</span>{' '}
+                                                <strong style={{ color: 'var(--text-main)' }}>${rCost.toLocaleString('es-AR')}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Adicional:</span>{' '}
+                                                <strong style={{ color: 'var(--text-main)' }}>${aCost.toLocaleString('es-AR')}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Total:</span>{' '}
+                                                <strong style={{ color: isApproved ? '#16a34a' : '#b45309', fontSize: '0.74rem' }}>${tCost.toLocaleString('es-AR')}</strong>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '3px', borderTop: '1px dashed var(--border)' }}>
+                                            <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                                {isApproved ? 'Aprobado ✓' : 'Pendiente ⏳'}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    await updateAssetRepair(asset.id, {
+                                                        ...rep,
+                                                        isApproved: !isApproved,
+                                                        approvedBy: !isApproved ? (currentUser?.name || 'Administrador') : null,
+                                                        approvedDate: !isApproved ? new Date().toISOString() : null
+                                                    });
+                                                }}
+                                                style={{
+                                                    background: isApproved ? '#16a34a' : '#f59e0b',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '5px',
+                                                    padding: '2px 8px',
+                                                    fontSize: '0.65rem',
+                                                    fontWeight: 800,
+                                                    cursor: 'pointer'
+                                                }}
+                                                title={isApproved ? "Clic para desaprobar" : "Clic para aprobar"}
+                                            >
+                                                {isApproved ? 'Desaprobar' : 'Aprobar'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', opacity: 0.85 }}>
                                 Mapeado: {asset.dateMapped ? new Date(asset.dateMapped).toLocaleDateString() : 'N/A'} • {asset.updatedBy || 'Almacén'}
@@ -3740,6 +4034,105 @@ export default function WarehousePage() {
                                     </div>
                                 )}
                             </div>
+
+                            {/* Repair Tracking Info (Repisa Z / En Reparación) */}
+                            {(() => {
+                                const isRepairTarget = (selectedLocation?.aisle === 'DEP-Z' || (selectedLocation?.id || '').toUpperCase().startsWith('DEP-Z') || (asset.status || '').toLowerCase().includes('reparac') || !!assetRepairs[asset.id] || (asset.serial && !!assetRepairs[asset.serial]));
+                                if (!isRepairTarget) return null;
+                                const rep = assetRepairs[asset.id] || (asset.serial ? assetRepairs[asset.serial] : null) || {};
+                                const rCost = Number(rep.repairCost || 0);
+                                const aCost = Number(rep.additionalCost || 0);
+                                const tCost = Number(rep.totalCost !== undefined ? rep.totalCost : (rCost + aCost));
+                                const isApproved = !!rep.isApproved;
+
+                                return (
+                                    <div style={{
+                                        background: isApproved ? 'rgba(22,163,74,0.06)' : 'rgba(245,158,11,0.08)',
+                                        border: `1.5px solid ${isApproved ? '#86efac' : '#fde68a'}`,
+                                        borderRadius: '8px',
+                                        padding: '0.65rem 0.8rem',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.45rem',
+                                        marginTop: '0.35rem'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: isApproved ? '#166534' : '#92400e', textTransform: 'uppercase', letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                🔧 Presupuesto Reparación
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleOpenRepairModal(asset);
+                                                    if (isFloating && onClose) onClose();
+                                                }}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--primary-color)',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 700,
+                                                    cursor: 'pointer',
+                                                    textDecoration: 'underline'
+                                                }}
+                                            >
+                                                Editar datos
+                                            </button>
+                                        </div>
+                                        
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '0.73rem' }}>
+                                            <div>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Empresa:</span>{' '}
+                                                <strong style={{ color: 'var(--text-main)' }}>{rep.company || 'Sin asignar'}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Valor Rep.:</span>{' '}
+                                                <strong style={{ color: 'var(--text-main)' }}>${rCost.toLocaleString('es-AR')}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Gasto Adic.:</span>{' '}
+                                                <strong style={{ color: 'var(--text-main)' }}>${aCost.toLocaleString('es-AR')}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Total:</span>{' '}
+                                                <strong style={{ color: isApproved ? '#16a34a' : '#b45309', fontSize: '0.8rem' }}>${tCost.toLocaleString('es-AR')}</strong>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '4px', borderTop: '1px dashed var(--border)' }}>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                                Estado: <strong style={{ color: isApproved ? '#16a34a' : '#d97706' }}>{isApproved ? 'Aprobado ✓' : 'Pendiente ⏳'}</strong>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    await updateAssetRepair(asset.id, {
+                                                        ...rep,
+                                                        isApproved: !isApproved,
+                                                        approvedBy: !isApproved ? (currentUser?.name || 'Administrador') : null,
+                                                        approvedDate: !isApproved ? new Date().toISOString() : null
+                                                    });
+                                                }}
+                                                style={{
+                                                    background: isApproved ? '#16a34a' : '#f59e0b',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    padding: '3px 10px',
+                                                    fontSize: '0.72rem',
+                                                    fontWeight: 800,
+                                                    cursor: 'pointer'
+                                                }}
+                                                title={isApproved ? "Clic para marcar como NO aprobado" : "Clic para APROBAR reparación"}
+                                            >
+                                                {isApproved ? '✓ Desaprobar' : 'Aprobar Reparación'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </>
                     ) : (
                         <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '0.75rem' }}>Esta ubicación está vacía / disponible.</div>
@@ -4485,7 +4878,7 @@ return renderSelectionInfoContent(false);
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         const depositoAssets = assets.filter(a => 
-                                            (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                            isCountryMatch(a.country, countryFilter) &&
                                             a.locationId && 
                                             locationsD.some(([aisle]) => a.locationId.toUpperCase().startsWith(`${aisle.toUpperCase()}-`))
                                         );
@@ -4623,7 +5016,7 @@ return renderSelectionInfoContent(false);
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(28px, 1fr))', gap: '8px', padding: '0.5rem 0' }}>
                                 {Array.from({ length: depositoConfig?.revisionCount || 40 }, (_, i) => i + 1).map(revNum => {
                                     const locId = `REV-${revNum}`;
-                                    const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                                    const locationAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === locId);
                                     const assetCount = locationAssets.length;
                                     const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
                                     
@@ -4685,7 +5078,7 @@ return renderSelectionInfoContent(false);
                             
                             {/* Pendientes de Revisión */}
                             {assets.filter(a => 
-                                (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                isCountryMatch(a.country, countryFilter) &&
                                 (a.status === 'Verificacion HW' || a.status === 'Por Recuperar') &&
                                 (!a.locationId || !a.locationId.startsWith('REV-'))
                             ).length > 0 && (
@@ -4693,7 +5086,7 @@ return renderSelectionInfoContent(false);
                                     <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e40af', marginBottom: '0.5rem' }}>Pendientes de Revisión (Sin ubicación)</h4>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         {assets.filter(a => 
-                                            (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                            isCountryMatch(a.country, countryFilter) &&
                                             (a.status === 'Verificacion HW' || a.status === 'Por Recuperar') &&
                                             (!a.locationId || !a.locationId.startsWith('REV-'))
                                         ).map(asset => {
@@ -4815,7 +5208,7 @@ return renderSelectionInfoContent(false);
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, minmax(28px, 1fr))', gap: '8px', padding: '0.5rem 0' }}>
                                 {Array.from({ length: depositoConfig?.cajasCount || 80 }, (_, i) => i + 1).map(cajaNum => {
                                     const locId = `CAJA-${cajaNum}`;
-                                    const locationAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                                    const locationAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === locId);
                                     const assetCount = locationAssets.length;
                                     const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
                                     const isHighlighted = hasActiveSearch && highlightedLocationIds.has(locId);
@@ -4905,7 +5298,7 @@ return renderSelectionInfoContent(false);
                                         return Object.entries(groupedW).filter(([_, items]) => items.length > 0).map(([brandName, items]) => {
                                             const brandAssetsCount = items.reduce((acc, [_, locations]) => {
                                                 const locIds = locations.map(l => l.id);
-                                                return acc + assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && locIds.includes(a.locationId)).length;
+                                                return acc + assets.filter(a => isCountryMatch(a.country, countryFilter) && locIds.includes(a.locationId)).length;
                                             }, 0);
                                             return (
                                                 <div key={brandName} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', border: '1px solid var(--border)', borderRadius: '10px', padding: '0.85rem', background: 'var(--background-secondary)' }}>
@@ -5804,12 +6197,223 @@ return renderSelectionInfoContent(false);
                         />
                     </div>
 
+                    {/* SECCIÓN DE PRESUPUESTO Y REPARACIÓN (5 ITEMS) */}
+                    <div style={{
+                        marginTop: '0.75rem',
+                        padding: '0.85rem',
+                        background: 'rgba(124, 58, 237, 0.05)',
+                        border: '1.5px solid #c4b5fd',
+                        borderRadius: '10px'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                            <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: '#6d28d9', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                🔧 Presupuesto y Reparación {editAssetForm.status === 'En Reparación' || (editingAssetObj?.locationId || '').toUpperCase().startsWith('DEP-Z') ? '(Repisa Z)' : ''}
+                            </h4>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: repairForm.isApproved ? '#16a34a' : '#d97706' }}>
+                                    {repairForm.isApproved ? '✓ Aprobada' : '⏳ Pendiente'}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setRepairForm(prev => ({ ...prev, isApproved: !prev.isApproved }))}
+                                    style={{
+                                        padding: '3px 10px',
+                                        borderRadius: '6px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        background: repairForm.isApproved ? '#16a34a' : '#f59e0b',
+                                        color: 'white',
+                                        border: 'none',
+                                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                                    }}
+                                >
+                                    {repairForm.isApproved ? 'Aprobado ✓' : 'Aprobar Reparación'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.6rem' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>1. Empresa Presupuestada</label>
+                                <input 
+                                    type="text" 
+                                    value={repairForm.company} 
+                                    onChange={e => setRepairForm({ ...repairForm, company: e.target.value })}
+                                    placeholder="Ej: MacStation, Tacco, Taller..."
+                                    className="form-input"
+                                    style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                />
+                            </div>
+
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>2. Valor de Reparación ($)</label>
+                                <input 
+                                    type="number" 
+                                    min="0"
+                                    step="any"
+                                    value={repairForm.repairCost} 
+                                    onChange={e => setRepairForm({ ...repairForm, repairCost: e.target.value })}
+                                    placeholder="0.00"
+                                    className="form-input"
+                                    style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                />
+                            </div>
+
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>3. Gasto Adicional ($)</label>
+                                <input 
+                                    type="number" 
+                                    min="0"
+                                    step="any"
+                                    value={repairForm.additionalCost} 
+                                    onChange={e => setRepairForm({ ...repairForm, additionalCost: e.target.value })}
+                                    placeholder="0.00"
+                                    className="form-input"
+                                    style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                />
+                            </div>
+
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', color: '#6d28d9' }}>4. Total ($)</label>
+                                <div style={{
+                                    width: '100%',
+                                    padding: '0.45rem 0.6rem',
+                                    borderRadius: '6px',
+                                    border: '1.5px solid #a78bfa',
+                                    backgroundColor: 'var(--background)',
+                                    color: '#6d28d9',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 800,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    boxSizing: 'border-box'
+                                }}>
+                                    ${((Number(repairForm.repairCost || 0) + Number(repairForm.additionalCost || 0))).toLocaleString('es-AR')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
                         <Button type="button" variant="secondary" onClick={() => setIsEditAssetModalOpen(false)}>
                             Cancelar
                         </Button>
                         <Button type="submit" variant="primary" disabled={isSavingAsset}>
                             {isSavingAsset ? 'Guardando...' : 'Guardar Activo'}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Modal Rápido de Presupuesto y Reparación (Repisa Z) */}
+            <Modal
+                isOpen={isRepairModalOpen}
+                onClose={() => setIsRepairModalOpen(false)}
+                title={`Presupuesto de Reparación - ${repairModalAsset?.name || repairModalAsset?.serial || 'Equipo'}`}
+            >
+                <form onSubmit={handleSaveRepairModal}>
+                    <div style={{ marginBottom: '1rem', background: 'var(--background-secondary)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <div><strong>Equipo:</strong> {repairModalAsset?.name}</div>
+                        <div><strong>Serial:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{repairModalAsset?.serial || 'N/A'}</span></div>
+                        <div><strong>Ubicación:</strong> {repairModalAsset?.locationId || 'Repisa Z'}</div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>1. Empresa enviada a presupuestar</label>
+                            <input
+                                type="text"
+                                required
+                                value={repairForm.company}
+                                onChange={e => setRepairForm({ ...repairForm, company: e.target.value })}
+                                placeholder="Ej: MacStation, Tacco, Taller Central..."
+                                className="form-input"
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>2. Valor de la reparación ($)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={repairForm.repairCost}
+                                    onChange={e => setRepairForm({ ...repairForm, repairCost: e.target.value })}
+                                    placeholder="0.00"
+                                    className="form-input"
+                                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>3. Gasto adicional ($)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="any"
+                                    value={repairForm.additionalCost}
+                                    onChange={e => setRepairForm({ ...repairForm, additionalCost: e.target.value })}
+                                    placeholder="0.00"
+                                    className="form-input"
+                                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', color: '#6d28d9' }}>4. Total ($)</label>
+                            <div style={{
+                                width: '100%',
+                                padding: '0.6rem 0.75rem',
+                                borderRadius: '8px',
+                                border: '2px solid #a78bfa',
+                                backgroundColor: 'rgba(124, 58, 237, 0.05)',
+                                color: '#6d28d9',
+                                fontSize: '1.1rem',
+                                fontWeight: 900
+                            }}>
+                                ${((Number(repairForm.repairCost || 0) + Number(repairForm.additionalCost || 0))).toLocaleString('es-AR')}
+                            </div>
+                        </div>
+
+                        <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: repairForm.isApproved ? '#f0fdf4' : '#fffbeb', border: `1px solid ${repairForm.isApproved ? '#bbf7d0' : '#fde68a'}`, borderRadius: '8px' }}>
+                            <div>
+                                <div style={{ fontWeight: 700, fontSize: '0.85rem', color: repairForm.isApproved ? '#166534' : '#92400e' }}>
+                                    5. ¿Fue aprobada la reparación?
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                    {repairForm.isApproved ? 'La reparación está aprobada para realizarse.' : 'Pendiente de autorización de presupuesto.'}
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setRepairForm(prev => ({ ...prev, isApproved: !prev.isApproved }))}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    background: repairForm.isApproved ? '#16a34a' : '#f59e0b',
+                                    color: 'white',
+                                    border: 'none',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                            >
+                                {repairForm.isApproved ? '✓ APROBADA' : '⏳ PENDIENTE'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.25rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                        <Button type="button" variant="secondary" onClick={() => setIsRepairModalOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" variant="primary">
+                            Guardar Presupuesto
                         </Button>
                     </div>
                 </form>
@@ -5825,6 +6429,30 @@ return renderSelectionInfoContent(false);
                         opacity: 1;
                         transform: scale(1) translateY(0);
                     }
+                }
+                @keyframes blinkHighlightPulse {
+                    0% {
+                        transform: scale(1);
+                        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.95), 0 0 14px rgba(239, 68, 68, 0.9);
+                        filter: brightness(1.2);
+                    }
+                    50% {
+                        transform: scale(1.65);
+                        box-shadow: 0 0 0 14px rgba(239, 68, 68, 0), 0 0 28px rgba(239, 68, 68, 1);
+                        filter: brightness(1.8);
+                        border-color: #ff0000 !important;
+                    }
+                    100% {
+                        transform: scale(1);
+                        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0), 0 0 14px rgba(239, 68, 68, 0.9);
+                        filter: brightness(1.2);
+                    }
+                }
+                :global(.blink-highlight), :global(.search-pulse) {
+                    animation: blinkHighlightPulse 1.1s infinite ease-in-out !important;
+                    z-index: 9999 !important;
+                    position: relative !important;
+                    outline: 2.5px solid #ef4444 !important;
                 }
                 .search-box {
                     position: relative;
