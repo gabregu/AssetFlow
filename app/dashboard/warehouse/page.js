@@ -64,15 +64,16 @@ const isLocH = (aisleName) => {
 
 const isLocCaja = (aisle) => aisle?.toUpperCase().startsWith('CAJA');
 
+const SFDC_TO_COUNTRY = {
+    'SFDC-Argentina': 'Argentina',
+    'SFDC-Chile': 'Chile',
+    'SFDC-Colombia': 'Colombia',
+    'SFDC-Costa Rica': 'Costa Rica',
+    'SFDC-Uruguay': 'Uruguay',
+};
+
 // Map countryFilter values like 'SFDC-Argentina' to the real country name used in warehouse_locations
 const sanitizeCountryForLocation = (countryFilter) => {
-    const SFDC_TO_COUNTRY = {
-        'SFDC-Argentina': 'Argentina',
-        'SFDC-Chile': 'Chile',
-        'SFDC-Colombia': 'Colombia',
-        'SFDC-Costa Rica': 'Costa Rica',
-        'SFDC-Uruguay': 'Uruguay',
-    };
     if (!countryFilter || countryFilter === 'Todos') return 'Argentina';
     return SFDC_TO_COUNTRY[countryFilter] || countryFilter;
 };
