@@ -287,15 +287,21 @@ export default function InventoryPage() {
             if (!a) return false;
             const nameStr = String(a.name || '').toLowerCase();
             const serialStr = String(a.serial || '').toLowerCase();
+            const imeiStr = String(a.imei || '').toLowerCase();
+            const imei2Str = String(a.imei2 || '').toLowerCase();
             const assigneeStr = String(a.assignee || '').toLowerCase();
             const codStr = String(a.cod || '').toLowerCase();
+            const notesStr = String(a.notes || '').toLowerCase();
 
             const matchesSearch = !lowerSearch ||
                 nameStr.includes(lowerSearch) ||
                 serialStr.includes(lowerSearch) ||
                 serialStr.includes(searchWithoutS) ||
+                (a.imei && a.imei !== '-' && imeiStr.includes(lowerSearch)) ||
+                (a.imei2 && a.imei2 !== '-' && imei2Str.includes(lowerSearch)) ||
                 assigneeStr.includes(lowerSearch) ||
-                (a.cod && codStr.includes(lowerSearch));
+                (a.cod && codStr.includes(lowerSearch)) ||
+                notesStr.includes(lowerSearch);
 
             if (!matchesSearch) return false;
 
@@ -2285,7 +2291,7 @@ export default function InventoryPage() {
                             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
                                 type="text"
-                                placeholder="Buscar por serie, modelo o usuario..."
+                                placeholder="Buscar por serie, IMEI, modelo o usuario..."
                                 className="form-input"
                                 style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                                 value={searchFilter}

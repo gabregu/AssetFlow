@@ -259,11 +259,15 @@ export default function WarehousePage() {
                 }
                 if (!Array.isArray(taskAssets)) taskAssets = [];
 
+                const assetImei = String(asset.imei || '').trim().toLowerCase();
                 const hasAsset = taskAssets.some(item => {
                     if (!item) return false;
                     const itemSerial = String(item.serial || item.sn || item.s_n || '').trim().toLowerCase();
+                    const itemImei = String(item.imei || '').trim().toLowerCase();
                     const itemId = String(item.id || item.asset_id || item.assetId || '');
-                    return (assetSerial && itemSerial && itemSerial === assetSerial) || (assetId && itemId && itemId === assetId);
+                    const serialOrImeiMatch = (assetSerial && itemSerial && itemSerial === assetSerial) ||
+                                              (assetImei && assetImei !== '-' && (itemImei === assetImei || itemSerial === assetImei));
+                    return serialOrImeiMatch || (assetId && itemId && itemId === assetId);
                 });
                 const matchesTicketCase = assetCase && task.caseNumber && task.caseNumber.toLowerCase() === assetCase;
                 return hasAsset || matchesTicketCase;
@@ -279,20 +283,29 @@ export default function WarehousePage() {
 
         // 3. Búsqueda en tickets
         if (tickets && tickets.length > 0) {
+            const assetImei = String(asset.imei || '').trim().toLowerCase();
             const matchingTickets = tickets.filter(ticket => {
                 let assoc = ticket.associatedCases;
                 if (typeof assoc === 'string') {
                     try { assoc = JSON.parse(assoc); } catch (e) { assoc = []; }
                 }
                 if (!Array.isArray(assoc)) assoc = [];
-                const hasAssoc = assoc.some(c => Array.isArray(c?.assets) && c.assets.some(a => String(a?.serial || '').trim().toLowerCase() === assetSerial));
+                const hasAssoc = assoc.some(c => Array.isArray(c?.assets) && c.assets.some(a => {
+                    const aSer = String(a?.serial || '').trim().toLowerCase();
+                    const aImei = String(a?.imei || '').trim().toLowerCase();
+                    return (assetSerial && aSer === assetSerial) || (assetImei && assetImei !== '-' && (aImei === assetImei || aSer === assetImei));
+                }));
 
                 let items = Array.isArray(ticket.items) ? ticket.items : (Array.isArray(ticket.assets) ? ticket.assets : []);
                 if (typeof items === 'string') {
                     try { items = JSON.parse(items); } catch (e) { items = []; }
                 }
                 if (!Array.isArray(items)) items = [];
-                const hasItem = items.some(i => String(i?.serial || '').trim().toLowerCase() === assetSerial);
+                const hasItem = items.some(i => {
+                    const iSer = String(i?.serial || '').trim().toLowerCase();
+                    const iImei = String(i?.imei || '').trim().toLowerCase();
+                    return (assetSerial && iSer === assetSerial) || (assetImei && assetImei !== '-' && (iImei === assetImei || iSer === assetImei));
+                });
 
                 const matchesCase = assetCase && (
                     (ticket.caseNumber && ticket.caseNumber.toLowerCase() === assetCase) || 
@@ -650,10 +663,88 @@ export default function WarehousePage() {
     // Filter assets based on search/filters
     const filteredAssets = useMemo(() => {
         return assets.filter(asset => {
-            if (countryFilter !== 'Todos' && asset.country !== countryFilter) return false;
+            const hasTextSearch = !!(locationSearch && locationSearch.trim().length > 0);
+
+            // Text Search Evaluation (Matches Serial, IMEI, IMEI2, Name, ID, Location, Notes, Model, Case, etc.)
+            let isTextSearchMatch = false;
+            let isStrongIdentifierMatch = false; // Exact or close match on Serial or IMEI
+
+            if (hasTextSearch) {
+                const searchLower = String(locationSearch).toLowerCase().trim();
+                const searchNorm = searchLower.replace(/[^a-z0-9]/g, '');
+                const searchWithoutS = (searchNorm.startsWith('s') && searchNorm.length > 7) ? searchNorm.substring(1) : searchNorm;
+
+                const nameLower = String(asset.name || '').toLowerCase();
+                const nameMatch = nameLower.includes(searchLower);
+
+                const serialLower = String(asset.serial || asset.sn || asset.s_n || '').toLowerCase();
+                const serialNorm = serialLower.replace(/[^a-z0-9]/g, '');
+                const serialMatch = serialLower.includes(searchLower) || 
+                    (searchNorm.length >= 3 && (serialNorm.includes(searchNorm) || serialNorm.includes(searchWithoutS)));
+
+                const imeiLower = String(asset.imei ?? asset.IMEI ?? '').toLowerCase().trim();
+                const imeiNorm = imeiLower.replace(/[^a-z0-9]/g, '');
+                const imeiMatch = imeiLower !== '-' && imeiLower.length > 0 && 
+                    (imeiLower.includes(searchLower) || (searchNorm.length >= 3 && imeiNorm.includes(searchNorm)));
+
+                const imei2Lower = String(asset.imei2 ?? asset.imei_2 ?? asset.IMEI2 ?? '').toLowerCase().trim();
+                const imei2Norm = imei2Lower.replace(/[^a-z0-9]/g, '');
+                const imei2Match = imei2Lower !== '-' && imei2Lower.length > 0 && 
+                    (imei2Lower.includes(searchLower) || (searchNorm.length >= 3 && imei2Norm.includes(searchNorm)));
+
+                const idLower = String(asset.id || '').toLowerCase();
+                const idMatch = idLower.includes(searchLower) || (searchNorm.length >= 3 && idLower.replace(/[^a-z0-9]/g, '').includes(searchNorm));
+
+                const locLower = String(asset.locationId || asset.location_id || '').toLowerCase();
+                const locMatch = locLower.includes(searchLower);
+
+                const notesLower = String(asset.notes || '').toLowerCase();
+                const notesNorm = notesLower.replace(/[^a-z0-9]/g, '');
+                const notesMatch = notesLower.includes(searchLower) || (searchNorm.length >= 5 && notesNorm.includes(searchNorm));
+
+                const hwLower = String(asset.hardwareSpec || asset.hardware_spec || '').toLowerCase();
+                const modelNumLower = String(asset.modelNumber || asset.model_number || '').toLowerCase();
+                const partNumLower = String(asset.partNumber || asset.part_number || '').toLowerCase();
+                const caseLower = String(asset.sfdcCase || asset.sfdc_case || '').toLowerCase();
+                const codLower = String(asset.cod || '').toLowerCase();
+                const otherFieldsMatch = hwLower.includes(searchLower) || 
+                    modelNumLower.includes(searchLower) || 
+                    partNumLower.includes(searchLower) || 
+                    caseLower.includes(searchLower) || 
+                    codLower.includes(searchLower);
+
+                let anyFieldMatch = false;
+                if (!nameMatch && !serialMatch && !imeiMatch && !imei2Match && !idMatch && !locMatch && !notesMatch && !otherFieldsMatch) {
+                    for (const key of Object.keys(asset)) {
+                        const val = asset[key];
+                        if (val && typeof val !== 'object') {
+                            const valStr = String(val).toLowerCase();
+                            if (valStr.includes(searchLower) || (searchNorm.length >= 5 && valStr.replace(/[^a-z0-9]/g, '').includes(searchNorm))) {
+                                anyFieldMatch = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                isTextSearchMatch = nameMatch || serialMatch || imeiMatch || imei2Match || idMatch || locMatch || notesMatch || otherFieldsMatch || anyFieldMatch;
+                isStrongIdentifierMatch = serialMatch || imeiMatch || imei2Match;
+
+                if (!isTextSearchMatch) return false;
+            }
+
+            // Country Filter (bypassed if user is searching specifically by a Serial or IMEI)
+            if (!isStrongIdentifierMatch && countryFilter !== 'Todos') {
+                const sfdcCountry = SFDC_TO_COUNTRY[countryFilter] || countryFilter;
+                const assetCountry = asset.country || '';
+                const matchesCountry = assetCountry === countryFilter || 
+                                       assetCountry === sfdcCountry ||
+                                       (countryFilter === 'SFDC-Argentina' && (assetCountry === 'Argentina' || !assetCountry));
+                if (!matchesCountry) return false;
+            }
             
             // Brand filters
-            if (selectedBrand !== 'ALL') {
+            if (!isStrongIdentifierMatch && selectedBrand !== 'ALL') {
                 const oem = (asset.oem || '').toUpperCase();
                 const nameUpper = (asset.name || '').toUpperCase();
                 const typeUpper = (asset.type || '').toUpperCase();
@@ -670,7 +761,7 @@ export default function WarehousePage() {
             }
 
             // Type Filter
-            if (typeFilter !== 'ALL') {
+            if (!isStrongIdentifierMatch && typeFilter !== 'ALL') {
                 const assetType = (asset.type || '').toLowerCase();
                 const filterLower = typeFilter.toLowerCase();
                 if (assetType !== filterLower) {
@@ -685,19 +776,19 @@ export default function WarehousePage() {
             }
 
             // CPU Filter
-            if (cpuFilter !== 'ALL') {
+            if (!isStrongIdentifierMatch && cpuFilter !== 'ALL') {
                 const searchTxt = (asset.name || '') + ' ' + (asset.hardwareSpec || '');
                 if (!searchTxt.toLowerCase().includes(cpuFilter.toLowerCase())) return false;
             }
 
             // RAM Filter
-            if (ramFilter !== 'ALL') {
+            if (!isStrongIdentifierMatch && ramFilter !== 'ALL') {
                 const searchTxt = (asset.name || '') + ' ' + (asset.hardwareSpec || '');
                 if (!searchTxt.toLowerCase().includes(ramFilter.toLowerCase())) return false;
             }
 
             // Status Filter
-            if (statusFilter !== 'ALL') {
+            if (!isStrongIdentifierMatch && statusFilter !== 'ALL') {
                 const normStatus = (asset.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
                 const normFilter = statusFilter.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
                 if (normFilter.includes('REPARACION')) {
@@ -708,18 +799,8 @@ export default function WarehousePage() {
                 }
             }
 
-            // Text Search
-            if (locationSearch) {
-                const searchLower = locationSearch.toLowerCase();
-                const nameMatch = (asset.name || '').toLowerCase().includes(searchLower);
-                const serialMatch = (asset.serial || '').toLowerCase().includes(searchLower);
-                const idMatch = (asset.id || '').toLowerCase().includes(searchLower);
-                const locMatch = (asset.locationId || '').toLowerCase().includes(searchLower);
-                if (!nameMatch && !serialMatch && !idMatch && !locMatch) return false;
-            }
-
             // Model Filter (MBA / MBP / iPhone models)
-            if (modelFilter !== 'ALL') {
+            if (!isStrongIdentifierMatch && modelFilter !== 'ALL') {
                 const nameUpper = (asset.name || '').toUpperCase();
                 const specUpper = (asset.hardwareSpec || '').toUpperCase();
                 const modelNumUpper = (asset.modelNumber || '').toUpperCase();
@@ -737,7 +818,7 @@ export default function WarehousePage() {
             }
 
             // Size Filter (13 / 14 / 15 / 16 pulgadas)
-            if (sizeFilter !== 'ALL') {
+            if (!isStrongIdentifierMatch && sizeFilter !== 'ALL') {
                 const nameLower = (asset.name || '').toLowerCase();
                 // Match " 13 " or "13"" patterns like "MBA 13 M4"
                 const sizePattern = new RegExp(`\\b${sizeFilter}\\b`);
@@ -1127,7 +1208,9 @@ export default function WarehousePage() {
         const searchNorm = normalizeId(searchQuery);
         const asset = assets.find(a => 
             normalizeId(a.id) === searchNorm || 
-            normalizeId(a.serial) === searchNorm
+            normalizeId(a.serial) === searchNorm ||
+            (a.imei && a.imei !== '-' && normalizeId(a.imei) === searchNorm) ||
+            (a.imei2 && a.imei2 !== '-' && normalizeId(a.imei2) === searchNorm)
         );
         if (asset) {
             setScannedAsset(asset);
@@ -1188,7 +1271,9 @@ export default function WarehousePage() {
                         const searchNormAsset = normalizeId(val);
                         const asset = assets.find(a => 
                             normalizeId(a.id) === searchNormAsset || 
-                            (a.serial && normalizeId(a.serial) === searchNormAsset)
+                            (a.serial && normalizeId(a.serial) === searchNormAsset) ||
+                            (a.imei && a.imei !== '-' && normalizeId(a.imei) === searchNormAsset) ||
+                            (a.imei2 && a.imei2 !== '-' && normalizeId(a.imei2) === searchNormAsset)
                         );
                         if (asset) {
                             confirmMapping(asset.id, loc.id);
@@ -1234,7 +1319,9 @@ export default function WarehousePage() {
         const searchNorm = normalizeId(auditSearchQuery);
         const asset = assets.find(a => 
             normalizeId(a.id) === searchNorm || 
-            normalizeId(a.serial) === searchNorm
+            normalizeId(a.serial) === searchNorm ||
+            (a.imei && a.imei !== '-' && normalizeId(a.imei) === searchNorm) ||
+            (a.imei2 && a.imei2 !== '-' && normalizeId(a.imei2) === searchNorm)
         );
         
         if (asset) {
@@ -1891,7 +1978,12 @@ export default function WarehousePage() {
             if (loc) {
                 handleScanLocation(loc.id);
             } else {
-                const asset = assets.find(a => normalizeId(a.serial) === searchNorm || normalizeId(a.id) === searchNorm);
+                const asset = assets.find(a => 
+                    normalizeId(a.serial) === searchNorm || 
+                    normalizeId(a.id) === searchNorm ||
+                    (a.imei && a.imei !== '-' && normalizeId(a.imei) === searchNorm) ||
+                    (a.imei2 && a.imei2 !== '-' && normalizeId(a.imei2) === searchNorm)
+                );
                 if (asset && asset.locationId) {
                     handleScanLocation(asset.locationId);
                 } else {
@@ -2272,6 +2364,12 @@ export default function WarehousePage() {
         titleLines.push(`Modelo: ${a.hardwareSpec || a.name || '-'}`);
         titleLines.push(`N/P: ${a.partNumber || a.part_number || '-'}`);
         titleLines.push(`SN: ${a.serial || '-'}`);
+        if (a.imei && a.imei !== '-') {
+            titleLines.push(`IMEI: ${a.imei}`);
+        }
+        if (a.imei2 && a.imei2 !== '-') {
+            titleLines.push(`IMEI 2: ${a.imei2}`);
+        }
         titleLines.push(`Estado: ${a.status || '-'}`);
         
         let dateStr = '-';
@@ -2460,7 +2558,9 @@ export default function WarehousePage() {
                 const searchNormAsset = normalizeId(val);
                 const asset = assets.find(a => 
                     normalizeId(a.id) === searchNormAsset || 
-                    (a.serial && normalizeId(a.serial) === searchNormAsset)
+                    (a.serial && normalizeId(a.serial) === searchNormAsset) ||
+                    (a.imei && a.imei !== '-' && normalizeId(a.imei) === searchNormAsset) ||
+                    (a.imei2 && a.imei2 !== '-' && normalizeId(a.imei2) === searchNormAsset)
                 );
                 if (asset) {
                     confirmMapping(asset.id, locId);
@@ -3474,6 +3574,7 @@ export default function WarehousePage() {
                                             'Nombre': a.name,
                                             'Modelo': a.modelNumber || a.hardwareSpec || 'N/A',
                                             'Número de Serie': a.serial || 'N/A',
+                                            'IMEI': (a.imei && a.imei !== '-') ? a.imei : '',
                                             'Estado': a.status,
                                             'Ubicación': a.locationId || 'N/A',
                                             'Asignado a': a.assignee || 'Almacén',
@@ -3519,7 +3620,10 @@ export default function WarehousePage() {
                                 </div>
                                 {a.hardwareSpec && <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginBottom: '3px' }}>{a.hardwareSpec}</div>}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)', fontSize: '0.75rem' }}>{a.serial || 'N/A'}</span>
+                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)', fontSize: '0.75rem' }}>
+                                        {a.serial ? a.serial : (a.imei && a.imei !== '-' ? `IMEI: ${a.imei}` : 'N/A')}
+                                        {a.serial && a.imei && a.imei !== '-' ? ` | IMEI: ${a.imei}` : ''}
+                                    </span>
                                     <span style={{ 
                                         padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
                                         backgroundColor: (a.status || '').toLowerCase().includes('reparac') ? '#f5f3ff' : (['Mantenimiento', 'Dañado'].includes(a.status) ? '#fff7ed' : (a.status === 'Asignado' ? '#f0fdf4' : '#eff6ff')),
@@ -3607,6 +3711,12 @@ export default function WarehousePage() {
                             <div><strong>Modelo:</strong> {asset.name}</div>
                             <div><strong>N/P:</strong> {asset.model_number || asset.part_number || 'N/A'}</div>
                             <div><strong>SN:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{asset.serial || 'N/A'}</span></div>
+                            {asset.imei && asset.imei !== '-' && (
+                                <div><strong>IMEI:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{asset.imei}</span></div>
+                            )}
+                            {asset.imei2 && asset.imei2 !== '-' && (
+                                <div><strong>IMEI 2:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{asset.imei2}</span></div>
+                            )}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <strong>Estado:</strong> 
                                 <span style={{ 
@@ -3928,12 +4038,17 @@ export default function WarehousePage() {
                             setSearchQuery('');
                             return;
                         }
-                        const asset = assets.find(a => normalizeId(a.serial) === searchNorm || normalizeId(a.id) === searchNorm);
+                        const asset = assets.find(a => 
+                            normalizeId(a.serial) === searchNorm || 
+                            normalizeId(a.id) === searchNorm ||
+                            (a.imei && a.imei !== '-' && normalizeId(a.imei) === searchNorm) ||
+                            (a.imei2 && a.imei2 !== '-' && normalizeId(a.imei2) === searchNorm)
+                        );
                         if (asset) {
                             if (asset.locationId) {
                                 handleScanLocation(asset.locationId);
                             } else {
-                                alert(`Activo ${asset.serial} encontrado pero no tiene ubicación asignada.`);
+                                alert(`Activo "${asset.name}" (${asset.serial || asset.imei || asset.id}) encontrado pero no tiene ubicación asignada.`);
                             }
                             setSearchQuery('');
                             return;
@@ -3944,7 +4059,7 @@ export default function WarehousePage() {
                             <ScanLine className="search-icon" size={18} />
                             <input 
                                 className="search-input"
-                                placeholder="Escanear Código de Barras / Serial / Estante..."
+                                placeholder="Escanear Código de Barras / Serial / IMEI / Estante..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                             />
@@ -4024,7 +4139,7 @@ export default function WarehousePage() {
                             <Search className="search-icon" size={16} />
                             <input 
                                 className="search-input"
-                                placeholder="N/S, nombre, ubicación..."
+                                placeholder="N/S, IMEI, nombre, ubicación..."
                                 value={locationSearch}
                                 onChange={e => setLocationSearch(e.target.value)}
                                 style={{ padding: '0.5rem 1rem 0.5rem 2.25rem', fontSize: '0.8rem' }}
@@ -4167,25 +4282,48 @@ export default function WarehousePage() {
                         {/* Result count */}
                         {hasActiveSearch && (
                             <div style={{ 
-                                background: warehouseFilteredAssets.length > 0 ? 'rgba(22,163,74,0.08)' : (highlightedLocationIds.size > 0 ? 'rgba(250,204,21,0.1)' : 'rgba(239,68,68,0.08)'),
-                                border: `1px solid ${warehouseFilteredAssets.length > 0 ? 'rgba(22,163,74,0.3)' : (highlightedLocationIds.size > 0 ? 'rgba(250,204,21,0.4)' : 'rgba(239,68,68,0.3)')}`,
+                                background: warehouseFilteredAssets.length > 0 ? 'rgba(22,163,74,0.08)' : (filteredAssets.length > 0 ? 'rgba(234,179,8,0.1)' : 'rgba(239,68,68,0.08)'),
+                                border: `1px solid ${warehouseFilteredAssets.length > 0 ? 'rgba(22,163,74,0.3)' : (filteredAssets.length > 0 ? 'rgba(234,179,8,0.4)' : 'rgba(239,68,68,0.3)')}`,
                                 borderRadius: '8px', padding: '0.65rem 0.85rem', display: 'flex', alignItems: 'flex-start', gap: '0.6rem'
                             }}>
-                                <span style={{ fontSize: '1.1rem', marginTop: '1px' }}>{warehouseFilteredAssets.length > 0 ? '📦' : (highlightedLocationIds.size > 0 ? '🔍' : '😶')}</span>
+                                <span style={{ fontSize: '1.1rem', marginTop: '1px' }}>{warehouseFilteredAssets.length > 0 ? '📦' : (filteredAssets.length > 0 ? '🔍' : '😶')}</span>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: 900, color: warehouseFilteredAssets.length > 0 ? '#15803d' : (highlightedLocationIds.size > 0 ? '#854d0e' : '#991b1b') }}>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 900, color: warehouseFilteredAssets.length > 0 ? '#15803d' : (filteredAssets.length > 0 ? '#b45309' : '#991b1b') }}>
                                         {warehouseFilteredAssets.length > 0 
                                             ? `${warehouseFilteredAssets.length} en depósito`
-                                            : (highlightedLocationIds.size > 0 ? `${filteredAssets.length} encontrados` : 'Sin resultados')}
+                                            : (filteredAssets.length > 0 ? `${filteredAssets.length} encontrado${filteredAssets.length > 1 ? 's' : ''} (sin ubicación en depósito)` : 'Sin resultados')}
                                     </div>
                                     {highlightedLocationIds.size > 0 && (
                                         <div style={{ fontSize: '0.72rem', color: '#166534', fontWeight: 600, marginTop: '2px' }}>
                                             Ubicados en {highlightedLocationIds.size} {highlightedLocationIds.size === 1 ? 'posición' : 'posiciones'} (titilan en el mapa)
                                         </div>
                                     )}
-                                    {filteredAssets.length > warehouseFilteredAssets.length && (
+                                    {filteredAssets.length > warehouseFilteredAssets.length && warehouseFilteredAssets.length > 0 && (
                                         <div style={{ fontSize: '0.68rem', color: '#6b7280', marginTop: '3px', borderTop: '1px dashed #d1d5db', paddingTop: '3px' }}>
                                             {filteredAssets.length} en total en el sistema ({filteredAssets.length - warehouseFilteredAssets.length} asignados/fuera de depósito)
+                                        </div>
+                                    )}
+                                    {filteredAssets.length > 0 && warehouseFilteredAssets.length === 0 && (
+                                        <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                            {filteredAssets.slice(0, 3).map(a => (
+                                                <div 
+                                                    key={a.id} 
+                                                    onClick={() => handleOpenEditAsset(a)}
+                                                    title="Clic para editar o ubicar equipo"
+                                                    style={{ 
+                                                        background: 'var(--surface)', padding: '0.4rem 0.5rem', borderRadius: '6px', 
+                                                        border: '1px solid rgba(234,179,8,0.4)', cursor: 'pointer', fontSize: '0.72rem' 
+                                                    }}
+                                                >
+                                                    <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{a.name || a.model || 'Equipo'}</div>
+                                                    <div style={{ color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: '0.68rem' }}>
+                                                        SN: {a.serial || 'N/A'}{a.imei && a.imei !== '-' ? ` | IMEI: ${a.imei}` : ''}
+                                                    </div>
+                                                    <div style={{ color: '#b45309', fontWeight: 700, fontSize: '0.65rem', marginTop: '2px' }}>
+                                                        Estado: {a.status || 'N/A'} (Clic para ubicar/asignar)
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </div>
@@ -4260,6 +4398,7 @@ export default function WarehousePage() {
                                                             'Nombre': a.name,
                                                             'Modelo': a.modelNumber || a.hardwareSpec || 'N/A',
                                                             'Número de Serie': a.serial || 'N/A',
+                                                            'IMEI': (a.imei && a.imei !== '-') ? a.imei : '',
                                                             'Estado': a.status,
                                                             'Ubicación': a.locationId || 'N/A',
                                                             'Asignado a': a.assignee || 'Almacén',
@@ -4294,7 +4433,10 @@ export default function WarehousePage() {
                                                     <div style={{ fontWeight: 700, marginBottom: '2px' }}>{asset.name}</div>
                                                     {asset.hardwareSpec && <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>{asset.hardwareSpec}</div>}
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)' }}>{asset.serial || 'N/A'}</span>
+                                                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--text-main)' }}>
+                                                            {asset.serial ? asset.serial : (asset.imei && asset.imei !== '-' ? `IMEI: ${asset.imei}` : 'N/A')}
+                                                            {asset.serial && asset.imei && asset.imei !== '-' ? ` | IMEI: ${asset.imei}` : ''}
+                                                        </span>
                                                         <span style={{ 
                                                             padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800,
                                                             backgroundColor: (asset.status || '').toLowerCase().includes('reparac') ? '#f5f3ff' : (['Mantenimiento', 'Dañado'].includes(asset.status) ? '#fff7ed' : (asset.status === 'Asignado' ? '#f0fdf4' : '#eff6ff')),
@@ -4577,7 +4719,9 @@ return renderSelectionInfoContent(false);
                                                             {asset.model || asset.name}
                                                         </span>
                                                         <span style={{ fontSize: '0.7rem', color: '#1e40af' }}>
-                                                            S/N: <strong>{asset.serial}</strong>
+                                                            {asset.serial ? <>S/N: <strong>{asset.serial}</strong></> : null}
+                                                            {asset.serial && asset.imei && asset.imei !== '-' ? ' | ' : null}
+                                                            {asset.imei && asset.imei !== '-' ? <>IMEI: <strong>{asset.imei}</strong></> : null}
                                                         </span>
                                                         <div style={{ 
                                                             display: 'flex', 
@@ -4807,6 +4951,11 @@ return renderSelectionInfoContent(false);
                         {movingAsset?.serial && (
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                 <strong>N/S:</strong> {movingAsset.serial}
+                            </div>
+                        )}
+                        {movingAsset?.imei && movingAsset.imei !== '-' && (
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                <strong>IMEI:</strong> {movingAsset.imei}
                             </div>
                         )}
                     </div>
