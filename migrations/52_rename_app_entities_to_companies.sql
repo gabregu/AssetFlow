@@ -47,6 +47,5 @@ WITH CHECK (
 GRANT ALL ON TABLE public.companies TO authenticated;
 GRANT ALL ON TABLE public.companies TO service_role;
 
--- 7. (Opcional) Crear una vista de compatibilidad 'app_entities' para que nada falle durante la transición
-CREATE OR REPLACE VIEW public.app_entities AS 
-SELECT * FROM public.companies;
+-- 7. Eliminar la vista/nombre viejo 'app_entities' para que no quede como 'UNRESTRICTED' en Supabase
+DROP VIEW IF EXISTS public.app_entities;
