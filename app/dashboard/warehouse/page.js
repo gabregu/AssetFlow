@@ -39,6 +39,7 @@ import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import * as XLSX from 'xlsx';
 import { useStore } from '../../../lib/store';
+import { getExchangeRateForDate } from '@/lib/billing';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
@@ -163,8 +164,41 @@ export default function WarehousePage() {
         entities = [],
         logisticsTasks = [],
         deliveries = [],
-        users = []
+        users = [],
+        rates
     } = useStore();
+
+    // Tipo de cambio mensual de referencia (Facturación)
+    const currentExchangeRate = useMemo(() => {
+        const rate = getExchangeRateForDate(rates, new Date());
+        return rate > 0 ? rate : (rates?.exchangeRate ? parseFloat(rates.exchangeRate) : 1540);
+    }, [rates]);
+
+    // Helper unificado para calcular totales en USD y ARS con cotización mensual
+    const calculateRepairTotals = useCallback((rep, customRate = null) => {
+        const exRate = customRate || Number(rep?.exchangeRate) || currentExchangeRate || 1540;
+        const rCost = Number(rep?.repairCost || 0);
+        const rCurr = rep?.repairCurrency || 'USD';
+        const aCost = Number(rep?.additionalCost || 0);
+        const aCurr = rep?.additionalCurrency || 'USD';
+
+        const rUSD = rCurr === 'ARS' ? (exRate > 0 ? rCost / exRate : rCost) : rCost;
+        const aUSD = aCurr === 'ARS' ? (exRate > 0 ? aCost / exRate : aCost) : aCost;
+        const totalUSD = rUSD + aUSD;
+        const totalARS = totalUSD * exRate;
+
+        return {
+            totalUSD,
+            totalARS,
+            rUSD,
+            aUSD,
+            rCost,
+            rCurr,
+            aCost,
+            aCurr,
+            exRate
+        };
+    }, [currentExchangeRate]);
 
     // Mapping and Audit States
     const [searchQuery, setSearchQuery] = useState('');
@@ -244,7 +278,9 @@ export default function WarehousePage() {
     const [repairForm, setRepairForm] = useState({
         company: '',
         repairCost: '',
+        repairCurrency: 'USD',
         additionalCost: '',
+        additionalCurrency: 'USD',
         isApproved: false,
         notes: ''
     });
@@ -256,7 +292,9 @@ export default function WarehousePage() {
         setRepairForm({
             company: currentRep.company || (targetAsset.vendor && targetAsset.vendor !== 'Other' ? targetAsset.vendor : ''),
             repairCost: currentRep.repairCost !== undefined ? String(currentRep.repairCost) : '',
+            repairCurrency: currentRep.repairCurrency || 'USD',
             additionalCost: currentRep.additionalCost !== undefined ? String(currentRep.additionalCost) : '',
+            additionalCurrency: currentRep.additionalCurrency || 'USD',
             isApproved: !!currentRep.isApproved,
             notes: currentRep.notes || ''
         });
@@ -266,8 +304,13 @@ export default function WarehousePage() {
     const handleSaveRepairModal = async (e) => {
         if (e) e.preventDefault();
         if (!repairModalAsset) return;
+        const calc = calculateRepairTotals(repairForm);
         const success = await updateAssetRepair(repairModalAsset.id, {
             ...repairForm,
+            exchangeRate: currentExchangeRate,
+            totalCostUSD: calc.totalUSD,
+            totalCostARS: calc.totalARS,
+            totalCost: calc.totalUSD,
             approvedBy: repairForm.isApproved ? (currentUser?.name || 'Administrador') : null,
             approvedDate: repairForm.isApproved ? new Date().toISOString() : null
         });
@@ -448,7 +491,9 @@ export default function WarehousePage() {
         setRepairForm({
             company: currentRep.company || (assetToEdit.vendor && assetToEdit.vendor !== 'Other' ? assetToEdit.vendor : ''),
             repairCost: currentRep.repairCost !== undefined ? String(currentRep.repairCost) : '',
+            repairCurrency: currentRep.repairCurrency || 'USD',
             additionalCost: currentRep.additionalCost !== undefined ? String(currentRep.additionalCost) : '',
+            additionalCurrency: currentRep.additionalCurrency || 'USD',
             isApproved: !!currentRep.isApproved,
             notes: currentRep.notes || ''
         });
@@ -593,8 +638,13 @@ export default function WarehousePage() {
             });
 
             if (updateAssetRepair && (repairForm.company || repairForm.repairCost || repairForm.additionalCost || repairForm.isApproved || (targetAssetObj.locationId || '').toUpperCase().startsWith('DEP-Z') || editAssetForm.status === 'En Reparación')) {
+                const calc = calculateRepairTotals(repairForm);
                 await updateAssetRepair(targetAssetObj.id, {
                     ...repairForm,
+                    exchangeRate: currentExchangeRate,
+                    totalCostUSD: calc.totalUSD,
+                    totalCostARS: calc.totalARS,
+                    totalCost: calc.totalUSD,
                     approvedBy: repairForm.isApproved ? (currentUser?.name || 'Administrador') : null,
                     approvedDate: repairForm.isApproved ? new Date().toISOString() : null
                 });
@@ -2456,7 +2506,10 @@ export default function WarehousePage() {
         const repair = assetRepairs[a.id] || (a.serial ? assetRepairs[a.serial] : null);
         if (repair) {
             if (repair.company) titleLines.push(`Empresa Presupuesto: ${repair.company}`);
-            if (repair.totalCost !== undefined) titleLines.push(`Total Reparación: $${Number(repair.totalCost).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`);
+            const calc = calculateRepairTotals(repair);
+            if (calc.totalUSD > 0 || repair.totalCost !== undefined) {
+                titleLines.push(`Total Reparación: USD $${calc.totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (≈ ARS $${Math.round(calc.totalARS).toLocaleString('es-AR')})`);
+            }
             titleLines.push(`Aprobación: ${repair.isApproved ? 'Aprobado ✅' : 'Pendiente ⏳'}`);
         }
 
@@ -3219,10 +3272,15 @@ export default function WarehousePage() {
                                     };
                                     if (aisle === 'DEP-Z') {
                                         const rep = assetRepairs[a.id] || (a.serial ? assetRepairs[a.serial] : null);
+                                        const calc = calculateRepairTotals(rep);
                                         row['1) Empresa Presupuesto'] = rep?.company || '-';
                                         row['2) Valor Reparación'] = rep?.repairCost ?? 0;
+                                        row['Moneda Reparación'] = rep?.repairCurrency || 'USD';
                                         row['3) Gasto Adicional'] = rep?.additionalCost ?? 0;
-                                        row['4) Total Presupuestado'] = rep?.totalCost ?? 0;
+                                        row['Moneda Gasto Adic.'] = rep?.additionalCurrency || 'USD';
+                                        row['4) Total Presupuestado (USD)'] = Number(calc.totalUSD.toFixed(2));
+                                        row['Total Presupuestado (ARS)'] = Number(calc.totalARS.toFixed(2));
+                                        row['Tipo de Cambio Ref.'] = calc.exRate;
                                         row['5) Aprobado'] = rep?.isApproved ? 'SÍ' : 'NO';
                                         row['Aprobado Por'] = rep?.approvedBy || '-';
                                         row['Notas'] = rep?.notes || '-';
@@ -3264,13 +3322,16 @@ export default function WarehousePage() {
 
                         {aisle === 'DEP-Z' && (() => {
                             const zAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId && a.locationId.toUpperCase().startsWith('DEP-Z-'));
-                            let totalBudget = 0;
+                            let totalBudgetUSD = 0;
+                            let totalBudgetARS = 0;
                             let approvedCount = 0;
                             let pendingCount = 0;
                             zAssets.forEach(a => {
                                 const rep = assetRepairs[a.id] || (a.serial ? assetRepairs[a.serial] : null);
                                 if (rep) {
-                                    totalBudget += (Number(rep.totalCost) || 0);
+                                    const calc = calculateRepairTotals(rep);
+                                    totalBudgetUSD += calc.totalUSD;
+                                    totalBudgetARS += calc.totalARS;
                                     if (rep.isApproved) approvedCount++;
                                     else pendingCount++;
                                 } else {
@@ -3298,7 +3359,7 @@ export default function WarehousePage() {
                                                 Control de Presupuestos de Reparación (Repisa Z)
                                             </div>
                                             <div style={{ fontSize: '0.7rem', color: '#6d28d9' }}>
-                                                Equipos para reparación: empresa, presupuestos y aprobaciones
+                                                Equipos para reparación: empresa, presupuestos y aprobaciones (T/C mes: ${currentExchangeRate.toLocaleString('es-AR')})
                                             </div>
                                         </div>
                                     </div>
@@ -3311,10 +3372,15 @@ export default function WarehousePage() {
                                                 ⏳ {pendingCount} Pendientes
                                             </span>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#ffffff', padding: '4px 10px', borderRadius: '8px', border: '1px solid #ddd6fe' }}>
-                                            <span style={{ fontSize: '0.72rem', color: '#6d28d9', fontWeight: 700 }}>Total:</span>
-                                            <span style={{ fontSize: '0.95rem', fontWeight: 900, color: '#4c1d95' }}>
-                                                $ {totalBudget.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', background: '#ffffff', padding: '4px 10px', borderRadius: '8px', border: '1px solid #ddd6fe' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <span style={{ fontSize: '0.72rem', color: '#6d28d9', fontWeight: 700 }}>Total:</span>
+                                                <span style={{ fontSize: '0.95rem', fontWeight: 900, color: '#4c1d95' }}>
+                                                    USD ${totalBudgetUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                            <span style={{ fontSize: '0.65rem', color: '#7c3aed', fontWeight: 600 }}>
+                                                ≈ ARS ${Math.round(totalBudgetARS).toLocaleString('es-AR')}
                                             </span>
                                         </div>
                                     </div>
@@ -3661,9 +3727,7 @@ export default function WarehousePage() {
                                 const isRepairTarget = (selectedLocation?.aisle === 'DEP-Z' || (selectedLocation?.id || '').toUpperCase().startsWith('DEP-Z') || (asset.status || '').toLowerCase().includes('reparac') || !!assetRepairs[asset.id] || (asset.serial && !!assetRepairs[asset.serial]));
                                 if (!isRepairTarget) return null;
                                 const rep = assetRepairs[asset.id] || (asset.serial ? assetRepairs[asset.serial] : null) || {};
-                                const rCost = Number(rep.repairCost || 0);
-                                const aCost = Number(rep.additionalCost || 0);
-                                const tCost = Number(rep.totalCost !== undefined ? rep.totalCost : (rCost + aCost));
+                                const calc = calculateRepairTotals(rep);
                                 const isApproved = !!rep.isApproved;
 
                                 return (
@@ -3709,15 +3773,20 @@ export default function WarehousePage() {
                                             </div>
                                             <div>
                                                 <span style={{ color: 'var(--text-secondary)' }}>Valor:</span>{' '}
-                                                <strong style={{ color: 'var(--text-main)' }}>${rCost.toLocaleString('es-AR')}</strong>
+                                                <strong style={{ color: 'var(--text-main)' }}>{calc.rCurr} ${calc.rCost.toLocaleString('es-AR')}</strong>
                                             </div>
                                             <div>
                                                 <span style={{ color: 'var(--text-secondary)' }}>Adicional:</span>{' '}
-                                                <strong style={{ color: 'var(--text-main)' }}>${aCost.toLocaleString('es-AR')}</strong>
+                                                <strong style={{ color: 'var(--text-main)' }}>{calc.aCurr} ${calc.aCost.toLocaleString('es-AR')}</strong>
                                             </div>
-                                            <div>
-                                                <span style={{ color: 'var(--text-secondary)' }}>Total:</span>{' '}
-                                                <strong style={{ color: isApproved ? '#16a34a' : '#b45309', fontSize: '0.74rem' }}>${tCost.toLocaleString('es-AR')}</strong>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                    <span style={{ color: 'var(--text-secondary)' }}>Total:</span>{' '}
+                                                    <strong style={{ color: isApproved ? '#16a34a' : '#b45309', fontSize: '0.74rem' }}>USD ${calc.totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                                </div>
+                                                <span style={{ fontSize: '0.6rem', color: isApproved ? '#15803d' : '#92400e', opacity: 0.85 }}>
+                                                    ≈ ARS ${Math.round(calc.totalARS).toLocaleString('es-AR')}
+                                                </span>
                                             </div>
                                         </div>
 
@@ -4040,9 +4109,7 @@ export default function WarehousePage() {
                                 const isRepairTarget = (selectedLocation?.aisle === 'DEP-Z' || (selectedLocation?.id || '').toUpperCase().startsWith('DEP-Z') || (asset.status || '').toLowerCase().includes('reparac') || !!assetRepairs[asset.id] || (asset.serial && !!assetRepairs[asset.serial]));
                                 if (!isRepairTarget) return null;
                                 const rep = assetRepairs[asset.id] || (asset.serial ? assetRepairs[asset.serial] : null) || {};
-                                const rCost = Number(rep.repairCost || 0);
-                                const aCost = Number(rep.additionalCost || 0);
-                                const tCost = Number(rep.totalCost !== undefined ? rep.totalCost : (rCost + aCost));
+                                const calc = calculateRepairTotals(rep);
                                 const isApproved = !!rep.isApproved;
 
                                 return (
@@ -4088,15 +4155,20 @@ export default function WarehousePage() {
                                             </div>
                                             <div>
                                                 <span style={{ color: 'var(--text-secondary)' }}>Valor Rep.:</span>{' '}
-                                                <strong style={{ color: 'var(--text-main)' }}>${rCost.toLocaleString('es-AR')}</strong>
+                                                <strong style={{ color: 'var(--text-main)' }}>{calc.rCurr} ${calc.rCost.toLocaleString('es-AR')}</strong>
                                             </div>
                                             <div>
                                                 <span style={{ color: 'var(--text-secondary)' }}>Gasto Adic.:</span>{' '}
-                                                <strong style={{ color: 'var(--text-main)' }}>${aCost.toLocaleString('es-AR')}</strong>
+                                                <strong style={{ color: 'var(--text-main)' }}>{calc.aCurr} ${calc.aCost.toLocaleString('es-AR')}</strong>
                                             </div>
-                                            <div>
-                                                <span style={{ color: 'var(--text-secondary)' }}>Total:</span>{' '}
-                                                <strong style={{ color: isApproved ? '#16a34a' : '#b45309', fontSize: '0.8rem' }}>${tCost.toLocaleString('es-AR')}</strong>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                    <span style={{ color: 'var(--text-secondary)' }}>Total:</span>{' '}
+                                                    <strong style={{ color: isApproved ? '#16a34a' : '#b45309', fontSize: '0.8rem' }}>USD ${calc.totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                                                </div>
+                                                <span style={{ fontSize: '0.65rem', color: isApproved ? '#15803d' : '#92400e', opacity: 0.85 }}>
+                                                    ≈ ARS ${Math.round(calc.totalARS).toLocaleString('es-AR')}
+                                                </span>
                                             </div>
                                         </div>
 
@@ -6233,9 +6305,9 @@ return renderSelectionInfoContent(false);
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.6rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.6rem' }}>
                             <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>1. Empresa Presupuestada</label>
+                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem', marginBottom: '3px' }}>1. Empresa Presupuestada</label>
                                 <input 
                                     type="text" 
                                     value={repairForm.company} 
@@ -6247,51 +6319,145 @@ return renderSelectionInfoContent(false);
                             </div>
 
                             <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>2. Valor de Reparación ($)</label>
-                                <input 
-                                    type="number" 
-                                    min="0"
-                                    step="any"
-                                    value={repairForm.repairCost} 
-                                    onChange={e => setRepairForm({ ...repairForm, repairCost: e.target.value })}
-                                    placeholder="0.00"
-                                    className="form-input"
-                                    style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.85rem' }}
-                                />
-                            </div>
-
-                            <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem' }}>3. Gasto Adicional ($)</label>
-                                <input 
-                                    type="number" 
-                                    min="0"
-                                    step="any"
-                                    value={repairForm.additionalCost} 
-                                    onChange={e => setRepairForm({ ...repairForm, additionalCost: e.target.value })}
-                                    placeholder="0.00"
-                                    className="form-input"
-                                    style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.85rem' }}
-                                />
-                            </div>
-
-                            <div className="form-group" style={{ margin: 0 }}>
-                                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', color: '#6d28d9' }}>4. Total ($)</label>
-                                <div style={{
-                                    width: '100%',
-                                    padding: '0.45rem 0.6rem',
-                                    borderRadius: '6px',
-                                    border: '1.5px solid #a78bfa',
-                                    backgroundColor: 'var(--background)',
-                                    color: '#6d28d9',
-                                    fontSize: '0.9rem',
-                                    fontWeight: 800,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    boxSizing: 'border-box'
-                                }}>
-                                    ${((Number(repairForm.repairCost || 0) + Number(repairForm.additionalCost || 0))).toLocaleString('es-AR')}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem', margin: 0 }}>2. Valor Reparación</label>
+                                    <div style={{ display: 'inline-flex', background: 'var(--background-secondary, #f1f5f9)', borderRadius: '4px', padding: '1px', border: '1px solid var(--border)' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRepairForm(prev => ({ ...prev, repairCurrency: 'USD' }))}
+                                            style={{
+                                                padding: '1px 5px',
+                                                fontSize: '0.65rem',
+                                                fontWeight: 800,
+                                                borderRadius: '3px',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                background: repairForm.repairCurrency === 'USD' ? '#7c3aed' : 'transparent',
+                                                color: repairForm.repairCurrency === 'USD' ? '#ffffff' : 'var(--text-secondary)'
+                                            }}
+                                        >
+                                            USD
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRepairForm(prev => ({ ...prev, repairCurrency: 'ARS' }))}
+                                            style={{
+                                                padding: '1px 5px',
+                                                fontSize: '0.65rem',
+                                                fontWeight: 800,
+                                                borderRadius: '3px',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                background: repairForm.repairCurrency === 'ARS' ? '#10b981' : 'transparent',
+                                                color: repairForm.repairCurrency === 'ARS' ? '#ffffff' : 'var(--text-secondary)'
+                                            }}
+                                        >
+                                            ARS
+                                        </button>
+                                    </div>
+                                </div>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, fontSize: '0.72rem', color: 'var(--text-secondary)', pointerEvents: 'none' }}>
+                                        {repairForm.repairCurrency === 'ARS' ? 'ARS $' : 'USD $'}
+                                    </span>
+                                    <input 
+                                        type="number" 
+                                        min="0"
+                                        step="any"
+                                        value={repairForm.repairCost} 
+                                        onChange={e => setRepairForm({ ...repairForm, repairCost: e.target.value })}
+                                        placeholder="0.00"
+                                        className="form-input"
+                                        style={{ width: '100%', padding: '0.45rem 0.6rem 0.45rem 3.8rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                    />
                                 </div>
                             </div>
+
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem', margin: 0 }}>3. Gasto Adicional</label>
+                                    <div style={{ display: 'inline-flex', background: 'var(--background-secondary, #f1f5f9)', borderRadius: '4px', padding: '1px', border: '1px solid var(--border)' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRepairForm(prev => ({ ...prev, additionalCurrency: 'USD' }))}
+                                            style={{
+                                                padding: '1px 5px',
+                                                fontSize: '0.65rem',
+                                                fontWeight: 800,
+                                                borderRadius: '3px',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                background: repairForm.additionalCurrency === 'USD' ? '#7c3aed' : 'transparent',
+                                                color: repairForm.additionalCurrency === 'USD' ? '#ffffff' : 'var(--text-secondary)'
+                                            }}
+                                        >
+                                            USD
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRepairForm(prev => ({ ...prev, additionalCurrency: 'ARS' }))}
+                                            style={{
+                                                padding: '1px 5px',
+                                                fontSize: '0.65rem',
+                                                fontWeight: 800,
+                                                borderRadius: '3px',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                background: repairForm.additionalCurrency === 'ARS' ? '#10b981' : 'transparent',
+                                                color: repairForm.additionalCurrency === 'ARS' ? '#ffffff' : 'var(--text-secondary)'
+                                            }}
+                                        >
+                                            ARS
+                                        </button>
+                                    </div>
+                                </div>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, fontSize: '0.72rem', color: 'var(--text-secondary)', pointerEvents: 'none' }}>
+                                        {repairForm.additionalCurrency === 'ARS' ? 'ARS $' : 'USD $'}
+                                    </span>
+                                    <input 
+                                        type="number" 
+                                        min="0"
+                                        step="any"
+                                        value={repairForm.additionalCost} 
+                                        onChange={e => setRepairForm({ ...repairForm, additionalCost: e.target.value })}
+                                        placeholder="0.00"
+                                        className="form-input"
+                                        style={{ width: '100%', padding: '0.45rem 0.6rem 0.45rem 3.8rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                    />
+                                </div>
+                            </div>
+
+                            {(() => {
+                                const calc = calculateRepairTotals(repairForm);
+                                return (
+                                    <div className="form-group" style={{ margin: 0 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', color: '#6d28d9', margin: 0 }}>4. Total</label>
+                                            <span style={{ fontSize: '0.65rem', color: '#6d28d9', opacity: 0.8 }}>T/C: ${currentExchangeRate.toLocaleString('es-AR')}</span>
+                                        </div>
+                                        <div style={{
+                                            width: '100%',
+                                            padding: '0.4rem 0.6rem',
+                                            borderRadius: '6px',
+                                            border: '1.5px solid #a78bfa',
+                                            backgroundColor: 'rgba(124, 58, 237, 0.05)',
+                                            color: '#6d28d9',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            justifyContent: 'center',
+                                            boxSizing: 'border-box'
+                                        }}>
+                                            <div style={{ fontSize: '0.95rem', fontWeight: 900, lineHeight: 1.2 }}>
+                                                USD ${calc.totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </div>
+                                            <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#7c3aed', opacity: 0.9 }}>
+                                                ≈ ARS ${Math.round(calc.totalARS).toLocaleString('es-AR')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
 
@@ -6335,49 +6501,152 @@ return renderSelectionInfoContent(false);
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                             <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>2. Valor de la reparación ($)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="any"
-                                    value={repairForm.repairCost}
-                                    onChange={e => setRepairForm({ ...repairForm, repairCost: e.target.value })}
-                                    placeholder="0.00"
-                                    className="form-input"
-                                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem' }}
-                                />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem', margin: 0 }}>
+                                        2. Valor de la reparación
+                                    </label>
+                                    <div style={{ display: 'inline-flex', background: 'var(--background-secondary, #f1f5f9)', borderRadius: '6px', padding: '2px', border: '1px solid var(--border)' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRepairForm(prev => ({ ...prev, repairCurrency: 'USD' }))}
+                                            style={{
+                                                padding: '2px 8px',
+                                                fontSize: '0.72rem',
+                                                fontWeight: 800,
+                                                borderRadius: '4px',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                background: repairForm.repairCurrency === 'USD' ? '#7c3aed' : 'transparent',
+                                                color: repairForm.repairCurrency === 'USD' ? '#ffffff' : 'var(--text-secondary)'
+                                            }}
+                                        >
+                                            USD
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRepairForm(prev => ({ ...prev, repairCurrency: 'ARS' }))}
+                                            style={{
+                                                padding: '2px 8px',
+                                                fontSize: '0.72rem',
+                                                fontWeight: 800,
+                                                borderRadius: '4px',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                background: repairForm.repairCurrency === 'ARS' ? '#10b981' : 'transparent',
+                                                color: repairForm.repairCurrency === 'ARS' ? '#ffffff' : 'var(--text-secondary)'
+                                            }}
+                                        >
+                                            ARS
+                                        </button>
+                                    </div>
+                                </div>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-secondary)', pointerEvents: 'none' }}>
+                                        {repairForm.repairCurrency === 'ARS' ? 'ARS $' : 'USD $'}
+                                    </span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        value={repairForm.repairCost}
+                                        onChange={e => setRepairForm({ ...repairForm, repairCost: e.target.value })}
+                                        placeholder="0.00"
+                                        className="form-input"
+                                        style={{ width: '100%', padding: '0.5rem 0.75rem 0.5rem 4.2rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                    />
+                                </div>
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>3. Gasto adicional ($)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="any"
-                                    value={repairForm.additionalCost}
-                                    onChange={e => setRepairForm({ ...repairForm, additionalCost: e.target.value })}
-                                    placeholder="0.00"
-                                    className="form-input"
-                                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem' }}
-                                />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem', margin: 0 }}>
+                                        3. Gasto adicional
+                                    </label>
+                                    <div style={{ display: 'inline-flex', background: 'var(--background-secondary, #f1f5f9)', borderRadius: '6px', padding: '2px', border: '1px solid var(--border)' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRepairForm(prev => ({ ...prev, additionalCurrency: 'USD' }))}
+                                            style={{
+                                                padding: '2px 8px',
+                                                fontSize: '0.72rem',
+                                                fontWeight: 800,
+                                                borderRadius: '4px',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                background: repairForm.additionalCurrency === 'USD' ? '#7c3aed' : 'transparent',
+                                                color: repairForm.additionalCurrency === 'USD' ? '#ffffff' : 'var(--text-secondary)'
+                                            }}
+                                        >
+                                            USD
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setRepairForm(prev => ({ ...prev, additionalCurrency: 'ARS' }))}
+                                            style={{
+                                                padding: '2px 8px',
+                                                fontSize: '0.72rem',
+                                                fontWeight: 800,
+                                                borderRadius: '4px',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                background: repairForm.additionalCurrency === 'ARS' ? '#10b981' : 'transparent',
+                                                color: repairForm.additionalCurrency === 'ARS' ? '#ffffff' : 'var(--text-secondary)'
+                                            }}
+                                        >
+                                            ARS
+                                        </button>
+                                    </div>
+                                </div>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-secondary)', pointerEvents: 'none' }}>
+                                        {repairForm.additionalCurrency === 'ARS' ? 'ARS $' : 'USD $'}
+                                    </span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        value={repairForm.additionalCost}
+                                        onChange={e => setRepairForm({ ...repairForm, additionalCost: e.target.value })}
+                                        placeholder="0.00"
+                                        className="form-input"
+                                        style={{ width: '100%', padding: '0.5rem 0.75rem 0.5rem 4.2rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', color: '#6d28d9' }}>4. Total ($)</label>
-                            <div style={{
-                                width: '100%',
-                                padding: '0.6rem 0.75rem',
-                                borderRadius: '8px',
-                                border: '2px solid #a78bfa',
-                                backgroundColor: 'rgba(124, 58, 237, 0.05)',
-                                color: '#6d28d9',
-                                fontSize: '1.1rem',
-                                fontWeight: 900
-                            }}>
-                                ${((Number(repairForm.repairCost || 0) + Number(repairForm.additionalCost || 0))).toLocaleString('es-AR')}
-                            </div>
-                        </div>
+                        {(() => {
+                            const calc = calculateRepairTotals(repairForm);
+                            return (
+                                <div className="form-group">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', color: '#6d28d9', margin: 0 }}>
+                                            4. Total Presupuestado
+                                        </label>
+                                        <span style={{ fontSize: '0.72rem', color: '#6d28d9', background: 'rgba(124, 58, 237, 0.08)', padding: '2px 8px', borderRadius: '12px', border: '1px solid #ddd6fe' }}>
+                                            T/C Facturación del mes: <strong>${currentExchangeRate.toLocaleString('es-AR')}</strong>
+                                        </span>
+                                    </div>
+                                    <div style={{
+                                        width: '100%',
+                                        padding: '0.65rem 0.85rem',
+                                        borderRadius: '8px',
+                                        border: '2px solid #a78bfa',
+                                        backgroundColor: 'rgba(124, 58, 237, 0.05)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '2px'
+                                    }}>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#6d28d9' }}>
+                                            USD ${calc.totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#7c3aed', opacity: 0.9 }}>
+                                            ≈ ARS ${Math.round(calc.totalARS).toLocaleString('es-AR')} (al cambio del mes: ${currentExchangeRate.toLocaleString('es-AR')})
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: repairForm.isApproved ? '#f0fdf4' : '#fffbeb', border: `1px solid ${repairForm.isApproved ? '#bbf7d0' : '#fde68a'}`, borderRadius: '8px' }}>
                             <div>
