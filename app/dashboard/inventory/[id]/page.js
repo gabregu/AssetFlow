@@ -2,6 +2,7 @@
 import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useStore } from '../../../../lib/store';
+import { uploadAssetInvoice } from '../../../../lib/upload';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
@@ -18,11 +19,13 @@ import Link from 'next/link';
 export default function AssetDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const { assets, tickets, updateAsset, deleteAsset, currentUser, entities = [] } = useStore();
+    const { assets, tickets, updateAsset, deleteAsset, currentUser, entities = [], assetInvoices = {}, updateAssetInvoice } = useStore();
 
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [isSaving, setIsSaving] = React.useState(false);
     const [editData, setEditData] = React.useState(null);
+    const invoiceInputRef = React.useRef(null);
+    const [isUploadingInvoice, setIsUploadingInvoice] = React.useState(false);
 
     const asset = assets.find(a => a.id === params.id || a.serial === params.id);
 
@@ -42,6 +45,30 @@ export default function AssetDetailPage() {
         const pastedData = e.clipboardData.getData('text');
         const cleanedValue = pastedData.replace(/[\r\n\t]+/g, ' ').trim();
         setEditData(prev => ({ ...prev, [field]: cleanedValue }));
+    };
+
+    const handleInvoiceUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !asset) return;
+        try {
+            setIsUploadingInvoice(true);
+            const res = await uploadAssetInvoice(file, `factura_${asset.serial || asset.id}`);
+            if (updateAssetInvoice) {
+                await updateAssetInvoice(asset.id, {
+                    invoiceUrl: res.url,
+                    invoiceFilename: res.fileName,
+                    uploadedAt: new Date().toISOString(),
+                    uploadedBy: currentUser?.name || 'Administrador'
+                });
+            }
+            alert(`Factura "${res.fileName}" adjuntada con éxito.`);
+        } catch (err) {
+            console.error('Error al subir factura:', err);
+            alert('Error al subir la factura: ' + (err.message || 'Error desconocido'));
+        } finally {
+            setIsUploadingInvoice(false);
+            if (invoiceInputRef.current) invoiceInputRef.current.value = '';
+        }
     };
 
     const handleEditClick = () => {
@@ -205,6 +232,43 @@ export default function AssetDetailPage() {
                                     <div>
                                         <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Orden de Compra</p>
                                         <p style={{ fontSize: '0.95rem', fontWeight: 500, margin: '0.2rem 0' }}>{asset.purchaseOrder || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Factura de Compra</p>
+                                        {(() => {
+                                            const inv = (assetInvoices && (assetInvoices[asset.id] || (asset.serial ? assetInvoices[asset.serial] : null))) || {};
+                                            const invUrl = asset.invoiceUrl || inv.invoiceUrl || inv.url;
+                                            const invName = asset.invoiceFilename || inv.fileName || inv.invoiceFilename || 'factura_compra.pdf';
+
+                                            return (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '0.2rem' }}>
+                                                    {invUrl ? (
+                                                        <a
+                                                            href={invUrl}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary-color)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                                            title={`Ver factura: ${invName}`}
+                                                        >
+                                                            <FileText size={14} /> Ver Factura
+                                                        </a>
+                                                    ) : (
+                                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Sin factura</span>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => invoiceInputRef.current?.click()}
+                                                        disabled={isUploadingInvoice}
+                                                        style={{
+                                                            background: 'none', border: '1px solid var(--border)', borderRadius: '4px',
+                                                            padding: '1px 6px', fontSize: '0.72rem', cursor: 'pointer', color: 'var(--text-main)'
+                                                        }}
+                                                    >
+                                                        {isUploadingInvoice ? 'Subiendo...' : (invUrl ? 'Reemplazar' : '+ Adjuntar')}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                     <div>
                                         <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>SFDC Case</p>
@@ -618,6 +682,14 @@ export default function AssetDetailPage() {
                     </form>
                 )}
             </Modal>
+
+            <input
+                type="file"
+                ref={invoiceInputRef}
+                onChange={handleInvoiceUpload}
+                accept=".pdf,image/*"
+                style={{ display: 'none' }}
+            />
         </div>
     );
 }

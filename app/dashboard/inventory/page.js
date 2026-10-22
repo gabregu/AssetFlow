@@ -11,7 +11,7 @@ import {
     HardDrive, Package, Trash2, Edit3, Eye, ArrowRight,
     TrendingUp, AlertTriangle, CheckCircle, Upload, Download, History,
     ChevronDown, ChevronUp, Key, UserPlus, Truck, MapPin, Box, User,
-    Layers, Activity, Server, Printer, Loader2, Headphones, Camera, Dock, PenLine, Wifi
+    Layers, Activity, Server, Printer, Loader2, Headphones, Camera, Dock, PenLine, Wifi, FileText
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
@@ -19,7 +19,7 @@ import * as XLSX from 'xlsx';
 import Link from 'next/link';
 
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
-import { uploadDevicePhoto } from '../../../lib/upload';
+import { uploadDevicePhoto, uploadAssetInvoice } from '../../../lib/upload';
 
 const parseAssetName = (name) => {
     if (!name) return { title: '', specs: [] };
@@ -66,6 +66,7 @@ export default function InventoryPage() {
         clearInventory, clearInventoryLaptops, clearInventorySmartphones, updateRates, addExpense, deleteExpense,
         importSfdcCases, clearSfdcCases, removeSfdcCase,
         countryFilter, setCountryFilter, entities = [],
+        assetInvoices = {}, updateAssetInvoice,
         login, logout, signup, addUser, deleteUser, updateUser, updatePassword, sendPasswordReset,
         onlineUsers, refreshData, setLoading
     } = useStore();
@@ -103,6 +104,42 @@ export default function InventoryPage() {
             setIsUploadingPhoto(false);
             if (cameraInputRef.current) {
                 cameraInputRef.current.value = '';
+            }
+        }
+    };
+
+    const invoiceInputRef = useRef(null);
+    const [isUploadingInvoice, setIsUploadingInvoice] = useState(false);
+
+    const handleInvoiceCapture = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploadingInvoice(true);
+        try {
+            const serial = newAsset.serial || (editingAsset ? editingAsset.serial : 'asset');
+            const res = await uploadAssetInvoice(file, `factura_${serial}`);
+            setNewAsset(prev => ({
+                ...prev,
+                invoiceUrl: res.url,
+                invoiceFilename: res.fileName
+            }));
+            if (editingAsset && updateAssetInvoice) {
+                await updateAssetInvoice(editingAsset.id, {
+                    invoiceUrl: res.url,
+                    invoiceFilename: res.fileName,
+                    uploadedAt: new Date().toISOString(),
+                    uploadedBy: currentUser?.name || 'Administrador'
+                });
+            }
+            alert(`Factura "${res.fileName}" adjuntada con éxito.`);
+        } catch (err) {
+            console.error('Error al subir factura:', err);
+            alert('Error al adjuntar factura: ' + (err.message || 'Error desconocido'));
+        } finally {
+            setIsUploadingInvoice(false);
+            if (invoiceInputRef.current) {
+                invoiceInputRef.current.value = '';
             }
         }
     };
@@ -622,7 +659,9 @@ export default function InventoryPage() {
             cod: asset.cod || '',
             boxNumber: asset.boxNumber || '',
             locationId: asset.locationId || '',
-            photoUrl: asset.photoUrl || null
+            photoUrl: asset.photoUrl || null,
+            invoiceUrl: asset.invoiceUrl || (assetInvoices[asset.id]?.invoiceUrl) || (asset.serial && assetInvoices[asset.serial]?.invoiceUrl) || null,
+            invoiceFilename: asset.invoiceFilename || (assetInvoices[asset.id]?.invoiceFilename) || (asset.serial && assetInvoices[asset.serial]?.invoiceFilename) || null
         });
         setHwChecklist({ serial: false, cleaning: false, wipe: false, reinstall: false });
         setIsModalOpen(true);
@@ -2687,6 +2726,36 @@ export default function InventoryPage() {
                                                                             📷 Ver Foto
                                                                         </button>
                                                                     )}
+                                                                    {(() => {
+                                                                        const inv = assetInvoices[asset.id] || (asset.serial ? assetInvoices[asset.serial] : null) || {};
+                                                                        const invUrl = asset.invoiceUrl || inv.invoiceUrl || inv.url;
+                                                                        if (!invUrl) return null;
+                                                                        return (
+                                                                            <a
+                                                                                href={invUrl}
+                                                                                target="_blank"
+                                                                                rel="noreferrer"
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                style={{
+                                                                                    background: 'rgba(2, 132, 199, 0.1)',
+                                                                                    color: '#0284c7',
+                                                                                    border: '1px solid #7dd3fc',
+                                                                                    borderRadius: '4px',
+                                                                                    padding: '2px 6px',
+                                                                                    fontSize: '0.65rem',
+                                                                                    fontWeight: 'bold',
+                                                                                    cursor: 'pointer',
+                                                                                    display: 'inline-flex',
+                                                                                    alignItems: 'center',
+                                                                                    gap: '3px',
+                                                                                    textDecoration: 'none'
+                                                                                }}
+                                                                                title="Ver Factura de Compra"
+                                                                            >
+                                                                                <FileText size={11} /> Factura
+                                                                            </a>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -3443,6 +3512,63 @@ export default function InventoryPage() {
                                 )}
                             </button>
                         )}
+                    </div>
+
+                    {/* Factura de Compra */}
+                    <div className="form-group" style={{ marginTop: '1rem', background: 'rgba(2, 132, 199, 0.04)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid #bae6fd' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                            <label className="form-label" style={{ fontWeight: 700, color: '#0369a1', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <FileText size={16} /> Factura de Compra (PDF o Imagen)
+                            </label>
+                            {newAsset.invoiceUrl && (
+                                <a
+                                    href={newAsset.invoiceUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0284c7', textDecoration: 'underline' }}
+                                >
+                                    Ver {newAsset.invoiceFilename || 'factura adjunta'}
+                                </a>
+                            )}
+                        </div>
+                        <input
+                            type="file"
+                            accept=".pdf,image/*"
+                            ref={invoiceInputRef}
+                            onChange={handleInvoiceCapture}
+                            style={{ display: 'none' }}
+                        />
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                icon={FileText}
+                                onClick={() => invoiceInputRef.current?.click()}
+                                disabled={isUploadingInvoice}
+                                style={{ fontSize: '0.8rem' }}
+                            >
+                                {isUploadingInvoice ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin" />
+                                        <span>Subiendo factura...</span>
+                                    </>
+                                ) : (
+                                    <span>{newAsset.invoiceUrl ? 'Cambiar Factura' : 'Adjuntar Factura (PDF/Imagen)'}</span>
+                                )}
+                            </Button>
+                            {newAsset.invoiceUrl && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setNewAsset(prev => ({ ...prev, invoiceUrl: null, invoiceFilename: null }))}
+                                    style={{ color: '#ef4444', fontSize: '0.75rem' }}
+                                >
+                                    Eliminar Factura
+                                </Button>
+                            )}
+                        </div>
                     </div>
 
                     {editingAsset && editingAsset.status === 'Verificacion HW' && (

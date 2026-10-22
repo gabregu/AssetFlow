@@ -33,12 +33,14 @@ import {
     QrCode,
     Truck,
     Smartphone,
-    Package
+    Package,
+    FileText
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import * as XLSX from 'xlsx';
 import { useStore } from '../../../lib/store';
+import { uploadAssetInvoice } from '../../../lib/upload';
 import { getExchangeRateForDate } from '@/lib/billing';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -157,6 +159,8 @@ export default function WarehousePage() {
         updateDepositoConfig,
         assetRepairs = {},
         updateAssetRepair,
+        assetInvoices = {},
+        updateAssetInvoice,
         updateAsset,
         deleteAsset,
         tickets = [],
@@ -258,6 +262,93 @@ export default function WarehousePage() {
     const [isAuditMode, setIsAuditMode] = useState(false);
     const [mappingStep, setMappingStep] = useState(1); // 1: Scan Asset, 2: Scan Location
     const [scannedAsset, setScannedAsset] = useState(null);
+
+    // Admin inline serial editing state
+    const [editingSerialAssetId, setEditingSerialAssetId] = useState(null);
+    const [editingSerialValue, setEditingSerialValue] = useState('');
+    const [isSavingSerial, setIsSavingSerial] = useState(false);
+
+    // Factura de compra upload state
+    const invoiceFileInputRef = useRef(null);
+    const [uploadingInvoiceAsset, setUploadingInvoiceAsset] = useState(null);
+    const [isUploadingInvoice, setIsUploadingInvoice] = useState(false);
+
+    const handleSaveSerialInline = async (assetId, newSerial) => {
+        const clean = (newSerial || '').trim().toUpperCase();
+        if (!clean) {
+            alert("El número de serie no puede estar vacío.");
+            return;
+        }
+        const targetAsset = assets.find(a => a.id === assetId || a.serial === assetId);
+        if (!targetAsset) {
+            alert("No se encontró el activo a modificar.");
+            return;
+        }
+        if (clean === (targetAsset.serial || '').trim().toUpperCase()) {
+            setEditingSerialAssetId(null);
+            return;
+        }
+        const duplicate = assets.find(a => a.id !== targetAsset.id && (a.serial || '').trim().toUpperCase() === clean);
+        if (duplicate) {
+            const proceed = window.confirm(`⚠️ Ya existe otro activo con el serial "${clean}" (${duplicate.name || duplicate.id}). ¿Deseas asignarlo de todas formas?`);
+            if (!proceed) return;
+        }
+
+        try {
+            setIsSavingSerial(true);
+            const oldSerial = targetAsset.serial;
+            await updateAsset(targetAsset.id, { serial: clean });
+
+            if (oldSerial && assetRepairs[oldSerial]) {
+                await updateAssetRepair(targetAsset.id, { ...assetRepairs[oldSerial] });
+            }
+            if (oldSerial && assetInvoices[oldSerial]) {
+                await updateAssetInvoice(targetAsset.id, { ...assetInvoices[oldSerial] });
+            }
+
+            setEditingSerialAssetId(null);
+            alert(`Número de serie actualizado correctamente a: ${clean}`);
+        } catch (err) {
+            console.error("Error al actualizar serial:", err);
+            alert("Error al actualizar el serial: " + (err.message || "Error desconocido"));
+        } finally {
+            setIsSavingSerial(false);
+        }
+    };
+
+    const handleTriggerInvoiceUpload = (asset) => {
+        setUploadingInvoiceAsset(asset);
+        if (invoiceFileInputRef.current) {
+            invoiceFileInputRef.current.value = '';
+            invoiceFileInputRef.current.click();
+        }
+    };
+
+    const handleInvoiceFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !uploadingInvoiceAsset) return;
+
+        try {
+            setIsUploadingInvoice(true);
+            const res = await uploadAssetInvoice(file, `factura_${uploadingInvoiceAsset.serial || uploadingInvoiceAsset.id}`);
+            await updateAssetInvoice(uploadingInvoiceAsset.id, {
+                invoiceUrl: res.url,
+                invoiceFilename: res.fileName,
+                uploadedAt: new Date().toISOString(),
+                uploadedBy: currentUser?.name || 'Administrador'
+            });
+            alert(`Factura "${res.fileName}" adjuntada correctamente al equipo.`);
+        } catch (err) {
+            console.error('Error al subir factura:', err);
+            alert('Error al adjuntar factura: ' + (err.message || 'Error desconocido'));
+        } finally {
+            setIsUploadingInvoice(false);
+            setUploadingInvoiceAsset(null);
+            if (invoiceFileInputRef.current) {
+                invoiceFileInputRef.current.value = '';
+            }
+        }
+    };
     useEffect(() => {
         if (!selectedLocation) return;
 
@@ -2767,7 +2858,7 @@ export default function WarehousePage() {
                     <div 
                         onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                         title={buildAssetTooltip(locationAssets, locId)}
-                        className={isHighlighted ? 'blink-highlight search-pulse' : ''}
+                        className={isHighlighted && !isSelected ? 'blink-highlight search-pulse' : ''}
                         style={{
                             width: isFilteredHit ? '22px' : '18px',
                             height: isFilteredHit ? '22px' : '18px',
@@ -2855,7 +2946,7 @@ export default function WarehousePage() {
                     key={locId}
                     onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                     title={`${boxCustomName ? `${boxCustomName} (${locId})` : locId}\n${buildAssetTooltip(locationAssets, locId)}`}
-                    className={isHighlighted ? 'blink-highlight search-pulse' : ''}
+                    className={isHighlighted && !isSelected ? 'blink-highlight search-pulse' : ''}
                     style={{
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between',
                         width: '76px', minHeight: '76px', borderRadius: '10px', padding: '6px 4px',
@@ -3548,7 +3639,7 @@ export default function WarehousePage() {
                                                     data-slot-id={locId}
                                                     data-highlighted={isHighlighted ? "true" : undefined}
                                                     title={buildAssetTooltip(locationAssets, locId)}
-                                                    className={isHighlighted ? 'blink-highlight search-pulse' : ''}
+                                                    className={isHighlighted && !isSelected ? 'blink-highlight search-pulse' : ''}
                                                     style={{
                                                         width: '22px',
                                                         height: '22px',
@@ -3686,7 +3777,7 @@ export default function WarehousePage() {
                                     key={loc.id}
                                     onClick={(e) => handleScanLocation(loc.id, e)} data-warehouse-slot="true" data-slot-id={loc.id}
                                     title={buildAssetTooltip(locationAssets, loc.id)}
-                                    className={isHighlighted ? 'search-pulse' : ''}
+                                    className={isHighlighted && !isSelected ? 'search-pulse' : ''}
                                     style={{
                                         aspectRatio: '1.4/1',
                                         display: 'flex',
@@ -3830,13 +3921,196 @@ export default function WarehousePage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                             <div>
                                 <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--text-main)', lineHeight: '1.2' }}>{asset.name}</div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.74rem', color: 'var(--text-secondary)' }}>SN: {asset.serial || 'N/A'}</span>
-                                    {asset.model_number && <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>N/P: {asset.model_number}</span>}
-                                </div>
+                                {/* Serial con opción de edición rápida para administrador */}
+                                {editingSerialAssetId === asset.id ? (
+                                    <div style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '5px 7px', borderRadius: '6px', border: '1px solid #bfdbfe', display: 'flex', flexDirection: 'column', gap: '3px', margin: '3px 0' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#1e40af' }}>
+                                                ✏️ Editar Serial (Admin):
+                                            </label>
+                                            <span style={{ fontSize: '0.58rem', color: 'var(--text-secondary)' }}>Enter para guardar</span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                                            <input
+                                                type="text"
+                                                value={editingSerialValue}
+                                                onChange={(e) => setEditingSerialValue(e.target.value.toUpperCase())}
+                                                placeholder="Nuevo serial..."
+                                                autoFocus
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '2px 5px',
+                                                    fontSize: '0.74rem',
+                                                    fontFamily: 'monospace',
+                                                    fontWeight: 700,
+                                                    borderRadius: '4px',
+                                                    border: '1.5px solid #3b82f6',
+                                                    backgroundColor: 'var(--background)',
+                                                    color: 'var(--text-main)',
+                                                    outline: 'none'
+                                                }}
+                                                onKeyDown={async (e) => {
+                                                    if (e.key === 'Enter') {
+                                                        await handleSaveSerialInline(asset.id, editingSerialValue);
+                                                    } else if (e.key === 'Escape') {
+                                                        setEditingSerialAssetId(null);
+                                                    }
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                disabled={isSavingSerial}
+                                                onClick={() => handleSaveSerialInline(asset.id, editingSerialValue)}
+                                                style={{
+                                                    padding: '2px 6px',
+                                                    background: '#16a34a',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.68rem',
+                                                    fontWeight: 800,
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                {isSavingSerial ? '...' : '✓'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setEditingSerialAssetId(null)}
+                                                style={{
+                                                    padding: '2px 5px',
+                                                    background: '#e2e8f0',
+                                                    color: '#475569',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.68rem',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px', flexWrap: 'wrap', gap: '3px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.74rem', color: 'var(--text-secondary)' }}>SN: {asset.serial || 'N/A'}</span>
+                                            {(currentUser?.role === 'admin' || currentUser?.role === 'Administrador' || currentUser?.role === 'Gerencial') && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setEditingSerialAssetId(asset.id);
+                                                        setEditingSerialValue(asset.serial || '');
+                                                    }}
+                                                    style={{
+                                                        background: 'rgba(59, 130, 246, 0.08)',
+                                                        border: '1px solid #bfdbfe',
+                                                        borderRadius: '4px',
+                                                        padding: '1px 5px',
+                                                        fontSize: '0.62rem',
+                                                        fontWeight: 700,
+                                                        color: '#2563eb',
+                                                        cursor: 'pointer',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '2px'
+                                                    }}
+                                                    title="Editar número de serie como administrador"
+                                                >
+                                                    <Edit3 size={9} /> Editar SN
+                                                </button>
+                                            )}
+                                        </div>
+                                        {asset.model_number && <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>N/P: {asset.model_number}</span>}
+                                    </div>
+                                )}
                                 {asset.hardwareSpec && (
                                     <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginTop: '1px' }}>{asset.hardwareSpec}</div>
                                 )}
+
+                                {/* Factura de Compra en el popover flotante */}
+                                {(() => {
+                                    const inv = assetInvoices[asset.id] || (asset.serial ? assetInvoices[asset.serial] : null) || {};
+                                    const invUrl = asset.invoiceUrl || inv.invoiceUrl || inv.url;
+                                    const invFileName = asset.invoiceFilename || inv.fileName || inv.invoiceFilename || 'factura_compra.pdf';
+
+                                    return (
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '3px 6px', background: 'rgba(2, 132, 199, 0.05)', borderRadius: '6px', border: '1px dashed #7dd3fc', marginTop: '3px' }}>
+                                            <span style={{ fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '3px', color: '#0369a1' }}>
+                                                <FileText size={11} /> <strong>Factura:</strong>
+                                            </span>
+                                            {invUrl ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                    <a
+                                                        href={invUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        style={{
+                                                            fontSize: '0.65rem',
+                                                            fontWeight: 800,
+                                                            color: '#0284c7',
+                                                            textDecoration: 'none',
+                                                            padding: '1px 6px',
+                                                            background: '#ffffff',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid #0284c7',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '2px'
+                                                        }}
+                                                        title={`Ver factura: ${invFileName}`}
+                                                    >
+                                                        📄 Ver Factura
+                                                    </a>
+                                                    {(currentUser?.role === 'admin' || currentUser?.role === 'Administrador' || currentUser?.role === 'Gerencial') && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleTriggerInvoiceUpload(asset);
+                                                            }}
+                                                            style={{
+                                                                background: 'none',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.65rem',
+                                                                color: '#0284c7',
+                                                                padding: '1px 3px'
+                                                            }}
+                                                            title="Reemplazar factura"
+                                                        >
+                                                            ✏️
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleTriggerInvoiceUpload(asset);
+                                                    }}
+                                                    style={{
+                                                        fontSize: '0.64rem',
+                                                        fontWeight: 700,
+                                                        color: '#0284c7',
+                                                        background: '#ffffff',
+                                                        border: '1px solid #0284c7',
+                                                        borderRadius: '4px',
+                                                        padding: '1px 6px',
+                                                        cursor: 'pointer',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '2px'
+                                                    }}
+                                                >
+                                                    + Adjuntar Factura
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             {getDriverForAsset(asset) && (
@@ -4254,7 +4528,7 @@ export default function WarehousePage() {
         }
 
         return (
-            <CardContainer style={cardStyle}>
+            <CardContainer data-selection-card="true" style={{ ...cardStyle, animation: 'none', filter: 'none', outline: 'none' }}>
                 <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                         <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary-color)', textTransform: 'uppercase' }}>Información de Selección</span>
@@ -4274,7 +4548,194 @@ export default function WarehousePage() {
                         <>
                             <div><strong>Modelo:</strong> {asset.name}</div>
                             <div><strong>N/P:</strong> {asset.model_number || asset.part_number || 'N/A'}</div>
-                            <div><strong>SN:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{asset.serial || 'N/A'}</span></div>
+
+                            {/* Serial con opción de edición rápida para administrador */}
+                            {editingSerialAssetId === asset.id ? (
+                                <div style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '6px 8px', borderRadius: '6px', border: '1px solid #bfdbfe', display: 'flex', flexDirection: 'column', gap: '4px', margin: '2px 0' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#1e40af' }}>
+                                            ✏️ Editar Serial (Admin):
+                                        </label>
+                                        <span style={{ fontSize: '0.62rem', color: 'var(--text-secondary)' }}>Enter para guardar</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                        <input
+                                            type="text"
+                                            value={editingSerialValue}
+                                            onChange={(e) => setEditingSerialValue(e.target.value.toUpperCase())}
+                                            placeholder="Nuevo serial..."
+                                            autoFocus
+                                            style={{
+                                                flex: 1,
+                                                padding: '3px 6px',
+                                                fontSize: '0.8rem',
+                                                fontFamily: 'monospace',
+                                                fontWeight: 700,
+                                                borderRadius: '4px',
+                                                border: '1.5px solid #3b82f6',
+                                                backgroundColor: 'var(--background)',
+                                                color: 'var(--text-main)',
+                                                outline: 'none'
+                                            }}
+                                            onKeyDown={async (e) => {
+                                                if (e.key === 'Enter') {
+                                                    await handleSaveSerialInline(asset.id, editingSerialValue);
+                                                } else if (e.key === 'Escape') {
+                                                    setEditingSerialAssetId(null);
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            disabled={isSavingSerial}
+                                            onClick={() => handleSaveSerialInline(asset.id, editingSerialValue)}
+                                            style={{
+                                                padding: '3px 8px',
+                                                background: '#16a34a',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                fontSize: '0.72rem',
+                                                fontWeight: 800,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {isSavingSerial ? '...' : '✓'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditingSerialAssetId(null)}
+                                            style={{
+                                                padding: '3px 6px',
+                                                background: '#e2e8f0',
+                                                color: '#475569',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                fontSize: '0.72rem',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                                    <div>
+                                        <strong>SN:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.85rem' }}>{asset.serial || 'N/A'}</span>
+                                    </div>
+                                    {(currentUser?.role === 'admin' || currentUser?.role === 'Administrador' || currentUser?.role === 'Gerencial') && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingSerialAssetId(asset.id);
+                                                setEditingSerialValue(asset.serial || '');
+                                            }}
+                                            style={{
+                                                background: 'rgba(59, 130, 246, 0.08)',
+                                                border: '1px solid #bfdbfe',
+                                                borderRadius: '4px',
+                                                padding: '1px 6px',
+                                                fontSize: '0.68rem',
+                                                fontWeight: 700,
+                                                color: '#2563eb',
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '3px'
+                                            }}
+                                            title="Editar número de serie como administrador"
+                                        >
+                                            <Edit3 size={10} /> Editar Serial
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Factura de Compra */}
+                            {(() => {
+                                const inv = assetInvoices[asset.id] || (asset.serial ? assetInvoices[asset.serial] : null) || {};
+                                const invUrl = asset.invoiceUrl || inv.invoiceUrl || inv.url;
+                                const invFileName = asset.invoiceFilename || inv.fileName || inv.invoiceFilename || 'factura_compra.pdf';
+
+                                return (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px', background: 'rgba(2, 132, 199, 0.05)', borderRadius: '6px', border: '1px dashed #7dd3fc', marginTop: '2px' }}>
+                                        <span style={{ fontSize: '0.73rem', display: 'flex', alignItems: 'center', gap: '4px', color: '#0369a1' }}>
+                                            <FileText size={13} /> <strong>Factura de Compra:</strong>
+                                        </span>
+                                        {invUrl ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <a
+                                                    href={invUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    style={{
+                                                        fontSize: '0.72rem',
+                                                        fontWeight: 800,
+                                                        color: '#0284c7',
+                                                        textDecoration: 'none',
+                                                        padding: '2px 8px',
+                                                        background: '#ffffff',
+                                                        borderRadius: '4px',
+                                                        border: '1px solid #0284c7',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '3px',
+                                                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                                    }}
+                                                    title={`Ver o descargar factura: ${invFileName}`}
+                                                >
+                                                    <span>📄 Ver Factura</span>
+                                                </a>
+                                                {(currentUser?.role === 'admin' || currentUser?.role === 'Administrador' || currentUser?.role === 'Gerencial') && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleTriggerInvoiceUpload(asset);
+                                                        }}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.72rem',
+                                                            color: '#0284c7',
+                                                            padding: '2px 4px'
+                                                        }}
+                                                        title="Reemplazar factura"
+                                                    >
+                                                        ✏️
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleTriggerInvoiceUpload(asset);
+                                                }}
+                                                style={{
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 700,
+                                                    color: '#0284c7',
+                                                    background: '#ffffff',
+                                                    border: '1px solid #0284c7',
+                                                    borderRadius: '4px',
+                                                    padding: '2px 8px',
+                                                    cursor: 'pointer',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '3px'
+                                                }}
+                                            >
+                                                + Adjuntar Factura
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                             {asset.imei && asset.imei !== '-' && (
                                 <div><strong>IMEI:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{asset.imei}</span></div>
                             )}
@@ -4656,7 +5117,7 @@ export default function WarehousePage() {
                         padding: '0.85rem',
                         cursor: 'default',
                         textAlign: 'left',
-                        animation: 'fadeInPop 0.15s ease-out'
+                        animation: 'none'
                     }}
                 >
                     {renderSelectionInfoContent(true, () => setSelectedLocation(null))}
@@ -4693,7 +5154,7 @@ export default function WarehousePage() {
                     padding: '0.85rem',
                     cursor: 'default',
                     textAlign: 'left',
-                    animation: 'fadeInPop 0.15s ease-out'
+                    animation: 'none'
                 }}
             >
                 {/* Visual pointer arrow pointing directly to the clicked slot */}
@@ -5391,7 +5852,7 @@ return renderSelectionInfoContent(false);
                                             <div 
                                                 onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                                                 title={buildAssetTooltip(locationAssets, locId)}
-                                                className={isHighlighted ? 'blink-highlight search-pulse' : ''}
+                                                className={isHighlighted && !isSelected ? 'blink-highlight search-pulse' : ''}
                                                 style={{
                                                     width: '22px', height: '22px', borderRadius: '4px',
                                                     background: isSelected ? '#eab308' : bgColor,
@@ -5582,7 +6043,7 @@ return renderSelectionInfoContent(false);
                                             <div 
                                                 onClick={(e) => handleScanLocation(locId, e)} data-warehouse-slot="true" data-slot-id={locId}
                                                 title={buildAssetTooltip(locationAssets, locId)}
-                                                className={isHighlighted ? 'blink-highlight search-pulse' : ''}
+                                                className={isHighlighted && !isSelected ? 'blink-highlight search-pulse' : ''}
                                                 style={{
                                                     width: '22px', height: '22px', borderRadius: '4px',
                                                     background: isSelected ? '#eab308' : bgColor,
@@ -6913,6 +7374,48 @@ return renderSelectionInfoContent(false);
                         </div>
                     </div>
 
+                    {/* Factura de Compra */}
+                    {(() => {
+                        const targetAsset = editingAssetObj || (editAssetForm?.id ? assets.find(a => a.id === editAssetForm.id) : null);
+                        if (!targetAsset) return null;
+                        const inv = assetInvoices[targetAsset.id] || (targetAsset.serial ? assetInvoices[targetAsset.serial] : null) || {};
+                        const invUrl = targetAsset.invoiceUrl || inv.invoiceUrl || inv.url;
+                        const invFileName = targetAsset.invoiceFilename || inv.fileName || inv.invoiceFilename || 'factura_compra.pdf';
+
+                        return (
+                            <div style={{ background: 'rgba(2, 132, 199, 0.05)', padding: '0.75rem', borderRadius: '8px', border: '1px solid #bae6fd', display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0369a1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <FileText size={16} /> Factura de Compra
+                                    </label>
+                                    {invUrl && (
+                                        <a
+                                            href={invUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0284c7', textDecoration: 'underline' }}
+                                        >
+                                            Abrir factura ({invFileName})
+                                        </a>
+                                    )}
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        icon={FileText}
+                                        onClick={() => handleTriggerInvoiceUpload(targetAsset)}
+                                        style={{ fontSize: '0.75rem' }}
+                                    >
+                                        {invUrl ? 'Reemplazar Factura (PDF/Imagen)' : 'Adjuntar Factura (PDF/Imagen)'}
+                                    </Button>
+                                    {isUploadingInvoice && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Subiendo...</span>}
+                                </div>
+                            </div>
+                        );
+                    })()}
+
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
                         <Button type="button" variant="secondary" onClick={() => setIsEditAssetModalOpen(false)}>
                             Cancelar
@@ -7292,6 +7795,15 @@ return renderSelectionInfoContent(false);
                 </form>
             </Modal>
 
+            {/* Input oculto para subida de factura de compra */}
+            <input
+                type="file"
+                ref={invoiceFileInputRef}
+                onChange={handleInvoiceFileChange}
+                accept=".pdf,image/*"
+                style={{ display: 'none' }}
+            />
+
             <style jsx>{`
                 @keyframes fadeInPop {
                     from {
@@ -7326,6 +7838,12 @@ return renderSelectionInfoContent(false);
                     z-index: 9999 !important;
                     position: relative !important;
                     outline: 2.5px solid #ef4444 !important;
+                }
+                :global([data-popover-card="true"]),
+                :global([data-selection-card="true"]) {
+                    animation: none !important;
+                    filter: none !important;
+                    outline: none !important;
                 }
                 .search-box {
                     position: relative;
