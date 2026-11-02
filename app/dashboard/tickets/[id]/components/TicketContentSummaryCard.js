@@ -29,7 +29,7 @@ export const getDevicesList = (ticket, unifiedTasks = [], inventoryAssets = []) 
                 if (serial && !seenSerials.has(serial)) {
                     seenSerials.add(serial);
                     const inv = inventoryAssets?.find(a => a.serial?.toLowerCase() === serial.toLowerCase());
-                    const model = (typeof asset === 'object' && asset?.model) || inv?.name || inv?.model || 'Equipo';
+                    const model = (typeof asset === 'object' && (asset?.name || asset?.model)) || inv?.name || inv?.model || (typeof asset === 'object' && asset?.hardware_type) || inv?.type || 'Equipo';
                     list.push(`${model}: ${serial}`);
                 }
             });

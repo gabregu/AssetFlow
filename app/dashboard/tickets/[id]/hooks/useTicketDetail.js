@@ -656,23 +656,33 @@ export function useTicketDetail() {
                              subjectNormalized.includes('baja');
         const defaultActionType = isCollection ? 'Recupero' : 'Entrega';
 
+        const assetModelName = (newAsset.model || newAsset.type || 'Laptop').trim();
+        const initialStatus = isCollection ? 'Por Recuperar' : (newAsset.status || 'Asignado');
+
         const createdAsset = {
-            ...newAsset,
-            name: newAsset.model,
+            name: assetModelName,
+            type: newAsset.type || 'Laptop',
             serial: cleanedSerial,
-            status: 'Asignado',
+            status: initialStatus,
             assignee: editedData.requester || ticket.requester,
             country: taskCountry,
             sfdcCase: currentTask?.caseNumber || currentTask?.case_number || ticket.id
         };
         
         // 1. Guardar en el inventario global de base de datos
-        await addAsset(createdAsset);
+        try {
+            await addAsset(createdAsset);
+        } catch (err) {
+            console.warn('Error guardando activo en inventario (se vincula igualmente al caso):', err);
+        }
 
         const newTaskAsset = {
             serial: cleanedSerial,
+            name: assetModelName,
+            model: assetModelName,
             type: defaultActionType,
-            hardware_type: newAsset.type
+            hardware_type: newAsset.type || 'Laptop',
+            status: initialStatus
         };
 
         // 2. Vincular directamente al caso/tarea seleccionada si existe (respetando los activos ya en el borrador)

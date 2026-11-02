@@ -237,7 +237,8 @@ export default function AssetListSection({
                         const itemSerial = typeof item === 'string' ? item : item.serial;
                         const assetInfo = assets.find(a => a.serial && itemSerial && a.serial.toLowerCase() === itemSerial.toLowerCase());
                         
-                        const displayStatus = assetInfo?.status || 'Desconocido';
+                        const displayStatus = assetInfo?.status || item.status || (item.type === 'Recupero' ? 'Por Recuperar' : item.type === 'Entrega' ? 'Asignado' : 'Desconocido');
+                        const displayTitle = assetInfo?.name || item.name || item.model || item.hardware_type || assetInfo?.type || 'Hardware';
                         
                         const isEntrega = item.type === 'Entrega';
                         const isRecupero = item.type === 'Recupero';
@@ -249,7 +250,7 @@ export default function AssetListSection({
                                 <div>
                                     <p style={{ fontWeight: 600, fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                                         <span>
-                                            {assetInfo?.name || 'Hardware'} (S/N: {itemSerial})
+                                            {displayTitle} (S/N: {itemSerial})
                                             {displayStatus && (
                                                 <span style={{ 
                                                     marginLeft: '8px', 
