@@ -64,36 +64,56 @@ export default function CaseConfigModal({
     const [copyState, setCopyState] = useState('idle'); // 'idle' | 'copying' | 'copied'
 
     const pendingUpdatesRef = useRef({});
+    const lastTaskIdentityRef = useRef(null);
     useEffect(() => {
         pendingUpdatesRef.current = pendingTaskUpdates;
     }, [pendingTaskUpdates]);
 
-    // Init localTask when switching to a different task
+    // Init localTask when switching to a different task (preserving draft if same case was just promoted to DB)
     useEffect(() => {
-        setPendingTaskUpdates({});
-        if (currentTask) {
+        if (!currentTask) {
+            lastTaskIdentityRef.current = null;
+            setPendingTaskUpdates({});
+            setLocalTask(null);
+            return;
+        }
+        const identity = String(currentTask.caseNumber || currentTask.case_number || currentTask.id || '');
+        if (lastTaskIdentityRef.current !== identity) {
+            lastTaskIdentityRef.current = identity;
+            setPendingTaskUpdates({});
             setLocalTask({ ...currentTask });
         } else {
-            setLocalTask(null);
+            // Same case (e.g. just got promoted and received currentTask.id)
+            setLocalTask(prev => prev ? { ...currentTask, ...prev, id: currentTask.id || prev.id, assets: prev.assets?.length ? prev.assets : (currentTask.assets || []) } : { ...currentTask });
         }
     }, [currentTask?.id, currentTask?.caseNumber, currentTask?.case_number]);
 
     // Smart merge: when currentTask changes (Supabase realtime), merge DB fields
-    // that we DON'T buffer locally (assets written via InventorySelectorModal or
-    // handleUpdateTask directly) back into localTask so they appear in the UI.
+    // back into localTask so newly added assets always appear in the UI without losing buffered edits.
     useEffect(() => {
         if (!currentTask) return;
 
         setLocalTask(prev => {
             if (!prev) return prev;
-            // Only merge if it's the same task (same ID)
-            if (currentTask.id !== prev.id) return prev;
+            const sameTask = (currentTask.id && prev.id && currentTask.id === prev.id) ||
+                             ((currentTask.caseNumber || currentTask.case_number) &&
+                              String(currentTask.caseNumber || currentTask.case_number) === String(prev.caseNumber || prev.case_number));
+            if (!sameTask) return prev;
             
-            const merged = { ...prev };
+            const merged = { ...prev, id: currentTask.id || prev.id };
 
-            // Always merge assets from DB unless the user has a local pending override
             if (!pendingUpdatesRef.current.hasOwnProperty('assets')) {
                 merged.assets = currentTask.assets || prev.assets || [];
+            } else if (Array.isArray(currentTask.assets) && currentTask.assets.length > 0) {
+                // Merge any newly created/linked assets from DB that aren't in localTask yet
+                const localList = Array.isArray(prev.assets) ? [...prev.assets] : [];
+                currentTask.assets.forEach(dbItem => {
+                    const dbSerial = typeof dbItem === 'string' ? dbItem : dbItem?.serial;
+                    if (dbSerial && !localList.some(loc => (typeof loc === 'string' ? loc : loc?.serial)?.toLowerCase() === dbSerial.toLowerCase())) {
+                        localList.push(dbItem);
+                    }
+                });
+                merged.assets = localList;
             }
             // Merge status changes (e.g. auto-unlock from store triggers)
             if (!pendingUpdatesRef.current.hasOwnProperty('status')) {
@@ -470,7 +490,12 @@ export default function CaseConfigModal({
                 serialQuery={serialQuery}
                 newAsset={newAsset}
                 setNewAsset={setNewAsset}
-                handleCreateAsset={handleCreateAsset}
+                handleCreateAsset={async (e) => {
+                    const res = await handleCreateAsset(e, activeTask);
+                    if (res?.updatedTaskAssets) {
+                        handleBufferedUpdate({ assets: res.updatedTaskAssets });
+                    }
+                }}
             />
 
             {/* Verification Modal for Delivery */}

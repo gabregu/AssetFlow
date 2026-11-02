@@ -634,11 +634,11 @@ export function useTicketDetail() {
         }
     };
 
-    const handleCreateAsset = (e) => {
-        e.preventDefault();
+    const handleCreateAsset = async (e, taskOverride = null) => {
+        if (e && e.preventDefault) e.preventDefault();
         
-        // Determinar el país/cliente del caso actual de forma robusta
-        const currentTask = (selectedCaseIndex !== null && unifiedTasks) ? unifiedTasks[selectedCaseIndex] : null;
+        // Determinar el país/cliente del caso actual de forma robusta (priorizando taskOverride / localTask del modal)
+        const currentTask = taskOverride || ((selectedCaseIndex !== null && unifiedTasks) ? unifiedTasks[selectedCaseIndex] : null);
         const taskCountry = currentTask?.country || ticket?.client || ticket?.logistics?.country || 'Argentina';
 
         // Lenovo Fix: al escanear la caja el serial viene con una 'S' extra
@@ -646,6 +646,15 @@ export function useTicketDetail() {
         const cleanedSerial = (trimmedSerial.toUpperCase().startsWith('S') && trimmedSerial.length > 7)
             ? trimmedSerial.substring(1)
             : trimmedSerial;
+
+        const subjectNormalized = (currentTask?.subject || ticket?.subject || '').toLowerCase();
+        const isCollection = subjectNormalized.includes('recupero') ||
+                             subjectNormalized.includes('collection') ||
+                             subjectNormalized.includes('recoleccion') ||
+                             subjectNormalized.includes('recolección') ||
+                             subjectNormalized.includes('retiro') ||
+                             subjectNormalized.includes('baja');
+        const defaultActionType = isCollection ? 'Recupero' : 'Entrega';
 
         const createdAsset = {
             ...newAsset,
@@ -658,13 +667,25 @@ export function useTicketDetail() {
         };
         
         // 1. Guardar en el inventario global de base de datos
-        addAsset(createdAsset);
+        await addAsset(createdAsset);
 
-        // 2. Vincular directamente al caso/tarea seleccionada si existe
+        const newTaskAsset = {
+            serial: cleanedSerial,
+            type: defaultActionType,
+            hardware_type: newAsset.type
+        };
+
+        // 2. Vincular directamente al caso/tarea seleccionada si existe (respetando los activos ya en el borrador)
+        let updatedTaskAssets = null;
         if (currentTask) {
             const currentTaskAssets = currentTask.assets || [];
-            handleUpdateTask({
-                assets: [...currentTaskAssets, { serial: cleanedSerial, type: 'Entrega', hardware_type: newAsset.type }]
+            const alreadyInTask = currentTaskAssets.some(a => {
+                const s = typeof a === 'string' ? a : a.serial;
+                return s && s.toLowerCase() === cleanedSerial.toLowerCase();
+            });
+            updatedTaskAssets = alreadyInTask ? currentTaskAssets : [...currentTaskAssets, newTaskAsset];
+            await handleUpdateTask({
+                assets: updatedTaskAssets
             });
         }
 
@@ -672,15 +693,18 @@ export function useTicketDetail() {
         const currentAssets = editedData.associatedAssets || [];
         const newData = {
             ...editedData,
-            associatedAssets: [...currentAssets, { serial: cleanedSerial, type: '' }]
+            associatedAssets: [...currentAssets, { serial: cleanedSerial, type: defaultActionType }]
         };
         const automatedData = automateDeliveryStatus(newData);
         updateTicket(ticket.id, automatedData);
         setEditedData(automatedData);
         
+        setNewAsset({ model: '', type: 'Laptop', serial: '', status: 'Nuevo' });
         setIsAssetModalOpen(false);
         setAssetSearchResult(null);
         setSerialQuery('');
+
+        return { newTaskAsset, updatedTaskAssets };
     };
 
     const toggleAccessory = (type) => {

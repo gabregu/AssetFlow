@@ -176,7 +176,8 @@ export default function AssetListSection({
         });
 
         if (!alreadyLinked) {
-            const newAssets = [...caseAssets, { serial: serial, type: 'Entrega' }];
+            const defaultType = isCollectionCase(task.subject || '') ? 'Recupero' : 'Entrega';
+            const newAssets = [...caseAssets, { serial: serial, type: defaultType }];
             const updates = { assets: newAssets };
             
             // Automación: Si agregamos hardware, el estado pasa a "En Preparación" (o "Para Coordinar" si es recolección)
