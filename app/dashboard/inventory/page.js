@@ -629,7 +629,7 @@ export default function InventoryPage() {
             date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
             modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
             eolDate: '', notes: '', sfdcCase: '', oem: '', cod: '', boxNumber: '', country: 'Argentina',
-            locationId: '', photoUrl: null
+            locationId: '', photoUrl: null, invoiceUrl: null, invoiceFilename: null
         });
     };
 
