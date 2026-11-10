@@ -703,6 +703,9 @@ export default function InventoryPage() {
                 document.body.appendChild(iframe);
             }
 
+            const typeText = asset.type || 'Laptop';
+            const typeFontSize = typeText.length > 14 ? '5.6pt' : (typeText.length > 10 ? '6.5pt' : '8pt');
+
             const content = `
                 <html>
                     <head>
@@ -738,17 +741,22 @@ export default function InventoryPage() {
                             }
                             .top-left {
                                 flex: 1;
+                                min-width: 0;
                                 padding-right: 1mm;
                             }
                             .top-right {
                                 text-align: right;
+                                flex-shrink: 0;
                             }
                             .type-label {
-                                font-size: 8pt;
+                                font-size: ${typeFontSize};
                                 font-weight: 900;
                                 text-transform: uppercase;
                                 line-height: 1;
                                 margin-bottom: 0.5mm;
+                                white-space: nowrap;
+                                overflow: hidden;
+                                text-overflow: ellipsis;
                             }
                             .asset-name {
                                 font-size: 5.5pt;

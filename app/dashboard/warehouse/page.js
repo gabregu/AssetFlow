@@ -2414,6 +2414,9 @@ export default function WarehousePage() {
                 document.body.appendChild(iframe);
             }
 
+            const typeText = asset.type || 'Laptop';
+            const typeFontSize = typeText.length > 14 ? '5.6pt' : (typeText.length > 10 ? '6.5pt' : '8pt');
+
             const content = `
                 <html>
                     <head>
@@ -2423,9 +2426,9 @@ export default function WarehousePage() {
                             html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; overflow: hidden; }
                             .label-container { width: 50mm; height: 25mm; padding: 1.5mm 2mm; display: flex; flex-direction: column; font-family: sans-serif; }
                             .top-section { display: flex; justify-content: space-between; margin-bottom: 0.5mm; }
-                            .top-left { flex: 1; padding-right: 1mm; }
-                            .top-right { text-align: right; }
-                            .type-label { font-size: 8pt; font-weight: 900; text-transform: uppercase; line-height: 1; margin-bottom: 0.5mm; }
+                            .top-left { flex: 1; min-width: 0; padding-right: 1mm; }
+                            .top-right { text-align: right; flex-shrink: 0; }
+                            .type-label { font-size: ${typeFontSize}; font-weight: 900; text-transform: uppercase; line-height: 1; margin-bottom: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                             .asset-name { font-size: 5.5pt; line-height: 1.1; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 0.5mm; }
                             .status-badge { font-size: 5pt; font-weight: 800; text-transform: uppercase; background: #000; color: #fff; padding: 0.2mm 0.8mm; border-radius: 0.4mm; display: inline-block; }
                             .loc-region { font-size: 6pt; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5mm; }
