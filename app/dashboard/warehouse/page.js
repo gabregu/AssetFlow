@@ -907,11 +907,12 @@ export default function WarehousePage() {
     const [modelFilter, setModelFilter] = useState('ALL');   // MBA | MBP | ALL
     const [sizeFilter, setSizeFilter] = useState('ALL');     // 13 | 14 | 15 | 16 | ALL
 
-    // Extract unique CPUs from assets dynamically
+    // Extract unique CPUs from assets dynamically (filtered by active client/country)
     const uniqueCpus = useMemo(() => {
         const cpuPatterns = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'ULTRA', 'CORE', 'I3', 'I5', 'I7', 'I9'];
         const cpus = new Set();
         assets.forEach(a => {
+            if (!isCountryMatch(a.country, countryFilter)) return;
             const combined = `${a.name || ''} ${a.hardwareSpec || ''}`.toUpperCase();
             cpuPatterns.forEach(pattern => {
                 const regex = new RegExp(`\\b${pattern}\\b`);
@@ -923,23 +924,24 @@ export default function WarehousePage() {
             if (!a.startsWith('M') && b.startsWith('M')) return 1;
             return a.localeCompare(b);
         });
-    }, [assets]);
+    }, [assets, countryFilter]);
 
-    // Extract unique RAM sizes dynamically
+    // Extract unique RAM sizes dynamically (filtered by active client/country)
     const uniqueRams = useMemo(() => {
         const rams = new Set();
         assets.forEach(a => {
+            if (!isCountryMatch(a.country, countryFilter)) return;
             const combined = `${a.name || ''} ${a.hardwareSpec || ''}`.toUpperCase();
             const match = combined.match(/\b(\d+GB)\b/);
             if (match) rams.add(match[1]);
         });
         return Array.from(rams).sort((a, b) => parseInt(a) - parseInt(b));
-    }, [assets]);
+    }, [assets, countryFilter]);
 
     // Extract unique phone models (iPhone X, Galaxy S...) dynamically based on typeFilter
     const uniquePhoneModels = useMemo(() => {
         const smartphoneTypes = ['smartphone', 'celular', 'iphone'];
-        const phones = assets.filter(a => smartphoneTypes.includes((a.type || '').toLowerCase()));
+        const phones = assets.filter(a => isCountryMatch(a.country, countryFilter) && smartphoneTypes.includes((a.type || '').toLowerCase()));
         // Get unique model prefixes - first 2-3 words of the name
         const modelSet = new Set();
         phones.forEach(a => {
@@ -953,7 +955,7 @@ export default function WarehousePage() {
             }
         });
         return Array.from(modelSet).sort();
-    }, [assets]);
+    }, [assets, countryFilter]);
 
     // Helper to normalize IDs for comparison
     const normalizeId = (id) => {
@@ -1220,7 +1222,7 @@ export default function WarehousePage() {
 
         const filteredEntries = entries.map(([aisle, locations]) => {
             const matchingLocs = locations.filter(loc => {
-                const locAssets = assets.filter(a => a.locationId === loc.id);
+                const locAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === loc.id);
                 if (locationSearch) {
                     const searchLower = locationSearch.toLowerCase();
                     const locIdMatch = String(loc.id || '').toLowerCase().includes(searchLower);
@@ -1572,7 +1574,7 @@ export default function WarehousePage() {
             confirmMapping(scannedAsset.id, loc.id);
         } else {
             setSelectedLocation(loc);
-            const locAssets = assets.filter(a => a.locationId === loc.id);
+            const locAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === loc.id);
             if (locAssets.length === 1) {
                 setSelectedAssetId(locAssets[0].id);
             } else if (locAssets.length === 0) {
@@ -1583,10 +1585,12 @@ export default function WarehousePage() {
                         const val = scannedId.trim().toUpperCase();
                         const searchNormAsset = normalizeId(val);
                         const asset = assets.find(a => 
-                            normalizeId(a.id) === searchNormAsset || 
-                            (a.serial && normalizeId(a.serial) === searchNormAsset) ||
-                            (a.imei && a.imei !== '-' && normalizeId(a.imei) === searchNormAsset) ||
-                            (a.imei2 && a.imei2 !== '-' && normalizeId(a.imei2) === searchNormAsset)
+                            isCountryMatch(a.country, countryFilter) && (
+                                normalizeId(a.id) === searchNormAsset || 
+                                (a.serial && normalizeId(a.serial) === searchNormAsset) ||
+                                (a.imei && a.imei !== '-' && normalizeId(a.imei) === searchNormAsset) ||
+                                (a.imei2 && a.imei2 !== '-' && normalizeId(a.imei2) === searchNormAsset)
+                            )
                         );
                         if (asset) {
                             confirmMapping(asset.id, loc.id);
@@ -1650,7 +1654,7 @@ export default function WarehousePage() {
     const finishAudit = async () => {
         if (!auditLocation) return;
         
-        const expected = assets.filter(a => a.locationId === auditLocation.id);
+        const expected = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === auditLocation.id);
         const matches = scannedAuditAssets.filter(s => expected.find(e => e.id === s.id));
         const extras = scannedAuditAssets.filter(s => !expected.find(e => e.id === s.id));
         const missing = expected.filter(e => !scannedAuditAssets.find(s => s.id === e.id));
@@ -1671,7 +1675,7 @@ export default function WarehousePage() {
         const locationCountry = sanitizeCountryForLocation(countryFilter);
 
         if (isDep) {
-            const targetAssets = assets.filter(a => a.locationId === locationId);
+            const targetAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === locationId);
             if (targetAssets.length > 0) {
                 const parts = locationId.split('-');
                 if (parts.length === 4) {
@@ -1681,7 +1685,7 @@ export default function WarehousePage() {
                     const config = depositoConfig[`DEP-${repisa}`] || { rows: 5, cols: 10 };
                     for (let p = 1; p <= config.cols; p++) {
                         const candidateId = `DEP-${repisa}-${estante}-${p}`;
-                        if (!assets.some(a => a.locationId === candidateId)) {
+                        if (!assets.some(a => isCountryMatch(a.country, countryFilter) && a.locationId === candidateId)) {
                             nextPos = p;
                             break;
                         }
@@ -1742,7 +1746,7 @@ export default function WarehousePage() {
         if (!movingAsset || !targetLocationId) return;
 
         let finalTargetId = targetLocationId;
-        const targetAssets = assets.filter(a => a.locationId === targetLocationId);
+        const targetAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === targetLocationId);
         const locationCountry = sanitizeCountryForLocation(countryFilter);
         
         try {
@@ -1757,7 +1761,7 @@ export default function WarehousePage() {
                         const config = depositoConfig[`DEP-${repisa}`] || { rows: 5, cols: 10 };
                         for (let p = 1; p <= config.cols; p++) {
                             const candidateId = `DEP-${repisa}-${estante}-${p}`;
-                            if (!assets.some(a => a.locationId === candidateId)) {
+                            if (!assets.some(a => isCountryMatch(a.country, countryFilter) && a.locationId === candidateId)) {
                                 nextPos = p;
                                 break;
                             }
@@ -1826,10 +1830,10 @@ export default function WarehousePage() {
         if (!movingAllSourceLocation || !targetAllLocationId) return;
 
         const sourceLocId = movingAllSourceLocation.id;
-        const sourceAssets = assets.filter(a => a.locationId === sourceLocId);
+        const sourceAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === sourceLocId);
         if (sourceAssets.length === 0) return;
 
-        const targetAssets = assets.filter(a => a.locationId === targetAllLocationId);
+        const targetAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === targetAllLocationId);
 
         try {
             if (targetAssets.length > 0) {
@@ -1947,9 +1951,9 @@ export default function WarehousePage() {
     const handleDeleteGroup = async (aisle, e) => {
         e.stopPropagation();
         
-        const locationsToDelete = warehouseLocations.filter(l => l.aisle === aisle);
+        const locationsToDelete = warehouseLocations.filter(l => l.aisle === aisle && isCountryMatch(l.country, countryFilter));
         const hasAssets = locationsToDelete.some(loc => 
-            assets.some(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === loc.id)
+            assets.some(a => isCountryMatch(a.country, countryFilter) && a.locationId === loc.id)
         );
         if (hasAssets) {
             alert('No se puede eliminar la repisa porque contiene equipos asignados. Reubique los equipos primero.');
@@ -2066,7 +2070,7 @@ export default function WarehousePage() {
         try {
             const locId = cajaId.startsWith('CAJA-') ? cajaId : `CAJA-${cajaId}`;
             const cajaNum = locId.replace(/^CAJA-/i, '');
-            const cajaAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+            const cajaAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === locId);
             
             const origin = typeof window !== 'undefined' ? window.location.origin : 'https://assetflow-yawi.vercel.app';
             const qrUrl = `${origin}/dashboard/warehouse?caja=${cajaNum}`;
@@ -2156,7 +2160,7 @@ export default function WarehousePage() {
                 .filter(num => {
                     if (!onlyOccupied) return true;
                     const locId = `CAJA-${num}`;
-                    return assets.some(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                    return assets.some(a => isCountryMatch(a.country, countryFilter) && a.locationId === locId);
                 });
 
             if (boxNumbers.length === 0) {
@@ -2167,7 +2171,7 @@ export default function WarehousePage() {
             const origin = typeof window !== 'undefined' ? window.location.origin : 'https://assetflow-yawi.vercel.app';
             const labelsHtml = await Promise.all(boxNumbers.map(async (num) => {
                 const locId = `CAJA-${num}`;
-                const cajaAssets = assets.filter(a => (countryFilter === 'Todos' || a.country === countryFilter) && a.locationId === locId);
+                const cajaAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === locId);
                 const qrUrl = `${origin}/dashboard/warehouse?caja=${num}`;
                 
                 const qrDataUrl = await QRCode.toDataURL(qrUrl, {
@@ -2776,9 +2780,11 @@ export default function WarehousePage() {
 
     const renderArmarioCelulares = () => {
         const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'Administrador' || currentUser?.role === 'Gerencial';
-        const armarioAssets = assets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-'));
+        const armarioAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId && a.locationId.toUpperCase().startsWith('ARM-'));
         const armarioCount = armarioAssets.length;
-        const armarioFilteredAssets = hasActiveSearch ? filteredAssets.filter(a => a.locationId && a.locationId.toUpperCase().startsWith('ARM-')) : [];
+        const isArgentinaClient = !countryFilter || countryFilter === 'Todos' || countryFilter === 'SFDC-Argentina' || countryFilter === 'Argentina';
+        if (!isArgentinaClient && armarioCount === 0) return null;
+        const armarioFilteredAssets = hasActiveSearch ? filteredAssets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId && a.locationId.toUpperCase().startsWith('ARM-')) : [];
         const armarioFilteredCount = armarioFilteredAssets.length;
 
         const defaultOrganizers = [
@@ -2889,10 +2895,12 @@ export default function WarehousePage() {
                 const val = scannedId.trim().toUpperCase();
                 const searchNormAsset = normalizeId(val);
                 const asset = assets.find(a => 
-                    normalizeId(a.id) === searchNormAsset || 
-                    (a.serial && normalizeId(a.serial) === searchNormAsset) ||
-                    (a.imei && a.imei !== '-' && normalizeId(a.imei) === searchNormAsset) ||
-                    (a.imei2 && a.imei2 !== '-' && normalizeId(a.imei2) === searchNormAsset)
+                    isCountryMatch(a.country, countryFilter) && (
+                        normalizeId(a.id) === searchNormAsset || 
+                        (a.serial && normalizeId(a.serial) === searchNormAsset) ||
+                        (a.imei && a.imei !== '-' && normalizeId(a.imei) === searchNormAsset) ||
+                        (a.imei2 && a.imei2 !== '-' && normalizeId(a.imei2) === searchNormAsset)
+                    )
                 );
                 if (asset) {
                     confirmMapping(asset.id, locId);
@@ -3736,7 +3744,7 @@ export default function WarehousePage() {
                     }}>
                         {locations.sort((a,b) => a.id.localeCompare(b.id)).map((loc, index) => {
                             const locationAssets = assets.filter(a => 
-                                (countryFilter === 'Todos' || a.country === countryFilter) &&
+                                isCountryMatch(a.country, countryFilter) &&
                                 a.locationId === loc.id
                             );
                             const assetCount = locationAssets.length;
@@ -3835,7 +3843,7 @@ export default function WarehousePage() {
             );
         }
 
-        const locationAssets = assets.filter(a => a.locationId === selectedLocation.id);
+        const locationAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === selectedLocation.id);
         const asset = selectedAssetId ? locationAssets.find(a => a.id === selectedAssetId) : (locationAssets.length === 1 ? locationAssets[0] : null);
 
         if (isFloating) {
@@ -5576,9 +5584,9 @@ export default function WarehousePage() {
                     {/* Información de Selección */}
                     {(() => {
                         if (selectedGroup) {
-                            const groupLocs = warehouseLocations.filter(l => l.aisle === selectedGroup && (countryFilter === 'Todos' || l.country === countryFilter));
+                            const groupLocs = warehouseLocations.filter(l => l.aisle === selectedGroup && isCountryMatch(l.country, countryFilter));
                             const groupLocIds = groupLocs.map(l => l.id);
-                            const groupAssets = assets.filter(a => groupLocIds.includes(a.locationId));
+                            const groupAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && groupLocIds.includes(a.locationId));
                             
                             return (
                                 <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
@@ -6185,7 +6193,7 @@ return renderSelectionInfoContent(false);
                             {Object.keys(targetLocationsGrouped).sort().map(aisle => (
                                 <optgroup key={aisle} label={`GRUPO: ${getDisplayAisle(aisle)}`}>
                                     {targetLocationsGrouped[aisle].map(loc => {
-                                        const locAssetsCount = assets.filter(a => a.locationId === loc.id).length;
+                                        const locAssetsCount = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === loc.id).length;
                                         const label = `${loc.id} ${locAssetsCount > 0 ? '(Ocupado)' : '(Disponible)'}`;
                                         const isCurrent = loc.id === movingAsset?.locationId;
                                         
@@ -6243,7 +6251,7 @@ return renderSelectionInfoContent(false);
                             <strong>Origen:</strong> Ubicación {movingAllSourceLocation?.id}
                         </div>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            <strong>Cantidad de activos a mover:</strong> {assets.filter(a => a.locationId === movingAllSourceLocation?.id).length} equipos
+                            <strong>Cantidad de activos a mover:</strong> {assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === movingAllSourceLocation?.id).length} equipos
                         </div>
                     </div>
 
@@ -6269,7 +6277,7 @@ return renderSelectionInfoContent(false);
                             {Object.keys(targetLocationsGrouped).sort().map(aisle => (
                                 <optgroup key={aisle} label={`GRUPO: ${getDisplayAisle(aisle)}`}>
                                     {targetLocationsGrouped[aisle].map(loc => {
-                                        const locAssetsCount = assets.filter(a => a.locationId === loc.id).length;
+                                        const locAssetsCount = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === loc.id).length;
                                         const label = `${loc.id} ${locAssetsCount > 0 ? `(${locAssetsCount} equipos - Ocupado)` : '(Disponible)'}`;
                                         const isCurrent = loc.id === movingAllSourceLocation?.id;
                                         
