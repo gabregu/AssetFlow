@@ -202,7 +202,22 @@ export default function AssetDetailPage() {
                             <div style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Especificaciones Generales</h2>
-                                    <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {(asset.hasCharger || /\[CON CARGADOR\]/i.test(asset.notes || '')) && asset.status === 'Recuperado' && (
+                                            <span style={{
+                                                background: 'rgba(37, 99, 235, 0.1)',
+                                                color: '#2563eb',
+                                                border: '1px solid #93c5fd',
+                                                borderRadius: '6px',
+                                                padding: '2px 8px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 700
+                                            }}>
+                                                🔌 Con cargador
+                                            </span>
+                                        )}
+                                        <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
+                                    </div>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginTop: '1rem' }}>
                                     <div>
@@ -333,10 +348,78 @@ export default function AssetDetailPage() {
                             </div>
                         </Card>
                     </div>
+                    {Array.isArray(asset.photoUrls) && asset.photoUrls.length > 0 && (
+                        <Card title={`Fotografías del Estado (${asset.photoUrls.length})`} icon={Info}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                                {asset.photoUrls.map((url, idx) => (
+                                    <a
+                                        key={`${url}-${idx}`}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{
+                                            display: 'block',
+                                            height: '130px',
+                                            borderRadius: '10px',
+                                            overflow: 'hidden',
+                                            border: '1px solid var(--border)',
+                                            position: 'relative'
+                                        }}
+                                        title={`Ver Foto ${idx + 1} en tamaño completo`}
+                                    >
+                                        <img src={url} alt={`Foto ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <span style={{
+                                            position: 'absolute',
+                                            bottom: '6px',
+                                            left: '6px',
+                                            backgroundColor: 'rgba(0,0,0,0.65)',
+                                            color: 'white',
+                                            fontSize: '0.68rem',
+                                            fontWeight: 700,
+                                            padding: '1px 6px',
+                                            borderRadius: '4px'
+                                        }}>
+                                            Foto {idx + 1}
+                                        </span>
+                                    </a>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
+
                     <Card title="Notas del Activo" icon={FileText}>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', margin: 0, whiteSpace: 'pre-wrap' }}>
-                            {asset.notes || 'No hay notas adicionales para este activo.'}
-                        </p>
+                        {(() => {
+                            const cleaned = (asset.notes || '').replace(/\[CON CARGADOR\]\s*\n?/gi, '').trim();
+                            if (!cleaned) {
+                                return <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>No hay notas adicionales para este activo.</p>;
+                            }
+                            const lines = cleaned
+                                .replace(/\s+(?=\[\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g, '\n')
+                                .replace(/\s{2,}(?=\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}\s+)/g, '\n')
+                                .split(/\r?\n/)
+                                .map(l => l.trim())
+                                .filter(Boolean);
+                            return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {lines.map((line, i) => {
+                                        const bracketMatch = line.match(/^\[(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})(?:[^\]]*)\]\s*(.*)$/);
+                                        const plainDateMatch = !bracketMatch && line.match(/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\s*[:\-]?\s+(.*)$/);
+                                        const dateStr = bracketMatch ? bracketMatch[1] : (plainDateMatch ? plainDateMatch[1] : null);
+                                        const textStr = bracketMatch ? bracketMatch[2] : (plainDateMatch ? plainDateMatch[2] : line);
+                                        return (
+                                            <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', padding: '0.45rem 0.65rem', backgroundColor: 'var(--background)', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.88rem' }}>
+                                                {dateStr && (
+                                                    <span style={{ fontWeight: 700, fontSize: '0.76rem', color: '#1e40af', backgroundColor: '#dbeafe', padding: '1px 7px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                                                        {dateStr}
+                                                    </span>
+                                                )}
+                                                <span style={{ color: 'var(--text-main)' }}>{textStr}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
                     </Card>
 
                     {/* Assignment History */}

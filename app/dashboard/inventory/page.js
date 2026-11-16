@@ -21,6 +21,66 @@ import Link from 'next/link';
 import { QRScannerModal } from '../../components/ui/QRScannerModal';
 import { uploadDevicePhoto, uploadAssetInvoice } from '../../../lib/upload';
 
+const parseAssetPhotoUrls = (rawPhotoUrl, photoUrlsArr) => {
+    if (Array.isArray(photoUrlsArr) && photoUrlsArr.length > 0) return photoUrlsArr.filter(Boolean);
+    if (!rawPhotoUrl) return [];
+    if (Array.isArray(rawPhotoUrl)) return rawPhotoUrl.filter(Boolean);
+    if (typeof rawPhotoUrl === 'string') {
+        const trimmed = rawPhotoUrl.trim();
+        if (!trimmed) return [];
+        if (trimmed.startsWith('[')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) return parsed.filter(Boolean);
+            } catch (e) {
+                // fallback
+            }
+        }
+        return [trimmed];
+    }
+    return [];
+};
+
+const formatTodayShort = () => {
+    const d = new Date();
+    return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+};
+
+const parseAssetNoteEntries = (notesStr, fallbackDateStr = '') => {
+    if (!notesStr || typeof notesStr !== 'string') return [];
+    const cleaned = notesStr
+        .replace(/\[CON CARGADOR\]\s*\n?/gi, '')
+        // Split inline bracketed dates that were previously flattened onto a single line
+        .replace(/\s+(?=\[\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g, '\n')
+        // Split inline unbracketed dates if preceded by sentence end/spaces
+        .replace(/\s{2,}(?=\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}\s+)/g, '\n')
+        .trim();
+    if (!cleaned) return [];
+
+    const lines = cleaned.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    return lines.map(line => {
+        // Match [2/11/2026] or [2/11/2026, 15:30] followed by text
+        const bracketMatch = line.match(/^\[(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})(?:[^\]]*)\]\s*(.*)$/);
+        if (bracketMatch) {
+            return { date: bracketMatch[1], text: bracketMatch[2].trim() };
+        }
+        // Match 2/11/2026 followed by text
+        const plainDateMatch = line.match(/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\s*[:\-]?\s+(.*)$/);
+        if (plainDateMatch) {
+            return { date: plainDateMatch[1], text: plainDateMatch[2].trim() };
+        }
+        return { date: fallbackDateStr || formatTodayShort(), text: line };
+    }).filter(item => item.text.length > 0);
+};
+
+const serializeAssetNoteEntries = (entries) => {
+    if (!Array.isArray(entries) || entries.length === 0) return '';
+    return entries
+        .filter(e => e && e.text && e.text.trim())
+        .map(e => `${e.date || formatTodayShort()}  ${e.text.trim()}`)
+        .join('\n');
+};
+
 const parseAssetName = (name) => {
     if (!name) return { title: '', specs: [] };
     const parts = name.split(/\s+/);
@@ -84,19 +144,32 @@ export default function InventoryPage() {
     const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
     const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
     const [previewImageUrl, setPreviewImageUrl] = useState('');
+    const [previewImageList, setPreviewImageList] = useState([]);
+    const [newNoteText, setNewNoteText] = useState('');
 
     const handlePhotoCapture = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
 
         setIsUploadingPhoto(true);
         try {
             const serial = newAsset.serial || 'new_asset';
-            const publicUrl = await uploadDevicePhoto(file, `asset_${serial}`);
-            setNewAsset(prev => ({
-                ...prev,
-                photoUrl: publicUrl
-            }));
+            const uploadedUrls = [];
+            for (const file of files) {
+                const publicUrl = await uploadDevicePhoto(file, `asset_${serial}`);
+                if (publicUrl) uploadedUrls.push(publicUrl);
+            }
+            if (uploadedUrls.length > 0) {
+                setNewAsset(prev => {
+                    const currentPhotos = parseAssetPhotoUrls(prev.photoUrl, prev.photoUrls);
+                    const nextPhotos = [...currentPhotos, ...uploadedUrls];
+                    return {
+                        ...prev,
+                        photoUrls: nextPhotos,
+                        photoUrl: nextPhotos[0] || null
+                    };
+                });
+            }
         } catch (err) {
             console.error('Error capture photo:', err);
             alert('Error al subir la fotografía de estado.');
@@ -170,7 +243,7 @@ export default function InventoryPage() {
         date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
         modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
         eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina', cod: '', boxNumber: '',
-        locationId: '', photoUrl: null
+        locationId: '', photoUrl: null, photoUrls: [], hasCharger: false
     });
 
     const [hwChecklist, setHwChecklist] = useState({
@@ -588,22 +661,31 @@ export default function InventoryPage() {
             const now = new Date().toISOString();
             const updatedBy = currentUser?.name || 'Sistema';
 
+            // Si el usuario dejó un comentario escrito en el campo de nueva nota sin apretar "+ Agregar", lo sumamos con fecha de hoy
+            let finalNotes = newAsset.notes || '';
+            if (newNoteText.trim()) {
+                const existingEntries = parseAssetNoteEntries(finalNotes);
+                finalNotes = serializeAssetNoteEntries([
+                    ...existingEntries,
+                    { date: formatTodayShort(), text: newNoteText.trim() }
+                ]);
+            }
+
+            const assetPayload = {
+                ...newAsset,
+                notes: finalNotes,
+                hasCharger: newAsset.status === 'Recuperado' ? Boolean(newAsset.hasCharger) : false,
+                dateLastUpdate: now,
+                updatedBy: updatedBy,
+                lastAssetCheck: now
+            };
+
             if (editingAsset) {
-                await updateAsset(editingAsset.id, { 
-                    ...newAsset, 
-                    dateLastUpdate: now, 
-                    updatedBy: updatedBy,
-                    lastAssetCheck: now 
-                });
+                await updateAsset(editingAsset.id, assetPayload);
                 closeModal();
             } else {
                 const serialCreado = newAsset.serial;
-                await addAsset({ 
-                    ...newAsset, 
-                    dateLastUpdate: now, 
-                    updatedBy: updatedBy,
-                    lastAssetCheck: now 
-                });
+                await addAsset(assetPayload);
                 closeModal();
                 // Mostrar el activo recién creado en la lista
                 setSearchFilter(serialCreado);
@@ -624,18 +706,22 @@ export default function InventoryPage() {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingAsset(null);
+        setNewNoteText('');
         setNewAsset({
             name: '', type: 'Laptop', serial: '', assignee: 'Almacén', status: 'Disponible',
             date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
             modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
             eolDate: '', notes: '', sfdcCase: '', oem: '', cod: '', boxNumber: '', country: 'Argentina',
-            locationId: '', photoUrl: null, invoiceUrl: null, invoiceFilename: null
+            locationId: '', photoUrl: null, photoUrls: [], hasCharger: false, invoiceUrl: null, invoiceFilename: null
         });
     };
 
     const handleEdit = (asset) => {
         if (!asset) return;
         setEditingAsset(asset);
+        setNewNoteText('');
+        const parsedPhotos = parseAssetPhotoUrls(asset.photoUrl, asset.photoUrls);
+        const cleanRawNotes = (asset.notes || '').replace(/\[CON CARGADOR\]\s*\n?/gi, '').trim();
         setNewAsset({
             id: asset.id,
             name: asset.name || asset.model || '',
@@ -652,14 +738,16 @@ export default function InventoryPage() {
             imei: asset.imei || '-',
             imei2: asset.imei2 || '',
             eolDate: asset.eolDate || '',
-            notes: asset.notes || '',
+            notes: cleanRawNotes,
             sfdcCase: asset.sfdcCase || asset.case || '',
             oem: asset.oem || '',
             country: asset.country || 'Argentina',
             cod: asset.cod || '',
             boxNumber: asset.boxNumber || '',
             locationId: asset.locationId || '',
-            photoUrl: asset.photoUrl || null,
+            photoUrl: parsedPhotos[0] || null,
+            photoUrls: parsedPhotos,
+            hasCharger: Boolean(asset.hasCharger || /\[CON CARGADOR\]/i.test(asset.notes || '')),
             invoiceUrl: asset.invoiceUrl || (assetInvoices[asset.id]?.invoiceUrl) || (asset.serial && assetInvoices[asset.serial]?.invoiceUrl) || null,
             invoiceFilename: asset.invoiceFilename || (assetInvoices[asset.id]?.invoiceFilename) || (asset.serial && assetInvoices[asset.serial]?.invoiceFilename) || null
         });
@@ -2705,35 +2793,59 @@ export default function InventoryPage() {
                                                                         );
                                                                     })()}
                                                                 </Link>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '4px' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '4px', flexWrap: 'wrap' }}>
                                                                     <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{asset.type}</span>
-                                                                    {asset.photoUrl && (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                e.preventDefault();
-                                                                                setPreviewImageUrl(asset.photoUrl);
-                                                                                setIsImagePreviewOpen(true);
-                                                                            }}
+                                                                    {(asset.hasCharger || /\[CON CARGADOR\]/i.test(asset.notes || '')) && asset.status === 'Recuperado' && (
+                                                                        <span
                                                                             style={{
-                                                                                border: 'none',
-                                                                                background: 'rgba(16, 185, 129, 0.1)',
-                                                                                color: '#10b981',
+                                                                                background: 'rgba(37, 99, 235, 0.1)',
+                                                                                color: '#2563eb',
+                                                                                border: '1px solid #93c5fd',
                                                                                 borderRadius: '4px',
-                                                                                padding: '2px 6px',
+                                                                                padding: '1px 6px',
                                                                                 fontSize: '0.65rem',
-                                                                                fontWeight: 'bold',
-                                                                                cursor: 'pointer',
-                                                                                display: 'flex',
+                                                                                fontWeight: 700,
+                                                                                display: 'inline-flex',
                                                                                 alignItems: 'center',
                                                                                 gap: '3px'
                                                                             }}
-                                                                            title="Ver foto del estado"
+                                                                            title="El equipo recuperado incluye su cargador"
                                                                         >
-                                                                            📷 Ver Foto
-                                                                        </button>
+                                                                            🔌 Con cargador
+                                                                        </span>
                                                                     )}
+                                                                    {(() => {
+                                                                        const photos = parseAssetPhotoUrls(asset.photoUrl, asset.photoUrls);
+                                                                        if (photos.length === 0) return null;
+                                                                        return (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    e.preventDefault();
+                                                                                    setPreviewImageList(photos);
+                                                                                    setPreviewImageUrl(photos[0]);
+                                                                                    setIsImagePreviewOpen(true);
+                                                                                }}
+                                                                                style={{
+                                                                                    border: 'none',
+                                                                                    background: 'rgba(16, 185, 129, 0.1)',
+                                                                                    color: '#10b981',
+                                                                                    borderRadius: '4px',
+                                                                                    padding: '2px 6px',
+                                                                                    fontSize: '0.65rem',
+                                                                                    fontWeight: 'bold',
+                                                                                    cursor: 'pointer',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    gap: '3px'
+                                                                                }}
+                                                                                title="Ver fotografías del estado"
+                                                                            >
+                                                                                📷 {photos.length > 1 ? `Ver Fotos (${photos.length})` : 'Ver Foto'}
+                                                                            </button>
+                                                                        );
+                                                                    })()}
                                                                     {(() => {
                                                                         const inv = assetInvoices[asset.id] || (asset.serial ? assetInvoices[asset.serial] : null) || {};
                                                                         const invUrl = asset.invoiceUrl || inv.invoiceUrl || inv.url;
@@ -3240,6 +3352,33 @@ export default function InventoryPage() {
                                 <option value="EOL">EOL</option>
                                 <option value="No Devuelto">No Devuelto ⚠️</option>
                             </select>
+                            {newAsset.status === 'Recuperado' && (
+                                <label
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        marginTop: '0.5rem',
+                                        padding: '0.5rem 0.75rem',
+                                        borderRadius: '8px',
+                                        backgroundColor: newAsset.hasCharger ? 'rgba(37, 99, 235, 0.08)' : 'var(--background)',
+                                        border: `1px solid ${newAsset.hasCharger ? '#3b82f6' : 'var(--border)'}`,
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 600,
+                                        color: newAsset.hasCharger ? '#1d4ed8' : 'var(--text-main)',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(newAsset.hasCharger)}
+                                        onChange={e => setNewAsset(prev => ({ ...prev, hasCharger: e.target.checked }))}
+                                        style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#2563eb' }}
+                                    />
+                                    <span>🔌 Incluye cargador</span>
+                                </label>
+                            )}
                         </div>
                         <div className="form-group">
                             <label className="form-label">Asignado a</label>
@@ -3431,95 +3570,261 @@ export default function InventoryPage() {
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">Notas Adicionales</label>
-                        <textarea
-                            className="form-textarea"
-                            rows="3"
-                            placeholder="Información extra sobre el activo..."
-                            value={newAsset.notes}
-                            onChange={e => handleFieldChange('notes', e.target.value, false)}
-                        />
+                        <label className="form-label">Notas Adicionales (Historial por Fecha)</label>
+                        {(() => {
+                            const noteEntries = parseAssetNoteEntries(newAsset.notes);
+                            const handleAddNoteEntry = () => {
+                                const trimmed = newNoteText.trim();
+                                if (!trimmed) return;
+                                const updated = [...noteEntries, { date: formatTodayShort(), text: trimmed }];
+                                setNewAsset(prev => ({ ...prev, notes: serializeAssetNoteEntries(updated) }));
+                                setNewNoteText('');
+                            };
+                            const handleRemoveNoteEntry = (idxToRemove) => {
+                                const updated = noteEntries.filter((_, i) => i !== idxToRemove);
+                                setNewAsset(prev => ({ ...prev, notes: serializeAssetNoteEntries(updated) }));
+                            };
+
+                            return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                    {noteEntries.length > 0 ? (
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.4rem',
+                                            maxHeight: '180px',
+                                            overflowY: 'auto',
+                                            padding: '0.6rem',
+                                            borderRadius: '8px',
+                                            backgroundColor: 'var(--background)',
+                                            border: '1px solid var(--border)'
+                                        }}>
+                                            {noteEntries.map((entry, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'flex-start',
+                                                        justifyContent: 'space-between',
+                                                        gap: '0.6rem',
+                                                        padding: '0.4rem 0.55rem',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: 'var(--surface)',
+                                                        border: '1px solid var(--border)',
+                                                        fontSize: '0.83rem'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                                                        <span style={{
+                                                            fontWeight: 700,
+                                                            fontSize: '0.75rem',
+                                                            color: '#1e40af',
+                                                            backgroundColor: '#dbeafe',
+                                                            padding: '1px 6px',
+                                                            borderRadius: '4px',
+                                                            whiteSpace: 'nowrap',
+                                                            flexShrink: 0
+                                                        }}>
+                                                            {entry.date}
+                                                        </span>
+                                                        <span style={{ color: 'var(--text-main)', wordBreak: 'break-word', lineHeight: 1.35 }}>
+                                                            {entry.text}
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveNoteEntry(idx)}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: '#94a3b8',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.8rem',
+                                                            padding: '0 4px',
+                                                            lineHeight: 1
+                                                        }}
+                                                        title="Eliminar comentario"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{
+                                            padding: '0.65rem',
+                                            borderRadius: '8px',
+                                            backgroundColor: 'var(--background)',
+                                            border: '1px dashed var(--border)',
+                                            color: 'var(--text-secondary)',
+                                            fontSize: '0.8rem',
+                                            textAlign: 'center'
+                                        }}>
+                                            No hay comentarios registrados aún.
+                                        </div>
+                                    )}
+
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder={`Escribir comentario (se guardará con fecha ${formatTodayShort()})...`}
+                                            value={newNoteText}
+                                            onChange={e => setNewNoteText(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleAddNoteEntry();
+                                                }
+                                            }}
+                                            style={{ flex: 1 }}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleAddNoteEntry}
+                                            disabled={!newNoteText.trim()}
+                                            style={{ whiteSpace: 'nowrap' }}
+                                        >
+                                            + Agregar Nota
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
 
-                    {/* Registro Fotográfico del Dispositivo */}
+                    {/* Registro Fotográfico del Dispositivo (Múltiples Fotos) */}
                     <div className="form-group" style={{ marginTop: '1rem' }}>
-                        <label className="form-label">Fotografía del Estado del Dispositivo (Opcional)</label>
+                        <label className="form-label">Fotografías del Estado del Dispositivo (Opcional - Permite varias fotos)</label>
                         <input
                             type="file"
                             accept="image/*"
-                            capture="environment"
+                            multiple
                             ref={cameraInputRef}
                             onChange={handlePhotoCapture}
                             style={{ display: 'none' }}
                         />
-                        {newAsset.photoUrl ? (
-                            <div style={{ position: 'relative', width: '100%', height: '180px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
-                                <img
-                                    src={newAsset.photoUrl}
-                                    alt="Foto de estado del equipo"
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setNewAsset(prev => ({ ...prev, photoUrl: null }))}
-                                    style={{
-                                        position: 'absolute',
-                                        top: '8px',
-                                        right: '8px',
-                                        backgroundColor: '#ef4444',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '50%',
-                                        width: '28px',
-                                        height: '28px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: 'pointer',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
-                                    }}
-                                    title="Eliminar foto"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() => cameraInputRef.current?.click()}
-                                disabled={isUploadingPhoto}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '0.5rem',
-                                    padding: '0.75rem',
-                                    border: '1px dashed var(--border)',
-                                    backgroundColor: 'var(--surface-active)',
-                                    color: 'var(--text-main)',
-                                    borderRadius: 'var(--radius-sm)',
-                                    cursor: 'pointer',
-                                    fontWeight: 600,
-                                    fontSize: '0.9rem',
-                                    width: '100%',
-                                    transition: 'all 0.2s'
-                                }}
-                            >
-                                {isUploadingPhoto ? (
-                                    <>
-                                        <Loader2 size={18} className="animate-spin" />
-                                        <span>Subiendo fotografía...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Camera size={18} />
-                                        <span>Tomar Foto del Estado</span>
-                                    </>
-                                )}
-                            </button>
-                        )}
+                        {(() => {
+                            const currentPhotos = parseAssetPhotoUrls(newAsset.photoUrl, newAsset.photoUrls);
+                            return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                                    {currentPhotos.length > 0 && (
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                                            gap: '0.6rem'
+                                        }}>
+                                            {currentPhotos.map((url, idx) => (
+                                                <div
+                                                    key={`${url}-${idx}`}
+                                                    style={{
+                                                        position: 'relative',
+                                                        width: '100%',
+                                                        height: '115px',
+                                                        borderRadius: 'var(--radius-md)',
+                                                        border: '1px solid var(--border)',
+                                                        overflow: 'hidden',
+                                                        backgroundColor: 'var(--background)'
+                                                    }}
+                                                >
+                                                    <img
+                                                        src={url}
+                                                        alt={`Foto ${idx + 1} del equipo`}
+                                                        onClick={() => {
+                                                            setPreviewImageList(currentPhotos);
+                                                            setPreviewImageUrl(url);
+                                                            setIsImagePreviewOpen(true);
+                                                        }}
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                                                        title="Clic para ampliar foto"
+                                                    />
+                                                    <span style={{
+                                                        position: 'absolute',
+                                                        bottom: '6px',
+                                                        left: '6px',
+                                                        backgroundColor: 'rgba(0,0,0,0.65)',
+                                                        color: 'white',
+                                                        fontSize: '0.65rem',
+                                                        fontWeight: 700,
+                                                        padding: '1px 6px',
+                                                        borderRadius: '4px'
+                                                    }}>
+                                                        Foto {idx + 1}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const nextPhotos = currentPhotos.filter((_, i) => i !== idx);
+                                                            setNewAsset(prev => ({
+                                                                ...prev,
+                                                                photoUrls: nextPhotos,
+                                                                photoUrl: nextPhotos[0] || null
+                                                            }));
+                                                        }}
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: '6px',
+                                                            right: '6px',
+                                                            backgroundColor: '#ef4444',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            borderRadius: '50%',
+                                                            width: '24px',
+                                                            height: '24px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: 'pointer',
+                                                            fontSize: '13px',
+                                                            fontWeight: 'bold',
+                                                            boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                                                        }}
+                                                        title="Eliminar esta foto"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => cameraInputRef.current?.click()}
+                                        disabled={isUploadingPhoto}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.5rem',
+                                            padding: '0.75rem',
+                                            border: '1px dashed var(--border)',
+                                            backgroundColor: 'var(--surface-active)',
+                                            color: 'var(--text-main)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            fontSize: '0.9rem',
+                                            width: '100%',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {isUploadingPhoto ? (
+                                            <>
+                                                <Loader2 size={18} className="animate-spin" />
+                                                <span>Subiendo fotografía(s)...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Camera size={18} />
+                                                <span>{currentPhotos.length > 0 ? '+ Agregar Otra Foto del Estado / Daños' : 'Tomar / Subir Fotos del Estado'}</span>
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     {/* Factura de Compra */}
@@ -3729,16 +4034,37 @@ export default function InventoryPage() {
             <Modal
                 isOpen={isImagePreviewOpen}
                 onClose={() => setIsImagePreviewOpen(false)}
-                title="Fotografía del Estado del Equipo"
+                title="Fotografías del Estado del Equipo"
             >
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '0.5rem' }}>
-                    <div style={{ width: '100%', maxHeight: '70vh', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                    <div style={{ width: '100%', maxHeight: '62vh', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)', backgroundColor: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <img 
                             src={previewImageUrl} 
                             alt="Estado del dispositivo" 
-                            style={{ width: '100%', height: 'auto', maxHeight: '70vh', objectFit: 'contain' }} 
+                            style={{ width: '100%', height: 'auto', maxHeight: '62vh', objectFit: 'contain' }} 
                         />
                     </div>
+                    {previewImageList.length > 1 && (
+                        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', width: '100%', padding: '0.25rem 0', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {previewImageList.map((url, idx) => (
+                                <img
+                                    key={`${url}-${idx}`}
+                                    src={url}
+                                    alt={`Miniatura ${idx + 1}`}
+                                    onClick={() => setPreviewImageUrl(url)}
+                                    style={{
+                                        width: '64px',
+                                        height: '64px',
+                                        objectFit: 'cover',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        border: previewImageUrl === url ? '2.5px solid #2563eb' : '1px solid var(--border)',
+                                        opacity: previewImageUrl === url ? 1 : 0.65
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    )}
                     <Button 
                         type="button" 
                         variant="secondary" 

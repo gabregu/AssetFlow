@@ -40,11 +40,67 @@ import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
 import * as XLSX from 'xlsx';
 import { useStore } from '../../../lib/store';
-import { uploadAssetInvoice } from '../../../lib/upload';
+import { uploadDevicePhoto, uploadAssetInvoice } from '../../../lib/upload';
 import { getExchangeRateForDate } from '@/lib/billing';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
+
+const parseAssetPhotoUrls = (rawPhotoUrl, photoUrlsArr) => {
+    if (Array.isArray(photoUrlsArr) && photoUrlsArr.length > 0) return photoUrlsArr.filter(Boolean);
+    if (!rawPhotoUrl) return [];
+    if (Array.isArray(rawPhotoUrl)) return rawPhotoUrl.filter(Boolean);
+    if (typeof rawPhotoUrl === 'string') {
+        const trimmed = rawPhotoUrl.trim();
+        if (!trimmed) return [];
+        if (trimmed.startsWith('[')) {
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) return parsed.filter(Boolean);
+            } catch (e) {
+                // fallback
+            }
+        }
+        return [trimmed];
+    }
+    return [];
+};
+
+const formatTodayShort = () => {
+    const d = new Date();
+    return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+};
+
+const parseAssetNoteEntries = (notesStr, fallbackDateStr = '') => {
+    if (!notesStr || typeof notesStr !== 'string') return [];
+    const cleaned = notesStr
+        .replace(/\[CON CARGADOR\]\s*\n?/gi, '')
+        .replace(/\s+(?=\[\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g, '\n')
+        .replace(/\s{2,}(?=\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}\s+)/g, '\n')
+        .trim();
+    if (!cleaned) return [];
+
+    const lines = cleaned.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    return lines.map(line => {
+        const bracketMatch = line.match(/^\[(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})(?:[^\]]*)\]\s*(.*)$/);
+        if (bracketMatch) {
+            return { date: bracketMatch[1], text: bracketMatch[2].trim() };
+        }
+        const plainDateMatch = line.match(/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\s*[:\-]?\s+(.*)$/);
+        if (plainDateMatch) {
+            return { date: plainDateMatch[1], text: plainDateMatch[2].trim() };
+        }
+        return { date: fallbackDateStr || formatTodayShort(), text: line };
+    }).filter(item => item.text.length > 0);
+};
+
+const serializeAssetNoteEntries = (entries) => {
+    if (!Array.isArray(entries) || entries.length === 0) return '';
+    return entries
+        .filter(e => e && e.text && e.text.trim())
+        .map(e => `${e.date || formatTodayShort()}  ${e.text.trim()}`)
+        .join('\n');
+};
 
 // Helper to classify aisles between Location W, H, and DEPÓSITO
 const isLocDep = (aisleName) => {
@@ -408,9 +464,49 @@ export default function WarehousePage() {
         modelNumber: '',
         partNumber: '',
         hardwareSpec: '',
-        notes: ''
+        notes: '',
+        photoUrl: null,
+        photoUrls: [],
+        hasCharger: false
     });
+    const [editAssetNewNote, setEditAssetNewNote] = useState('');
+    const editAssetPhotoInputRef = useRef(null);
+    const [isUploadingEditPhoto, setIsUploadingEditPhoto] = useState(false);
     const [isSavingAsset, setIsSavingAsset] = useState(false);
+
+    const handleEditAssetPhotoUpload = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        setIsUploadingEditPhoto(true);
+        try {
+            const serial = editAssetForm.serial || 'asset';
+            const uploadedUrls = [];
+            for (const file of files) {
+                const publicUrl = await uploadDevicePhoto(file, `asset_${serial}`);
+                if (publicUrl) uploadedUrls.push(publicUrl);
+            }
+            if (uploadedUrls.length > 0) {
+                setEditAssetForm(prev => {
+                    const currentPhotos = parseAssetPhotoUrls(prev.photoUrl, prev.photoUrls);
+                    const nextPhotos = [...currentPhotos, ...uploadedUrls];
+                    return {
+                        ...prev,
+                        photoUrls: nextPhotos,
+                        photoUrl: nextPhotos[0] || null
+                    };
+                });
+            }
+        } catch (err) {
+            console.error('Error subiendo foto de estado en almacén:', err);
+            alert('Error al subir la fotografía de estado.');
+        } finally {
+            setIsUploadingEditPhoto(false);
+            if (editAssetPhotoInputRef.current) {
+                editAssetPhotoInputRef.current.value = '';
+            }
+        }
+    };
 
     // Repair Modal States (Presupuestos, Falla, Revisión Proveedor y Aprobación)
     const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
@@ -630,6 +726,9 @@ export default function WarehousePage() {
     const handleOpenEditAsset = (assetToEdit) => {
         if (!assetToEdit) return;
         setEditingAssetObj(assetToEdit);
+        setEditAssetNewNote('');
+        const parsedPhotos = parseAssetPhotoUrls(assetToEdit.photoUrl, assetToEdit.photoUrls);
+        const cleanRawNotes = (assetToEdit.notes || '').replace(/\[CON CARGADOR\]\s*\n?/gi, '').trim();
         setEditAssetForm({
             id: assetToEdit.id,
             name: assetToEdit.name || assetToEdit.model || assetToEdit.type || '',
@@ -649,7 +748,10 @@ export default function WarehousePage() {
             modelNumber: assetToEdit.modelNumber || assetToEdit.model_number || '',
             partNumber: assetToEdit.partNumber || assetToEdit.part_number || '',
             hardwareSpec: assetToEdit.hardwareSpec || '',
-            notes: assetToEdit.notes || ''
+            notes: cleanRawNotes,
+            photoUrl: parsedPhotos[0] || null,
+            photoUrls: parsedPhotos,
+            hasCharger: Boolean(assetToEdit.hasCharger || /\[CON CARGADOR\]/i.test(assetToEdit.notes || ''))
         });
 
         const currentRep = assetRepairs[assetToEdit.id] || (assetToEdit.serial ? assetRepairs[assetToEdit.serial] : null) || {};
@@ -784,6 +886,15 @@ export default function WarehousePage() {
             const now = new Date().toISOString();
             const updatedBy = currentUser?.name || 'Administrador';
 
+            let finalNotes = editAssetForm.notes || '';
+            if (editAssetNewNote.trim()) {
+                const existingEntries = parseAssetNoteEntries(finalNotes);
+                finalNotes = serializeAssetNoteEntries([
+                    ...existingEntries,
+                    { date: formatTodayShort(), text: editAssetNewNote.trim() }
+                ]);
+            }
+
             await updateAsset(targetAssetObj.id, {
                 name: (editAssetForm.name || editAssetForm.model || '').trim(),
                 model: (editAssetForm.name || editAssetForm.model || '').trim(),
@@ -804,11 +915,15 @@ export default function WarehousePage() {
                 partNumber: editAssetForm.partNumber.trim(),
                 part_number: editAssetForm.partNumber.trim(),
                 hardwareSpec: editAssetForm.hardwareSpec.trim(),
-                notes: editAssetForm.notes || '',
+                notes: finalNotes,
+                photoUrls: editAssetForm.photoUrls || [],
+                photoUrl: (editAssetForm.photoUrls && editAssetForm.photoUrls[0]) || editAssetForm.photoUrl || null,
+                hasCharger: editAssetForm.status === 'Recuperado' ? Boolean(editAssetForm.hasCharger) : false,
                 dateLastUpdate: now,
                 updatedBy: updatedBy,
                 lastAssetCheck: now
             });
+            setEditAssetNewNote('');
 
             if (updateAssetRepair && (repairForm.company || repairForm.repairCost || repairForm.additionalCost || repairForm.issueDescription || repairForm.vendorReview || repairForm.approvalStatus !== 'pending' || repairForm.isApproved || (targetAssetObj.locationId || '').toUpperCase().startsWith('DEP-Z') || editAssetForm.status === 'En Reparación')) {
                 const calc = calculateRepairTotals(repairForm);
@@ -6829,6 +6944,32 @@ return renderSelectionInfoContent(false);
                                 <option value="No Devuelto">No Devuelto ⚠️</option>
                                 <option value="Baja de Equipo">Baja de Equipo</option>
                             </select>
+                            {editAssetForm.status === 'Recuperado' && (
+                                <label
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        marginTop: '0.45rem',
+                                        padding: '0.45rem 0.65rem',
+                                        borderRadius: '8px',
+                                        backgroundColor: editAssetForm.hasCharger ? 'rgba(37, 99, 235, 0.08)' : 'var(--background)',
+                                        border: `1px solid ${editAssetForm.hasCharger ? '#3b82f6' : 'var(--border)'}`,
+                                        cursor: 'pointer',
+                                        fontSize: '0.83rem',
+                                        fontWeight: 600,
+                                        color: editAssetForm.hasCharger ? '#1d4ed8' : 'var(--text-main)'
+                                    }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(editAssetForm.hasCharger)}
+                                        onChange={e => setEditAssetForm(prev => ({ ...prev, hasCharger: e.target.checked }))}
+                                        style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#2563eb' }}
+                                    />
+                                    <span>🔌 Incluye cargador</span>
+                                </label>
+                            )}
                         </div>
 
                         <div className="form-group">
@@ -7006,15 +7147,251 @@ return renderSelectionInfoContent(false);
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Notas del Activo</label>
-                        <textarea 
-                            rows={3}
-                            value={editAssetForm.notes || ''} 
-                            onChange={e => setEditAssetForm({ ...editAssetForm, notes: e.target.value })}
-                            placeholder="Notas o historial del equipo..."
-                            className="form-input"
-                            style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', resize: 'vertical' }}
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Notas Adicionales (Historial por Fecha)</label>
+                        {(() => {
+                            const noteEntries = parseAssetNoteEntries(editAssetForm.notes);
+                            const handleAddNoteEntry = () => {
+                                const trimmed = editAssetNewNote.trim();
+                                if (!trimmed) return;
+                                const updated = [...noteEntries, { date: formatTodayShort(), text: trimmed }];
+                                setEditAssetForm(prev => ({ ...prev, notes: serializeAssetNoteEntries(updated) }));
+                                setEditAssetNewNote('');
+                            };
+                            const handleRemoveNoteEntry = (idxToRemove) => {
+                                const updated = noteEntries.filter((_, i) => i !== idxToRemove);
+                                setEditAssetForm(prev => ({ ...prev, notes: serializeAssetNoteEntries(updated) }));
+                            };
+
+                            return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {noteEntries.length > 0 ? (
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.35rem',
+                                            maxHeight: '160px',
+                                            overflowY: 'auto',
+                                            padding: '0.5rem',
+                                            borderRadius: '8px',
+                                            backgroundColor: 'var(--background)',
+                                            border: '1px solid var(--border)'
+                                        }}>
+                                            {noteEntries.map((entry, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'flex-start',
+                                                        justifyContent: 'space-between',
+                                                        gap: '0.5rem',
+                                                        padding: '0.35rem 0.5rem',
+                                                        borderRadius: '6px',
+                                                        backgroundColor: 'var(--surface)',
+                                                        border: '1px solid var(--border)',
+                                                        fontSize: '0.82rem'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', flex: 1, minWidth: 0 }}>
+                                                        <span style={{
+                                                            fontWeight: 700,
+                                                            fontSize: '0.73rem',
+                                                            color: '#1e40af',
+                                                            backgroundColor: '#dbeafe',
+                                                            padding: '1px 6px',
+                                                            borderRadius: '4px',
+                                                            whiteSpace: 'nowrap',
+                                                            flexShrink: 0
+                                                        }}>
+                                                            {entry.date}
+                                                        </span>
+                                                        <span style={{ color: 'var(--text-main)', wordBreak: 'break-word', lineHeight: 1.35 }}>
+                                                            {entry.text}
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveNoteEntry(idx)}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: '#94a3b8',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.78rem',
+                                                            padding: '0 4px',
+                                                            lineHeight: 1
+                                                        }}
+                                                        title="Eliminar comentario"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{
+                                            padding: '0.55rem',
+                                            borderRadius: '8px',
+                                            backgroundColor: 'var(--background)',
+                                            border: '1px dashed var(--border)',
+                                            color: 'var(--text-secondary)',
+                                            fontSize: '0.78rem',
+                                            textAlign: 'center'
+                                        }}>
+                                            No hay comentarios registrados aún.
+                                        </div>
+                                    )}
+
+                                    <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center' }}>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder={`Escribir comentario (fecha ${formatTodayShort()})...`}
+                                            value={editAssetNewNote}
+                                            onChange={e => setEditAssetNewNote(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleAddNoteEntry();
+                                                }
+                                            }}
+                                            style={{ flex: 1, padding: '0.45rem 0.65rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleAddNoteEntry}
+                                            disabled={!editAssetNewNote.trim()}
+                                            style={{ whiteSpace: 'nowrap', fontSize: '0.78rem' }}
+                                        >
+                                            + Agregar Nota
+                                        </Button>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+
+                    {/* Fotografías del Estado del Dispositivo (Múltiples Fotos) */}
+                    <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Fotografías del Estado del Dispositivo (Opcional - Permite varias fotos)</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            ref={editAssetPhotoInputRef}
+                            onChange={handleEditAssetPhotoUpload}
+                            style={{ display: 'none' }}
                         />
+                        {(() => {
+                            const currentPhotos = parseAssetPhotoUrls(editAssetForm.photoUrl, editAssetForm.photoUrls);
+                            return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {currentPhotos.length > 0 && (
+                                        <div style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
+                                            gap: '0.5rem'
+                                        }}>
+                                            {currentPhotos.map((url, idx) => (
+                                                <div
+                                                    key={`${url}-${idx}`}
+                                                    style={{
+                                                        position: 'relative',
+                                                        width: '100%',
+                                                        height: '105px',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid var(--border)',
+                                                        overflow: 'hidden',
+                                                        backgroundColor: 'var(--background)'
+                                                    }}
+                                                >
+                                                    <a href={url} target="_blank" rel="noreferrer" title="Clic para abrir foto en tamaño completo">
+                                                        <img
+                                                            src={url}
+                                                            alt={`Foto ${idx + 1} del equipo`}
+                                                            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
+                                                        />
+                                                    </a>
+                                                    <span style={{
+                                                        position: 'absolute',
+                                                        bottom: '5px',
+                                                        left: '5px',
+                                                        backgroundColor: 'rgba(0,0,0,0.65)',
+                                                        color: 'white',
+                                                        fontSize: '0.62rem',
+                                                        fontWeight: 700,
+                                                        padding: '1px 5px',
+                                                        borderRadius: '4px'
+                                                    }}>
+                                                        Foto {idx + 1}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const nextPhotos = currentPhotos.filter((_, i) => i !== idx);
+                                                            setEditAssetForm(prev => ({
+                                                                ...prev,
+                                                                photoUrls: nextPhotos,
+                                                                photoUrl: nextPhotos[0] || null
+                                                            }));
+                                                        }}
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: '5px',
+                                                            right: '5px',
+                                                            backgroundColor: '#ef4444',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            borderRadius: '50%',
+                                                            width: '22px',
+                                                            height: '22px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: 'bold',
+                                                            boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                                                        }}
+                                                        title="Eliminar esta foto"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => editAssetPhotoInputRef.current?.click()}
+                                        disabled={isUploadingEditPhoto}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.5rem',
+                                            padding: '0.65rem',
+                                            border: '1px dashed var(--border)',
+                                            backgroundColor: 'var(--background)',
+                                            color: 'var(--text-main)',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            fontSize: '0.84rem',
+                                            width: '100%'
+                                        }}
+                                    >
+                                        <Camera size={16} />
+                                        <span>
+                                            {isUploadingEditPhoto
+                                                ? 'Subiendo fotografía(s)...'
+                                                : (currentPhotos.length > 0 ? '+ Agregar Otra Foto del Estado / Daños' : 'Tomar / Subir Fotos del Estado')}
+                                        </span>
+                                    </button>
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     {/* SECCIÓN DE PRESUPUESTO Y REPARACIÓN */}
