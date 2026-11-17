@@ -108,6 +108,64 @@ const isLocDep = (aisleName) => {
     return (aisleName || '').toUpperCase().startsWith('DEP-');
 };
 
+// Parses any DEP location ID (e.g. "DEP-AA-5-1", "DEP-A-A-5-1", "DEP-A-A-5-1__EdPuzzle Inc")
+// into its canonical components: { repisaRaw, repisaClean: "AA", canonicalAisle: "DEP-AA", estante: "5", pos: "1", canonicalLocId: "DEP-AA-5-1" }
+const parseDepLocation = (rawId) => {
+    if (!rawId) return null;
+    const base = String(rawId).split('__')[0].trim().toUpperCase();
+    if (!base.startsWith('DEP-')) return null;
+    const parts = base.split('-').filter(Boolean);
+    if (parts.length < 4) return null;
+    const rawPos = parts[parts.length - 1];
+    const rawEstante = parts[parts.length - 2];
+    const posNum = parseInt(rawPos, 10);
+    const estanteNum = parseInt(rawEstante, 10);
+    const pos = !isNaN(posNum) ? String(posNum) : rawPos;
+    const estante = !isNaN(estanteNum) ? String(estanteNum) : rawEstante;
+    const repisaRaw = parts.slice(1, parts.length - 2).join('-');
+    const repisaClean = repisaRaw.replace(/[^A-Z0-9]/g, '');
+    if (!repisaClean) return null;
+    return {
+        repisaRaw,
+        repisaClean,
+        canonicalAisle: `DEP-${repisaClean}`,
+        estante,
+        pos,
+        canonicalLocId: `DEP-${repisaClean}-${estante}-${pos}`
+    };
+};
+
+const normalizeDepAisle = (aisleName) => {
+    if (!aisleName) return '';
+    const upper = String(aisleName).trim().toUpperCase();
+    if (!upper.startsWith('DEP-')) return upper;
+    const repisaClean = upper.replace(/^DEP-/, '').replace(/[^A-Z0-9]/g, '');
+    return repisaClean ? `DEP-${repisaClean}` : upper;
+};
+
+const isAssetInDepAisle = (assetLocId, aisleName) => {
+    if (!assetLocId || !aisleName) return false;
+    const parsed = parseDepLocation(assetLocId);
+    const normAisle = normalizeDepAisle(aisleName);
+    if (parsed && normAisle.startsWith('DEP-')) {
+        return parsed.canonicalAisle === normAisle;
+    }
+    return String(assetLocId).toUpperCase().startsWith(`${String(aisleName).toUpperCase()}-`);
+};
+
+const isSameWarehouseLocation = (assetLocId, targetLocId) => {
+    if (!assetLocId || !targetLocId) return false;
+    const aClean = String(assetLocId).split('__')[0].trim().toUpperCase();
+    const tClean = String(targetLocId).split('__')[0].trim().toUpperCase();
+    if (aClean === tClean) return true;
+    const parsedA = parseDepLocation(aClean);
+    const parsedT = parseDepLocation(tClean);
+    if (parsedA && parsedT) {
+        return parsedA.canonicalLocId === parsedT.canonicalLocId;
+    }
+    return false;
+};
+
 const isLocH = (aisleName) => {
     if (isLocDep(aisleName)) return false; // DEP is never H
     const upper = (aisleName || '').toUpperCase();
@@ -1287,10 +1345,37 @@ export default function WarehousePage() {
             if (a.locationId) {
                 ids.add(a.locationId);
                 ids.add(a.locationId.toUpperCase().trim());
+                const parsedDep = parseDepLocation(a.locationId);
+                if (parsedDep) {
+                    ids.add(parsedDep.canonicalLocId);
+                }
             }
         });
         return ids;
     }, [filteredAssets, hasActiveSearch]);
+
+    // Auto-normalize any DEP-* asset locationId that has hyphens inside the repisa code (e.g. DEP-A-A-5-1 -> DEP-AA-5-1)
+    const normalizedDepAssetsRef = useRef(new Set());
+    useEffect(() => {
+        if (!assets || assets.length === 0) return;
+        const toFix = assets.filter(a => {
+            if (!a.locationId || normalizedDepAssetsRef.current.has(a.id)) return false;
+            const parsed = parseDepLocation(a.locationId);
+            if (!parsed) return false;
+            const currentClean = String(a.locationId).split('__')[0].trim().toUpperCase();
+            return currentClean !== parsed.canonicalLocId;
+        });
+        if (toFix.length === 0) return;
+        toFix.forEach(a => normalizedDepAssetsRef.current.add(a.id));
+        (async () => {
+            for (const a of toFix) {
+                const parsed = parseDepLocation(a.locationId);
+                if (parsed) {
+                    await mapAssetToLocation(a.id, parsed.canonicalLocId);
+                }
+            }
+        })();
+    }, [assets]);
 
     // Automatically smooth-scroll to the highlighted slot during search
     useEffect(() => {
@@ -1318,11 +1403,29 @@ export default function WarehousePage() {
             isCountryMatch(loc.country, countryFilter)
         );
         filtered.forEach(loc => {
-            if (!groups[loc.aisle]) groups[loc.aisle] = [];
-            groups[loc.aisle].push(loc);
+            const aisleKey = isLocDep(loc.aisle) ? normalizeDepAisle(loc.aisle) : loc.aisle;
+            if (!groups[aisleKey]) groups[aisleKey] = [];
+            groups[aisleKey].push(loc);
+        });
+        // Include any DEP-* slot referenced by assets of this client so they always render on the shelf grid
+        assets.forEach(a => {
+            if (!isCountryMatch(a.country, countryFilter) || !a.locationId) return;
+            const parsed = parseDepLocation(a.locationId);
+            if (parsed) {
+                if (!groups[parsed.canonicalAisle]) groups[parsed.canonicalAisle] = [];
+                if (!groups[parsed.canonicalAisle].some(l => isSameWarehouseLocation(l.id, parsed.canonicalLocId))) {
+                    groups[parsed.canonicalAisle].push({
+                        id: parsed.canonicalLocId,
+                        aisle: parsed.canonicalAisle,
+                        section: parsed.estante,
+                        level: parsed.pos,
+                        country: a.country || countryFilter
+                    });
+                }
+            }
         });
         return groups;
-    }, [warehouseLocations, countryFilter]);
+    }, [warehouseLocations, assets, countryFilter]);
 
     // Track visual sorting of group aisles
     const [groupOrder, setGroupOrder] = useState([]);
@@ -1353,7 +1456,7 @@ export default function WarehousePage() {
 
         const filteredEntries = entries.map(([aisle, locations]) => {
             const matchingLocs = locations.filter(loc => {
-                const locAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === loc.id);
+                const locAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, loc.id));
                 if (locationSearch) {
                     const searchLower = locationSearch.toLowerCase();
                     const locIdMatch = String(loc.id || '').toLowerCase().includes(searchLower);
@@ -1375,7 +1478,7 @@ export default function WarehousePage() {
             return idxA - idxB;
         });
         return filteredEntries;
-    }, [groupedLocations, groupOrder, filteredAssets, selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch, assets]);
+    }, [groupedLocations, groupOrder, filteredAssets, selectedBrand, cpuFilter, ramFilter, statusFilter, locationSearch, assets, countryFilter]);
 
     // Split between Location W, H and DEPÓSITO
     const locationsW = useMemo(() => {
@@ -1415,6 +1518,7 @@ export default function WarehousePage() {
         return assets.filter(a => {
             if (!isCountryMatch(a.country, countryFilter)) return false;
             if (!a.locationId) return false;
+            if (parseDepLocation(a.locationId)) return true;
             const loc = warehouseLocations.find(l => l.id === a.locationId);
             return loc && isLocDep(loc.aisle);
         }).length;
@@ -1669,16 +1773,23 @@ export default function WarehousePage() {
 
     const handleScanLocation = (locationId, event = null) => {
         const searchNorm = normalizeId(locationId);
+        const parsedDepInput = parseDepLocation(locationId);
         let loc = warehouseLocations.find(l => 
-            normalizeId(l.id) === searchNorm
-        );
+            isCountryMatch(l.country, countryFilter) && (
+                normalizeId(l.id) === searchNorm ||
+                (parsedDepInput && isSameWarehouseLocation(l.id, parsedDepInput.canonicalLocId))
+            )
+        ) || warehouseLocations.find(l => normalizeId(l.id) === searchNorm);
+
+        if (loc && parsedDepInput) {
+            loc = { ...loc, id: parsedDepInput.canonicalLocId, aisle: parsedDepInput.canonicalAisle, section: parsedDepInput.estante, level: parsedDepInput.pos };
+        }
 
         if (!loc) {
             // Auto-mock DEP location if it matches format DEP-X-Y-Z
-            const parts = locationId.split('-');
             const mockCountry = sanitizeCountryForLocation(countryFilter);
-            if (locationId.startsWith('DEP-') && parts.length === 4) {
-                loc = { id: locationId, aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], country: mockCountry };
+            if (parsedDepInput) {
+                loc = { id: parsedDepInput.canonicalLocId, aisle: parsedDepInput.canonicalAisle, section: parsedDepInput.estante, level: parsedDepInput.pos, country: mockCountry };
             } else if (locationId.toUpperCase().startsWith('CAJA-')) {
                 const cajaNum = locationId.toUpperCase().replace(/^CAJA-/, '');
                 loc = { id: locationId.toUpperCase(), aisle: 'CAJA', section: '-', level: cajaNum, country: mockCountry };
@@ -1705,7 +1816,7 @@ export default function WarehousePage() {
             confirmMapping(scannedAsset.id, loc.id);
         } else {
             setSelectedLocation(loc);
-            const locAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === loc.id);
+            const locAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, loc.id));
             if (locAssets.length === 1) {
                 setSelectedAssetId(locAssets[0].id);
             } else if (locAssets.length === 0) {
@@ -1785,7 +1896,7 @@ export default function WarehousePage() {
     const finishAudit = async () => {
         if (!auditLocation) return;
         
-        const expected = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === auditLocation.id);
+        const expected = assets.filter(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, auditLocation.id));
         const matches = scannedAuditAssets.filter(s => expected.find(e => e.id === s.id));
         const extras = scannedAuditAssets.filter(s => !expected.find(e => e.id === s.id));
         const missing = expected.filter(e => !scannedAuditAssets.find(s => s.id === e.id));
@@ -1801,64 +1912,66 @@ export default function WarehousePage() {
     };
 
     const confirmMapping = async (assetId, locationId) => {
-        let finalLocationId = locationId;
-        const isDep = locationId.startsWith('DEP-');
+        const parsedDep = parseDepLocation(locationId);
+        let finalLocationId = parsedDep ? parsedDep.canonicalLocId : locationId;
+        const isDep = Boolean(parsedDep) || finalLocationId.startsWith('DEP-');
         const locationCountry = sanitizeCountryForLocation(countryFilter);
 
-        if (isDep) {
-            const targetAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === locationId);
+        if (isDep && parsedDep) {
+            const targetAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, finalLocationId));
             if (targetAssets.length > 0) {
-                const parts = locationId.split('-');
-                if (parts.length === 4) {
-                    const repisa = parts[1];
-                    const estante = parts[2];
-                    let nextPos = null;
-                    const config = depositoConfig[`DEP-${repisa}`] || { rows: 5, cols: 10 };
-                    for (let p = 1; p <= config.cols; p++) {
-                        const candidateId = `DEP-${repisa}-${estante}-${p}`;
-                        if (!assets.some(a => isCountryMatch(a.country, countryFilter) && a.locationId === candidateId)) {
-                            nextPos = p;
-                            break;
-                        }
+                const repisa = parsedDep.repisaClean;
+                const estante = parsedDep.estante;
+                let nextPos = null;
+                const config = depositoConfig[`DEP-${repisa}`] || { rows: 5, cols: 10 };
+                for (let p = 1; p <= config.cols; p++) {
+                    const candidateId = `DEP-${repisa}-${estante}-${p}`;
+                    if (!assets.some(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, candidateId))) {
+                        nextPos = p;
+                        break;
                     }
+                }
 
-                    if (nextPos !== null) {
-                        const candidateId = `DEP-${repisa}-${estante}-${nextPos}`;
-                        if (candidateId !== locationId) {
-                            const doMove = window.confirm(
-                                `⚠️ La ubicación ${locationId} ya está ocupada.\n\n` +
-                                `¿Querés asignar el equipo a la próxima posición libre automáticamente: ${candidateId}?`
-                            );
-                            if (doMove) {
-                                finalLocationId = candidateId;
-                                if (!warehouseLocations.some(l => l.id === candidateId)) {
-                                    const { error: addErr } = await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: candidateId, country: locationCountry });
-                                    if (addErr) { alert('Error al crear ubicación: ' + addErr.message); return; }
+                if (nextPos !== null) {
+                    const candidateId = `DEP-${repisa}-${estante}-${nextPos}`;
+                    if (candidateId !== finalLocationId) {
+                        const doMove = window.confirm(
+                            `⚠️ La ubicación ${finalLocationId} ya está ocupada.\n\n` +
+                            `¿Querés asignar el equipo a la próxima posición libre automáticamente: ${candidateId}?`
+                        );
+                        if (doMove) {
+                            finalLocationId = candidateId;
+                            if (!warehouseLocations.some(l => isCountryMatch(l.country, countryFilter) && isSameWarehouseLocation(l.id, candidateId))) {
+                                let resAdd = await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: candidateId, country: locationCountry });
+                                if (resAdd.error && resAdd.error.code === '23505') {
+                                    resAdd = await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: `${candidateId}__${locationCountry}`, country: locationCountry });
                                 }
-                            } else {
-                                return; // Cancel mapping completely
+                                if (resAdd.error && resAdd.error.code !== '23505') { alert('Error al crear ubicación: ' + resAdd.error.message); return; }
                             }
+                        } else {
+                            return; // Cancel mapping completely
                         }
-                    } else {
-                        const force = window.confirm(`Todas las posiciones en DEP-${repisa}-${estante} están ocupadas.\n\n¿Forzar asignación en ${locationId}?`);
-                        if (!force) return;
                     }
+                } else {
+                    const force = window.confirm(`Todas las posiciones en DEP-${repisa}-${estante} están ocupadas.\n\n¿Forzar asignación en ${finalLocationId}?`);
+                    if (!force) return;
                 }
             }
         }
-        if (finalLocationId.startsWith('DEP-') && !warehouseLocations.some(l => l.id === finalLocationId)) {
-            const parts = finalLocationId.split('-');
-            if (parts.length === 4) {
-                const { error: addErr } = await addWarehouseLocation({ aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], id: finalLocationId, country: locationCountry });
-                if (addErr) { alert('Error al crear ubicación en depósito: ' + addErr.message); return; }
+        const finalParsedDep = parseDepLocation(finalLocationId);
+        if (finalParsedDep && !warehouseLocations.some(l => isCountryMatch(l.country, countryFilter) && isSameWarehouseLocation(l.id, finalParsedDep.canonicalLocId))) {
+            let resAdd = await addWarehouseLocation({ aisle: finalParsedDep.canonicalAisle, section: finalParsedDep.estante, level: finalParsedDep.pos, id: finalParsedDep.canonicalLocId, country: locationCountry });
+            if (resAdd.error && resAdd.error.code === '23505') {
+                resAdd = await addWarehouseLocation({ aisle: finalParsedDep.canonicalAisle, section: finalParsedDep.estante, level: finalParsedDep.pos, id: `${finalParsedDep.canonicalLocId}__${locationCountry}`, country: locationCountry });
             }
+            if (resAdd.error && resAdd.error.code !== '23505') { alert('Error al crear ubicación en depósito: ' + resAdd.error.message); return; }
         } else if ((finalLocationId.startsWith('CAJA-') || finalLocationId.startsWith('REV-') || finalLocationId.startsWith('ARM-')) && !warehouseLocations.some(l => l.id === finalLocationId)) {
             let mockAisle = 'CAJA';
             if (finalLocationId.startsWith('REV-')) mockAisle = 'REV';
             else if (finalLocationId.startsWith('ARM-')) mockAisle = 'ARM';
             
             const { error: addErr } = await addWarehouseLocation({ aisle: mockAisle, section: '-', level: '-', id: finalLocationId, country: locationCountry });
-            if (addErr) { alert('Error al crear ubicación: ' + addErr.message); return; }
+            if (addErr && addErr.code !== '23505') { alert('Error al crear ubicación: ' + addErr.message); return; }
         }
 
         const res = await mapAssetToLocation(assetId, finalLocationId);
@@ -1876,53 +1989,54 @@ export default function WarehousePage() {
         if (e) e.preventDefault();
         if (!movingAsset || !targetLocationId) return;
 
-        let finalTargetId = targetLocationId;
-        const targetAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === targetLocationId);
+        const parsedTargetDep = parseDepLocation(targetLocationId);
+        let finalTargetId = parsedTargetDep ? parsedTargetDep.canonicalLocId : targetLocationId;
+        const targetAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, finalTargetId));
         const locationCountry = sanitizeCountryForLocation(countryFilter);
         
         try {
             if (targetAssets.length > 0) {
-                const isDep = targetLocationId.startsWith('DEP-');
-                if (isDep) {
-                    const parts = targetLocationId.split('-');
-                    if (parts.length === 4) {
-                        const repisa = parts[1];
-                        const estante = parts[2];
-                        let nextPos = null;
-                        const config = depositoConfig[`DEP-${repisa}`] || { rows: 5, cols: 10 };
-                        for (let p = 1; p <= config.cols; p++) {
-                            const candidateId = `DEP-${repisa}-${estante}-${p}`;
-                            if (!assets.some(a => isCountryMatch(a.country, countryFilter) && a.locationId === candidateId)) {
-                                nextPos = p;
-                                break;
-                            }
+                const isDep = Boolean(parsedTargetDep) || finalTargetId.startsWith('DEP-');
+                if (isDep && parsedTargetDep) {
+                    const repisa = parsedTargetDep.repisaClean;
+                    const estante = parsedTargetDep.estante;
+                    let nextPos = null;
+                    const config = depositoConfig[`DEP-${repisa}`] || { rows: 5, cols: 10 };
+                    for (let p = 1; p <= config.cols; p++) {
+                        const candidateId = `DEP-${repisa}-${estante}-${p}`;
+                        if (!assets.some(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, candidateId))) {
+                            nextPos = p;
+                            break;
                         }
+                    }
 
-                        if (nextPos !== null) {
-                            const candidateId = `DEP-${repisa}-${estante}-${nextPos}`;
-                            if (candidateId !== targetLocationId) {
-                                const doMove = window.confirm(
-                                    `⚠️ La ubicación destino ${targetLocationId} ya está ocupada.\n\n` +
-                                    `¿Querés mover el equipo a la próxima posición libre automáticamente: ${candidateId}?`
-                                );
-                                if (doMove) {
-                                    finalTargetId = candidateId;
-                                    if (!warehouseLocations.some(l => l.id === candidateId)) {
-                                        const { error: addErr } = await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: candidateId, country: locationCountry });
-                                        if (addErr) { alert('Error al crear ubicación: ' + addErr.message); return; }
+                    if (nextPos !== null) {
+                        const candidateId = `DEP-${repisa}-${estante}-${nextPos}`;
+                        if (candidateId !== finalTargetId) {
+                            const doMove = window.confirm(
+                                `⚠️ La ubicación destino ${finalTargetId} ya está ocupada.\n\n` +
+                                `¿Querés mover el equipo a la próxima posición libre automáticamente: ${candidateId}?`
+                            );
+                            if (doMove) {
+                                finalTargetId = candidateId;
+                                if (!warehouseLocations.some(l => isCountryMatch(l.country, countryFilter) && isSameWarehouseLocation(l.id, candidateId))) {
+                                    let resAdd = await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: candidateId, country: locationCountry });
+                                    if (resAdd.error && resAdd.error.code === '23505') {
+                                        resAdd = await addWarehouseLocation({ aisle: `DEP-${repisa}`, section: estante, level: String(nextPos), id: `${candidateId}__${locationCountry}`, country: locationCountry });
                                     }
-                                } else {
-                                    return; // Cancel mapping completely
+                                    if (resAdd.error && resAdd.error.code !== '23505') { alert('Error al crear ubicación: ' + resAdd.error.message); return; }
                                 }
+                            } else {
+                                return; // Cancel mapping completely
                             }
-                        } else {
-                            const force = window.confirm(`Todas las posiciones en DEP-${repisa}-${estante} están ocupadas.\n\n¿Forzar movimiento a ${targetLocationId}?`);
-                            if (!force) return;
                         }
+                    } else {
+                        const force = window.confirm(`Todas las posiciones en DEP-${repisa}-${estante} están ocupadas.\n\n¿Forzar movimiento a ${finalTargetId}?`);
+                        if (!force) return;
                     }
                 } else {
                     const confirmMove = window.confirm(
-                        `La ubicación destino (${targetLocationId}) ya está ocupada por el activo:\n` +
+                        `La ubicación destino (${finalTargetId}) ya está ocupada por el activo:\n` +
                         `"${targetAssets[0].name}" (SN: ${targetAssets[0].serial || 'N/A'}).\n\n` +
                         `¿Desea agregar este activo a dicha ubicación?`
                     );
@@ -1930,12 +2044,13 @@ export default function WarehousePage() {
                 }
             }
 
-            if (finalTargetId.startsWith('DEP-') && !warehouseLocations.some(l => l.id === finalTargetId)) {
-                const parts = finalTargetId.split('-');
-                if (parts.length === 4) {
-                    const { error: addErr } = await addWarehouseLocation({ aisle: `DEP-${parts[1]}`, section: parts[2], level: parts[3], id: finalTargetId, country: locationCountry });
-                    if (addErr) { alert('Error al crear ubicación en depósito: ' + addErr.message); return; }
+            const finalParsedDep = parseDepLocation(finalTargetId);
+            if (finalParsedDep && !warehouseLocations.some(l => isCountryMatch(l.country, countryFilter) && isSameWarehouseLocation(l.id, finalParsedDep.canonicalLocId))) {
+                let resAdd = await addWarehouseLocation({ aisle: finalParsedDep.canonicalAisle, section: finalParsedDep.estante, level: finalParsedDep.pos, id: finalParsedDep.canonicalLocId, country: locationCountry });
+                if (resAdd.error && resAdd.error.code === '23505') {
+                    resAdd = await addWarehouseLocation({ aisle: finalParsedDep.canonicalAisle, section: finalParsedDep.estante, level: finalParsedDep.pos, id: `${finalParsedDep.canonicalLocId}__${locationCountry}`, country: locationCountry });
                 }
+                if (resAdd.error && resAdd.error.code !== '23505') { alert('Error al crear ubicación en depósito: ' + resAdd.error.message); return; }
             }
 
             const res = await mapAssetToLocation(movingAsset.id, finalTargetId);
@@ -1961,10 +2076,10 @@ export default function WarehousePage() {
         if (!movingAllSourceLocation || !targetAllLocationId) return;
 
         const sourceLocId = movingAllSourceLocation.id;
-        const sourceAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === sourceLocId);
+        const sourceAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, sourceLocId));
         if (sourceAssets.length === 0) return;
 
-        const targetAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === targetAllLocationId);
+        const targetAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, targetAllLocationId));
 
         try {
             if (targetAssets.length > 0) {
@@ -2105,10 +2220,10 @@ export default function WarehousePage() {
     const handleDeleteGroup = async (aisle, e) => {
         e.stopPropagation();
         
-        const locationsToDelete = warehouseLocations.filter(l => l.aisle === aisle && isCountryMatch(l.country, countryFilter));
-        const hasAssets = locationsToDelete.some(loc => 
-            assets.some(a => isCountryMatch(a.country, countryFilter) && a.locationId === loc.id)
-        );
+        const locationsToDelete = warehouseLocations.filter(l => (l.aisle === aisle || (isLocDep(aisle) && normalizeDepAisle(l.aisle) === normalizeDepAisle(aisle))) && isCountryMatch(l.country, countryFilter));
+        const hasAssets = isLocDep(aisle)
+            ? assets.some(a => isCountryMatch(a.country, countryFilter) && isAssetInDepAisle(a.locationId, aisle))
+            : locationsToDelete.some(loc => assets.some(a => isCountryMatch(a.country, countryFilter) && a.locationId === loc.id));
         if (hasAssets) {
             alert('No se puede eliminar la repisa porque contiene equipos asignados. Reubique los equipos primero.');
             return;
@@ -2176,8 +2291,8 @@ export default function WarehousePage() {
         
         let newAisle = renameGroupCategory.trim().toUpperCase();
         if (renameGroupType === 'D') {
-            let letter = newAisle.replace(/^REPISA\s+/i, '').trim();
-            if (!letter) letter = newAisle; 
+            let letter = newAisle.replace(/^REPISA\s+/i, '').replace(/^DEP-/i, '').replace(/[^A-Z0-9]/g, '').trim();
+            if (!letter) letter = newAisle.replace(/[^A-Z0-9]/g, '');
             newAisle = `DEP-${letter}`;
         } else {
             newAisle = combineAisleName(renameGroupManufacturer, newAisle);
@@ -2911,17 +3026,7 @@ export default function WarehousePage() {
             return { bgColor: '#f97316', borderColor: '#ea580c' }; // Naranja
         }
 
-        // 4. Recuperado (Azul)
-        const isRecuperado = locationAssets.some(a => {
-            const s = (a.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            return s.includes('RECUPERADO');
-        });
-
-        if (isRecuperado) {
-            return { bgColor: '#3b82f6', borderColor: '#2563eb' }; // Azul
-        }
-
-        // 5. Nuevo (Verde)
+        // 4. Nuevo (Verde)
         const isNuevo = locationAssets.some(a => {
             const s = (a.status || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
             return s.includes('NUEVO');
@@ -2931,8 +3036,8 @@ export default function WarehousePage() {
             return { bgColor: '#10b981', borderColor: '#059669' }; // Verde
         }
 
-        // Default Verde
-        return { bgColor: '#10b981', borderColor: '#059669' };
+        // 5. Recuperado / Reutilizado / Verificacion HW / Bloqueado / Por Recuperar (Azul)
+        return { bgColor: '#3b82f6', borderColor: '#2563eb' }; // Azul
     };
 
     const renderArmarioCelulares = () => {
@@ -3432,15 +3537,14 @@ export default function WarehousePage() {
         let aisleAssetsCount = 0;
         let aisleAssets = [];
         if (isDepZone) {
-            const prefix = `${aisle}-`;
             aisleAssets = assets.filter(a => 
                 isCountryMatch(a.country, countryFilter) &&
-                a.locationId && a.locationId.toUpperCase().startsWith(prefix.toUpperCase())
+                isAssetInDepAisle(a.locationId, aisle)
             );
         } else {
             aisleAssets = assets.filter(a => 
                 isCountryMatch(a.country, countryFilter) &&
-                locations.some(loc => loc.id === a.locationId)
+                locations.some(loc => isSameWarehouseLocation(a.locationId, loc.id))
             );
         }
         aisleAssetsCount = aisleAssets.length;
@@ -3662,7 +3766,19 @@ export default function WarehousePage() {
                 
                 {/* Cell grid box */}
                 {isDepZone ? (() => {
-                    const config = depositoConfig[aisle] || { rows: 5, cols: 10 };
+                    const rawConfig = depositoConfig[aisle] || { rows: 5, cols: 10 };
+                    let maxRows = Number(rawConfig.rows) || 5;
+                    let maxCols = Number(rawConfig.cols) || 10;
+                    aisleAssets.forEach(a => {
+                        const parsed = parseDepLocation(a.locationId);
+                        if (parsed) {
+                            const r = parseInt(parsed.estante, 10);
+                            const c = parseInt(parsed.pos, 10);
+                            if (!isNaN(r) && r > maxRows && r <= 20) maxRows = r;
+                            if (!isNaN(c) && c > maxCols && c <= 50) maxCols = c;
+                        }
+                    });
+                    const config = { ...rawConfig, rows: maxRows, cols: maxCols };
                     const estantesIndices = Array.from({ length: config.rows }, (_, i) => config.rows - i);
                     const posIndices = Array.from({ length: config.cols }, (_, i) => i + 1);
 
@@ -3681,7 +3797,7 @@ export default function WarehousePage() {
                         </div>
 
                         {aisle === 'DEP-Z' && (() => {
-                            const zAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId && a.locationId.toUpperCase().startsWith('DEP-Z-'));
+                            const zAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && isAssetInDepAisle(a.locationId, 'DEP-Z'));
                             let totalBudgetUSD = 0;
                             let totalBudgetARS = 0;
                             let approvedCount = 0;
@@ -3755,7 +3871,10 @@ export default function WarehousePage() {
                         })()}
                         
                         {estantesIndices.map(estante => {
-                            const isEstanteSelected = selectedLocation?.id && selectedLocation.id.startsWith(`${aisle}-${estante}-`);
+                            const isEstanteSelected = selectedLocation?.id && (
+                                selectedLocation.id.startsWith(`${aisle}-${estante}-`) ||
+                                (parseDepLocation(selectedLocation.id)?.canonicalAisle === normalizeDepAisle(aisle) && String(parseDepLocation(selectedLocation.id)?.estante) === String(estante))
+                            );
                             return (
                             <div key={`estante-${estante}`} style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: isEstanteSelected ? 1000 : 1 }}>
                                 <div style={{ width: '16px', textAlign: 'right', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
@@ -3764,11 +3883,11 @@ export default function WarehousePage() {
                                 <div style={{ display: 'grid', gridTemplateColumns: `repeat(${config.cols}, 1fr)`, gap: '6px', flex: 1, position: 'relative' }}>
                                     {posIndices.map(pos => {
                                         const locId = `${aisle}-${estante}-${pos}`;
-                                        const loc = locations.find(l => l.id === locId) || { id: locId };
-                                        const locationAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === locId);
+                                        const loc = locations.find(l => isSameWarehouseLocation(l.id, locId)) || { id: locId };
+                                        const locationAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, locId));
                                         const assetCount = locationAssets.length;
                                         
-                                        const isSelected = selectedLocation?.id === locId || auditLocation?.id === locId;
+                                        const isSelected = isSameWarehouseLocation(selectedLocation?.id, locId) || isSameWarehouseLocation(auditLocation?.id, locId);
                                         
                                         let bgColor = 'transparent';
                                         let borderColor = 'var(--border)';
@@ -4000,7 +4119,7 @@ export default function WarehousePage() {
             );
         }
 
-        const locationAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && a.locationId === selectedLocation.id);
+        const locationAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && isSameWarehouseLocation(a.locationId, selectedLocation.id));
         const asset = selectedAssetId ? locationAssets.find(a => a.id === selectedAssetId) : (locationAssets.length === 1 ? locationAssets[0] : null);
 
         if (isFloating) {
@@ -5743,7 +5862,13 @@ export default function WarehousePage() {
                         if (selectedGroup) {
                             const groupLocs = warehouseLocations.filter(l => l.aisle === selectedGroup && isCountryMatch(l.country, countryFilter));
                             const groupLocIds = groupLocs.map(l => l.id);
-                            const groupAssets = assets.filter(a => isCountryMatch(a.country, countryFilter) && groupLocIds.includes(a.locationId));
+                            const groupAssets = assets.filter(a =>
+                                isCountryMatch(a.country, countryFilter) && (
+                                    isLocDep(selectedGroup)
+                                        ? isAssetInDepAisle(a.locationId, selectedGroup)
+                                        : groupLocIds.some(id => isSameWarehouseLocation(a.locationId, id))
+                                )
+                            );
                             
                             return (
                                 <Card style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '500px', overflowY: 'auto' }}>
@@ -5853,8 +5978,10 @@ return renderSelectionInfoContent(false);
                                         e.stopPropagation();
                                         const depositoAssets = assets.filter(a => 
                                             isCountryMatch(a.country, countryFilter) &&
-                                            a.locationId && 
-                                            locationsD.some(([aisle]) => a.locationId.toUpperCase().startsWith(`${aisle.toUpperCase()}-`))
+                                            a.locationId && (
+                                                Boolean(parseDepLocation(a.locationId)) ||
+                                                locationsD.some(([aisle]) => isAssetInDepAisle(a.locationId, aisle))
+                                            )
                                         );
                                         const wb = XLSX.utils.book_new();
                                         const data = depositoAssets.map(a => {
@@ -6542,9 +6669,9 @@ return renderSelectionInfoContent(false);
                                     <div style={{ fontSize: '0.68rem', color: '#6b7280', marginTop: '2px' }}>Repisa {depRepisa} · Estante {depEstante} ({depEstante === '1' ? 'suelo' : depEstante === '5' ? 'más alto' : `nivel ${depEstante}`}) · Posición {depPosicion} ({depPosicion === '1' ? 'más izq.' : depPosicion === '5' ? 'más der.' : `pos. ${depPosicion}`})</div>
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">Repisa (A–Z)</label>
+                                    <label className="form-label">Repisa (A–Z / AA)</label>
                                     <select value={depRepisa} onChange={e => setDepRepisa(e.target.value)} className="form-input" style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #a7f3d0', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '1rem', fontWeight: 700 }}>
-                                        {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(r => <option key={r} value={r}>Repisa {r}</option>)}
+                                        {[...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), 'AA', 'BB', 'CC', 'DD', 'EE'].map(r => <option key={r} value={r}>Repisa {r}</option>)}
                                     </select>
                                 </div>
                                 <div className="form-group">
