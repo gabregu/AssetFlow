@@ -203,7 +203,7 @@ export default function AssetDetailPage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Especificaciones Generales</h2>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        {(asset.hasCharger || /\[CON CARGADOR\]/i.test(asset.notes || '')) && asset.status === 'Recuperado' && (
+                                        {(asset.hasCharger || /\[CON CARGADOR\]/i.test(asset.notes || '')) && (asset.status === 'Recuperado' || asset.status === 'Bloqueado') && (
                                             <span style={{
                                                 background: 'rgba(37, 99, 235, 0.1)',
                                                 color: '#2563eb',
@@ -663,6 +663,7 @@ export default function AssetDetailPage() {
                                     <option value="Nuevo">Nuevo</option>
                                     <option value="Asignado">Asignado</option>
                                     <option value="Recuperado">Recuperado</option>
+                                    <option value="Bloqueado">Bloqueado</option>
                                     <option value="En Reparación">En Reparación</option>
                                     <option value="Dañado">Dañado</option>
                                     <option value="EOL">EOL</option>

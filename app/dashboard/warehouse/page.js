@@ -924,7 +924,7 @@ export default function WarehousePage() {
                 notes: finalNotes,
                 photoUrls: editAssetForm.photoUrls || [],
                 photoUrl: (editAssetForm.photoUrls && editAssetForm.photoUrls[0]) || editAssetForm.photoUrl || null,
-                hasCharger: editAssetForm.status === 'Recuperado' ? Boolean(editAssetForm.hasCharger) : false,
+                hasCharger: (editAssetForm.status === 'Recuperado' || editAssetForm.status === 'Bloqueado') ? Boolean(editAssetForm.hasCharger) : false,
                 isFactoryReset: editAssetForm.status === 'Recuperado' ? Boolean(editAssetForm.isFactoryReset) : false,
                 dateLastUpdate: now,
                 updatedBy: updatedBy,
@@ -7012,6 +7012,7 @@ return renderSelectionInfoContent(false);
                                 <option value="Nuevo">Nuevo</option>
                                 <option value="Asignado">Asignado</option>
                                 <option value="Recuperado">Recuperado</option>
+                                <option value="Bloqueado">Bloqueado</option>
                                 <option value="Disponible">Disponible</option>
                                 <option value="Por Recuperar">Por Recuperar</option>
                                 <option value="Verificacion HW">Verificacion HW</option>
@@ -7022,7 +7023,7 @@ return renderSelectionInfoContent(false);
                                 <option value="No Devuelto">No Devuelto ⚠️</option>
                                 <option value="Baja de Equipo">Baja de Equipo</option>
                             </select>
-                            {editAssetForm.status === 'Recuperado' && (
+                            {(editAssetForm.status === 'Recuperado' || editAssetForm.status === 'Bloqueado') && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.45rem' }}>
                                     <label
                                         style={{
@@ -7047,29 +7048,31 @@ return renderSelectionInfoContent(false);
                                         />
                                         <span>🔌 Incluye cargador</span>
                                     </label>
-                                    <label
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            padding: '0.45rem 0.65rem',
-                                            borderRadius: '8px',
-                                            backgroundColor: editAssetForm.isFactoryReset ? 'rgba(22, 163, 74, 0.08)' : 'var(--background)',
-                                            border: `1px solid ${editAssetForm.isFactoryReset ? '#22c55e' : 'var(--border)'}`,
-                                            cursor: 'pointer',
-                                            fontSize: '0.83rem',
-                                            fontWeight: 600,
-                                            color: editAssetForm.isFactoryReset ? '#15803d' : 'var(--text-main)'
-                                        }}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={Boolean(editAssetForm.isFactoryReset)}
-                                            onChange={e => setEditAssetForm(prev => ({ ...prev, isFactoryReset: e.target.checked }))}
-                                            style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#16a34a' }}
-                                        />
-                                        <span>🧹 Equipo Borrado de Fábrica</span>
-                                    </label>
+                                    {editAssetForm.status === 'Recuperado' && (
+                                        <label
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                padding: '0.45rem 0.65rem',
+                                                borderRadius: '8px',
+                                                backgroundColor: editAssetForm.isFactoryReset ? 'rgba(22, 163, 74, 0.08)' : 'var(--background)',
+                                                border: `1px solid ${editAssetForm.isFactoryReset ? '#22c55e' : 'var(--border)'}`,
+                                                cursor: 'pointer',
+                                                fontSize: '0.83rem',
+                                                fontWeight: 600,
+                                                color: editAssetForm.isFactoryReset ? '#15803d' : 'var(--text-main)'
+                                            }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={Boolean(editAssetForm.isFactoryReset)}
+                                                onChange={e => setEditAssetForm(prev => ({ ...prev, isFactoryReset: e.target.checked }))}
+                                                style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#16a34a' }}
+                                            />
+                                            <span>🧹 Equipo Borrado de Fábrica</span>
+                                        </label>
+                                    )}
                                 </div>
                             )}
                         </div>

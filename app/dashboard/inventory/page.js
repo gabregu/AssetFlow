@@ -675,7 +675,7 @@ export default function InventoryPage() {
             const assetPayload = {
                 ...newAsset,
                 notes: finalNotes,
-                hasCharger: newAsset.status === 'Recuperado' ? Boolean(newAsset.hasCharger) : false,
+                hasCharger: (newAsset.status === 'Recuperado' || newAsset.status === 'Bloqueado') ? Boolean(newAsset.hasCharger) : false,
                 isFactoryReset: newAsset.status === 'Recuperado' ? Boolean(newAsset.isFactoryReset) : false,
                 dateLastUpdate: now,
                 updatedBy: updatedBy,
@@ -1764,6 +1764,7 @@ export default function InventoryPage() {
             case 'Por Recuperar': return 'warning';
             case 'En Reparación': 
             case 'Verificacion HW': return 'warning';
+            case 'Bloqueado':
             case 'Dañado':
             case 'EOL': return 'danger';
             default: return 'default';
@@ -2816,7 +2817,7 @@ export default function InventoryPage() {
                                                                     {asset.oem && (
                                                                         <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 600 }}>• {asset.oem}</span>
                                                                     )}
-                                                                    {(asset.hasCharger || /\[CON CARGADOR\]/i.test(asset.notes || '')) && asset.status === 'Recuperado' && (
+                                                                    {(asset.hasCharger || /\[CON CARGADOR\]/i.test(asset.notes || '')) && (asset.status === 'Recuperado' || asset.status === 'Bloqueado') && (
                                                                         <span
                                                                             style={{
                                                                                 background: 'rgba(37, 99, 235, 0.1)',
@@ -2830,7 +2831,7 @@ export default function InventoryPage() {
                                                                                 alignItems: 'center',
                                                                                 gap: '3px'
                                                                             }}
-                                                                            title="El equipo recuperado incluye su cargador"
+                                                                            title="El equipo incluye su cargador"
                                                                         >
                                                                             🔌 Con cargador
                                                                         </span>
@@ -3375,6 +3376,7 @@ export default function InventoryPage() {
                                 <option value="Nuevo">Nuevo</option>
                                 <option value="Asignado">Asignado</option>
                                 <option value="Recuperado">Recuperado</option>
+                                <option value="Bloqueado">Bloqueado</option>
                                 <option value="Por Recuperar">Por Recuperar</option>
                                 <option value="Verificacion HW">Verificacion HW</option>
                                 <option value="En Reparación">En Reparación</option>
@@ -3382,7 +3384,7 @@ export default function InventoryPage() {
                                 <option value="EOL">EOL</option>
                                 <option value="No Devuelto">No Devuelto ⚠️</option>
                             </select>
-                            {newAsset.status === 'Recuperado' && (
+                            {(newAsset.status === 'Recuperado' || newAsset.status === 'Bloqueado') && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
                                     <label
                                         style={{
@@ -3408,30 +3410,32 @@ export default function InventoryPage() {
                                         />
                                         <span>🔌 Incluye cargador</span>
                                     </label>
-                                    <label
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            padding: '0.5rem 0.75rem',
-                                            borderRadius: '8px',
-                                            backgroundColor: newAsset.isFactoryReset ? 'rgba(22, 163, 74, 0.08)' : 'var(--background)',
-                                            border: `1px solid ${newAsset.isFactoryReset ? '#22c55e' : 'var(--border)'}`,
-                                            cursor: 'pointer',
-                                            fontSize: '0.85rem',
-                                            fontWeight: 600,
-                                            color: newAsset.isFactoryReset ? '#15803d' : 'var(--text-main)',
-                                            transition: 'all 0.15s ease'
-                                        }}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={Boolean(newAsset.isFactoryReset)}
-                                            onChange={e => setNewAsset(prev => ({ ...prev, isFactoryReset: e.target.checked }))}
-                                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#16a34a' }}
-                                        />
-                                        <span>🧹 Equipo Borrado de Fábrica</span>
-                                    </label>
+                                    {newAsset.status === 'Recuperado' && (
+                                        <label
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                padding: '0.5rem 0.75rem',
+                                                borderRadius: '8px',
+                                                backgroundColor: newAsset.isFactoryReset ? 'rgba(22, 163, 74, 0.08)' : 'var(--background)',
+                                                border: `1px solid ${newAsset.isFactoryReset ? '#22c55e' : 'var(--border)'}`,
+                                                cursor: 'pointer',
+                                                fontSize: '0.85rem',
+                                                fontWeight: 600,
+                                                color: newAsset.isFactoryReset ? '#15803d' : 'var(--text-main)',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={Boolean(newAsset.isFactoryReset)}
+                                                onChange={e => setNewAsset(prev => ({ ...prev, isFactoryReset: e.target.checked }))}
+                                                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#16a34a' }}
+                                            />
+                                            <span>🧹 Equipo Borrado de Fábrica</span>
+                                        </label>
+                                    )}
                                 </div>
                             )}
                         </div>
