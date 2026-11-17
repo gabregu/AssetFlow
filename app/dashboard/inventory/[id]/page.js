@@ -202,7 +202,7 @@ export default function AssetDetailPage() {
                             <div style={{ flex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Especificaciones Generales</h2>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                         {(asset.hasCharger || /\[CON CARGADOR\]/i.test(asset.notes || '')) && asset.status === 'Recuperado' && (
                                             <span style={{
                                                 background: 'rgba(37, 99, 235, 0.1)',
@@ -214,6 +214,19 @@ export default function AssetDetailPage() {
                                                 fontWeight: 700
                                             }}>
                                                 🔌 Con cargador
+                                            </span>
+                                        )}
+                                        {(asset.isFactoryReset || /\[BORRADO DE FABRICA\]/i.test(asset.notes || '')) && asset.status === 'Recuperado' && (
+                                            <span style={{
+                                                background: 'rgba(22, 163, 74, 0.1)',
+                                                color: '#15803d',
+                                                border: '1px solid #86efac',
+                                                borderRadius: '6px',
+                                                padding: '2px 8px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 700
+                                            }}>
+                                                🧹 Borrado de Fábrica
                                             </span>
                                         )}
                                         <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
@@ -389,7 +402,10 @@ export default function AssetDetailPage() {
 
                     <Card title="Notas del Activo" icon={FileText}>
                         {(() => {
-                            const cleaned = (asset.notes || '').replace(/\[CON CARGADOR\]\s*\n?/gi, '').trim();
+                            const cleaned = (asset.notes || '')
+                                .replace(/\[CON CARGADOR\]\s*\n?/gi, '')
+                                .replace(/\[BORRADO DE FABRICA\]\s*\n?/gi, '')
+                                .trim();
                             if (!cleaned) {
                                 return <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>No hay notas adicionales para este activo.</p>;
                             }

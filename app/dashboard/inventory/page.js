@@ -50,6 +50,7 @@ const parseAssetNoteEntries = (notesStr, fallbackDateStr = '') => {
     if (!notesStr || typeof notesStr !== 'string') return [];
     const cleaned = notesStr
         .replace(/\[CON CARGADOR\]\s*\n?/gi, '')
+        .replace(/\[BORRADO DE FABRICA\]\s*\n?/gi, '')
         // Split inline bracketed dates that were previously flattened onto a single line
         .replace(/\s+(?=\[\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g, '\n')
         // Split inline unbracketed dates if preceded by sentence end/spaces
@@ -243,7 +244,7 @@ export default function InventoryPage() {
         date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
         modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
         eolDate: '', notes: '', sfdcCase: '', oem: '', country: 'Argentina', cod: '', boxNumber: '',
-        locationId: '', photoUrl: null, photoUrls: [], hasCharger: false
+        locationId: '', photoUrl: null, photoUrls: [], hasCharger: false, isFactoryReset: false
     });
 
     const [hwChecklist, setHwChecklist] = useState({
@@ -675,6 +676,7 @@ export default function InventoryPage() {
                 ...newAsset,
                 notes: finalNotes,
                 hasCharger: newAsset.status === 'Recuperado' ? Boolean(newAsset.hasCharger) : false,
+                isFactoryReset: newAsset.status === 'Recuperado' ? Boolean(newAsset.isFactoryReset) : false,
                 dateLastUpdate: now,
                 updatedBy: updatedBy,
                 lastAssetCheck: now
@@ -712,7 +714,7 @@ export default function InventoryPage() {
             date: new Date().toISOString().split('T')[0], vendor: 'Other', purchaseOrder: '',
             modelNumber: '', partNumber: '', hardwareSpec: '', imei: '-', imei2: '',
             eolDate: '', notes: '', sfdcCase: '', oem: '', cod: '', boxNumber: '', country: 'Argentina',
-            locationId: '', photoUrl: null, photoUrls: [], hasCharger: false, invoiceUrl: null, invoiceFilename: null
+            locationId: '', photoUrl: null, photoUrls: [], hasCharger: false, isFactoryReset: false, invoiceUrl: null, invoiceFilename: null
         });
     };
 
@@ -721,7 +723,10 @@ export default function InventoryPage() {
         setEditingAsset(asset);
         setNewNoteText('');
         const parsedPhotos = parseAssetPhotoUrls(asset.photoUrl, asset.photoUrls);
-        const cleanRawNotes = (asset.notes || '').replace(/\[CON CARGADOR\]\s*\n?/gi, '').trim();
+        const cleanRawNotes = (asset.notes || '')
+            .replace(/\[CON CARGADOR\]\s*\n?/gi, '')
+            .replace(/\[BORRADO DE FABRICA\]\s*\n?/gi, '')
+            .trim();
         setNewAsset({
             id: asset.id,
             name: asset.name || asset.model || '',
@@ -748,6 +753,7 @@ export default function InventoryPage() {
             photoUrl: parsedPhotos[0] || null,
             photoUrls: parsedPhotos,
             hasCharger: Boolean(asset.hasCharger || /\[CON CARGADOR\]/i.test(asset.notes || '')),
+            isFactoryReset: Boolean(asset.isFactoryReset || /\[BORRADO DE FABRICA\]/i.test(asset.notes || '')),
             invoiceUrl: asset.invoiceUrl || (assetInvoices[asset.id]?.invoiceUrl) || (asset.serial && assetInvoices[asset.serial]?.invoiceUrl) || null,
             invoiceFilename: asset.invoiceFilename || (assetInvoices[asset.id]?.invoiceFilename) || (asset.serial && assetInvoices[asset.serial]?.invoiceFilename) || null
         });
@@ -2814,6 +2820,25 @@ export default function InventoryPage() {
                                                                             🔌 Con cargador
                                                                         </span>
                                                                     )}
+                                                                    {(asset.isFactoryReset || /\[BORRADO DE FABRICA\]/i.test(asset.notes || '')) && asset.status === 'Recuperado' && (
+                                                                        <span
+                                                                            style={{
+                                                                                background: 'rgba(22, 163, 74, 0.1)',
+                                                                                color: '#15803d',
+                                                                                border: '1px solid #86efac',
+                                                                                borderRadius: '4px',
+                                                                                padding: '1px 6px',
+                                                                                fontSize: '0.65rem',
+                                                                                fontWeight: 700,
+                                                                                display: 'inline-flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '3px'
+                                                                            }}
+                                                                            title="El equipo fue borrado de fábrica"
+                                                                        >
+                                                                            🧹 Borrado de Fábrica
+                                                                        </span>
+                                                                    )}
                                                                     {(() => {
                                                                         const photos = parseAssetPhotoUrls(asset.photoUrl, asset.photoUrls);
                                                                         if (photos.length === 0) return null;
@@ -3353,31 +3378,56 @@ export default function InventoryPage() {
                                 <option value="No Devuelto">No Devuelto ⚠️</option>
                             </select>
                             {newAsset.status === 'Recuperado' && (
-                                <label
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        marginTop: '0.5rem',
-                                        padding: '0.5rem 0.75rem',
-                                        borderRadius: '8px',
-                                        backgroundColor: newAsset.hasCharger ? 'rgba(37, 99, 235, 0.08)' : 'var(--background)',
-                                        border: `1px solid ${newAsset.hasCharger ? '#3b82f6' : 'var(--border)'}`,
-                                        cursor: 'pointer',
-                                        fontSize: '0.85rem',
-                                        fontWeight: 600,
-                                        color: newAsset.hasCharger ? '#1d4ed8' : 'var(--text-main)',
-                                        transition: 'all 0.15s ease'
-                                    }}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={Boolean(newAsset.hasCharger)}
-                                        onChange={e => setNewAsset(prev => ({ ...prev, hasCharger: e.target.checked }))}
-                                        style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#2563eb' }}
-                                    />
-                                    <span>🔌 Incluye cargador</span>
-                                </label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>
+                                    <label
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            padding: '0.5rem 0.75rem',
+                                            borderRadius: '8px',
+                                            backgroundColor: newAsset.hasCharger ? 'rgba(37, 99, 235, 0.08)' : 'var(--background)',
+                                            border: `1px solid ${newAsset.hasCharger ? '#3b82f6' : 'var(--border)'}`,
+                                            cursor: 'pointer',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 600,
+                                            color: newAsset.hasCharger ? '#1d4ed8' : 'var(--text-main)',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(newAsset.hasCharger)}
+                                            onChange={e => setNewAsset(prev => ({ ...prev, hasCharger: e.target.checked }))}
+                                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#2563eb' }}
+                                        />
+                                        <span>🔌 Incluye cargador</span>
+                                    </label>
+                                    <label
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            padding: '0.5rem 0.75rem',
+                                            borderRadius: '8px',
+                                            backgroundColor: newAsset.isFactoryReset ? 'rgba(22, 163, 74, 0.08)' : 'var(--background)',
+                                            border: `1px solid ${newAsset.isFactoryReset ? '#22c55e' : 'var(--border)'}`,
+                                            cursor: 'pointer',
+                                            fontSize: '0.85rem',
+                                            fontWeight: 600,
+                                            color: newAsset.isFactoryReset ? '#15803d' : 'var(--text-main)',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(newAsset.isFactoryReset)}
+                                            onChange={e => setNewAsset(prev => ({ ...prev, isFactoryReset: e.target.checked }))}
+                                            style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#16a34a' }}
+                                        />
+                                        <span>🧹 Equipo Borrado de Fábrica</span>
+                                    </label>
+                                </div>
                             )}
                         </div>
                         <div className="form-group">

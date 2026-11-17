@@ -75,6 +75,7 @@ const parseAssetNoteEntries = (notesStr, fallbackDateStr = '') => {
     if (!notesStr || typeof notesStr !== 'string') return [];
     const cleaned = notesStr
         .replace(/\[CON CARGADOR\]\s*\n?/gi, '')
+        .replace(/\[BORRADO DE FABRICA\]\s*\n?/gi, '')
         .replace(/\s+(?=\[\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g, '\n')
         .replace(/\s{2,}(?=\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}\s+)/g, '\n')
         .trim();
@@ -467,7 +468,8 @@ export default function WarehousePage() {
         notes: '',
         photoUrl: null,
         photoUrls: [],
-        hasCharger: false
+        hasCharger: false,
+        isFactoryReset: false
     });
     const [editAssetNewNote, setEditAssetNewNote] = useState('');
     const editAssetPhotoInputRef = useRef(null);
@@ -728,7 +730,10 @@ export default function WarehousePage() {
         setEditingAssetObj(assetToEdit);
         setEditAssetNewNote('');
         const parsedPhotos = parseAssetPhotoUrls(assetToEdit.photoUrl, assetToEdit.photoUrls);
-        const cleanRawNotes = (assetToEdit.notes || '').replace(/\[CON CARGADOR\]\s*\n?/gi, '').trim();
+        const cleanRawNotes = (assetToEdit.notes || '')
+            .replace(/\[CON CARGADOR\]\s*\n?/gi, '')
+            .replace(/\[BORRADO DE FABRICA\]\s*\n?/gi, '')
+            .trim();
         setEditAssetForm({
             id: assetToEdit.id,
             name: assetToEdit.name || assetToEdit.model || assetToEdit.type || '',
@@ -751,7 +756,8 @@ export default function WarehousePage() {
             notes: cleanRawNotes,
             photoUrl: parsedPhotos[0] || null,
             photoUrls: parsedPhotos,
-            hasCharger: Boolean(assetToEdit.hasCharger || /\[CON CARGADOR\]/i.test(assetToEdit.notes || ''))
+            hasCharger: Boolean(assetToEdit.hasCharger || /\[CON CARGADOR\]/i.test(assetToEdit.notes || '')),
+            isFactoryReset: Boolean(assetToEdit.isFactoryReset || /\[BORRADO DE FABRICA\]/i.test(assetToEdit.notes || ''))
         });
 
         const currentRep = assetRepairs[assetToEdit.id] || (assetToEdit.serial ? assetRepairs[assetToEdit.serial] : null) || {};
@@ -919,6 +925,7 @@ export default function WarehousePage() {
                 photoUrls: editAssetForm.photoUrls || [],
                 photoUrl: (editAssetForm.photoUrls && editAssetForm.photoUrls[0]) || editAssetForm.photoUrl || null,
                 hasCharger: editAssetForm.status === 'Recuperado' ? Boolean(editAssetForm.hasCharger) : false,
+                isFactoryReset: editAssetForm.status === 'Recuperado' ? Boolean(editAssetForm.isFactoryReset) : false,
                 dateLastUpdate: now,
                 updatedBy: updatedBy,
                 lastAssetCheck: now
@@ -6945,30 +6952,54 @@ return renderSelectionInfoContent(false);
                                 <option value="Baja de Equipo">Baja de Equipo</option>
                             </select>
                             {editAssetForm.status === 'Recuperado' && (
-                                <label
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        marginTop: '0.45rem',
-                                        padding: '0.45rem 0.65rem',
-                                        borderRadius: '8px',
-                                        backgroundColor: editAssetForm.hasCharger ? 'rgba(37, 99, 235, 0.08)' : 'var(--background)',
-                                        border: `1px solid ${editAssetForm.hasCharger ? '#3b82f6' : 'var(--border)'}`,
-                                        cursor: 'pointer',
-                                        fontSize: '0.83rem',
-                                        fontWeight: 600,
-                                        color: editAssetForm.hasCharger ? '#1d4ed8' : 'var(--text-main)'
-                                    }}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={Boolean(editAssetForm.hasCharger)}
-                                        onChange={e => setEditAssetForm(prev => ({ ...prev, hasCharger: e.target.checked }))}
-                                        style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#2563eb' }}
-                                    />
-                                    <span>🔌 Incluye cargador</span>
-                                </label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.45rem' }}>
+                                    <label
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            padding: '0.45rem 0.65rem',
+                                            borderRadius: '8px',
+                                            backgroundColor: editAssetForm.hasCharger ? 'rgba(37, 99, 235, 0.08)' : 'var(--background)',
+                                            border: `1px solid ${editAssetForm.hasCharger ? '#3b82f6' : 'var(--border)'}`,
+                                            cursor: 'pointer',
+                                            fontSize: '0.83rem',
+                                            fontWeight: 600,
+                                            color: editAssetForm.hasCharger ? '#1d4ed8' : 'var(--text-main)'
+                                        }}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(editAssetForm.hasCharger)}
+                                            onChange={e => setEditAssetForm(prev => ({ ...prev, hasCharger: e.target.checked }))}
+                                            style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#2563eb' }}
+                                        />
+                                        <span>🔌 Incluye cargador</span>
+                                    </label>
+                                    <label
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            padding: '0.45rem 0.65rem',
+                                            borderRadius: '8px',
+                                            backgroundColor: editAssetForm.isFactoryReset ? 'rgba(22, 163, 74, 0.08)' : 'var(--background)',
+                                            border: `1px solid ${editAssetForm.isFactoryReset ? '#22c55e' : 'var(--border)'}`,
+                                            cursor: 'pointer',
+                                            fontSize: '0.83rem',
+                                            fontWeight: 600,
+                                            color: editAssetForm.isFactoryReset ? '#15803d' : 'var(--text-main)'
+                                        }}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(editAssetForm.isFactoryReset)}
+                                            onChange={e => setEditAssetForm(prev => ({ ...prev, isFactoryReset: e.target.checked }))}
+                                            style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#16a34a' }}
+                                        />
+                                        <span>🧹 Equipo Borrado de Fábrica</span>
+                                    </label>
+                                </div>
                             )}
                         </div>
 
