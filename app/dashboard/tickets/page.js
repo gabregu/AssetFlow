@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getStatusVariant } from './constants';
 import { Modal } from '../../components/ui/Modal';
+import { ServiceMap } from '../../components/ui/ServiceMap';
 import { supabase } from '../../../lib/supabase';
 import { CopyButton } from '../../components/ui/CopyButton';
 
@@ -116,6 +117,8 @@ export default function TicketsPage() {
     const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
     const [columnFilters, setColumnFilters] = useState({ status: 'All', requester: '' });
     const [selectedTickets, setSelectedTickets] = useState([]);
+    const [showServicesMap, setShowServicesMap] = useState(false);
+    const [mapFilteredTicketIds, setMapFilteredTicketIds] = useState(null);
     
     // Manual Creation State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -992,6 +995,12 @@ export default function TicketsPage() {
         return result;
     }, [tickets, filter, sortConfig, columnFilters, countryFilter, filterType]);
 
+    const tableDisplayedTickets = React.useMemo(() => {
+        if (!mapFilteredTicketIds) return sortedAndFilteredTickets;
+        const allowed = new Set(mapFilteredTicketIds);
+        return sortedAndFilteredTickets.filter(t => allowed.has(t.id));
+    }, [sortedAndFilteredTickets, mapFilteredTicketIds]);
+
     const statsByType = React.useMemo(() => {
         // Filter by country first to match the view logic roughly (ignoring status for now or keeping it consistent?)
         // The original logic in Cases filtered by country. Here we probably should too.
@@ -1089,6 +1098,19 @@ export default function TicketsPage() {
                             onChange={handleFileUpload}
                             style={{ display: 'none' }}
                         />
+                        <Button
+                            icon={Map}
+                            onClick={() => setShowServicesMap(prev => !prev)}
+                            style={{
+                                backgroundColor: showServicesMap ? '#2563eb' : 'white',
+                                borderColor: '#2563eb',
+                                color: showServicesMap ? 'white' : '#2563eb',
+                                fontWeight: 700,
+                                boxShadow: 'var(--shadow-sm)'
+                            }}
+                        >
+                            {showServicesMap ? 'Ocultar Mapa' : 'Ver Mapa de Servicios'}
+                        </Button>
                         {getClientName(countryFilter).toUpperCase().includes('SFDC') && (
                             <Button 
                                 onClick={() => triggerImport('SFDC')} 
@@ -1233,6 +1255,73 @@ export default function TicketsPage() {
             </div>
 
 
+            {showServicesMap && (
+                <div style={{ marginBottom: '2rem', animation: 'fadeIn 0.25s ease-out' }}>
+                    <Card style={{ padding: '1rem', border: '1.5px solid #bfdbfe' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                <Map size={20} style={{ color: '#2563eb' }} />
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                                        Mapa de Servicios por Zona de Proximidad
+                                    </h3>
+                                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                        Hacé clic en cualquier ubicación para ver los servicios cercanos, seleccionarlos en bloque o fusionarlos.
+                                    </p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                {mapFilteredTicketIds && (
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => setMapFilteredTicketIds(null)}
+                                        style={{ borderColor: '#2563eb', color: '#2563eb', fontWeight: 700 }}
+                                    >
+                                        Mostrar todos en la tabla ({mapFilteredTicketIds.length} filtrados por zona) ✕
+                                    </Button>
+                                )}
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setShowServicesMap(false)}
+                                >
+                                    Cerrar Mapa ✕
+                                </Button>
+                            </div>
+                        </div>
+
+                        <ServiceMap
+                            tickets={sortedAndFilteredTickets.map(t => {
+                                const associatedTasks = (logisticsTasks || []).filter(tk => String(tk.ticket_id) === String(t.id));
+                                const fallbackTaskAddr = associatedTasks.find(tk => tk.address && tk.address.trim().length > 4)?.address || '';
+                                return {
+                                    ...t,
+                                    displayAddress: t.logistics?.address || t.address || fallbackTaskAddr || ''
+                                };
+                            })}
+                            selectedTickets={selectedTickets}
+                            onToggleSelectTicket={(ticketId) => handleSelectOne(ticketId)}
+                            onSelectMultipleTickets={(ids, shouldSelect = true) => {
+                                setSelectedTickets(prev => {
+                                    const next = new Set(prev);
+                                    ids.forEach(id => {
+                                        if (shouldSelect) next.add(id);
+                                        else next.delete(id);
+                                    });
+                                    return Array.from(next);
+                                });
+                            }}
+                            onFilterBySelection={(ids) => {
+                                setMapFilteredTicketIds(ids);
+                            }}
+                            enableProximityTools={true}
+                            countryFilter={countryFilter}
+                        />
+                    </Card>
+                </div>
+            )}
+
             <Card>
                 
 
@@ -1286,10 +1375,11 @@ export default function TicketsPage() {
                             />
                         </div>
                     )}
-                    {(columnFilters.status !== 'All' || columnFilters.requester !== '' || filter !== '') && !selectedTickets.length && (
+                    {(columnFilters.status !== 'All' || columnFilters.requester !== '' || filter !== '' || mapFilteredTicketIds) && !selectedTickets.length && (
                         <Button variant="ghost" size="sm" onClick={() => {
                             setColumnFilters({ status: 'All', requester: '' });
                             setFilter('');
+                            setMapFilteredTicketIds(null);
                         }}>Limpiar Filtros</Button>
                     )}
                 </div>
@@ -1297,7 +1387,7 @@ export default function TicketsPage() {
                 <div className="table-responsive">
                     
                     <div className="mobile-only">
-                        {sortedAndFilteredTickets.map((ticket, index) => {
+                        {tableDisplayedTickets.map((ticket, index) => {
                             const isGrouped = ticket.associatedCases && ticket.associatedCases.length > 0;
                             const subjectPrefix = '';
                             const rawSubject = ticket.subject || 'Sin Asunto';
@@ -1339,7 +1429,7 @@ export default function TicketsPage() {
                                         <input
                                             type="checkbox"
                                             onChange={handleSelectAll}
-                                            checked={sortedAndFilteredTickets.length > 0 && selectedTickets.length === sortedAndFilteredTickets.length}
+                                            checked={tableDisplayedTickets.length > 0 && selectedTickets.length === tableDisplayedTickets.length}
                                             style={{ cursor: 'pointer', width: '16px', height: '16px' }}
                                         />
                                     </th>
@@ -1355,7 +1445,7 @@ export default function TicketsPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {sortedAndFilteredTickets.map((ticket, index) => {
+                            {tableDisplayedTickets.map((ticket, index) => {
                                 // Determine if grouped
                                 const isGrouped = ticket.associatedCases && ticket.associatedCases.length > 0;
                                 const subjectPrefix = '';
