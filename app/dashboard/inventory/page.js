@@ -2731,56 +2731,68 @@ export default function InventoryPage() {
                                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                         <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--surface)', zIndex: 10, borderBottom: '2px solid var(--border)' }}>
                                             <tr>
-                                                <th style={{ padding: '1rem', width: '40px', textAlign: 'center' }}>
+                                                <th style={{ padding: '0.65rem 0.5rem', width: '36px', textAlign: 'center' }}>
                                                     <input 
                                                         type="checkbox" 
                                                         onChange={handleSelectAll} 
                                                         checked={filteredAssets.length > 0 && selectedAssets.length === filteredAssets.length}
-                                                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                        style={{ cursor: 'pointer', width: '15px', height: '15px' }}
                                                     />
                                                 </th>
-                                                <th onClick={() => handleSort('name')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '220px' }}>ACTIVO <SortIcon column="name" /></th>
-                                                <th onClick={() => handleSort('serial')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '120px' }}>SERIAL <SortIcon column="serial" /></th>
-                                                <th onClick={() => handleSort('country')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '95px' }}>CLIENTE <SortIcon column="country" /></th>
-                                                <th onClick={() => handleSort('assignee')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '130px' }}>USUARIO <SortIcon column="assignee" /></th>
-                                                <th onClick={() => handleSort('sfdcCase')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '110px' }}>CASO <SortIcon column="sfdcCase" /></th>
-                                                <th onClick={() => handleSort('cod')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '90px' }}>COD <SortIcon column="cod" /></th>
-                                                <th onClick={() => handleSort('boxNumber')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '90px' }}>CAJA <SortIcon column="boxNumber" /></th>
-                                                <th onClick={() => handleSort('locationId')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '150px' }}>UBICACIÓN <SortIcon column="locationId" /></th>
-                                                <th onClick={() => handleSort('status')} style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', minWidth: '100px' }}>ESTADO <SortIcon column="status" /></th>
-                                                <th style={{ padding: '1rem', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.85rem', textAlign: 'right', minWidth: '135px' }}>ACCIONES</th>
+                                                <th onClick={() => handleSort('name')} style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.76rem', cursor: 'pointer', minWidth: '300px' }}>ACTIVO <SortIcon column="name" /></th>
+                                                <th onClick={() => handleSort('serial')} style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.76rem', cursor: 'pointer', minWidth: '110px' }}>SERIAL <SortIcon column="serial" /></th>
+                                                <th onClick={() => handleSort('country')} style={{ padding: '0.65rem 0.5rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.76rem', cursor: 'pointer', minWidth: '65px', textAlign: 'center' }}>CLIENTE <SortIcon column="country" /></th>
+                                                <th onClick={() => handleSort('assignee')} style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.76rem', cursor: 'pointer', minWidth: '115px' }}>USUARIO <SortIcon column="assignee" /></th>
+                                                <th onClick={() => handleSort('sfdcCase')} style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.76rem', cursor: 'pointer', minWidth: '90px' }}>CASO <SortIcon column="sfdcCase" /></th>
+                                                <th onClick={() => handleSort('locationId')} style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.76rem', cursor: 'pointer', minWidth: '110px' }}>UBICACIÓN <SortIcon column="locationId" /></th>
+                                                <th onClick={() => handleSort('status')} style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.76rem', cursor: 'pointer', minWidth: '95px' }}>ESTADO <SortIcon column="status" /></th>
+                                                <th style={{ padding: '0.65rem 0.75rem', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.76rem', textAlign: 'right', minWidth: '125px' }}>ACCIONES</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {filteredAssets.length > 0 ? filteredAssets.map((asset) => (
                                                 <tr key={asset.id} className="table-row" style={{ borderBottom: '1px solid var(--border)', backgroundColor: selectedAssets.includes(asset.id) ? 'rgba(37, 99, 235, 0.05)' : 'transparent' }}>
-                                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                    <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center' }}>
                                                         <input 
                                                             type="checkbox" 
                                                             checked={selectedAssets.includes(asset.id)}
                                                             onChange={() => handleToggleAsset(asset.id)}
-                                                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                                            style={{ cursor: 'pointer', width: '15px', height: '15px' }}
                                                         />
                                                     </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                            <div style={{ padding: '0.6rem', backgroundColor: 'var(--background)', borderRadius: '10px', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
-                                                                {React.createElement(getTypeIcon(asset.type), { size: 18 })}
+                                                    <td style={{ padding: '0.6rem 0.75rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                                            <div style={{ padding: '0.45rem', backgroundColor: 'var(--background)', borderRadius: '8px', color: 'var(--text-secondary)', border: '1px solid var(--border)', flexShrink: 0 }}>
+                                                                {React.createElement(getTypeIcon(asset.type), { size: 16 })}
                                                             </div>
-                                                            <div>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
                                                                 <Link href={`/dashboard/inventory/${asset.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                                                                     {(() => {
                                                                         const assetData = parseAssetName(asset.name);
+                                                                        const extraSpecs = [];
+                                                                        if (asset.hardwareSpec) {
+                                                                            asset.hardwareSpec.split(/[\/|,]+/).map(s => s.trim()).filter(Boolean).forEach(s => {
+                                                                                if (!assetData.specs.some(es => es.toLowerCase() === s.toLowerCase())) {
+                                                                                    extraSpecs.push(s);
+                                                                                }
+                                                                            });
+                                                                        }
+                                                                        const allSpecs = [...assetData.specs, ...extraSpecs];
                                                                         return (
                                                                             <>
-                                                                                <div style={{ fontWeight: 600, fontSize: '0.93rem', color: 'var(--text-main)' }} className="hover-link">
+                                                                                <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.25 }} className="hover-link">
                                                                                     {assetData.title}
+                                                                                    {asset.modelNumber && !assetData.title.toLowerCase().includes(asset.modelNumber.toLowerCase()) && (
+                                                                                        <span style={{ fontWeight: 500, fontSize: '0.76rem', color: 'var(--text-secondary)', marginLeft: '6px' }}>
+                                                                                            ({asset.modelNumber})
+                                                                                        </span>
+                                                                                    )}
                                                                                 </div>
-                                                                                {assetData.specs.length > 0 && (
-                                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '3px', marginBottom: '3px', maxWidth: '280px' }}>
-                                                                                        {assetData.specs.map((spec, idx) => (
+                                                                                {allSpecs.length > 0 && (
+                                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', marginTop: '3px', marginBottom: '2px' }}>
+                                                                                        {allSpecs.map((spec, idx) => (
                                                                                             <span key={idx} style={{
-                                                                                                fontSize: '0.62rem',
+                                                                                                fontSize: '0.6rem',
                                                                                                 fontWeight: 700,
                                                                                                 backgroundColor: 'var(--background)',
                                                                                                 border: '1px solid var(--border)',
@@ -2799,8 +2811,11 @@ export default function InventoryPage() {
                                                                         );
                                                                     })()}
                                                                 </Link>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '4px', flexWrap: 'wrap' }}>
-                                                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{asset.type}</span>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '3px', flexWrap: 'wrap' }}>
+                                                                    <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{asset.type}</span>
+                                                                    {asset.oem && (
+                                                                        <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)', fontWeight: 600 }}>• {asset.oem}</span>
+                                                                    )}
                                                                     {(asset.hasCharger || /\[CON CARGADOR\]/i.test(asset.notes || '')) && asset.status === 'Recuperado' && (
                                                                         <span
                                                                             style={{
@@ -2808,8 +2823,8 @@ export default function InventoryPage() {
                                                                                 color: '#2563eb',
                                                                                 border: '1px solid #93c5fd',
                                                                                 borderRadius: '4px',
-                                                                                padding: '1px 6px',
-                                                                                fontSize: '0.65rem',
+                                                                                padding: '1px 5px',
+                                                                                fontSize: '0.62rem',
                                                                                 fontWeight: 700,
                                                                                 display: 'inline-flex',
                                                                                 alignItems: 'center',
@@ -2827,8 +2842,8 @@ export default function InventoryPage() {
                                                                                 color: '#15803d',
                                                                                 border: '1px solid #86efac',
                                                                                 borderRadius: '4px',
-                                                                                padding: '1px 6px',
-                                                                                fontSize: '0.65rem',
+                                                                                padding: '1px 5px',
+                                                                                fontSize: '0.62rem',
                                                                                 fontWeight: 700,
                                                                                 display: 'inline-flex',
                                                                                 alignItems: 'center',
@@ -2857,8 +2872,8 @@ export default function InventoryPage() {
                                                                                     background: 'rgba(16, 185, 129, 0.1)',
                                                                                     color: '#10b981',
                                                                                     borderRadius: '4px',
-                                                                                    padding: '2px 6px',
-                                                                                    fontSize: '0.65rem',
+                                                                                    padding: '1px 5px',
+                                                                                    fontSize: '0.62rem',
                                                                                     fontWeight: 'bold',
                                                                                     cursor: 'pointer',
                                                                                     display: 'flex',
@@ -2886,8 +2901,8 @@ export default function InventoryPage() {
                                                                                     color: '#0284c7',
                                                                                     border: '1px solid #7dd3fc',
                                                                                     borderRadius: '4px',
-                                                                                    padding: '2px 6px',
-                                                                                    fontSize: '0.65rem',
+                                                                                    padding: '1px 5px',
+                                                                                    fontSize: '0.62rem',
                                                                                     fontWeight: 'bold',
                                                                                     cursor: 'pointer',
                                                                                     display: 'inline-flex',
@@ -2897,7 +2912,7 @@ export default function InventoryPage() {
                                                                                 }}
                                                                                 title="Ver Factura de Compra"
                                                                             >
-                                                                                <FileText size={11} /> Factura
+                                                                                <FileText size={10} /> Factura
                                                                             </a>
                                                                         );
                                                                     })()}
@@ -2905,19 +2920,19 @@ export default function InventoryPage() {
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '0.9rem' }}>{asset.serial}</td>
-                                                    <td style={{ padding: '1rem' }}>
+                                                    <td style={{ padding: '0.6rem 0.75rem', fontFamily: 'monospace', fontSize: '0.8rem', fontWeight: 600 }}>{asset.serial}</td>
+                                                    <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center' }}>
                                                         {asset.country && (
                                                             <span style={{
                                                                 display: 'inline-flex',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'center',
-                                                                width: '28px',
-                                                                height: '28px',
+                                                                width: '25px',
+                                                                height: '25px',
                                                                 borderRadius: '6px',
                                                                 backgroundColor: 'var(--background)',
                                                                 border: '1px solid var(--border)',
-                                                                fontSize: '0.75rem',
+                                                                fontSize: '0.7rem',
                                                                 fontWeight: 700,
                                                                 color: 'var(--text-primary)'
                                                             }} title={asset.country}>
@@ -2925,54 +2940,44 @@ export default function InventoryPage() {
                                                             </span>
                                                         )}
                                                     </td>
-                                                    <td style={{ padding: '1rem' }}>
+                                                    <td style={{ padding: '0.6rem 0.75rem' }}>
                                                         {asset.assignee === 'Almacén' ? (
-                                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', background: 'var(--background)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>En Almacén</span>
+                                                            <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', background: 'var(--background)', padding: '0.2rem 0.45rem', borderRadius: '4px', whiteSpace: 'nowrap' }}>En Almacén</span>
                                                         ) : (
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                                <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, flexShrink: 0 }}>
                                                                     {asset.assignee.charAt(0)}
                                                                 </div>
-                                                                <span style={{ fontWeight: 500, fontSize: '0.9rem' }}>{asset.assignee}</span>
+                                                                <span style={{ fontWeight: 500, fontSize: '0.8rem' }}>{asset.assignee}</span>
                                                             </div>
                                                         )}
                                                     </td>
-                                                    <td style={{ padding: '1rem' }}>
+                                                    <td style={{ padding: '0.6rem 0.75rem', fontSize: '0.8rem' }}>
                                                         {asset.sfdcCase ? (
-                                                            <Link href={`/dashboard/tickets/${asset.sfdcCase}`} className="hover-link" style={{ fontWeight: 600, color: 'var(--primary-color)' }}>
+                                                            <Link href={`/dashboard/tickets/${asset.sfdcCase}`} className="hover-link" style={{ fontWeight: 600, color: 'var(--primary-color)', fontSize: '0.8rem' }}>
                                                                 {asset.sfdcCase}
                                                             </Link>
                                                         ) : (
                                                             <span style={{ opacity: 0.3 }}>-</span>
                                                         )}
                                                     </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        {asset.cod ? <Badge variant="destructive">{asset.cod}</Badge> : '-'}
-                                                    </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        {asset.boxNumber ? (
-                                                            <Badge variant="outline" style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content', borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}>
-                                                                <Box size={12} /> {asset.boxNumber}
-                                                            </Badge>
-                                                        ) : <span style={{ opacity: 0.3 }}>-</span>}
-                                                    </td>
-                                                    <td style={{ padding: '1rem' }}>
+                                                    <td style={{ padding: '0.6rem 0.75rem' }}>
                                                         {asset.locationId ? (
-                                                            <Badge variant="info" style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content', backgroundColor: 'rgba(37, 99, 235, 0.05)', color: 'var(--primary-color)', border: '1px solid var(--primary-color)' }}>
-                                                                <MapPin size={12} /> {asset.locationId}
+                                                            <Badge variant="info" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', width: 'fit-content', backgroundColor: 'rgba(37, 99, 235, 0.05)', color: 'var(--primary-color)', border: '1px solid var(--primary-color)', fontSize: '0.72rem', padding: '2px 6px', whiteSpace: 'nowrap' }}>
+                                                                <MapPin size={11} /> {asset.locationId}
                                                             </Badge>
                                                         ) : <span style={{ opacity: 0.3 }}>-</span>}
                                                     </td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        <Badge variant={getStatusVariant(asset.status)}>{asset.status}</Badge>
+                                                    <td style={{ padding: '0.6rem 0.75rem', whiteSpace: 'nowrap' }}>
+                                                        <Badge variant={getStatusVariant(asset.status)} style={{ fontSize: '0.72rem' }}>{asset.status}</Badge>
                                                     </td>
-                                                    <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                                                         {asset.lastAssetCheck && (
                                                             <div style={{ 
-                                                                fontSize: '0.68rem', 
+                                                                fontSize: '0.64rem', 
                                                                 color: '#16a34a', 
                                                                 fontWeight: 600,
-                                                                marginBottom: '4px',
+                                                                marginBottom: '2px',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'flex-end',
@@ -2983,20 +2988,20 @@ export default function InventoryPage() {
                                                                 ✓ {new Date(asset.lastAssetCheck).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                                                             </div>
                                                         )}
-                                                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                                                             <Button 
                                                                 variant="secondary" 
                                                                 size="sm" 
                                                                 icon={Printer} 
                                                                 onClick={() => handlePrintLabel(asset)} 
                                                                 title="Imprimir Etiqueta"
-                                                                style={{ color: 'var(--primary-color)', borderColor: 'var(--primary-color)', background: 'rgba(37, 99, 235, 0.05)' }}
+                                                                style={{ color: 'var(--primary-color)', borderColor: 'var(--primary-color)', background: 'rgba(37, 99, 235, 0.05)', padding: '0.25rem 0.45rem' }}
                                                             />
                                                             {(asset.status === 'Nuevo' || asset.status === 'Disponible' || asset.status === 'Recuperado') && (
-                                                                <Button variant="ghost" size="sm" icon={UserPlus} onClick={() => handleAssignClick(asset)} title="Asignar" />
+                                                                <Button variant="ghost" size="sm" icon={UserPlus} onClick={() => handleAssignClick(asset)} title="Asignar" style={{ padding: '0.25rem 0.45rem' }} />
                                                             )}
-                                                            <Button variant="ghost" size="sm" icon={Eye} onClick={() => router.push(`/dashboard/inventory/${asset.id}`)} />
-                                                            <Button variant="ghost" size="sm" icon={Edit3} onClick={() => handleEdit(asset)} />
+                                                            <Button variant="ghost" size="sm" icon={Eye} onClick={() => router.push(`/dashboard/inventory/${asset.id}`)} style={{ padding: '0.25rem 0.45rem' }} />
+                                                            <Button variant="ghost" size="sm" icon={Edit3} onClick={() => handleEdit(asset)} style={{ padding: '0.25rem 0.45rem' }} />
                                                         </div>
                                                     </td>
                                                 </tr>

@@ -108,7 +108,7 @@ export default function DashboardLayout({ children }) {
                     <Logo size="small" style={{ width: 'auto', maxWidth: '185px', padding: '0.35rem 0.65rem' }} imgStyle={{ height: '36px' }} />
                 </div>
 
-                <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: currentUser?.role === 'Conductor' ? '6rem' : '1rem' }}>
+                <div style={{ maxWidth: '1560px', margin: '0 auto', paddingBottom: currentUser?.role === 'Conductor' ? '6rem' : '1rem' }}>
                     {children}
                 </div>
                 <MobileBottomNav />
