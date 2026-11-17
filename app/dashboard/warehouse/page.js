@@ -993,6 +993,15 @@ export default function WarehousePage() {
     const [depRepisa, setDepRepisa] = useState('A');
     const [depEstante, setDepEstante] = useState('1');
     const [depPosicion, setDepPosicion] = useState('1');
+    const [newLocationClient, setNewLocationClient] = useState('');
+
+    useEffect(() => {
+        if (countryFilter && countryFilter !== 'Todos') {
+            setNewLocationClient(countryFilter);
+        } else if (!newLocationClient && entities && entities.length > 0) {
+            setNewLocationClient(entities[0].name);
+        }
+    }, [countryFilter, isAddLocationModalOpen, entities]);
     
     // Rename Group States
     const [isRenameGroupModalOpen, setIsRenameGroupModalOpen] = useState(false);
@@ -1989,8 +1998,12 @@ export default function WarehousePage() {
 
     const handleAddLocation = async (e) => {
         e.preventDefault();
-        if (countryFilter === 'Todos') {
-            alert("Por favor seleccione una región (País) específica antes de crear una ubicación.");
+        const targetClient = (newLocationClient && newLocationClient !== 'Todos')
+            ? newLocationClient
+            : (countryFilter && countryFilter !== 'Todos' ? countryFilter : '');
+
+        if (!targetClient) {
+            alert("Por favor seleccione un Cliente / Entorno específico antes de crear una ubicación.");
             return;
         }
 
@@ -2005,10 +2018,20 @@ export default function WarehousePage() {
                 const level = depPosicion;
                 fullId = `${aisleName}-${section}-${level}`;
                 const adjustedLoc = { aisle: aisleName, section, level };
-                const res = await addWarehouseLocation({ ...adjustedLoc, id: fullId, country: countryFilter });
+                let res = await addWarehouseLocation({ ...adjustedLoc, id: fullId, country: targetClient });
+                if (res.error && res.error.code === '23505') {
+                    // Check if it already exists for THIS client or if the ID collision is from another client
+                    const existsInSameClient = warehouseLocations.some(l =>
+                        isCountryMatch(l.country, targetClient) &&
+                        (l.id === fullId || l.id === `${fullId}__${targetClient}` || (l.aisle === aisleName && String(l.section) === String(section) && String(l.level) === String(level)))
+                    );
+                    if (!existsInSameClient) {
+                        res = await addWarehouseLocation({ ...adjustedLoc, id: `${fullId}__${targetClient}`, country: targetClient });
+                    }
+                }
                 if (res.error) {
                     if (res.error.code === '23505') {
-                        alert(`La ubicación ${fullId} ya existe en el sistema.`);
+                        alert(`La ubicación ${fullId} ya existe para el cliente ${targetClient}.`);
                     } else {
                         alert("Error al crear ubicación: " + res.error.message);
                     }
@@ -2038,11 +2061,20 @@ export default function WarehousePage() {
 
             const adjustedLoc = { ...newLoc, aisle: aisleName };
             fullId = `${aisleName}-${adjustedLoc.section}-${adjustedLoc.level}`;
-            const res = await addWarehouseLocation({ ...adjustedLoc, id: fullId, country: countryFilter });
+            let res = await addWarehouseLocation({ ...adjustedLoc, id: fullId, country: targetClient });
+            if (res.error && res.error.code === '23505') {
+                const existsInSameClient = warehouseLocations.some(l =>
+                    isCountryMatch(l.country, targetClient) &&
+                    (l.id === fullId || l.id === `${fullId}__${targetClient}`)
+                );
+                if (!existsInSameClient) {
+                    res = await addWarehouseLocation({ ...adjustedLoc, id: `${fullId}__${targetClient}`, country: targetClient });
+                }
+            }
             
             if (res.error) {
                 if (res.error.code === '23505') {
-                    alert(`La ubicación ${fullId} ya existe en el sistema.`);
+                    alert(`La ubicación ${fullId} ya existe para el cliente ${targetClient}.`);
                 } else {
                     alert("Error al crear ubicación: " + res.error.message);
                 }
@@ -6449,6 +6481,43 @@ return renderSelectionInfoContent(false);
                 <form onSubmit={handleAddLocation}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                            <label className="form-label">Cliente / Entorno</label>
+                            <select
+                                value={newLocationClient || (countryFilter !== 'Todos' ? countryFilter : '')}
+                                onChange={e => setNewLocationClient(e.target.value)}
+                                required
+                                className="form-input"
+                                style={{
+                                    width: '100%',
+                                    padding: '0.5rem 0.75rem',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #93c5fd',
+                                    backgroundColor: '#eff6ff',
+                                    color: '#1e3a8a',
+                                    fontSize: '0.92rem',
+                                    fontWeight: 700,
+                                    outline: 'none'
+                                }}
+                            >
+                                <option value="" disabled>-- Seleccionar Cliente / Entorno --</option>
+                                {(() => {
+                                    const baseEntities = entities && entities.length > 0
+                                        ? entities.map(e => e.name)
+                                        : ['SFDC-Argentina', 'EdPuzzle Inc'];
+                                    const currentSelected = newLocationClient || (countryFilter !== 'Todos' ? countryFilter : '');
+                                    const allOptions = currentSelected && !baseEntities.includes(currentSelected)
+                                        ? [currentSelected, ...baseEntities]
+                                        : baseEntities;
+                                    return allOptions.map(name => (
+                                        <option key={name} value={name}>
+                                            {name}{name === countryFilter ? ' (Seleccionado en menú)' : ''}
+                                        </option>
+                                    ));
+                                })()}
+                            </select>
+                        </div>
+
+                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
                             <label className="form-label">Ubicación Destino (Zona)</label>
                             <select 
                                 value={newLocationType} 
@@ -6466,7 +6535,9 @@ return renderSelectionInfoContent(false);
                             <>
                                 {/* Preview */}
                                 <div style={{ gridColumn: 'span 2', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '0.75rem', textAlign: 'center' }}>
-                                    <div style={{ fontSize: '0.72rem', color: '#065f46', fontWeight: 700, marginBottom: '4px' }}>Código que se generará</div>
+                                    <div style={{ fontSize: '0.72rem', color: '#065f46', fontWeight: 700, marginBottom: '4px' }}>
+                                        Código que se generará para <strong>{newLocationClient || countryFilter}</strong>
+                                    </div>
                                     <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#059669', letterSpacing: '0.1em' }}>DEP-{depRepisa}-{depEstante}-{depPosicion}</div>
                                     <div style={{ fontSize: '0.68rem', color: '#6b7280', marginTop: '2px' }}>Repisa {depRepisa} · Estante {depEstante} ({depEstante === '1' ? 'suelo' : depEstante === '5' ? 'más alto' : `nivel ${depEstante}`}) · Posición {depPosicion} ({depPosicion === '1' ? 'más izq.' : depPosicion === '5' ? 'más der.' : `pos. ${depPosicion}`})</div>
                                 </div>
