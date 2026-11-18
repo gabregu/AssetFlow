@@ -1131,7 +1131,7 @@ export default function WarehousePage() {
                 <div class="label-page">
                     <div class="label-outer">
                         <div class="label-inner">
-                            <div class="msg-box">${escapedHtml}</div>
+                            <div class="msg-box"><span class="msg-text">${escapedHtml}</span></div>
                             ${customLabelIncludeDate ? `<div class="footer-date">${todayStr}</div>` : ''}
                         </div>
                     </div>
@@ -1146,7 +1146,7 @@ export default function WarehousePage() {
                         <style>
                             @page { size: 50mm 25mm; margin: 0; }
                             * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                            html, body { width: 50mm; margin: 0; padding: 0; background: #fff; }
+                            html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; }
                             .label-page {
                                 width: 50mm;
                                 height: 25mm;
@@ -1157,18 +1157,17 @@ export default function WarehousePage() {
                             .label-outer {
                                 width: 50mm;
                                 height: 25mm;
-                                padding: 1.4mm;
+                                padding: 2.5mm 3.0mm 1.0mm 0.8mm;
                                 display: flex;
-                                align-items: stretch;
-                                justify-content: stretch;
+                                align-items: center;
+                                justify-content: center;
                             }
                             .label-inner {
-                                flex: 1;
                                 width: 100%;
                                 height: 100%;
                                 border: ${customLabelIncludeBorder ? '0.6mm solid #000' : 'none'};
                                 border-radius: ${customLabelIncludeBorder ? '1.8mm' : '0'};
-                                padding: 1.2mm 2mm;
+                                padding: 1.7mm 2mm 1.1mm 2mm;
                                 display: flex;
                                 flex-direction: column;
                                 align-items: center;
@@ -1182,15 +1181,20 @@ export default function WarehousePage() {
                                 display: flex;
                                 align-items: center;
                                 justify-content: center;
+                                overflow: hidden;
+                            }
+                            .msg-text {
+                                display: block;
+                                width: 100%;
+                                margin: auto;
                                 text-align: center;
                                 font-size: ${fontSizePt}pt;
                                 font-weight: 900;
                                 color: #000;
                                 text-transform: uppercase;
-                                line-height: 1.1;
+                                line-height: 1.12;
                                 letter-spacing: 0.01em;
                                 word-break: break-word;
-                                overflow: hidden;
                             }
                             .footer-date {
                                 width: 100%;
