@@ -71,6 +71,376 @@ const formatTodayShort = () => {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
 };
 
+const getCustomLabelFontSizePt = (text) => {
+    const clean = (text || '').trim();
+    const len = clean.length;
+    const lines = clean.split(/\r?\n/).length;
+    if (lines >= 4 || len > 65) return 7.5;
+    if (lines === 3 || len > 42) return 9.5;
+    if (len > 28) return 11.5;
+    if (len > 18) return 13.5;
+    if (len > 10) return 15.5;
+    return 18;
+};
+
+const CustomInstructionLabelModal = React.memo(({ isOpen, onClose }) => {
+    const [customLabelText, setCustomLabelText] = useState('');
+    const [customLabelIncludeBorder, setCustomLabelIncludeBorder] = useState(true);
+    const [customLabelIncludeDate, setCustomLabelIncludeDate] = useState(false);
+    const [customLabelCopies, setCustomLabelCopies] = useState(1);
+
+    if (!isOpen) return null;
+
+    const handlePrint = (e) => {
+        if (e) e.preventDefault();
+        const text = (customLabelText || '').trim();
+        if (!text) {
+            alert('Por favor escriba un mensaje o seleccione un atajo rápido para imprimir.');
+            return;
+        }
+        try {
+            let iframe = document.getElementById('print-iframe');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'print-iframe';
+                iframe.style.position = 'absolute';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+
+            const fontSizePt = getCustomLabelFontSizePt(text);
+            const escapedHtml = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\r?\n/g, '<br/>');
+            const todayStr = formatTodayShort();
+            const copies = Math.max(1, Math.min(20, parseInt(customLabelCopies, 10) || 1));
+
+            const singlePageHtml = `
+                <div class="label-page">
+                    <div class="label-outer">
+                        <div class="label-inner">
+                            <div class="msg-box"><span class="msg-text">${escapedHtml}</span></div>
+                            ${customLabelIncludeDate ? `<div class="footer-date">${todayStr}</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const pagesHtml = Array.from({ length: copies }, () => singlePageHtml).join('');
+
+            const content = `
+                <html>
+                    <head>
+                        <style>
+                            @page { size: 50mm 25mm; margin: 0; }
+                            * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; }
+                            .label-page {
+                                width: 50mm;
+                                height: 25mm;
+                                page-break-after: always;
+                                break-after: page;
+                                overflow: hidden;
+                            }
+                            .label-outer {
+                                width: 50mm;
+                                height: 25mm;
+                                padding: 2.5mm 3.0mm 1.0mm 0.8mm;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            }
+                            .label-inner {
+                                width: 100%;
+                                height: 100%;
+                                border: ${customLabelIncludeBorder ? '0.6mm solid #000' : 'none'};
+                                border-radius: ${customLabelIncludeBorder ? '1.8mm' : '0'};
+                                padding: 1.7mm 2mm 1.1mm 2mm;
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                font-family: Arial, Helvetica, sans-serif;
+                                overflow: hidden;
+                            }
+                            .msg-box {
+                                flex: 1;
+                                width: 100%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                overflow: hidden;
+                            }
+                            .msg-text {
+                                display: block;
+                                width: 100%;
+                                margin: auto;
+                                text-align: center;
+                                font-size: ${fontSizePt}pt;
+                                font-weight: 900;
+                                color: #000;
+                                text-transform: uppercase;
+                                line-height: 1.12;
+                                letter-spacing: 0.01em;
+                                word-break: break-word;
+                            }
+                            .footer-date {
+                                width: 100%;
+                                text-align: right;
+                                font-size: 5pt;
+                                font-weight: 800;
+                                color: #000;
+                                line-height: 1;
+                                margin-top: 0.4mm;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${pagesHtml}
+                    </body>
+                </html>
+            `;
+
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(content);
+            doc.close();
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }, 300);
+        } catch (err) {
+            console.error('Error printing custom instruction label:', err);
+            alert('Error al imprimir la etiqueta de instrucción');
+        }
+    };
+
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title="Imprimir Etiqueta de Instrucción (50mm × 25mm)"
+        >
+            <form onSubmit={handlePrint} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* Vista Previa en Vivo (Proporción 2:1 -> 50mm x 25mm) */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Vista Previa de Etiqueta (50mm × 25mm)
+                    </span>
+                    <div style={{
+                        width: '300px',
+                        height: '150px',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
+                        border: '1px solid #cbd5e1',
+                        display: 'flex',
+                        alignItems: 'stretch',
+                        justifyContent: 'stretch'
+                    }}>
+                        <div style={{
+                            flex: 1,
+                            border: customLabelIncludeBorder ? '3px solid #000000' : '1px dashed #cbd5e1',
+                            borderRadius: customLabelIncludeBorder ? '8px' : '4px',
+                            padding: '8px 12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                            fontFamily: 'Arial, Helvetica, sans-serif'
+                        }}>
+                            <div style={{
+                                flex: 1,
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                textAlign: 'center',
+                                fontWeight: 900,
+                                color: customLabelText.trim() ? '#000000' : '#94a3b8',
+                                textTransform: 'uppercase',
+                                lineHeight: 1.12,
+                                wordBreak: 'break-word',
+                                whiteSpace: 'pre-wrap',
+                                fontSize: `${Math.round(getCustomLabelFontSizePt(customLabelText || 'DEJAR EN OFICINA') * 1.45)}px`
+                            }}>
+                                <span style={{ display: 'block', width: '100%', textAlign: 'center' }}>
+                                    {customLabelText.trim() || 'DEJAR EN OFICINA'}
+                                </span>
+                            </div>
+                            {customLabelIncludeDate && (
+                                <div style={{
+                                    width: '100%',
+                                    textAlign: 'right',
+                                    fontSize: '10px',
+                                    fontWeight: 800,
+                                    color: '#000000',
+                                    lineHeight: 1,
+                                    marginTop: '2px'
+                                }}>
+                                    {formatTodayShort()}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Campo de texto */}
+                <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0 }}>
+                            Mensaje / Instrucción a Imprimir
+                        </label>
+                        {customLabelText && (
+                            <button
+                                type="button"
+                                onClick={() => setCustomLabelText('')}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                            >
+                                Limpiar texto
+                            </button>
+                        )}
+                    </div>
+                    <textarea
+                        rows={2}
+                        value={customLabelText}
+                        onChange={e => setCustomLabelText(e.target.value)}
+                        placeholder="Ej: DEJAR EN OFICINA / DEJARLO EN GUARDIA..."
+                        autoFocus
+                        className="form-input"
+                        style={{
+                            width: '100%',
+                            padding: '0.6rem 0.75rem',
+                            borderRadius: '8px',
+                            border: '1.5px solid var(--primary-color)',
+                            backgroundColor: 'var(--background)',
+                            color: 'var(--text-main)',
+                            fontSize: '1rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            resize: 'vertical'
+                        }}
+                    />
+                </div>
+
+                {/* Atajos rápidos de 1 clic */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        ⚡ Frases rápidas (1 clic):
+                    </span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        {[
+                            'DEJAR EN OFICINA',
+                            'DEJARLO EN GUARDIA',
+                            'ENTREGAR EN LA OFICINA',
+                            'RESERVADO',
+                            'URGENTE',
+                            'SIN CARGADOR',
+                            'FALTA BORRADO',
+                            'PARA ENVÍO',
+                            'REVISAR EQUIPO'
+                        ].map(phrase => {
+                            const isActive = customLabelText.trim().toUpperCase() === phrase;
+                            return (
+                                <button
+                                    key={phrase}
+                                    type="button"
+                                    onClick={() => setCustomLabelText(phrase)}
+                                    style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '999px',
+                                        fontSize: '0.74rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        border: isActive ? '1.5px solid #2563eb' : '1px solid var(--border)',
+                                        backgroundColor: isActive ? '#eff6ff' : 'var(--background-secondary)',
+                                        color: isActive ? '#1d4ed8' : 'var(--text-main)',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    {phrase}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Opciones de formato y copias */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '0.75rem',
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--background-secondary)',
+                    border: '1px solid var(--border)'
+                }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={customLabelIncludeBorder}
+                                onChange={e => setCustomLabelIncludeBorder(e.target.checked)}
+                                style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                            />
+                            Recuadro negro
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                            <input
+                                type="checkbox"
+                                checked={customLabelIncludeDate}
+                                onChange={e => setCustomLabelIncludeDate(e.target.checked)}
+                                style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                            />
+                            Incluir fecha abajo
+                        </label>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Copias:</label>
+                        <input
+                            type="number"
+                            min={1}
+                            max={20}
+                            value={customLabelCopies}
+                            onChange={e => setCustomLabelCopies(e.target.value)}
+                            style={{
+                                width: '58px',
+                                padding: '3px 6px',
+                                borderRadius: '6px',
+                                border: '1px solid var(--border)',
+                                backgroundColor: 'var(--background)',
+                                color: 'var(--text-main)',
+                                fontSize: '0.85rem',
+                                fontWeight: 700,
+                                textAlign: 'center'
+                            }}
+                        />
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem' }}>
+                    <Button type="button" variant="secondary" onClick={onClose}>
+                        Cancelar
+                    </Button>
+                    <Button type="submit" variant="primary" icon={Printer}>
+                        Imprimir Etiqueta
+                    </Button>
+                </div>
+            </form>
+        </Modal>
+    );
+});
+CustomInstructionLabelModal.displayName = 'CustomInstructionLabelModal';
+
 const parseAssetNoteEntries = (notesStr, fallbackDateStr = '') => {
     if (!notesStr || typeof notesStr !== 'string') return [];
     const cleaned = notesStr
@@ -1080,152 +1450,8 @@ export default function WarehousePage() {
     const [isManageManufacturersOpen, setIsManageManufacturersOpen] = useState(false);
     const [newManufacturerName, setNewManufacturerName] = useState('');
 
-    // Custom Instruction Label (50mm x 25mm) States
+    // Custom Instruction Label (50mm x 25mm) Modal State
     const [isCustomLabelModalOpen, setIsCustomLabelModalOpen] = useState(false);
-    const [customLabelText, setCustomLabelText] = useState('');
-    const [customLabelIncludeBorder, setCustomLabelIncludeBorder] = useState(true);
-    const [customLabelIncludeDate, setCustomLabelIncludeDate] = useState(false);
-    const [customLabelCopies, setCustomLabelCopies] = useState(1);
-
-    const getCustomLabelFontSizePt = (text) => {
-        const clean = (text || '').trim();
-        const len = clean.length;
-        const lines = clean.split(/\r?\n/).length;
-        if (lines >= 4 || len > 65) return 7.5;
-        if (lines === 3 || len > 42) return 9.5;
-        if (len > 28) return 11.5;
-        if (len > 18) return 13.5;
-        if (len > 10) return 15.5;
-        return 18;
-    };
-
-    const handlePrintCustomInstructionLabel = (e) => {
-        if (e) e.preventDefault();
-        const text = (customLabelText || '').trim();
-        if (!text) {
-            alert('Por favor escriba un mensaje o seleccione un atajo rápido para imprimir.');
-            return;
-        }
-        try {
-            let iframe = document.getElementById('print-iframe');
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.id = 'print-iframe';
-                iframe.style.position = 'absolute';
-                iframe.style.width = '0';
-                iframe.style.height = '0';
-                iframe.style.border = 'none';
-                document.body.appendChild(iframe);
-            }
-
-            const fontSizePt = getCustomLabelFontSizePt(text);
-            const escapedHtml = text
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\r?\n/g, '<br/>');
-            const todayStr = formatTodayShort();
-            const copies = Math.max(1, Math.min(20, parseInt(customLabelCopies, 10) || 1));
-
-            const singlePageHtml = `
-                <div class="label-page">
-                    <div class="label-outer">
-                        <div class="label-inner">
-                            <div class="msg-box"><span class="msg-text">${escapedHtml}</span></div>
-                            ${customLabelIncludeDate ? `<div class="footer-date">${todayStr}</div>` : ''}
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            const pagesHtml = Array.from({ length: copies }, () => singlePageHtml).join('');
-
-            const content = `
-                <html>
-                    <head>
-                        <style>
-                            @page { size: 50mm 25mm; margin: 0; }
-                            * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                            html, body { width: 50mm; height: 25mm; margin: 0; padding: 0; background: #fff; }
-                            .label-page {
-                                width: 50mm;
-                                height: 25mm;
-                                page-break-after: always;
-                                break-after: page;
-                                overflow: hidden;
-                            }
-                            .label-outer {
-                                width: 50mm;
-                                height: 25mm;
-                                padding: 2.5mm 3.0mm 1.0mm 0.8mm;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                            }
-                            .label-inner {
-                                width: 100%;
-                                height: 100%;
-                                border: ${customLabelIncludeBorder ? '0.6mm solid #000' : 'none'};
-                                border-radius: ${customLabelIncludeBorder ? '1.8mm' : '0'};
-                                padding: 1.7mm 2mm 1.1mm 2mm;
-                                display: flex;
-                                flex-direction: column;
-                                align-items: center;
-                                justify-content: center;
-                                font-family: Arial, Helvetica, sans-serif;
-                                overflow: hidden;
-                            }
-                            .msg-box {
-                                flex: 1;
-                                width: 100%;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                overflow: hidden;
-                            }
-                            .msg-text {
-                                display: block;
-                                width: 100%;
-                                margin: auto;
-                                text-align: center;
-                                font-size: ${fontSizePt}pt;
-                                font-weight: 900;
-                                color: #000;
-                                text-transform: uppercase;
-                                line-height: 1.12;
-                                letter-spacing: 0.01em;
-                                word-break: break-word;
-                            }
-                            .footer-date {
-                                width: 100%;
-                                text-align: right;
-                                font-size: 5pt;
-                                font-weight: 800;
-                                color: #000;
-                                line-height: 1;
-                                margin-top: 0.4mm;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        ${pagesHtml}
-                    </body>
-                </html>
-            `;
-
-            const doc = iframe.contentWindow.document;
-            doc.open();
-            doc.write(content);
-            doc.close();
-            setTimeout(() => {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-            }, 300);
-        } catch (err) {
-            console.error('Error printing custom instruction label:', err);
-            alert('Error al imprimir la etiqueta de instrucción');
-        }
-    };
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -8572,221 +8798,10 @@ return renderSelectionInfoContent(false);
             </Modal>
 
             {/* Modal Etiqueta de Instrucción Personalizada (50mm x 25mm) */}
-            <Modal
+            <CustomInstructionLabelModal
                 isOpen={isCustomLabelModalOpen}
                 onClose={() => setIsCustomLabelModalOpen(false)}
-                title="Imprimir Etiqueta de Instrucción (50mm × 25mm)"
-            >
-                <form onSubmit={handlePrintCustomInstructionLabel} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {/* Vista Previa en Vivo (Proporción 2:1 -> 50mm x 25mm) */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            Vista Previa de Etiqueta (50mm × 25mm)
-                        </span>
-                        <div style={{
-                            width: '300px',
-                            height: '150px',
-                            backgroundColor: '#ffffff',
-                            borderRadius: '8px',
-                            padding: '8px',
-                            boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
-                            border: '1px solid #cbd5e1',
-                            display: 'flex',
-                            alignItems: 'stretch',
-                            justifyContent: 'stretch'
-                        }}>
-                            <div style={{
-                                flex: 1,
-                                border: customLabelIncludeBorder ? '3px solid #000000' : '1px dashed #cbd5e1',
-                                borderRadius: customLabelIncludeBorder ? '8px' : '4px',
-                                padding: '8px 12px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                overflow: 'hidden',
-                                fontFamily: 'Arial, Helvetica, sans-serif'
-                            }}>
-                                <div style={{
-                                    flex: 1,
-                                    width: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    textAlign: 'center',
-                                    fontWeight: 900,
-                                    color: customLabelText.trim() ? '#000000' : '#94a3b8',
-                                    textTransform: 'uppercase',
-                                    lineHeight: 1.1,
-                                    wordBreak: 'break-word',
-                                    whiteSpace: 'pre-wrap',
-                                    fontSize: `${Math.round(getCustomLabelFontSizePt(customLabelText || 'DEJAR EN OFICINA') * 1.45)}px`
-                                }}>
-                                    {customLabelText.trim() || 'DEJAR EN OFICINA'}
-                                </div>
-                                {customLabelIncludeDate && (
-                                    <div style={{
-                                        width: '100%',
-                                        textAlign: 'right',
-                                        fontSize: '10px',
-                                        fontWeight: 800,
-                                        color: '#000000',
-                                        lineHeight: 1,
-                                        marginTop: '2px'
-                                    }}>
-                                        {formatTodayShort()}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Campo de texto */}
-                    <div className="form-group" style={{ margin: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0 }}>
-                                Mensaje / Instrucción a Imprimir
-                            </label>
-                            {customLabelText && (
-                                <button
-                                    type="button"
-                                    onClick={() => setCustomLabelText('')}
-                                    style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
-                                >
-                                    Limpiar texto
-                                </button>
-                            )}
-                        </div>
-                        <textarea
-                            rows={2}
-                            value={customLabelText}
-                            onChange={e => setCustomLabelText(e.target.value)}
-                            placeholder="Ej: DEJAR EN OFICINA / DEJARLO EN GUARDIA..."
-                            autoFocus
-                            className="form-input"
-                            style={{
-                                width: '100%',
-                                padding: '0.6rem 0.75rem',
-                                borderRadius: '8px',
-                                border: '1.5px solid var(--primary-color)',
-                                backgroundColor: 'var(--background)',
-                                color: 'var(--text-main)',
-                                fontSize: '1rem',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                resize: 'vertical'
-                            }}
-                        />
-                    </div>
-
-                    {/* Atajos rápidos de 1 clic */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                            ⚡ Frases rápidas (1 clic):
-                        </span>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                            {[
-                                'DEJAR EN OFICINA',
-                                'DEJARLO EN GUARDIA',
-                                'RESERVADO',
-                                'URGENTE',
-                                'SIN CARGADOR',
-                                'FALTA BORRADO',
-                                'PARA ENVÍO',
-                                'REVISAR EQUIPO',
-                                'NO ENTREGAR'
-                            ].map(phrase => {
-                                const isActive = customLabelText.trim().toUpperCase() === phrase;
-                                return (
-                                    <button
-                                        key={phrase}
-                                        type="button"
-                                        onClick={() => setCustomLabelText(phrase)}
-                                        style={{
-                                            padding: '4px 10px',
-                                            borderRadius: '999px',
-                                            fontSize: '0.74rem',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            border: isActive ? '1.5px solid #2563eb' : '1px solid var(--border)',
-                                            backgroundColor: isActive ? '#eff6ff' : 'var(--background-secondary)',
-                                            color: isActive ? '#1d4ed8' : 'var(--text-main)',
-                                            transition: 'all 0.15s ease'
-                                        }}
-                                    >
-                                        {phrase}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Opciones de formato y copias */}
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: '0.75rem',
-                        padding: '0.65rem 0.85rem',
-                        borderRadius: '8px',
-                        backgroundColor: 'var(--background-secondary)',
-                        border: '1px solid var(--border)'
-                    }}>
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={customLabelIncludeBorder}
-                                    onChange={e => setCustomLabelIncludeBorder(e.target.checked)}
-                                    style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-                                />
-                                Recuadro negro
-                            </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={customLabelIncludeDate}
-                                    onChange={e => setCustomLabelIncludeDate(e.target.checked)}
-                                    style={{ width: '15px', height: '15px', cursor: 'pointer' }}
-                                />
-                                Incluir fecha abajo
-                            </label>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Copias:</label>
-                            <input
-                                type="number"
-                                min={1}
-                                max={20}
-                                value={customLabelCopies}
-                                onChange={e => setCustomLabelCopies(e.target.value)}
-                                style={{
-                                    width: '58px',
-                                    padding: '3px 6px',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--border)',
-                                    backgroundColor: 'var(--background)',
-                                    color: 'var(--text-main)',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 700,
-                                    textAlign: 'center'
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem' }}>
-                        <Button type="button" variant="secondary" onClick={() => setIsCustomLabelModalOpen(false)}>
-                            Cancelar
-                        </Button>
-                        <Button type="submit" variant="primary" icon={Printer}>
-                            Imprimir Etiqueta
-                        </Button>
-                    </div>
-                </form>
-            </Modal>
+            />
 
             {/* Input oculto para subida de factura de compra */}
             <input
