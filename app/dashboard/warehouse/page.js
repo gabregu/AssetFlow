@@ -8129,6 +8129,145 @@ return renderSelectionInfoContent(false);
                                             step="any"
                                             value={repairForm.repairCost} 
                                             onChange={e => setRepairForm({ ...repairForm, repairCost: e.target.value })}
+                                            placeholder="0.00"
+                                            className="form-input"
+                                            style={{ width: '100%', padding: '0.45rem 0.6rem 0.45rem 3.8rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{ margin: 0 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.75rem', margin: 0 }}>3. Gasto Adicional</label>
+                                        <div style={{ display: 'inline-flex', background: 'var(--background-secondary, #f1f5f9)', borderRadius: '4px', padding: '1px', border: '1px solid var(--border)' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setRepairForm(prev => ({ ...prev, additionalCurrency: 'USD' }))}
+                                                style={{
+                                                    padding: '1px 5px',
+                                                    fontSize: '0.65rem',
+                                                    fontWeight: 800,
+                                                    borderRadius: '3px',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    background: repairForm.additionalCurrency === 'USD' ? '#7c3aed' : 'transparent',
+                                                    color: repairForm.additionalCurrency === 'USD' ? '#ffffff' : 'var(--text-secondary)'
+                                                }}
+                                            >
+                                                USD
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setRepairForm(prev => ({ ...prev, additionalCurrency: 'ARS' }))}
+                                                style={{
+                                                    padding: '1px 5px',
+                                                    fontSize: '0.65rem',
+                                                    fontWeight: 800,
+                                                    borderRadius: '3px',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    background: repairForm.additionalCurrency === 'ARS' ? '#10b981' : 'transparent',
+                                                    color: repairForm.additionalCurrency === 'ARS' ? '#ffffff' : 'var(--text-secondary)'
+                                                }}
+                                            >
+                                                ARS
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style={{ position: 'relative' }}>
+                                        <span style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, fontSize: '0.72rem', color: 'var(--text-secondary)', pointerEvents: 'none' }}>
+                                            {repairForm.additionalCurrency === 'ARS' ? 'ARS $' : 'USD $'}
+                                        </span>
+                                        <input 
+                                            type="number" 
+                                            min="0"
+                                            step="any"
+                                            value={repairForm.additionalCost} 
+                                            onChange={e => setRepairForm({ ...repairForm, additionalCost: e.target.value })}
+                                            placeholder="0.00"
+                                            className="form-input"
+                                            style={{ width: '100%', padding: '0.45rem 0.6rem 0.45rem 3.8rem', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {(() => {
+                                    const calc = calculateRepairTotals(repairForm);
+                                    return (
+                                        <div className="form-group" style={{ margin: 0 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', color: '#6d28d9', margin: 0 }}>4. Total</label>
+                                                <span style={{ fontSize: '0.65rem', color: '#6d28d9', opacity: 0.8 }}>T/C: ${currentExchangeRate.toLocaleString('es-AR')}</span>
+                                            </div>
+                                            <div style={{
+                                                width: '100%',
+                                                padding: '0.4rem 0.6rem',
+                                                borderRadius: '6px',
+                                                border: '1.5px solid #a78bfa',
+                                                backgroundColor: 'rgba(124, 58, 237, 0.05)',
+                                                color: '#6d28d9',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                justifyContent: 'center',
+                                                boxSizing: 'border-box'
+                                            }}>
+                                                <div style={{ fontSize: '0.95rem', fontWeight: 900, lineHeight: 1.2 }}>
+                                                    USD ${calc.totalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </div>
+                                                <div style={{ fontSize: '0.65rem', fontWeight: 600, color: '#7c3aed', opacity: 0.9 }}>
+                                                    ≈ ARS ${Math.round(calc.totalARS).toLocaleString('es-AR')}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+
+                            {/* 5. Estado de Aprobación con Cruz Roja para NO Aprobado */}
+                            <div style={{
+                                marginTop: '0.25rem',
+                                padding: '0.65rem 0.75rem',
+                                background: repairForm.approvalStatus === 'approved' ? '#f0fdf4' : (repairForm.approvalStatus === 'rejected' ? '#fef2f2' : '#fffbeb'),
+                                border: `1.5px solid ${repairForm.approvalStatus === 'approved' ? '#86efac' : (repairForm.approvalStatus === 'rejected' ? '#fca5a5' : '#fde68a')}`,
+                                borderRadius: '8px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.5rem'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        {repairForm.approvalStatus === 'approved' && (
+                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: 900, flexShrink: 0 }}>
+                                                ✓
+                                            </div>
+                                        )}
+                                        {repairForm.approvalStatus === 'rejected' && (
+                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#dc2626', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: 900, boxShadow: '0 2px 4px rgba(220,38,38,0.3)', flexShrink: 0 }} title="Cruz Roja - NO APROBADO">
+                                                ✕
+                                            </div>
+                                        )}
+                                        {repairForm.approvalStatus === 'pending' && (
+                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#f59e0b', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', flexShrink: 0 }}>
+                                                ⏳
+                                            </div>
+                                        )}
+                                        <div>
+                                            <div style={{
+                                                fontWeight: 800,
+                                                fontSize: '0.8rem',
+                                                color: repairForm.approvalStatus === 'approved' ? '#166534' : (repairForm.approvalStatus === 'rejected' ? '#991b1b' : '#92400e')
+                                            }}>
+                                                5. Estado: {
+                                                    repairForm.approvalStatus === 'approved' ? 'APROBADA ✓' :
+                                                    repairForm.approvalStatus === 'rejected' ? 'NO APROBADA ✕' : 'PENDIENTE DE AUTORIZACIÓN'
+                                                }
+                                            </div>
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '1px' }}>
+                                                {repairForm.approvalStatus === 'approved' && (
+                                                    <span>
+                                                        Aprobado por: <strong style={{ color: '#166534' }}>{repairForm.approvedBy || currentUser?.name || 'Administrador'}</strong> {repairForm.approvedDate ? `el ${formatApprovalDateTime(repairForm.approvedDate)}` : ''}
+                                                    </span>
+                                                )}
                                                 {repairForm.approvalStatus === 'rejected' && (
                                                     <span style={{ color: '#991b1b', fontWeight: 600 }}>
                                                         ❌ NO aprobado por: <strong style={{ color: '#7f1d1d' }}>{repairForm.rejectedBy || currentUser?.name || 'Administrador'}</strong> {repairForm.rejectedDate ? `el ${formatApprovalDateTime(repairForm.rejectedDate)}` : ''}
