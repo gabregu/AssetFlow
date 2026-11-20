@@ -4524,6 +4524,126 @@ export default function WarehousePage() {
     const percentReutilizados = (statusCounts.reutilizados / total) * 100;
     const percentReparacion = ((statusCounts.reparacion || 0) / total) * 100;
 
+    // Export Zona Cajas (entire Zona Cajas or a specific Caja) to a 2-sheet Excel workbook
+    const handleExportZonaCajasExcel = (specificLocId = null) => {
+        try {
+            const getCajaNumber = (locId) => {
+                const m = String(locId || '').toUpperCase().match(/^CAJA-(\d+)/);
+                return m ? parseInt(m[1], 10) : 999999;
+            };
+
+            const targetAssets = assets
+                .filter(a => {
+                    if (!isCountryMatch(a.country, countryFilter)) return false;
+                    if (!a.locationId) return false;
+                    if (specificLocId) {
+                        return isSameWarehouseLocation(a.locationId, specificLocId);
+                    }
+                    return String(a.locationId).toUpperCase().startsWith('CAJA-');
+                })
+                .sort((a, b) => {
+                    const nA = getCajaNumber(a.locationId);
+                    const nB = getCajaNumber(b.locationId);
+                    if (nA !== nB) return nA - nB;
+                    return String(a.locationId || '').localeCompare(String(b.locationId || ''));
+                });
+
+            if (targetAssets.length === 0) {
+                alert(specificLocId ? `No hay equipos en ${specificLocId} para exportar.` : 'No hay equipos en Zona Cajas para exportar.');
+                return;
+            }
+
+            const detailRows = targetAssets.map(a => {
+                const cajaNum = getCajaNumber(a.locationId);
+                let dateStr = '-';
+                if (a.dateMapped) dateStr = new Date(a.dateMapped).toLocaleDateString('es-AR');
+                else if (a.dateLastUpdate) dateStr = new Date(a.dateLastUpdate).toLocaleDateString('es-AR');
+                else if (a.created_at) dateStr = new Date(a.created_at).toLocaleDateString('es-AR');
+                else if (a.date) dateStr = new Date(a.date).toLocaleDateString('es-AR');
+
+                const cleanNotes = String(a.notes || '')
+                    .replace(/\[CON CARGADOR\]\s*\n?/gi, '')
+                    .replace(/\[BORRADO DE FABRICA\]\s*\n?/gi, '')
+                    .trim();
+
+                return {
+                    'N° de Caja': cajaNum !== 999999 ? cajaNum : '-',
+                    'Ubicación': a.locationId || '-',
+                    'ID Activo': a.id || '-',
+                    'Tipo': a.type || '-',
+                    'Marca (OEM)': a.oem || '-',
+                    'Nombre / Modelo': a.name || a.model || '-',
+                    'Hardware Spec': a.hardwareSpec || a.hardware_spec || '-',
+                    'Modelo Técnico': a.modelNumber || a.model_number || '-',
+                    'N/P (Part Number)': a.partNumber || a.part_number || '-',
+                    'SN (Número de Serie)': a.serial || a.sn || '-',
+                    'IMEI': (a.imei && a.imei !== '-') ? a.imei : '-',
+                    'Estado': a.status || '-',
+                    'Caso SFDC': a.sfdcCase || a.sfdc_case || '-',
+                    'Orden de Compra (PO)': a.purchaseOrder || a.purchase_order || '-',
+                    'Incluye Cargador': a.hasCharger ? 'Sí' : 'No',
+                    'Borrado de Fábrica': a.isFactoryReset ? 'Sí' : 'No',
+                    'Ingreso a Caja (Fecha)': dateStr,
+                    'Fecha EOL': a.eolDate || a.eol_date || '-',
+                    'Notas': cleanNotes || '-'
+                };
+            });
+
+            // Group by box for Sheet 2 ("Resumen por Caja")
+            const boxMap = new Map();
+            targetAssets.forEach(a => {
+                const loc = String(a.locationId || '-').toUpperCase();
+                if (!boxMap.has(loc)) {
+                    boxMap.set(loc, []);
+                }
+                boxMap.get(loc).push(a);
+            });
+
+            const summaryRows = Array.from(boxMap.entries())
+                .sort(([locA], [locB]) => getCajaNumber(locA) - getCajaNumber(locB))
+                .map(([loc, list]) => {
+                    const cajaNum = getCajaNumber(loc);
+                    const statusCountsMap = {};
+                    const modelCountsMap = {};
+                    list.forEach(item => {
+                        const st = item.status || 'Sin Estado';
+                        statusCountsMap[st] = (statusCountsMap[st] || 0) + 1;
+                        const mod = item.name || item.model || 'Sin Modelo';
+                        modelCountsMap[mod] = (modelCountsMap[mod] || 0) + 1;
+                    });
+                    const estadosStr = Object.entries(statusCountsMap).map(([st, c]) => `${c} ${st}`).join(', ');
+                    const modelosStr = Object.entries(modelCountsMap).map(([m, c]) => `${c}x ${m}`).join(' | ');
+                    const serialesStr = list.map(item => item.serial || item.sn || item.imei || item.id).filter(Boolean).join(', ');
+
+                    return {
+                        'N° de Caja': cajaNum !== 999999 ? cajaNum : '-',
+                        'Código Caja': loc,
+                        'Cantidad de Equipos': list.length,
+                        'Estados': estadosStr,
+                        'Modelos en Caja': modelosStr,
+                        'Seriales (S/N)': serialesStr
+                    };
+                });
+
+            const wb = XLSX.utils.book_new();
+            const wsDetail = XLSX.utils.json_to_sheet(detailRows);
+            const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+
+            XLSX.utils.book_append_sheet(wb, wsDetail, 'Equipos en Cajas');
+            XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumen por Caja');
+
+            const dateTag = new Date().toISOString().split('T')[0];
+            const fileName = specificLocId
+                ? `Export_${specificLocId}_${countryFilter}_${dateTag}.xlsx`
+                : `Export_Zona_Cajas_${countryFilter}_${dateTag}.xlsx`;
+
+            XLSX.writeFile(wb, fileName);
+        } catch (err) {
+            console.error('Error exporting Zona Cajas Excel:', err);
+            alert('Error al exportar Excel de Zona Cajas.');
+        }
+    };
+
     // Helper to render customized text lines in grid cells
         const renderSelectionInfoContent = (isFloating = false, onClose = null) => {
         if (!selectedLocation) {
@@ -4641,6 +4761,17 @@ export default function WarehousePage() {
                                     }}
                                     style={{ height: '26px', fontSize: '0.68rem' }}
                                 >Mover Todos</Button>
+                                {String(selectedLocation.id || '').toUpperCase().startsWith('CAJA-') && (
+                                    <Button
+                                        variant="outline"
+                                        size="xs"
+                                        icon={Download}
+                                        onClick={() => handleExportZonaCajasExcel(selectedLocation.id)}
+                                        style={{ gridColumn: 'span 2', height: '26px', fontSize: '0.68rem', color: '#15803d', borderColor: '#86efac', backgroundColor: '#f0fdf4', fontWeight: 700 }}
+                                    >
+                                        Exportar esta Caja (Excel)
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     ) : asset ? (
@@ -6705,14 +6836,27 @@ return renderSelectionInfoContent(false);
                     </Card>
                     {/* ZONA CAJAS */}
                     <Card style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '2px solid #fde047' }}>
-                        <div style={{ borderBottom: '2px solid #fef08a', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ borderBottom: '2px solid #fef08a', paddingBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                                 <h2 style={{ fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.05em', margin: 0, color: '#854d0e' }}>ZONA CAJAS</h2>
                                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#a16207', backgroundColor: '#fef9c3', padding: '3px 8px', borderRadius: '12px' }}>
                                     {depositoConfig?.cajasCount || 80} Cajas EOL
                                 </span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#854d0e', backgroundColor: '#fef08a', padding: '3px 8px', borderRadius: '12px' }}>
+                                    {assets.filter(a => isCountryMatch(a.country, countryFilter) && String(a.locationId || '').toUpperCase().startsWith('CAJA-')).length} Equipos
+                                </span>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <Button
+                                    variant="outline"
+                                    size="xs"
+                                    icon={Download}
+                                    onClick={() => handleExportZonaCajasExcel(null)}
+                                    title="Exportar Excel completo de Zona Cajas (Detalle de equipos + Resumen por caja)"
+                                    style={{ fontSize: '0.7rem', padding: '3px 8px', height: '24px', borderColor: '#86efac', backgroundColor: '#f0fdf4', color: '#15803d', fontWeight: 800 }}
+                                >
+                                    Exportar Excel
+                                </Button>
                                 <Button
                                     variant="primary"
                                     size="xs"
