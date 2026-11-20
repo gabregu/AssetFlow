@@ -8338,8 +8338,8 @@ return renderSelectionInfoContent(false);
                                                         Aprobado por: <strong style={{ color: '#166534' }}>{repairForm.approvedBy || currentUser?.name || 'Administrador'}</strong> {repairForm.approvedDate ? `el ${formatApprovalDateTime(repairForm.approvedDate)}` : ''}
                                                     </span>
                                                 )}
-                                            placeholder="0.00"
-                                            className="form-input"
+                                                {repairForm.approvalStatus === 'rejected' && (
+                                                    <span style={{ color: '#991b1b', fontWeight: 600 }}>
                                                         ❌ NO aprobado por: <strong style={{ color: '#7f1d1d' }}>{repairForm.rejectedBy || currentUser?.name || 'Administrador'}</strong> {repairForm.rejectedDate ? `el ${formatApprovalDateTime(repairForm.rejectedDate)}` : ''}
                                                     </span>
                                                 )}
