@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { 
     Search, 
@@ -738,6 +739,52 @@ export default function WarehousePage() {
     // Mapping and Audit States
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedLocation, setSelectedLocation] = useState(null);
+    const popoverCardRef = useRef(null);
+    const popoverDragPosRef = useRef({ locId: null, left: null, top: null });
+
+    const handlePopoverDragStart = useCallback((e) => {
+        if (e.button !== undefined && e.button !== 0 && e.type === 'mousedown') return;
+        if (e.target.closest('button') || e.target.closest('input') || e.target.closest('a')) return;
+        const cardEl = popoverCardRef.current;
+        if (!cardEl) return;
+        e.preventDefault();
+        const rect = cardEl.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const offsetX = clientX - rect.left;
+        const offsetY = clientY - rect.top;
+
+        const onMove = (ev) => {
+            const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+            const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+            const maxLeft = Math.max(8, window.innerWidth - cardEl.offsetWidth - 8);
+            const maxTop = Math.max(8, window.innerHeight - 60);
+            const nextLeft = Math.max(8, Math.min(maxLeft, cx - offsetX));
+            const nextTop = Math.max(8, Math.min(maxTop, cy - offsetY));
+            cardEl.style.left = `${nextLeft}px`;
+            cardEl.style.top = `${nextTop}px`;
+            cardEl.style.right = 'auto';
+            cardEl.style.bottom = 'auto';
+            cardEl.style.transform = 'none';
+            popoverDragPosRef.current = {
+                locId: cardEl.getAttribute('data-popover-loc-id') || null,
+                left: nextLeft,
+                top: nextTop
+            };
+        };
+
+        const onUp = () => {
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+            window.removeEventListener('touchmove', onMove);
+            window.removeEventListener('touchend', onUp);
+        };
+
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('touchend', onUp);
+    }, []);
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [selectedAssetId, setSelectedAssetId] = useState(null);
     const [isMappingMode, setIsMappingMode] = useState(false);
@@ -4495,9 +4542,29 @@ export default function WarehousePage() {
         if (isFloating) {
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', fontSize: '0.78rem' }}>
-                    {/* Header: Location & Close */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '0.35rem' }}>
+                    {/* Header: Draggable Location Bar & Close */}
+                    <div
+                        data-popover-drag-handle="true"
+                        onMouseDown={handlePopoverDragStart}
+                        onTouchStart={handlePopoverDragStart}
+                        title="Arrastrar con el mouse para mover esta tarjeta"
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            borderBottom: '1px solid var(--border)',
+                            padding: '0.35rem 0.45rem',
+                            margin: '-0.45rem -0.45rem 0.1rem -0.45rem',
+                            borderRadius: '8px 8px 0 0',
+                            background: 'var(--background-secondary, #f8fafc)',
+                            cursor: 'grab',
+                            userSelect: 'none'
+                        }}
+                    >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', opacity: 0.7, lineHeight: 1 }} title="Arrastrar para mover">
+                                ✥
+                            </span>
                             <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary-color)', whiteSpace: 'nowrap' }}>
                                 {selectedLocation.id}
                             </span>
@@ -4517,13 +4584,18 @@ export default function WarehousePage() {
                                 </span>
                             )}
                         </div>
-                        {onClose && (
-                            <button
-                                onClick={onClose}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '1px 5px', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '0.95rem', fontWeight: 800, lineHeight: 1 }}
-                                title="Cerrar"
-                            >✕</button>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: 600, opacity: 0.75 }}>
+                                Mover
+                            </span>
+                            {onClose && (
+                                <button
+                                    onClick={onClose}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '1px 5px', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '0.95rem', fontWeight: 800, lineHeight: 1 }}
+                                    title="Cerrar"
+                                >✕</button>
+                            )}
+                        </div>
                     </div>
 
                     {/* Content */}
@@ -5738,29 +5810,29 @@ export default function WarehousePage() {
     };
 
     const renderSlotPopover = (locId, isSelected, options = {}) => {
-        if (!isSelected || !selectedLocation || selectedLocation.id !== locId) return null;
+        if (!isSelected || !selectedLocation || !isSameWarehouseLocation(selectedLocation.id, locId)) return null;
+        if (typeof window === 'undefined' || typeof document === 'undefined') return null;
 
         const {
             alignLeft = false,
-            alignTop = false,
-            alignBottom = false,
-            offsetX = 14,
-            offsetY = 0
+            offsetX = 14
         } = options;
 
-        const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 640;
+        const isMobileScreen = window.innerWidth < 640;
 
         if (isMobileScreen) {
-            return (
+            return createPortal(
                 <div
+                    ref={popoverCardRef}
                     data-popover-card="true"
+                    data-popover-loc-id={selectedLocation.id}
                     onClick={(e) => e.stopPropagation()}
                     style={{
                         position: 'fixed',
                         left: '12px',
                         right: '12px',
                         bottom: '12px',
-                        maxHeight: 'min(380px, calc(100vh - 24px))',
+                        maxHeight: 'min(400px, calc(100vh - 24px))',
                         overflowY: 'auto',
                         background: 'var(--surface, #ffffff)',
                         color: 'var(--text-main)',
@@ -5775,35 +5847,59 @@ export default function WarehousePage() {
                     }}
                 >
                     {renderSelectionInfoContent(true, () => setSelectedLocation(null))}
-                </div>
+                </div>,
+                document.body
             );
         }
 
-        return (
+        // Compute fixed viewport position (or preserve user's dragged position for the same location)
+        const popW = 325;
+        const popMaxH = 410;
+        let fixedLeft = Math.max(16, (window.innerWidth - popW) / 2);
+        let fixedTop = Math.max(16, (window.innerHeight - popMaxH) / 2);
+
+        if (popoverDragPosRef.current.locId === selectedLocation.id && popoverDragPosRef.current.left !== null && popoverDragPosRef.current.top !== null) {
+            fixedLeft = popoverDragPosRef.current.left;
+            fixedTop = popoverDragPosRef.current.top;
+        } else {
+            const escapedId = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(locId) : String(locId).replace(/["\\]/g, '\\$&');
+            const slotEl = document.querySelector(`[data-slot-id="${escapedId}"]`);
+            if (slotEl) {
+                const rect = slotEl.getBoundingClientRect();
+                if (!alignLeft && rect.right + offsetX + popW <= window.innerWidth - 12) {
+                    fixedLeft = rect.right + offsetX;
+                } else if (rect.left - offsetX - popW >= 12) {
+                    fixedLeft = rect.left - offsetX - popW;
+                } else if (rect.right + offsetX + popW <= window.innerWidth - 12) {
+                    fixedLeft = rect.right + offsetX;
+                } else {
+                    fixedLeft = Math.max(12, Math.min(window.innerWidth - popW - 12, rect.left));
+                }
+
+                const idealTop = rect.top + (rect.height / 2) - 150;
+                fixedTop = Math.max(16, Math.min(window.innerHeight - popMaxH - 16, idealTop));
+            }
+        }
+
+        return createPortal(
             <div
+                ref={popoverCardRef}
                 data-popover-card="true"
+                data-popover-loc-id={selectedLocation.id}
                 onClick={(e) => e.stopPropagation()}
                 style={{
-                    position: 'absolute',
-                    ...(alignLeft 
-                        ? { right: `calc(100% + ${offsetX}px)` } 
-                        : { left: `calc(100% + ${offsetX}px)` }
-                    ),
-                    ...(alignTop 
-                        ? { top: `${offsetY}px` } 
-                        : alignBottom 
-                            ? { bottom: `${offsetY}px` } 
-                            : { top: '50%', transform: `translateY(-50%) translateY(${offsetY}px)` }
-                    ),
-                    width: '315px',
-                    maxWidth: 'min(330px, 90vw)',
-                    maxHeight: 'min(390px, 80vh)',
+                    position: 'fixed',
+                    left: `${fixedLeft}px`,
+                    top: `${fixedTop}px`,
+                    width: `${popW}px`,
+                    maxWidth: 'min(340px, 92vw)',
+                    maxHeight: 'min(420px, 82vh)',
                     overflowY: 'auto',
                     background: 'var(--surface, #ffffff)',
                     color: 'var(--text-main)',
                     border: '2px solid var(--primary-color)',
                     borderRadius: '12px',
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.28), 0 10px 10px -5px rgba(0, 0, 0, 0.15)',
+                    boxShadow: '0 22px 30px -5px rgba(0, 0, 0, 0.32), 0 10px 12px -5px rgba(0, 0, 0, 0.18)',
                     zIndex: 99999,
                     padding: '0.85rem',
                     cursor: 'default',
@@ -5811,35 +5907,9 @@ export default function WarehousePage() {
                     animation: 'none'
                 }}
             >
-                {/* Visual pointer arrow pointing directly to the clicked slot */}
-                <div
-                    style={{
-                        position: 'absolute',
-                        width: '12px',
-                        height: '12px',
-                        background: 'var(--surface, #ffffff)',
-                        border: '2px solid var(--primary-color)',
-                        transform: 'rotate(45deg)',
-                        zIndex: 10,
-                        ...(alignLeft ? {
-                            right: '-7px',
-                            top: alignTop ? '16px' : (alignBottom ? 'auto' : '50%'),
-                            bottom: alignBottom ? '16px' : undefined,
-                            marginTop: alignTop || alignBottom ? 0 : '-6px',
-                            borderLeft: 'none',
-                            borderBottom: 'none'
-                        } : {
-                            left: '-7px',
-                            top: alignTop ? '16px' : (alignBottom ? 'auto' : '50%'),
-                            bottom: alignBottom ? '16px' : undefined,
-                            marginTop: alignTop || alignBottom ? 0 : '-6px',
-                            borderRight: 'none',
-                            borderTop: 'none'
-                        })
-                    }}
-                />
                 {renderSelectionInfoContent(true, () => setSelectedLocation(null))}
-            </div>
+            </div>,
+            document.body
         );
     };
 
@@ -8268,8 +8338,8 @@ return renderSelectionInfoContent(false);
                                                         Aprobado por: <strong style={{ color: '#166534' }}>{repairForm.approvedBy || currentUser?.name || 'Administrador'}</strong> {repairForm.approvedDate ? `el ${formatApprovalDateTime(repairForm.approvedDate)}` : ''}
                                                     </span>
                                                 )}
-                                                {repairForm.approvalStatus === 'rejected' && (
-                                                    <span style={{ color: '#991b1b', fontWeight: 600 }}>
+                                            placeholder="0.00"
+                                            className="form-input"
                                                         ❌ NO aprobado por: <strong style={{ color: '#7f1d1d' }}>{repairForm.rejectedBy || currentUser?.name || 'Administrador'}</strong> {repairForm.rejectedDate ? `el ${formatApprovalDateTime(repairForm.rejectedDate)}` : ''}
                                                     </span>
                                                 )}
